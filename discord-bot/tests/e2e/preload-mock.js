@@ -51,6 +51,7 @@ class EmbedBuilder {
   setAuthor(a) { this.author = a; return this; }
   setFooter(f) { this.footer = f; return this; }
   setThumbnail(t) { this.thumbnail = t; return this; }
+  setImage(i) { this.image = i; return this; }
   addFields(...fields) {
     if (Array.isArray(fields[0])) {
       this.fields.push(...fields[0]);
@@ -68,6 +69,7 @@ class EmbedBuilder {
       author: this.author,
       footer: this.footer,
       thumbnail: this.thumbnail,
+      image: this.image,
       fields: this.fields,
       timestamp: this.timestamp
     };

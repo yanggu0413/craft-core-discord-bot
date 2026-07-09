@@ -503,7 +503,7 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
 
       if (itemId) {
         const cleanItemId = itemId.replace('minecraft:', '');
-        embed.setThumbnail(`https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.21.11/items/${cleanItemId}.png`);
+        embed.setImage(`https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.21.11/items/${cleanItemId}.png`);
       }
 
       await channel.send({
