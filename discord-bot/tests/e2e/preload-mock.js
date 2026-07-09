@@ -48,6 +48,7 @@ class EmbedBuilder {
   setTitle(t) { this.title = t; return this; }
   setDescription(d) { this.description = d; return this; }
   setColor(c) { this.color = c; return this; }
+  setAuthor(a) { this.author = a; return this; }
   setFooter(f) { this.footer = f; return this; }
   setThumbnail(t) { this.thumbnail = t; return this; }
   addFields(...fields) {
@@ -64,6 +65,7 @@ class EmbedBuilder {
       title: this.title,
       description: this.description,
       color: this.color,
+      author: this.author,
       footer: this.footer,
       thumbnail: this.thumbnail,
       fields: this.fields,

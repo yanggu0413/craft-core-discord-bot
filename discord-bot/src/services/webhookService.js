@@ -1,4 +1,4 @@
-const { WebhookClient } = require('discord.js');
+const { WebhookClient, EmbedBuilder } = require('discord.js');
 const config = require('../config');
 
 async function sendChat(sender, uuid, message, discordClient) {
@@ -64,38 +64,35 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
     const avatarUrl = config.minecraft.avatarProvider.replace('{uuid}', uuid);
 
     if (eventType === 'join') {
-      const embed = {
-        color: 0x55FF55, // Light green
-        author: {
+      const embed = new EmbedBuilder()
+        .setColor(0x55FF55) // Light green
+        .setAuthor({
           name: `${username} 加入了伺服器`,
-          icon_url: avatarUrl
-        }
-      };
+          iconURL: avatarUrl
+        });
       await channel.send({
-        content: `📥 **${username}** 加入了遊戲`,
+        content: `**${username}** 加入了遊戲`,
         embeds: [embed]
       });
     } else if (eventType === 'leave') {
-      const embed = {
-        color: 0xFF5555, // Red
-        author: {
+      const embed = new EmbedBuilder()
+        .setColor(0xFF5555) // Red
+        .setAuthor({
           name: `${username} 離開了伺服器`,
-          icon_url: avatarUrl
-        }
-      };
+          iconURL: avatarUrl
+        });
       await channel.send({
-        content: `📤 **${username}** 離開了遊戲`,
+        content: `**${username}** 離開了遊戲`,
         embeds: [embed]
       });
     } else if (eventType === 'death') {
-      const embed = {
-        color: 0xFF5555, // Red
-        author: {
+      const embed = new EmbedBuilder()
+        .setColor(0xFF5555) // Red
+        .setAuthor({
           name: `${username} 死亡了`,
-          icon_url: avatarUrl
-        },
-        description: `💀 ${details}`
-      };
+          iconURL: avatarUrl
+        })
+        .setDescription(`💀 ${details}`);
       await channel.send({
         content: `💀 ${details}`,
         embeds: [embed]
@@ -106,17 +103,14 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
       const desc = parts[1] || '';
       const itemId = parts[2] || '';
 
-      const embed = {
-        color: 0x55FF55, // Light green
-        title: `${username} 已完成進度 ${title}`,
-        description: desc
-      };
+      const embed = new EmbedBuilder()
+        .setColor(0x55FF55) // Light green
+        .setTitle(`${username} 已完成進度 ${title}`)
+        .setDescription(desc);
 
       if (itemId) {
         const cleanItemId = itemId.replace('minecraft:', '');
-        embed.thumbnail = {
-          url: `https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.21/items/${cleanItemId}.png`
-        };
+        embed.setThumbnail(`https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.21/items/${cleanItemId}.png`);
       }
 
       await channel.send({
