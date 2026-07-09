@@ -164,5 +164,11 @@ const handleFatalError = async (err, origin) => {
 process.on('uncaughtException', (err) => handleFatalError(err, 'uncaughtException'));
 process.on('unhandledRejection', (reason) => {
   const err = reason instanceof Error ? reason : new Error(String(reason));
-  handleFatalError(err, 'unhandledRejection');
+  // Only log unhandled rejections — do NOT exit. Unhandled rejections are
+  // typically non-fatal async errors that should not crash the entire bot.
+  logger.error('Unhandled Promise Rejection (non-fatal)', {
+    error: err,
+    stack: err.stack
+  });
 });
+
