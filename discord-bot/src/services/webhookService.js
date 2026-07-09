@@ -614,14 +614,14 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
       const embed = new EmbedBuilder()
         .setColor(0xFFAA00) // Gold / Yellow
         .setAuthor({
-          name: `${username} 已完成進度 [${title}]`,
+          name: `${username} 已完成進度 【${title}】`,
           iconURL: avatarUrl
         })
         .setDescription(desc);
 
       if (itemId) {
         const cleanItemId = itemId.replace('minecraft:', '');
-        embed.setThumbnail(`https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.21.11/items/${cleanItemId}.png`);
+        embed.setThumbnail(`https://api.minecraftitems.xyz/api/item/${cleanItemId}/size=8`);
       }
 
       await channel.send({
