@@ -333,8 +333,8 @@ describe('Tier 1: Feature Coverage (F1-F5)', () => {
     mcClient.event('advancement', 'SteveF2', 'uuid-steve-f2', 'Stone Age');
 
     const msg = await msgPromise;
-    expect(msg.embeds[0].title).toContain('SteveF2 已完成進度');
-    expect(msg.embeds[0].title).toContain('Stone Age');
+    expect(msg.embeds[0].author.name).toContain('SteveF2 已完成進度');
+    expect(msg.embeds[0].author.name).toContain('石器時代');
   });
 
   // === Feature 3: Interactive Support Ticket System ===

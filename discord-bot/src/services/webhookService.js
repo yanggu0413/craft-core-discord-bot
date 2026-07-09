@@ -502,8 +502,8 @@ function translateAdvancement(title, desc) {
   const matched = advMap[title];
   if (matched) {
     return {
-      title: `${matched.title} (${title})`,
-      desc: `${matched.desc}\n*${desc}*`
+      title: matched.title,
+      desc: matched.desc
     };
   }
   return { title, desc };
@@ -612,13 +612,16 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
       const { title, desc } = translateAdvancement(originalTitle, originalDesc);
 
       const embed = new EmbedBuilder()
-        .setColor(0x55FF55) // Light green
-        .setTitle(`${username} 已完成進度 [${title}]`)
+        .setColor(0xFFAA00) // Gold / Yellow
+        .setAuthor({
+          name: `${username} 已完成進度 [${title}]`,
+          iconURL: avatarUrl
+        })
         .setDescription(desc);
 
       if (itemId) {
         const cleanItemId = itemId.replace('minecraft:', '');
-        embed.setImage(`https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.21.11/items/${cleanItemId}.png`);
+        embed.setThumbnail(`https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.21.11/items/${cleanItemId}.png`);
       }
 
       await channel.send({
