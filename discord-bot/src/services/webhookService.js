@@ -1,5 +1,8 @@
 const { WebhookClient, EmbedBuilder } = require('discord.js');
 const config = require('../config');
+const { PlayerStatsRepository } = require('../database/repositories');
+const logger = require('../utils/logger');
+const discordQueue = require('../utils/discordQueue');
 
 function translateDeathMessage(details, username) {
   if (!details) return `${username} 死亡了`;
@@ -514,14 +517,14 @@ async function sendChat(sender, uuid, message, discordClient) {
     try {
       const webhookClient = new WebhookClient({ url: config.discord.chatWebhookUrl });
       const avatarUrl = config.minecraft.avatarProvider.replace('{uuid}', uuid);
-      await webhookClient.send({
+      await discordQueue.enqueue(() => webhookClient.send({
         content: message,
         username: sender,
         avatarURL: avatarUrl
-      });
+      }), { type: 'chat_webhook', sender });
       return;
     } catch (err) {
-      console.warn('Failed to send message via WebhookClient, falling back:', err);
+      logger.warn('Failed to send message via WebhookClient, falling back', { error: err });
     }
   }
 
@@ -530,10 +533,10 @@ async function sendChat(sender, uuid, message, discordClient) {
     try {
       const channel = await discordClient.channels.fetch(config.discord.channels.chatSync);
       if (channel) {
-        await channel.send(`💬 **${sender}**：${message}`);
+        await discordQueue.enqueue(() => channel.send(`💬 **${sender}**：${message}`), { type: 'chat_channel', sender });
       }
     } catch (err) {
-      console.error('Failed to send chat message to Discord:', err);
+      logger.error('Failed to send chat message to Discord', { error: err });
     }
   }
 }
@@ -543,10 +546,10 @@ async function sendServerStart(discordClient) {
   try {
     const channel = await discordClient.channels.fetch(config.discord.channels.chatSync);
     if (channel) {
-      await channel.send('✅ 伺服器已開啟');
+      await discordQueue.enqueue(() => channel.send('✅ 伺服器已開啟'), { type: 'server_start' });
     }
   } catch (err) {
-    console.error('Failed to send server start status to Discord:', err);
+    logger.error('Failed to send server start status to Discord', { error: err });
   }
 }
 
@@ -555,10 +558,10 @@ async function sendServerStop(discordClient) {
   try {
     const channel = await discordClient.channels.fetch(config.discord.channels.chatSync);
     if (channel) {
-      await channel.send('❌ 伺服器已關閉');
+      await discordQueue.enqueue(() => channel.send('❌ 伺服器已關閉'), { type: 'server_stop' });
     }
   } catch (err) {
-    console.error('Failed to send server stop status to Discord:', err);
+    logger.error('Failed to send server stop status to Discord', { error: err });
   }
 }
 
@@ -578,9 +581,9 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
           name: `${username} 加入了伺服器`,
           iconURL: avatarUrl
         });
-      await channel.send({
+      await discordQueue.enqueue(() => channel.send({
         embeds: [embed]
-      });
+      }), { type: 'event_join', username });
     } else if (eventType === 'leave') {
       const embed = new EmbedBuilder()
         .setColor(0xFF5555) // Red
@@ -588,14 +591,14 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
           name: `${username} 離開了伺服器`,
           iconURL: avatarUrl
         });
-      await channel.send({
+      await discordQueue.enqueue(() => channel.send({
         embeds: [embed]
-      });
+      }), { type: 'event_leave', username });
     } else if (eventType === 'death') {
       try {
-        db.incrementDeath(uuid, username);
+        await PlayerStatsRepository.incrementDeath(uuid, username);
       } catch (err) {
-        console.error('Failed to increment death count in database:', err);
+        logger.error('Failed to increment death count in database', { error: err });
       }
 
       const translatedMsg = translateDeathMessage(details, username);
@@ -606,9 +609,9 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
           iconURL: avatarUrl
         })
         .setDescription(`💀 ${translatedMsg}`);
-      await channel.send({
+      await discordQueue.enqueue(() => channel.send({
         embeds: [embed]
-      });
+      }), { type: 'event_death', username });
     } else if (eventType === 'advancement') {
       const parts = details.split('|');
       const originalTitle = parts[0] || '';
@@ -630,14 +633,14 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
         embed.setThumbnail(`https://api.minecraftitems.xyz/api/item/${cleanItemId}/size=8`);
       }
 
-      await channel.send({
+      await discordQueue.enqueue(() => channel.send({
         embeds: [embed]
-      });
+      }), { type: 'event_advancement', username });
     } else {
-      await channel.send(`📢 [${eventType}] **${username}**: ${details}`);
+      await discordQueue.enqueue(() => channel.send(`📢 [${eventType}] **${username}**: ${details}`), { type: 'event_other', eventType, username });
     }
   } catch (err) {
-    console.error('Failed to send game event to Discord:', err);
+    logger.error('Failed to send game event to Discord', { error: err });
   }
 }
 

@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const config = require('../../config');
+const discordQueue = require('../../utils/discordQueue');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -120,8 +121,8 @@ module.exports = {
       ephemeral: true
     });
 
-    await interaction.channel.send({
+    await discordQueue.enqueue(() => interaction.channel.send({
       content: formattedAnnouncement
-    });
+    }), { type: 'announcement_send' });
   }
 };

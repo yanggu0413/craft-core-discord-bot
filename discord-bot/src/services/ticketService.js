@@ -1,6 +1,8 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const db = require('../database');
+const { TicketRepository } = require('../database/repositories');
 const config = require('../config');
+const logger = require('../utils/logger');
+const discordQueue = require('../utils/discordQueue');
 
 async function handleCreateTicket(interaction) {
   const creatorId = interaction.user.id;
@@ -27,7 +29,7 @@ async function handleCreateTicket(interaction) {
       });
     } catch (createError) {
       if (config.discord.channels.ticketCategory) {
-        console.warn('Failed to create ticket in category, trying without parent category:', createError.message);
+        logger.warn('Failed to create ticket in category, trying without parent category', { error: createError });
         channel = await interaction.guild.channels.create({
           name: channelName,
           type: 0, // GuildText channel type
@@ -48,7 +50,7 @@ async function handleCreateTicket(interaction) {
     }
 
     // Save ticket into database
-    db.createTicket(ticketId, channel.id, creatorId);
+    await TicketRepository.createTicket(ticketId, channel.id, creatorId);
 
     // Ephemeral response to ticket creator
     await interaction.reply({
@@ -63,10 +65,10 @@ async function handleCreateTicket(interaction) {
 
     const row = new ActionRowBuilder().addComponents(closeButton);
 
-    await channel.send({
+    await discordQueue.enqueue(() => channel.send({
       content: '點擊按鈕關閉客服單：',
       components: [row]
-    });
+    }), { type: 'ticket_close_button', ticketId });
 
     // Welcome message in ticket channel
     const embed = new EmbedBuilder()
@@ -75,13 +77,13 @@ async function handleCreateTicket(interaction) {
       .setColor('#5865F2')
       .setTimestamp();
 
-    await channel.send({
+    await discordQueue.enqueue(() => channel.send({
       content: `<@${creatorId}> 您的客服單已開啟！`,
       embeds: [embed]
-    });
+    }), { type: 'ticket_welcome', ticketId });
 
   } catch (error) {
-    console.error('Failed to create ticket channel:', error);
+    logger.error('Failed to create ticket channel', { error });
     await interaction.reply({
       content: '建立客服單時發生錯誤，請聯絡管理員。',
       ephemeral: true
@@ -91,7 +93,7 @@ async function handleCreateTicket(interaction) {
 
 async function handleCloseTicket(interaction) {
   const channel = interaction.channel;
-  const ticketInfo = db.getTicketByChannelId(channel.id);
+  const ticketInfo = await TicketRepository.getTicketByChannelId(channel.id);
 
   if (!ticketInfo) {
     return interaction.reply({
@@ -119,7 +121,7 @@ async function handleCloseTicket(interaction) {
       const fetched = await channel.messages.fetch({ limit: 100 });
       messages = Array.from(fetched.values()).reverse();
     } catch (e) {
-      console.warn('Failed to fetch messages for transcript.');
+      logger.warn('Failed to fetch messages for transcript');
     }
 
     for (const msg of messages) {
@@ -135,7 +137,7 @@ async function handleCloseTicket(interaction) {
       try {
         const logsChannel = await interaction.guild.channels.fetch(config.discord.channels.ticketLogs);
         if (logsChannel) {
-          await logsChannel.send({
+          await discordQueue.enqueue(() => logsChannel.send({
             content: `📁 客服單 **${ticketInfo.ticket_id}** (${channel.name}) 已關閉。`,
             files: [
               {
@@ -143,21 +145,21 @@ async function handleCloseTicket(interaction) {
                 name: `transcript-${ticketInfo.ticket_id}.txt`
               }
             ]
-          });
+          }), { type: 'ticket_log', ticketId: ticketInfo.ticket_id });
         }
       } catch (err) {
-        console.error('Failed to send transcript to logs channel:', err);
+        logger.error('Failed to send transcript to logs channel', { error: err });
       }
     }
 
     // 3. Update status in Database
-    db.closeTicket(channel.id);
+    await TicketRepository.closeTicket(channel.id);
 
     // 4. Delete the channel
     await channel.delete();
 
   } catch (error) {
-    console.error('Failed to close ticket channel:', error);
+    logger.error('Failed to close ticket channel', { error });
     await interaction.editReply({
       content: '關閉客服單時發生錯誤。'
     });

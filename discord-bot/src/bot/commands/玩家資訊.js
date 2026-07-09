@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const config = require('../../config');
-const db = require('../../database');
+const { UserRepository } = require('../../database/repositories');
+const logger = require('../../utils/logger');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -40,7 +41,7 @@ module.exports = {
     }
 
     if (parsedDiscordId) {
-      binding = db.getBindingByDiscordId(parsedDiscordId);
+      binding = await UserRepository.getBindingByDiscordId(parsedDiscordId);
       if (binding) {
         mcUsername = binding.mc_username;
         discordId = binding.discord_id;
@@ -51,7 +52,7 @@ module.exports = {
         });
       }
     } else if (isUuid) {
-      binding = db.getBindingByMcUuid(query);
+      binding = await UserRepository.getBindingByMcUuid(query);
       if (binding) {
         mcUsername = binding.mc_username;
         discordId = binding.discord_id;
@@ -59,7 +60,7 @@ module.exports = {
         mcUsername = query;
       }
     } else {
-      binding = db.getBindingByMcUsername(query);
+      binding = await UserRepository.getBindingByMcUsername(query);
       if (binding) {
         mcUsername = binding.mc_username;
         discordId = binding.discord_id;
@@ -101,7 +102,7 @@ module.exports = {
           }
         }
       } catch (error) {
-        console.error('Failed to query player info:', error);
+        logger.error('Failed to query player info', { error });
       }
     } else {
       onlineStatus = '🔴 離線 (遊戲伺服器未連線)';

@@ -1,5 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('../config');
+const logger = require('../utils/logger');
+const discordQueue = require('../utils/discordQueue');
 
 let lastStatusMessageId = null;
 
@@ -45,14 +47,14 @@ async function updateStatus(payload, discordClient) {
     }
 
     if (message) {
-      await message.edit({ embeds: [embed] });
+      await discordQueue.enqueue(() => message.edit({ embeds: [embed] }), { type: 'status_edit' });
       lastStatusMessageId = message.id;
     } else {
-      const newMsg = await channel.send({ embeds: [embed] });
+      const newMsg = await discordQueue.enqueue(() => channel.send({ embeds: [embed] }), { type: 'status_send' });
       lastStatusMessageId = newMsg.id;
     }
   } catch (err) {
-    console.error('Failed to update status embed:', err);
+    logger.error('Failed to update status embed', { error: err });
   }
 }
 

@@ -44,15 +44,17 @@ function waitForDiscordEvent(event, filterFn = () => true, timeout = 3000) {
 function waitForWsMessage(client, type, filterFn = () => true, timeout = 3000) {
   return new Promise((resolve, reject) => {
     let resolved = false;
+    let timeoutId;
     const listener = (payload) => {
       if (filterFn(payload)) {
         resolved = true;
+        if (timeoutId) clearTimeout(timeoutId);
         client.off(type, listener);
         resolve(payload);
       }
     };
     client.on(type, listener);
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
       if (!resolved) {
         client.off(type, listener);
         reject(new Error(`Timeout waiting for WS packet: ${type}`));
@@ -440,7 +442,7 @@ describe('Tier 2: Boundary & Corner Cases (F1-F5)', () => {
     mcClient.close();
     await new Promise(r => setTimeout(r, 1000));
 
-    const replyPromise = waitForDiscordEvent('INTERACTION_REPLY');
+    const replyPromise = waitForDiscordEvent('INTERACTION_REPLY', (payload) => payload.content !== undefined && payload.content !== null);
     triggerSlashCommand('封鎖', { '玩家名稱': 'Steve', '原因': 'steal' }, 'discord-admin', 'AdminUser');
 
     const reply = await replyPromise;

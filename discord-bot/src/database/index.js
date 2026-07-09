@@ -10,7 +10,7 @@ let bindUserTx = null;
  * Initializes the database connection, executes schema, and pre-compiles queries.
  * @param {string} dbPath - Path to the SQLite database file or ':memory:'.
  */
-function init(dbPath) {
+async function init(dbPath) {
   if (db) {
     db.close();
   }
@@ -111,12 +111,12 @@ function init(dbPath) {
   bindUserTx = (discordId, mcUuid, mcUsername, code) => {
     db.exec('BEGIN TRANSACTION');
     try {
-      const existing = getBindingByMcUuid(mcUuid);
+      const existing = stmts.getBindingByMcUuid.get(mcUuid);
       if (existing) {
         throw new Error('Minecraft account is already bound to another Discord user.');
       }
-      addBinding(discordId, mcUuid, mcUsername);
-      deleteTempCode(code);
+      stmts.addBinding.run(discordId, mcUuid, mcUsername);
+      stmts.deleteTempCode.run(code);
       db.exec('COMMIT');
     } catch (error) {
       db.exec('ROLLBACK');
@@ -127,107 +127,107 @@ function init(dbPath) {
 
 // Wrapper APIs
 
-function addBinding(discordId, mcUuid, mcUsername) {
+async function addBinding(discordId, mcUuid, mcUsername) {
   return stmts.addBinding.run(discordId, mcUuid, mcUsername);
 }
 
-function getBindingByDiscordId(discordId) {
+async function getBindingByDiscordId(discordId) {
   return stmts.getBindingByDiscordId.get(discordId);
 }
 
-function getBindingByMcUuid(mcUuid) {
+async function getBindingByMcUuid(mcUuid) {
   return stmts.getBindingByMcUuid.get(mcUuid);
 }
 
-function getBindingByMcUsername(mcUsername) {
+async function getBindingByMcUsername(mcUsername) {
   return stmts.getBindingByMcUsername.get(mcUsername);
 }
 
-function removeBindingByDiscordId(discordId) {
+async function removeBindingByDiscordId(discordId) {
   return stmts.removeBindingByDiscordId.run(discordId);
 }
 
-function removeBindingByMcUuid(mcUuid) {
+async function removeBindingByMcUuid(mcUuid) {
   return stmts.removeBindingByMcUuid.run(mcUuid);
 }
 
-function removeBindingByMcUsername(mcUsername) {
+async function removeBindingByMcUsername(mcUsername) {
   return stmts.removeBindingByMcUsername.run(mcUsername);
 }
 
-function createTempCode(mcUuid, mcUsername, code) {
+async function createTempCode(mcUuid, mcUsername, code) {
   return stmts.createTempCode.run(mcUuid, mcUsername, code);
 }
 
-function getTempCode(code) {
+async function getTempCode(code) {
   return stmts.getTempCode.get(code);
 }
 
-function deleteTempCode(code) {
+async function deleteTempCode(code) {
   return stmts.deleteTempCode.run(code);
 }
 
-function clearExpiredTempCodes() {
+async function clearExpiredTempCodes() {
   return stmts.clearExpiredTempCodes.run();
 }
 
-function createTicket(ticketId, channelId, creatorId) {
+async function createTicket(ticketId, channelId, creatorId) {
   return stmts.createTicket.run(ticketId, channelId, creatorId);
 }
 
-function getTicketByChannelId(channelId) {
+async function getTicketByChannelId(channelId) {
   return stmts.getTicketByChannelId.get(channelId);
 }
 
-function closeTicket(channelId) {
+async function closeTicket(channelId) {
   return stmts.closeTicket.run(channelId);
 }
 
-function setSetting(key, value) {
+async function setSetting(key, value) {
   return stmts.setSetting.run(key, value);
 }
 
-function getSetting(key) {
+async function getSetting(key) {
   const result = stmts.getSetting.get(key);
   return result ? result.value : null;
 }
 
-function incrementDeath(mcUuid, mcUsername) {
+async function incrementDeath(mcUuid, mcUsername) {
   return stmts.incrementDeath.run(mcUuid, mcUsername);
 }
 
-function getDeathLeaderboard(limit = 10) {
+async function getDeathLeaderboard(limit = 10) {
   return stmts.getDeathLeaderboard.all(limit);
 }
 
-function getUserKeys(discordId) {
+async function getUserKeys(discordId) {
   return stmts.getUserKeys.get(discordId);
 }
 
-function updateKeys(discordId, newCount) {
+async function updateKeys(discordId, newCount) {
   return stmts.updateKeys.run(newCount, discordId);
 }
 
-function setCheckin(discordId, dateStr, keysToAdd = 1) {
+async function setCheckin(discordId, dateStr, keysToAdd = 1) {
   return stmts.setCheckin.run(dateStr, keysToAdd, discordId);
 }
 
-function addKeysByMcUsername(mcUsername, keysToAdd = 6) {
+async function addKeysByMcUsername(mcUsername, keysToAdd = 6) {
   return stmts.addKeysByMcUsername.run(keysToAdd, mcUsername);
 }
 
-function addKeysByDiscordId(discordId, keysToAdd = 6) {
+async function addKeysByDiscordId(discordId, keysToAdd = 6) {
   return stmts.addKeysByDiscordId.run(keysToAdd, discordId);
 }
 
-function bindUser(discordId, mcUuid, mcUsername, code) {
+async function bindUser(discordId, mcUuid, mcUsername, code) {
   if (!bindUserTx) {
     throw new Error('Database not initialized');
   }
   return bindUserTx(discordId, mcUuid, mcUsername, code);
 }
 
-function close() {
+async function close() {
   if (db) {
     db.close();
     db = null;

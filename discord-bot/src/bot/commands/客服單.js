@@ -1,5 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const config = require('../../config');
+const logger = require('../../utils/logger');
+const discordQueue = require('../../utils/discordQueue');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -38,17 +40,17 @@ module.exports = {
     const row = new ActionRowBuilder().addComponents(button);
 
     try {
-      await interaction.channel.send({
+      await discordQueue.enqueue(() => interaction.channel.send({
         embeds: [embed],
         components: [row]
-      });
+      }), { type: 'ticket_panel_deploy' });
 
       await interaction.reply({
         content: '客服單發送面板已成功建立。',
         ephemeral: true
       });
     } catch (error) {
-      console.error('Error deploying ticket button panel:', error);
+      logger.error('Error deploying ticket button panel', { error });
       await interaction.reply({
         content: '建立客服面板時發生錯誤。',
         ephemeral: true

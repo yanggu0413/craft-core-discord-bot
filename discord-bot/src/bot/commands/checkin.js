@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const db = require('../../database');
+const { UserRepository } = require('../../database/repositories');
+const logger = require('../../utils/logger');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -7,7 +8,7 @@ module.exports = {
     .setDescription('進行每日簽到以獲得抽獎鑰匙'),
   async execute(interaction) {
     const discordId = interaction.user.id;
-    const binding = db.getBindingByDiscordId(discordId);
+    const binding = await UserRepository.getBindingByDiscordId(discordId);
 
     if (!binding) {
       return interaction.reply({
@@ -20,7 +21,7 @@ module.exports = {
     // Use local time date string: YYYY-MM-DD
     const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-    const userKeys = db.getUserKeys(discordId);
+    const userKeys = await UserRepository.getUserKeys(discordId);
     if (userKeys && userKeys.last_checkin === localDateStr) {
       return interaction.reply({
         content: '📅 您今天已經簽到過囉！請明天再試。',
@@ -29,16 +30,16 @@ module.exports = {
     }
 
     try {
-      db.setCheckin(discordId, localDateStr, 1);
+      await UserRepository.setCheckin(discordId, localDateStr, 1);
     } catch (error) {
-      console.error('Failed to set checkin status:', error);
+      logger.error('Failed to set checkin status', { error });
       return interaction.reply({
         content: '❌ 簽到時發生錯誤，請稍後再試！',
         ephemeral: true
       });
     }
 
-    const updatedUserKeys = db.getUserKeys(discordId);
+    const updatedUserKeys = await UserRepository.getUserKeys(discordId);
     const keysCount = updatedUserKeys ? updatedUserKeys.keys_count : 1;
 
     const embed = new EmbedBuilder()

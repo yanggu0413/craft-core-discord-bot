@@ -45,15 +45,17 @@ function waitForDiscordEvent(event, filterFn = () => true, timeout = 3000) {
 function waitForWsMessage(client, type, filterFn = () => true, timeout = 3000) {
   return new Promise((resolve, reject) => {
     let resolved = false;
+    let timeoutId;
     const listener = (payload) => {
       if (filterFn(payload)) {
         resolved = true;
+        if (timeoutId) clearTimeout(timeoutId);
         client.off(type, listener);
         resolve(payload);
       }
     };
     client.on(type, listener);
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
       if (!resolved) {
         client.off(type, listener);
         reject(new Error(`Timeout waiting for WS packet: ${type}`));
@@ -319,13 +321,18 @@ describe('Tier 1: Feature Coverage (F1-F5)', () => {
     expect(msg.embeds[0].author.name).toContain('SteveF2');
   });
 
-  test('F2-4: Game event "death" sends a death announcement message to Discord channel', async () => {
+  test('F2-4: Game event "death" sends a death announcement message to Discord channel and increments database counter', async () => {
     const msgPromise = waitForDiscordEvent('MESSAGE_CREATE');
     mcClient.event('death', 'SteveF2', 'uuid-steve-f2', 'SteveF2 was pricked to death');
 
     const msg = await msgPromise;
     expect(msg.embeds[0].description).toContain('被仙人掌刺死了');
     expect(msg.embeds[0].description).toContain('SteveF2');
+
+    // Direct DB check: Query the E2E test database file using localDb
+    const row = localDb.prepare('SELECT deaths FROM player_stats WHERE mc_uuid = ?').get('uuid-steve-f2');
+    expect(row).toBeDefined();
+    expect(row.deaths).toBe(1);
   });
 
   test('F2-5: Game event "advancement" sends an advancement notification to Discord channel', async () => {

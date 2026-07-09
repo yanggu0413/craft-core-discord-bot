@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
-const db = require('../../database');
+const { UserRepository } = require('../../database/repositories');
+const logger = require('../../utils/logger');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -8,7 +9,7 @@ module.exports = {
   async execute(interaction) {
     const discordId = interaction.user.id;
 
-    const binding = db.getBindingByDiscordId(discordId);
+    const binding = await UserRepository.getBindingByDiscordId(discordId);
     if (!binding) {
       return interaction.reply({
         content: '您目前沒有綁定任何 Minecraft 帳號。',
@@ -17,7 +18,7 @@ module.exports = {
     }
 
     try {
-      db.removeBindingByDiscordId(discordId);
+      await UserRepository.removeBindingByDiscordId(discordId);
 
       // Whitelist Sync Event
       try {
@@ -29,14 +30,14 @@ module.exports = {
           });
         }
       } catch (e) {
-        console.warn('Failed to send whitelist sync event:', e);
+        logger.warn('Failed to send whitelist sync event', { error: e });
       }
 
       await interaction.reply({
         content: `成功解除綁定！已移除與 Minecraft 玩家 \`${binding.mc_username}\` 的連結。`
       });
     } catch (error) {
-      console.error('Error in /解除綁定 handler:', error);
+      logger.error('Error in /解除綁定 handler', { error });
       await interaction.reply({
         content: '解除綁定時發生資料庫錯誤，請聯絡管理人員。',
         ephemeral: true

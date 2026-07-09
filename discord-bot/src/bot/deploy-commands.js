@@ -2,6 +2,7 @@ const { REST, Routes } = require('discord.js');
 const config = require('../config');
 const fs = require('fs');
 const path = require('path');
+const logger = require('../utils/logger');
 
 const commands = [];
 const commandsPath = path.join(__dirname, 'commands');
@@ -15,24 +16,23 @@ if (fs.existsSync(commandsPath)) {
     if ('data' in command && 'execute' in command) {
       commands.push(command.data.toJSON());
     } else {
-      console.warn(`[WARNING] The command at ${filePath} is missing "data" or "execute" properties.`);
+      logger.warn(`The command at ${filePath} is missing "data" or "execute" properties`);
     }
-  }
 }
 
 const rest = new REST().setToken(config.discord.token);
 
 (async () => {
   try {
-    console.log(`Started registering ${commands.length} application (/) guild commands.`);
+    logger.info(`Started registering ${commands.length} application (/) guild commands`);
 
     const data = await rest.put(
       Routes.applicationGuildCommands(config.discord.clientId, config.discord.guildId),
       { body: commands },
     );
 
-    console.log(`Successfully registered ${data.length} application (/) guild commands.`);
+    logger.info(`Successfully registered ${data.length} application (/) guild commands`);
   } catch (error) {
-    console.error('Error during command deployment:', error);
+    logger.error('Error during command deployment', { error });
   }
 })();

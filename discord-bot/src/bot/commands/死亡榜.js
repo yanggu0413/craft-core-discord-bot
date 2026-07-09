@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const db = require('../../database');
+const { PlayerStatsRepository } = require('../../database/repositories');
+const logger = require('../../utils/logger');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -17,14 +18,14 @@ module.exports = {
     
     let leaderboard = [];
     try {
-      leaderboard = db.getDeathLeaderboard(limit);
+      leaderboard = await PlayerStatsRepository.getDeathLeaderboard(limit);
     } catch (error) {
-      console.error('Failed to get death leaderboard:', error);
+      logger.error('Failed to get death leaderboard', { error });
       return interaction.reply({ content: '讀取死亡排行榜時發生錯誤！', ephemeral: true });
     }
 
     if (!leaderboard || leaderboard.length === 0) {
-      return interaction.reply({ content: '💀 目前伺服器中尚無任何玩家的死亡數據！', ephemeral: true });
+      return interaction.reply({ content: '💀 目前伺服器中尚無 any 玩家的死亡數據！', ephemeral: true });
     }
 
     const embed = new EmbedBuilder()

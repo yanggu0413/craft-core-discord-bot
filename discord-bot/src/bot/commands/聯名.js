@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const config = require('../../config');
-const db = require('../../database');
+const { UserRepository } = require('../../database/repositories');
+const logger = require('../../utils/logger');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -40,19 +41,19 @@ module.exports = {
     }
 
     if (parsedDiscordId) {
-      binding = db.getBindingByDiscordId(parsedDiscordId);
+      binding = await UserRepository.getBindingByDiscordId(parsedDiscordId);
       if (binding) {
         mcUsername = binding.mc_username;
         discordId = binding.discord_id;
       }
     } else if (isUuid) {
-      binding = db.getBindingByMcUuid(query);
+      binding = await UserRepository.getBindingByMcUuid(query);
       if (binding) {
         mcUsername = binding.mc_username;
         discordId = binding.discord_id;
       }
     } else {
-      binding = db.getBindingByMcUsername(query);
+      binding = await UserRepository.getBindingByMcUsername(query);
       if (binding) {
         mcUsername = binding.mc_username;
         discordId = binding.discord_id;
@@ -67,16 +68,16 @@ module.exports = {
     }
 
     try {
-      db.addKeysByDiscordId(discordId, 6);
+      await UserRepository.addKeysByDiscordId(discordId, 6);
     } catch (error) {
-      console.error('Failed to add keys for user:', error);
+      logger.error('Failed to add keys for user', { error });
       return interaction.reply({
         content: '❌ 給予鑰匙時發生錯誤，請稍後再試！',
         ephemeral: true
       });
     }
 
-    const updatedUserKeys = db.getUserKeys(discordId);
+    const updatedUserKeys = await UserRepository.getUserKeys(discordId);
     const totalKeys = updatedUserKeys ? updatedUserKeys.keys_count : 6;
 
     const embed = new EmbedBuilder()

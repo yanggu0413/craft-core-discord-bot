@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
-const db = require('../../database');
+const { UserRepository, TempCodeRepository } = require('../../database/repositories');
+const logger = require('../../utils/logger');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -17,7 +18,7 @@ module.exports = {
     const discordId = interaction.user.id;
 
     // Check if Discord account already has a binding
-    const existingBindingByDiscord = db.getBindingByDiscordId(discordId);
+    const existingBindingByDiscord = await UserRepository.getBindingByDiscordId(discordId);
     if (existingBindingByDiscord) {
       return interaction.reply({
         content: `您的 Discord 帳號已經綁定 Minecraft 玩家: \`${existingBindingByDiscord.mc_username}\`。若要變更，請先使用 \`/解除綁定\`。`,
@@ -26,7 +27,7 @@ module.exports = {
     }
 
     // Retrieve temporary validation code from db
-    const tempCodeInfo = db.getTempCode(code);
+    const tempCodeInfo = await TempCodeRepository.getTempCode(code);
     if (!tempCodeInfo) {
       return interaction.reply({
         content: '無效或已過期的驗證碼，請在 Minecraft 伺服器中重新獲取。',
@@ -39,7 +40,7 @@ module.exports = {
     const createdAt = new Date(timeStr.includes('Z') || timeStr.includes('+') ? timeStr : timeStr + ' UTC');
     const diffMs = Date.now() - createdAt.getTime();
     if (diffMs > 300000) {
-      db.deleteTempCode(code);
+      await TempCodeRepository.deleteTempCode(code);
       return interaction.reply({
         content: '驗證碼已過期（5分鐘有效時限），請在遊戲中重新獲取。',
         ephemeral: true
@@ -50,7 +51,7 @@ module.exports = {
 
     try {
       // Complete binding transaction
-      db.bindUser(discordId, mcUuid, mcUsername, code);
+      await UserRepository.bindUser(discordId, mcUuid, mcUsername, code);
 
       // Whitelist Sync Event
       try {
@@ -62,7 +63,7 @@ module.exports = {
           });
         }
       } catch (e) {
-        console.warn('Failed to send whitelist sync event:', e);
+        logger.warn('Failed to send whitelist sync event', { error: e });
       }
 
       await interaction.reply({
@@ -75,7 +76,7 @@ module.exports = {
           ephemeral: true
         });
       }
-      console.error('Error in /綁定 handler:', error);
+      logger.error('Error in /綁定 handler', { error });
       await interaction.reply({
         content: '綁定時發生資料庫錯誤，請聯絡管理人員。',
         ephemeral: true

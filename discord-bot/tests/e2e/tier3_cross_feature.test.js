@@ -44,15 +44,17 @@ function waitForDiscordEvent(event, filterFn = () => true, timeout = 3000) {
 function waitForWsMessage(client, type, filterFn = () => true, timeout = 3000) {
   return new Promise((resolve, reject) => {
     let resolved = false;
+    let timeoutId;
     const listener = (payload) => {
       if (filterFn(payload)) {
         resolved = true;
+        if (timeoutId) clearTimeout(timeoutId);
         client.off(type, listener);
         resolve(payload);
       }
     };
     client.on(type, listener);
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
       if (!resolved) {
         client.off(type, listener);
         reject(new Error(`Timeout waiting for WS packet: ${type}`));

@@ -1,6 +1,7 @@
-const db = require('../database');
+const { TempCodeRepository } = require('../database/repositories');
 const config = require('../config');
 const session = require('./session');
+const logger = require('../utils/logger');
 
 async function handle(packet, discordClient) {
   const { type, payload } = packet;
@@ -25,7 +26,7 @@ async function handle(packet, discordClient) {
 
     case 'bind_code_request':
       const code = Math.floor(100000 + Math.random() * 900000).toString();
-      db.createTempCode(payload.uuid, payload.username, code);
+      await TempCodeRepository.createTempCode(payload.uuid, payload.username, code);
       session.send({
         type: 'bind_code_response',
         payload: {
@@ -38,7 +39,7 @@ async function handle(packet, discordClient) {
       break;
 
     case 'whitelist_response':
-      console.log(`Whitelist action response: ${payload.username} - ${payload.action} - ${payload.success}`);
+      logger.info('Whitelist action response', { username: payload.username, action: payload.action, success: payload.success });
       break;
 
     case 'command_response':
@@ -46,7 +47,7 @@ async function handle(packet, discordClient) {
       break;
 
     default:
-      console.warn(`Unknown packet type: ${type}`);
+      logger.warn(`Unknown packet type: ${type}`);
   }
 }
 

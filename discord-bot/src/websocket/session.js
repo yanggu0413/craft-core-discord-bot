@@ -1,28 +1,40 @@
 const crypto = require('crypto');
 const pendingCommands = new Map();
-let activeWSConnection = null;
+const connections = new Map();
 
-function isActive() {
-  if (activeWSConnection === null) return false;
-  if (activeWSConnection.readyState !== undefined && activeWSConnection.readyState !== 1) {
+function isWsActive(ws) {
+  if (!ws) return false;
+  if (ws.readyState !== undefined && ws.readyState !== 1) {
     return false;
   }
-  return activeWSConnection.readyState === 1 || activeWSConnection.isActive === true;
+  return ws.readyState === 1 || ws.isActive === true;
 }
 
-function send(packet) {
-  if (isActive()) {
-    if (typeof activeWSConnection.send === 'function') {
-      activeWSConnection.send(JSON.stringify(packet));
+function isActive(serverId) {
+  if (serverId !== undefined) {
+    return isWsActive(connections.get(serverId));
+  }
+  for (const ws of connections.values()) {
+    if (isWsActive(ws)) return true;
+  }
+  return false;
+}
+
+function send(packet, serverId = 'default') {
+  const ws = getConnection(serverId);
+  if (ws && isWsActive(ws)) {
+    if (typeof ws.send === 'function') {
+      ws.send(JSON.stringify(packet));
     }
     return true;
   }
   return false;
 }
 
-function executeCommand(commandString, adminTag) {
+function executeCommand(commandString, adminTag, serverId = 'default') {
   return new Promise((resolve, reject) => {
-    if (!isActive()) {
+    const ws = getConnection(serverId);
+    if (!ws || !isWsActive(ws)) {
       return reject(new Error('遊戲伺服器未連線'));
     }
 
@@ -37,8 +49,8 @@ function executeCommand(commandString, adminTag) {
     pendingCommands.set(commandId, { resolve, reject, timeout });
 
     // Send payload
-    if (typeof activeWSConnection.send === 'function') {
-      activeWSConnection.send(JSON.stringify({
+    if (typeof ws.send === 'function') {
+      ws.send(JSON.stringify({
         type: 'command_request',
         payload: {
           command_id: commandId,
@@ -64,12 +76,30 @@ function resolveCommand(commandId, success, output) {
   }
 }
 
-function setConnection(ws) {
-  activeWSConnection = ws;
+function setConnection(serverId, ws) {
+  if (ws === undefined) {
+    ws = serverId;
+    serverId = 'default';
+  }
+  connections.set(serverId, ws);
 }
 
-function getConnection() {
-  return activeWSConnection;
+function getConnection(serverId = 'default') {
+  return connections.get(serverId) || null;
+}
+
+function removeConnection(serverId) {
+  connections.delete(serverId);
+  // Reject and clear all pending commands when connection closes
+  for (const [commandId, pending] of pendingCommands.entries()) {
+    clearTimeout(pending.timeout);
+    pending.reject(new Error('遊戲伺服器已斷開連線'));
+    pendingCommands.delete(commandId);
+  }
+}
+
+function hasConnection(serverId) {
+  return connections.has(serverId);
 }
 
 module.exports = {
@@ -79,5 +109,7 @@ module.exports = {
   resolveCommand,
   setConnection,
   getConnection,
+  removeConnection,
+  hasConnection,
   pendingCommands
 };

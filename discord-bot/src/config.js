@@ -9,7 +9,8 @@ if (fs.existsSync(configPath)) {
   try {
     configJson = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   } catch (error) {
-    console.error('[WARNING] Failed to parse config.json, using defaults:', error);
+    const logger = require('./utils/logger');
+    logger.warn('Failed to parse config.json, using defaults', { error });
   }
 }
 
@@ -53,8 +54,9 @@ if (!config.discord.guildId) missing.push('DISCORD_GUILD_ID or discord.guildId')
 if (!config.websocket.secret) missing.push('WEBSOCKET_SECRET (Environment Variable)');
 
 if (missing.length > 0) {
-  console.error('CRITICAL CONFIGURATION ERROR: The following config keys are missing:');
-  missing.forEach(key => console.error(`  - ${key}`));
+  const logger = require('./utils/logger');
+  logger.error('CRITICAL CONFIGURATION ERROR: The following config keys are missing:');
+  missing.forEach(key => logger.error(`  - ${key}`));
   if (process.env.NODE_ENV !== 'test') {
     process.exit(1);
   }

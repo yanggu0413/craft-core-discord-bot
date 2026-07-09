@@ -7,29 +7,29 @@ const { execute: executeBind } = require('../src/bot/commands/綁定');
 const { execute: executePlayerInfo } = require('../src/bot/commands/玩家資訊');
 
 describe('Challenger Stress & Boundary Tests', () => {
-  beforeEach(() => {
-    db.init(':memory:');
+  beforeEach(async () => {
+    await db.init(':memory:');
   });
 
-  afterEach(() => {
-    db.close();
+  afterEach(async () => {
+    await db.close();
   });
 
   // 1. SQL Transactions / Bindings corruption check
   describe('SQL Transaction & Binding Integrity', () => {
-    test('INSERT OR REPLACE silently deletes previous conflicting bindings', () => {
+    test('INSERT OR REPLACE silently deletes previous conflicting bindings', async () => {
       // Bind User A to Minecraft UUID U1
-      db.addBinding('discord_A', 'uuid_1', 'Steve');
-      let bindingA = db.getBindingByDiscordId('discord_A');
+      await db.addBinding('discord_A', 'uuid_1', 'Steve');
+      let bindingA = await db.getBindingByDiscordId('discord_A');
       expect(bindingA).toBeDefined();
 
       // Bind User B to Minecraft UUID U1 (same UUID)
       // Since it is INSERT OR REPLACE on bindings (which has mc_uuid UNIQUE constraint),
       // SQLite will delete the row for discord_A to satisfy the UNIQUE constraint on mc_uuid.
-      db.addBinding('discord_B', 'uuid_1', 'Steve');
+      await db.addBinding('discord_B', 'uuid_1', 'Steve');
       
-      let bindingAAfter = db.getBindingByDiscordId('discord_A');
-      let bindingB = db.getBindingByDiscordId('discord_B');
+      let bindingAAfter = await db.getBindingByDiscordId('discord_A');
+      let bindingB = await db.getBindingByDiscordId('discord_B');
       
       expect(bindingB).toBeDefined();
       expect(bindingB.mc_uuid).toBe('uuid_1');
@@ -37,51 +37,55 @@ describe('Challenger Stress & Boundary Tests', () => {
       expect(bindingAAfter).toBeUndefined();
     });
 
-    test('Interrupted binding process leaves temporary code in DB (no transaction atomicity)', () => {
+    test('Interrupted binding process leaves temporary code in DB (no transaction atomicity)', async () => {
       // In the real code, /綁定 performs:
       // 1. db.addBinding(discordId, mcUuid, mcUsername);
       // 2. db.deleteTempCode(code);
       // If the process crashes or an error happens after step 1 but before step 2,
       // the temporary code is still left in the database.
-      db.createTempCode('uuid_1', 'Steve', '123456');
+      await db.createTempCode('uuid_1', 'Steve', '123456');
       
       // Simulating step 1 success
-      db.addBinding('discord_A', 'uuid_1', 'Steve');
+      await db.addBinding('discord_A', 'uuid_1', 'Steve');
       
       // Simulating a crash / failure before step 2:
       // db.deleteTempCode('123456') is not called.
       
       // The temp code still exists in the database!
-      const tempCode = db.getTempCode('123456');
+      const tempCode = await db.getTempCode('123456');
       expect(tempCode).toBeDefined();
     });
 
-    test('db.bindUser transaction rolls back all changes if duplicate mc_uuid exists', () => {
-      db.createTempCode('uuid_dup_test', 'Steve', '654321');
+    test('db.bindUser transaction rolls back all changes if duplicate mc_uuid exists', async () => {
+      await db.createTempCode('uuid_dup_test', 'Steve', '654321');
       // Bind uuid_dup_test to another user first
-      db.addBinding('discord_other', 'uuid_dup_test', 'Steve');
+      await db.addBinding('discord_other', 'uuid_dup_test', 'Steve');
       
       // Now call db.bindUser and expect it to throw
-      expect(() => {
-        db.bindUser('discord_new', 'uuid_dup_test', 'Steve', '654321');
-      }).toThrow();
+      let errorThrown = false;
+      try {
+        await db.bindUser('discord_new', 'uuid_dup_test', 'Steve', '654321');
+      } catch (err) {
+        errorThrown = true;
+      }
+      expect(errorThrown).toBe(true);
       
       // Verify discord_new was NOT bound (rollback / check prevented it)
-      expect(db.getBindingByDiscordId('discord_new')).toBeUndefined();
+      expect(await db.getBindingByDiscordId('discord_new')).toBeUndefined();
       
       // Verify the temp code still exists
-      expect(db.getTempCode('654321')).toBeDefined();
+      expect(await db.getTempCode('654321')).toBeDefined();
     });
   });
 
   // 2. Lifespan of verification codes
   describe('Lifespan of Verification Codes (5-minute window)', () => {
-    test('Code should be valid at 4 minutes 59 seconds (299,000 ms)', () => {
+    test('Code should be valid at 4 minutes 59 seconds (299,000 ms)', async () => {
       const code = '111111';
-      db.createTempCode('uuid_1', 'Steve', code);
+      await db.createTempCode('uuid_1', 'Steve', code);
       
       // Retrieve and simulate elapsed time
-      const tempCodeInfo = db.getTempCode(code);
+      const tempCodeInfo = await db.getTempCode(code);
       expect(tempCodeInfo).toBeDefined();
       
       // Mocking Date.now() / Date subtraction
@@ -92,11 +96,11 @@ describe('Challenger Stress & Boundary Tests', () => {
       expect(diffMs).toBeLessThanOrEqual(300000);
     });
 
-    test('Code should be invalid/expired at 5 minutes 1 second (301,000 ms)', () => {
+    test('Code should be invalid/expired at 5 minutes 1 second (301,000 ms)', async () => {
       const code = '222222';
-      db.createTempCode('uuid_1', 'Steve', code);
+      await db.createTempCode('uuid_1', 'Steve', code);
       
-      const tempCodeInfo = db.getTempCode(code);
+      const tempCodeInfo = await db.getTempCode(code);
       expect(tempCodeInfo).toBeDefined();
       
       const createdAt = new Date(tempCodeInfo.created_at + ' UTC');
@@ -109,16 +113,16 @@ describe('Challenger Stress & Boundary Tests', () => {
 
   // 3. Case sensitivity in lookups
   describe('Case Sensitivity in Lookups', () => {
-    test('Lookup and unlinking by Minecraft username is case-insensitive', () => {
-      db.addBinding('discord_1', 'uuid_1', 'Steve');
+    test('Lookup and unlinking by Minecraft username is case-insensitive', async () => {
+      await db.addBinding('discord_1', 'uuid_1', 'Steve');
       
       // exact match works
-      const exact = db.getBindingByMcUsername('Steve');
+      const exact = await db.getBindingByMcUsername('Steve');
       expect(exact).toBeDefined();
       
       // case differences DO work
-      const lowercase = db.getBindingByMcUsername('steve');
-      const uppercase = db.getBindingByMcUsername('STEVE');
+      const lowercase = await db.getBindingByMcUsername('steve');
+      const uppercase = await db.getBindingByMcUsername('STEVE');
       
       expect(lowercase).toBeDefined();
       expect(uppercase).toBeDefined();
@@ -126,8 +130,8 @@ describe('Challenger Stress & Boundary Tests', () => {
       expect(uppercase.mc_username).toBe('Steve');
 
       // Unlinking case-insensitively works
-      db.removeBindingByMcUsername('steve');
-      const deleted = db.getBindingByMcUsername('Steve');
+      await db.removeBindingByMcUsername('steve');
+      const deleted = await db.getBindingByMcUsername('Steve');
       expect(deleted).toBeUndefined();
     });
   });
@@ -224,7 +228,7 @@ describe('Challenger Stress & Boundary Tests', () => {
   describe('/綁定 Execution Verification', () => {
     test('/綁定 successfully binds when valid code is provided', async () => {
       // 1. Create a temp code
-      db.createTempCode('uuid_bind_test', 'Steve', '123456');
+      await db.createTempCode('uuid_bind_test', 'Steve', '123456');
 
       // 2. Mock interaction
       const mockInteraction = {
@@ -243,11 +247,11 @@ describe('Challenger Stress & Boundary Tests', () => {
       expect(replyCall.content).toContain('成功綁定');
       
       // Verify DB state
-      const binding = db.getBindingByDiscordId('discord_bind_test');
+      const binding = await db.getBindingByDiscordId('discord_bind_test');
       expect(binding).toBeDefined();
       expect(binding.mc_username).toBe('Steve');
       
-      const tempCode = db.getTempCode('123456');
+      const tempCode = await db.getTempCode('123456');
       expect(tempCode).toBeUndefined();
     });
   });
@@ -255,7 +259,7 @@ describe('Challenger Stress & Boundary Tests', () => {
   describe('/玩家資訊 Execution and UUID Hiding', () => {
     test('/玩家資訊 does not display UUID in output', async () => {
       // 1. Add a binding
-      db.addBinding('discord_playerinfo_test', 'uuid_playerinfo_secret_123', 'QueryPlayer');
+      await db.addBinding('discord_playerinfo_test', 'uuid_playerinfo_secret_123', 'QueryPlayer');
 
       // 2. Mock session and execution
       const session = require('../src/websocket/session');

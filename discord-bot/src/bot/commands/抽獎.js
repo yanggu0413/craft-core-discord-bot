@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const db = require('../../database');
+const { UserRepository } = require('../../database/repositories');
+const logger = require('../../utils/logger');
 
 const rewards = [
   { id: 'diamond', name: '鑽石', amount: 5, cleanId: 'diamond' },
@@ -15,7 +16,7 @@ module.exports = {
     .setDescription('使用抽獎鑰匙兌換隨機生存物資與獎勵'),
   async execute(interaction) {
     const discordId = interaction.user.id;
-    const binding = db.getBindingByDiscordId(discordId);
+    const binding = await UserRepository.getBindingByDiscordId(discordId);
 
     if (!binding) {
       return interaction.reply({
@@ -24,7 +25,7 @@ module.exports = {
       });
     }
 
-    const userKeys = db.getUserKeys(discordId);
+    const userKeys = await UserRepository.getUserKeys(discordId);
     if (!userKeys || userKeys.keys_count <= 0) {
       return interaction.reply({
         content: '❌ 您的抽獎鑰匙不足（目前擁有 0 把）。請先完成每日簽到 `/checkin` 獲得鑰匙！',
@@ -50,7 +51,7 @@ module.exports = {
         isOnline = true;
       }
     } catch (error) {
-      console.error('Failed to verify player online status:', error);
+      logger.error('Failed to verify player online status', { error });
     }
 
     if (!isOnline) {
@@ -62,9 +63,9 @@ module.exports = {
     // Deduct 1 key
     const newKeysCount = userKeys.keys_count - 1;
     try {
-      db.updateKeys(discordId, newKeysCount);
+      await UserRepository.updateKeys(discordId, newKeysCount);
     } catch (error) {
-      console.error('Failed to update user keys count:', error);
+      logger.error('Failed to update user keys count', { error });
       return interaction.editReply({
         content: '❌ 扣除鑰匙失敗，抽獎已取消！'
       });
@@ -80,7 +81,7 @@ module.exports = {
       await session.executeCommand(`title ${binding.mc_username} title {"text":"🎉 抽獎成功！","color":"yellow"}`, 'system');
       await session.executeCommand(`playsound minecraft:entity.player.levelup master ${binding.mc_username}`, 'system');
     } catch (error) {
-      console.error('Failed to send reward in-game:', error);
+      logger.error('Failed to send reward in-game', { error });
       // We don't rollback keys here because RCON issues should be checked, but we inform the user
     }
 
