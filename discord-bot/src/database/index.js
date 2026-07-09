@@ -24,6 +24,18 @@ function init(dbPath) {
   if (fs.existsSync(schemaPath)) {
     const schema = fs.readFileSync(schemaPath, 'utf8');
     db.exec(schema);
+
+    // Migration: add keys_count and last_checkin columns to bindings table if they don't exist
+    try {
+      db.exec('ALTER TABLE bindings ADD COLUMN keys_count INTEGER DEFAULT 0');
+    } catch (e) {
+      // Ignore if column already exists
+    }
+    try {
+      db.exec('ALTER TABLE bindings ADD COLUMN last_checkin TEXT');
+    } catch (e) {
+      // Ignore if column already exists
+    }
   } else {
     throw new Error(`Database initialization failed: schema.sql not found at ${schemaPath}`);
   }
@@ -88,6 +100,13 @@ function init(dbPath) {
     ORDER BY deaths DESC
     LIMIT ?
   `);
+
+  // 6. Checkin & Key Operations
+  stmts.getUserKeys = db.prepare('SELECT keys_count, last_checkin, mc_username FROM bindings WHERE discord_id = ?');
+  stmts.updateKeys = db.prepare('UPDATE bindings SET keys_count = ? WHERE discord_id = ?');
+  stmts.setCheckin = db.prepare('UPDATE bindings SET last_checkin = ?, keys_count = keys_count + ? WHERE discord_id = ?');
+  stmts.addKeysByMcUsername = db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE mc_username = ? COLLATE NOCASE');
+  stmts.addKeysByDiscordId = db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE discord_id = ?');
 
   bindUserTx = (discordId, mcUuid, mcUsername, code) => {
     db.exec('BEGIN TRANSACTION');
@@ -181,6 +200,26 @@ function getDeathLeaderboard(limit = 10) {
   return stmts.getDeathLeaderboard.all(limit);
 }
 
+function getUserKeys(discordId) {
+  return stmts.getUserKeys.get(discordId);
+}
+
+function updateKeys(discordId, newCount) {
+  return stmts.updateKeys.run(newCount, discordId);
+}
+
+function setCheckin(discordId, dateStr, keysToAdd = 1) {
+  return stmts.setCheckin.run(dateStr, keysToAdd, discordId);
+}
+
+function addKeysByMcUsername(mcUsername, keysToAdd = 6) {
+  return stmts.addKeysByMcUsername.run(keysToAdd, mcUsername);
+}
+
+function addKeysByDiscordId(discordId, keysToAdd = 6) {
+  return stmts.addKeysByDiscordId.run(keysToAdd, discordId);
+}
+
 function bindUser(discordId, mcUuid, mcUsername, code) {
   if (!bindUserTx) {
     throw new Error('Database not initialized');
@@ -216,5 +255,10 @@ module.exports = {
   setSetting,
   getSetting,
   incrementDeath,
-  getDeathLeaderboard
+  getDeathLeaderboard,
+  getUserKeys,
+  updateKeys,
+  setCheckin,
+  addKeysByMcUsername,
+  addKeysByDiscordId
 };
