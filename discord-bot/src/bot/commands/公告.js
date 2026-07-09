@@ -78,6 +78,8 @@ module.exports = {
     const day = String(now.getDate()).padStart(2, '0');
 
     const formattedAnnouncement = [
+      '@everyone',
+      '',
       `# 📢 ｜ 伺服器公告：${title}`,
       '',
       '親愛的玩家們：',
