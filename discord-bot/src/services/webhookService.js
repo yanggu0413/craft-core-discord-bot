@@ -47,6 +47,41 @@ function translateDeathMessage(details, username) {
   return translated.replace(username, `**${username}**`);
 }
 
+function translateAdvancement(title, desc) {
+  const advMap = {
+    "Stone Age": { title: "石器時代", desc: "用你的新鎬子開採石頭" },
+    "Getting an Upgrade": { title: "獲取升級", desc: "製作一把更好的鎬" },
+    "Acquire Hardware": { title: "獲得鐵器", desc: "冶煉一塊鐵錠" },
+    "Suit Up": { title: "全副武裝", desc: "用一件鐵防具保護你自己" },
+    "Not Today, Thank You": { title: "今天不行，謝謝", desc: "用盾牌擋下一發彈射物" },
+    "Ice Bucket Challenge": { title: "冰桶挑戰", desc: "獲得一個黑曜石方塊" },
+    "Diamonds!": { title: "鑽石！", desc: "獲得鑽石" },
+    "Cover Me in Debris": { title: "用碎片保護我", desc: "獲得一套完整的獄髓防具" },
+    "Enchanter": { title: "附魔師", desc: "在附魔台附魔一件物品" },
+    "We Need to Go Deeper": { title: "我們需要再深入一點", desc: "建造、點燃並進入下界傳送門" },
+    "Monster Hunter": { title: "怪物獵人", desc: "擊殺任意敵對怪物" },
+    "Monsters Hunted": { title: "怪物獵手", desc: "擊殺每種敵對怪物各一隻" },
+    "Take Aim": { title: "瞄準", desc: "用箭射中某物" },
+    "Sniper Duel": { title: "狙擊手的對決", desc: "從至少 50 公尺外擊殺一隻骷髏" },
+    "Bullseye": { title: "正中紅心", desc: "從至少 30 公尺外射中靶子方塊的紅心" },
+    "Into Fire": { title: "進入烈火", desc: "獲得一支烈焰棒" },
+    "Local Brewery": { title: "地方釀酒廠", desc: "釀造一瓶藥水" },
+    "The End?": { title: "終界？", desc: "進入終界傳送門" },
+    "The End.": { title: "終界。", desc: "擊殺終界龍" },
+    "Great View From Up Here": { title: "這上面的風景真好", desc: "因潛影貝的攻擊而漂浮向上 50 個方塊" },
+    "Sky's the Limit": { title: "展翅高飛", desc: "找到鞘翅" }
+  };
+
+  const matched = advMap[title];
+  if (matched) {
+    return {
+      title: `${matched.title} (${title})`,
+      desc: `${matched.desc}\n*${desc}*`
+    };
+  }
+  return { title, desc };
+}
+
 async function sendChat(sender, uuid, message, discordClient) {
   if (config.discord.chatWebhookUrl) {
     try {
@@ -143,9 +178,11 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
       });
     } else if (eventType === 'advancement') {
       const parts = details.split('|');
-      const title = parts[0] || '';
-      const desc = parts[1] || '';
+      const originalTitle = parts[0] || '';
+      const originalDesc = parts[1] || '';
       const itemId = parts[2] || '';
+
+      const { title, desc } = translateAdvancement(originalTitle, originalDesc);
 
       const embed = new EmbedBuilder()
         .setColor(0x55FF55) // Light green
@@ -154,7 +191,7 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
 
       if (itemId) {
         const cleanItemId = itemId.replace('minecraft:', '');
-        embed.setThumbnail(`https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.21/items/${cleanItemId}.png`);
+        embed.setThumbnail(`https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.21.11/items/${cleanItemId}.png`);
       }
 
       await channel.send({
