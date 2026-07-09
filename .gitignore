@@ -1,0 +1,33 @@
+# Node.js
+discord-bot/node_modules/
+discord-bot/config.json
+discord-bot/.env
+discord-bot/data/
+discord-bot/*.db
+discord-bot/*.log
+
+# Gradle / Java
+fabric-mod/.gradle/
+fabric-mod/build/*
+!fabric-mod/build/libs/
+!fabric-mod/build/libs/*.jar
+fabric-mod/out/
+fabric-mod/bin/
+fabric-mod/*.log
+
+# Compiled Jar output (optional, but good to exclude from source repository)
+# fabric-mod/build/libs/
+
+# IDE / System
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Agent Logs and Prompt Requests (Contains private tokens)
+.agents/
+agents/
+ORIGINAL_REQUEST.md
+PROJECT.md
+TEST_INFRA.md
+TEST_READY.md

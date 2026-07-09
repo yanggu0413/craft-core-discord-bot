@@ -1,0 +1,21 @@
+{
+  "discord": {
+    "clientId": "1353160821315997787",
+    "guildId": "YOUR_DISCORD_GUILD_ID",
+    "adminRoleId": "YOUR_ADMIN_ROLE_ID",
+    "channels": {
+      "chatSync": "YOUR_CHAT_SYNC_CHANNEL_ID",
+      "status": "YOUR_STATUS_CHANNEL_ID",
+      "ticketCategory": "YOUR_TICKET_CATEGORY_CHANNEL_ID",
+      "ticketLogs": "YOUR_TICKET_LOGS_CHANNEL_ID"
+    },
+    "chatWebhookUrl": "YOUR_DISCORD_WEBHOOK_URL_HERE"
+  },
+  "websocket": {
+    "port": 8080
+  },
+  "minecraft": {
+    "avatarProvider": "https://mc-heads.net/avatar/{uuid}",
+    "statusUpdateIntervalMs": 10000
+  }
+}
