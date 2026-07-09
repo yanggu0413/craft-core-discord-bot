@@ -530,7 +530,7 @@ async function sendChat(sender, uuid, message, discordClient) {
     try {
       const channel = await discordClient.channels.fetch(config.discord.channels.chatSync);
       if (channel) {
-        await channel.send(`<${sender}> ${message}`);
+        await channel.send(`💬 **${sender}**：${message}`);
       }
     } catch (err) {
       console.error('Failed to send chat message to Discord:', err);

@@ -24,10 +24,12 @@ module.exports = {
 
     const query = interaction.options.getString('查詢內容').trim();
     let binding = null;
+    let mcUsername = null;
+    let discordId = null;
 
     const discordMentionRegex = /^<@!?(\d+)>$/;
     const isDiscordIdOnly = /^\d{17,20}$/;
-    const isUuid = /^[0-9a-fA-F]{32}$/.test(query.replace(/-/g, ''));
+    const isUuid = /^[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$/.test(query) || /^[0-9a-fA-F]{32}$/.test(query.replace(/-/g, ''));
 
     let parsedDiscordId = null;
     const mentionMatch = query.match(discordMentionRegex);
@@ -39,17 +41,31 @@ module.exports = {
 
     if (parsedDiscordId) {
       binding = db.getBindingByDiscordId(parsedDiscordId);
+      if (binding) {
+        mcUsername = binding.mc_username;
+        discordId = binding.discord_id;
+      } else {
+        return interaction.reply({
+          content: `找不到關於 Discord 使用者 <@${parsedDiscordId}> 的任何綁定資料。`,
+          ephemeral: true
+        });
+      }
     } else if (isUuid) {
       binding = db.getBindingByMcUuid(query);
+      if (binding) {
+        mcUsername = binding.mc_username;
+        discordId = binding.discord_id;
+      } else {
+        mcUsername = query;
+      }
     } else {
       binding = db.getBindingByMcUsername(query);
-    }
-
-    if (!binding) {
-      return interaction.reply({
-        content: `找不到關於 \`${query}\` 的任何綁定資料。`,
-        ephemeral: true
-      });
+      if (binding) {
+        mcUsername = binding.mc_username;
+        discordId = binding.discord_id;
+      } else {
+        mcUsername = query;
+      }
     }
 
     await interaction.deferReply({ ephemeral: true });
@@ -57,24 +73,30 @@ module.exports = {
     let onlineStatus = '🔴 離線 (Offline)';
     let lastOnline = '未知 (Unknown)';
     let location = '無 (N/A)';
+    let serverFound = false;
 
     const session = require('../../websocket/session');
     if (session && session.isActive()) {
       try {
-        const result = await session.executeCommand(`playerinfo ${binding.mc_username}`, interaction.user.tag);
+        const result = await session.executeCommand(`playerinfo ${mcUsername}`, interaction.user.tag);
         if (result.success) {
           const output = result.output;
-          const isOnline = output.includes('Online: true');
-          const lastOnlineMatch = output.match(/LastOnline:\s*([^,\n]+)/);
-          if (lastOnlineMatch) {
-            lastOnline = lastOnlineMatch[1].trim();
-          }
-          if (isOnline) {
-            onlineStatus = '🟢 線上 (Online)';
-            const coordsMatch = output.match(/Coords:\s*(.*?)(?=\s*,?\s*Dimension:|$)/);
-            const dimMatch = output.match(/Dimension:\s*([^,\n]+)/);
-            if (coordsMatch && dimMatch) {
-              location = `${coordsMatch[1].trim()} (${dimMatch[1].trim()})`;
+          if (output.includes('Player not found') || output.includes('No player found')) {
+            serverFound = false;
+          } else {
+            serverFound = true;
+            const isOnline = output.includes('Online: true');
+            const lastOnlineMatch = output.match(/LastOnline:\s*([^,\n]+)/);
+            if (lastOnlineMatch) {
+              lastOnline = lastOnlineMatch[1].trim();
+            }
+            if (isOnline) {
+              onlineStatus = '🟢 線上 (Online)';
+              const coordsMatch = output.match(/Coords:\s*(.*?)(?=\s*,?\s*Dimension:|$)/);
+              const dimMatch = output.match(/Dimension:\s*([^,\n]+)/);
+              if (coordsMatch && dimMatch) {
+                location = `${coordsMatch[1].trim()} (${dimMatch[1].trim()})`;
+              }
             }
           }
         }
@@ -85,8 +107,15 @@ module.exports = {
       onlineStatus = '🔴 離線 (遊戲伺服器未連線)';
     }
 
+    if (!binding && !serverFound) {
+      return interaction.editReply({
+        content: `找不到關於 \`${query}\` 的任何資料（資料庫無綁定紀錄，且遊戲伺服器無此玩家）。`
+      });
+    }
+
     const fields = [
-      { name: 'Minecraft 玩家名', value: `\`${binding.mc_username}\``, inline: true },
+      { name: 'Minecraft 玩家名', value: `\`${mcUsername}\``, inline: true },
+      { name: 'Discord 帳號', value: discordId ? `<@${discordId}>` : '❌ 未綁定', inline: true },
       { name: '在線狀態', value: onlineStatus, inline: true },
       { name: '最後上線時間', value: `\`${lastOnline}\``, inline: false }
     ];
