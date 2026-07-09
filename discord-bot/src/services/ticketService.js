@@ -8,21 +8,44 @@ async function handleCreateTicket(interaction) {
 
   try {
     const channelName = `ticket-${interaction.user.username.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-    const channel = await interaction.guild.channels.create({
-      name: channelName,
-      type: 0, // GuildText channel type
-      parent: config.discord.channels.ticketCategory || null,
-      permissionOverwrites: [
-        {
-          id: interaction.guild.id,
-          deny: ['ViewChannel']
-        },
-        {
-          id: creatorId,
-          allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory']
-        }
-      ]
-    });
+    let channel;
+    try {
+      channel = await interaction.guild.channels.create({
+        name: channelName,
+        type: 0, // GuildText channel type
+        parent: config.discord.channels.ticketCategory || null,
+        permissionOverwrites: [
+          {
+            id: interaction.guild.id,
+            deny: ['ViewChannel']
+          },
+          {
+            id: creatorId,
+            allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory']
+          }
+        ]
+      });
+    } catch (createError) {
+      if (config.discord.channels.ticketCategory) {
+        console.warn('Failed to create ticket in category, trying without parent category:', createError.message);
+        channel = await interaction.guild.channels.create({
+          name: channelName,
+          type: 0, // GuildText channel type
+          permissionOverwrites: [
+            {
+              id: interaction.guild.id,
+              deny: ['ViewChannel']
+            },
+            {
+              id: creatorId,
+              allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory']
+            }
+          ]
+        });
+      } else {
+        throw createError;
+      }
+    }
 
     // Save ticket into database
     db.createTicket(ticketId, channel.id, creatorId);
