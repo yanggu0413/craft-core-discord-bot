@@ -32,7 +32,7 @@ async function handle(packet, discordClient) {
           username: payload.username,
           code: code,
           success: true,
-          message: `Please type /綁定 ${code} in Discord within 5 minutes.`
+          message: `§b[Craft-Core] §f申請成功！請在 5 分鐘內於 Discord 輸入 §a/綁定 ${code}§f 來完成帳號綁定。`
         }
       });
       break;
