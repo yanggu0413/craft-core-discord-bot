@@ -73,6 +73,22 @@ function init(dbPath) {
   `);
   stmts.getSetting = db.prepare('SELECT value FROM settings WHERE key = ?');
 
+  // 5. Player Stats Operations
+  stmts.incrementDeath = db.prepare(`
+    INSERT INTO player_stats (mc_uuid, mc_username, deaths)
+    VALUES (?, ?, 1)
+    ON CONFLICT(mc_uuid) DO UPDATE SET
+      deaths = deaths + 1,
+      mc_username = excluded.mc_username,
+      updated_at = datetime('now')
+  `);
+  stmts.getDeathLeaderboard = db.prepare(`
+    SELECT mc_username, deaths
+    FROM player_stats
+    ORDER BY deaths DESC
+    LIMIT ?
+  `);
+
   bindUserTx = (discordId, mcUuid, mcUsername, code) => {
     db.exec('BEGIN TRANSACTION');
     try {
@@ -157,6 +173,14 @@ function getSetting(key) {
   return result ? result.value : null;
 }
 
+function incrementDeath(mcUuid, mcUsername) {
+  return stmts.incrementDeath.run(mcUuid, mcUsername);
+}
+
+function getDeathLeaderboard(limit = 10) {
+  return stmts.getDeathLeaderboard.all(limit);
+}
+
 function bindUser(discordId, mcUuid, mcUsername, code) {
   if (!bindUserTx) {
     throw new Error('Database not initialized');
@@ -190,5 +214,7 @@ module.exports = {
   getTicketByChannelId,
   closeTicket,
   setSetting,
-  getSetting
+  getSetting,
+  incrementDeath,
+  getDeathLeaderboard
 };

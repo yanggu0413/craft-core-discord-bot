@@ -592,6 +592,12 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
         embeds: [embed]
       });
     } else if (eventType === 'death') {
+      try {
+        db.incrementDeath(uuid, username);
+      } catch (err) {
+        console.error('Failed to increment death count in database:', err);
+      }
+
       const translatedMsg = translateDeathMessage(details, username);
       const embed = new EmbedBuilder()
         .setColor(0xFF5555) // Red

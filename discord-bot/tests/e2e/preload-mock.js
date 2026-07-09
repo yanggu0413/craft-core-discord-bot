@@ -31,6 +31,19 @@ class SlashCommandBuilder {
     this.options.push(opt);
     return this;
   }
+  addIntegerOption(fn) {
+    const opt = { type: 'integer', name: '', description: '', required: false };
+    const builder = {
+      setName(n) { opt.name = n; return this; },
+      setDescription(d) { opt.description = d; return this; },
+      setRequired(r) { opt.required = r; return this; },
+      setMinValue(v) { opt.minValue = v; return this; },
+      setMaxValue(v) { opt.maxValue = v; return this; }
+    };
+    if (typeof fn === 'function') fn(builder);
+    this.options.push(opt);
+    return this;
+  }
   setDefaultMemberPermissions(p) { this.defaultPermissions = p; return this; }
   toJSON() {
     return {
@@ -299,6 +312,46 @@ class MockREST {
   }
 }
 
+class ModalBuilder {
+  constructor() {
+    this.customId = '';
+    this.title = '';
+    this.components = [];
+  }
+  setCustomId(id) { this.customId = id; return this; }
+  setTitle(t) { this.title = t; return this; }
+  addComponents(...rows) {
+    if (Array.isArray(rows[0])) {
+      this.components.push(...rows[0]);
+    } else {
+      this.components.push(...rows);
+    }
+    return this;
+  }
+  toJSON() { return { customId: this.customId, title: this.title, components: this.components.map(c => typeof c.toJSON === 'function' ? c.toJSON() : c) }; }
+}
+
+class TextInputBuilder {
+  constructor() {
+    this.customId = '';
+    this.label = '';
+    this.style = '';
+    this.placeholder = '';
+    this.required = false;
+  }
+  setCustomId(id) { this.customId = id; return this; }
+  setLabel(l) { this.label = l; return this; }
+  setStyle(s) { this.style = s; return this; }
+  setPlaceholder(p) { this.placeholder = p; return this; }
+  setRequired(r) { this.required = r; return this; }
+  toJSON() { return { customId: this.customId, label: this.label, style: this.style, placeholder: this.placeholder, required: this.required }; }
+}
+
+const TextInputStyle = {
+  Short: 1,
+  Paragraph: 2
+};
+
 const MockRoutes = {
   applicationGuildCommands: (clientId, guildId) => `/applications/${clientId}/guilds/${guildId}/commands`
 };
@@ -347,6 +400,9 @@ const mockDiscord = {
   ActionRowBuilder,
   ButtonBuilder,
   WebhookClient,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
   REST: MockREST,
   Routes: MockRoutes
 };

@@ -50,6 +50,13 @@ client.on('interactionCreate', async (interaction) => {
     } else if (interaction.customId === 'close_ticket') {
       await ticketService.handleCloseTicket(interaction);
     }
+  } else if (interaction.isModalSubmit()) {
+    if (interaction.customId === 'announcement_modal') {
+      const announceCommand = require('./bot/commands/公告');
+      if (announceCommand && announceCommand.handleModalSubmit) {
+        await announceCommand.handleModalSubmit(interaction);
+      }
+    }
   }
 });
 

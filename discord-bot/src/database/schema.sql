@@ -40,3 +40,13 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+-- 5. Player Stats Table (Tracking deaths, etc.)
+CREATE TABLE IF NOT EXISTS player_stats (
+    mc_uuid TEXT PRIMARY KEY,
+    mc_username TEXT NOT NULL COLLATE NOCASE,
+    deaths INTEGER DEFAULT 0,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_stats_deaths ON player_stats(deaths);
