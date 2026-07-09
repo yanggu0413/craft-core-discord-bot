@@ -4,47 +4,359 @@ const config = require('../config');
 function translateDeathMessage(details, username) {
   if (!details) return `${username} 死亡了`;
 
-  const translations = [
-    { pattern: /was slain by Zombie/i, replacement: '被 殭屍 殺死了' },
-    { pattern: /was slain by Skeleton/i, replacement: '被 骷髏 殺死了' },
-    { pattern: /was slain by Spider/i, replacement: '被 蜘蛛 殺死了' },
-    { pattern: /was slain by Cave Spider/i, replacement: '被 洞穴蜘蛛 殺死了' },
-    { pattern: /was slain by Enderman/i, replacement: '被 安德/末影人 殺死了' },
-    { pattern: /was slain by Witch/i, replacement: '被 女巫 殺死了' },
-    { pattern: /was slain by Slime/i, replacement: '被 史萊姆 殺死了' },
-    { pattern: /was slain by Drowned/i, replacement: '被 溺屍 殺死了' },
-    { pattern: /was slain by Phantom/i, replacement: '被 幻翼 殺死了' },
-    { pattern: /was slain by Creeper/i, replacement: '被 苦力怕 炸死了' },
-    { pattern: /was blown up by Creeper/i, replacement: '被 苦力怕 炸死了' },
-    { pattern: /was blown up by/i, replacement: '被 爆炸 炸死了' },
-    { pattern: /blew up/i, replacement: '爆炸了' },
-    { pattern: /drowned/i, replacement: '淹死了' },
-    { pattern: /burned to death/i, replacement: '被燒死了' },
-    { pattern: /went up in flames/i, replacement: '燒起來了' },
-    { pattern: /hit the ground too hard/i, replacement: '摔得太重了' },
-    { pattern: /fell from a high place/i, replacement: '從高處摔了下來' },
-    { pattern: /fell off a ladder/i, replacement: '從梯子摔了下來' },
-    { pattern: /suffocated in a wall/i, replacement: '在牆中窒息而死' },
-    { pattern: /starved to death/i, replacement: '餓死了' },
-    { pattern: /was killed by magic/i, replacement: '被魔法殺死了' },
-    { pattern: /withered away/i, replacement: '凋零而死' },
-    { pattern: /was squashed by a falling anvil/i, replacement: '被鐵砧砸扁了' },
-    { pattern: /was pricked to death/i, replacement: '被仙人掌刺死了' },
-    { pattern: /died/i, replacement: '死亡了' }
+  const mobMap = {
+    'Zombie Villager': '殭屍村民',
+    'Zombified Piglin': '殭屍豬布林',
+    'Wither Skeleton': '凋零骷髏',
+    'Cave Spider': '洞穴蜘蛛',
+    'Elder Guardian': '遠古守衛者',
+    'Ender Dragon': '終界龍',
+    'Iron Golem': '鐵人/鐵魔像',
+    'Magma Cube': '岩漿怪',
+    'Polar Bear': '北極熊',
+    'Trader Llama': '流浪商人的駝羊',
+    'Zombie': '殭屍',
+    'Skeleton': '骷髏',
+    'Spider': '蜘蛛',
+    'Enderman': '安德/末影人',
+    'Witch': '女巫',
+    'Slime': '史萊姆',
+    'Drowned': '溺屍',
+    'Phantom': '幻翼',
+    'Creeper': '苦力怕',
+    'Allay': '悅靈',
+    'Armour Stand': '盔甲架',
+    'Arrow': '箭',
+    'Bee': '蜜蜂',
+    'Blaze': '烈焰使者/烈焰人',
+    'Dolphin': '海豚',
+    'Evoker': '喚魔者',
+    'Fox': '狐狸',
+    'Ghast': '地獄幽靈/惡魂',
+    'Goat': '山羊',
+    'Guardian': '守衛者',
+    'Hoglin': '豬獸/疣豬獸',
+    'Husk': '屍殼/荒野殭屍',
+    'Llama': '駝羊',
+    'Panda': '貓熊',
+    'Piglin Brute': '豬布林蠻兵',
+    'Piglin': '豬布林',
+    'Pillager': '掠奪者',
+    'Pufferfish': '河豚',
+    'Ravager': '劫掠獸',
+    'Shulker Bullet': '潛影貝飛彈',
+    'Shulker': '潛影貝',
+    'Silverfish': '蠹魚',
+    'Spectral Arrow': '光靈箭',
+    'Stray': '流浪者/流冰骷髏',
+    'Trident': '三叉戟',
+    'Vex': '惱鬼',
+    'Villager': '村民',
+    'Vindicator': '衛道士',
+    'Warden': '監守者/伏守者',
+    'Wither': '凋零怪/凋零龍',
+    'Wolf': '狼',
+    'Zoglin': '佐格林/殭屍疣豬獸',
+    'Area Affect Cloud': '區域效果雲'
+  };
+
+  function transName(name) {
+    const trimmed = name.trim();
+    if (trimmed === username) return `**${username}**`;
+    if (mobMap[trimmed]) return `**${mobMap[trimmed]}**`;
+    return `**${trimmed}**`;
+  }
+
+  const patternRules = [
+    // 1. Escaping/fighting patterns (2 targets)
+    {
+      regex: /^(.*) walked into a cactus whilst trying to escape (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時撞上仙人掌死了`
+    },
+    {
+      regex: /^(.*) drowned whilst trying to escape (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時淹死了`
+    },
+    {
+      regex: /^(.*) experienced kinetic energy whilst trying to escape (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時撞牆身亡`
+    },
+    {
+      regex: /^(.*) hit the ground too hard whilst trying to escape (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時重摔落地身亡`
+    },
+    {
+      regex: /^(.*) was impaled on a stalagmite whilst fighting (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時被石筍刺穿了`
+    },
+    {
+      regex: /^(.*) was squashed by a falling anvil whilst fighting (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時被掉落的鐵砧砸扁了`
+    },
+    {
+      regex: /^(.*) was skewered by a falling stalactite whilst fighting (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時被掉落的鐘乳石刺穿了`
+    },
+    {
+      regex: /^(.*) walked into fire whilst fighting (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時走入火中燒死了`
+    },
+    {
+      regex: /^(.*) tried to swim in lava to escape (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 為了逃離 ${transName(m2)} 而試圖在岩漿中游泳`
+    },
+    {
+      regex: /^(.*) was struck by lightning whilst fighting (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時被雷劈死了`
+    },
+    {
+      regex: /^(.*) walked into the danger zone due to (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 因為 ${transName(m2)} 而走進了危險區域`
+    },
+    {
+      regex: /^(.*) was killed by magic whilst trying to escape (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時被魔法殺死了`
+    },
+    {
+      regex: /^(.*) was frozen to death by (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 凍死了`
+    },
+    {
+      regex: /^(.*) starved to death whilst fighting (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時餓死了`
+    },
+    {
+      regex: /^(.*) suffocated in a wall whilst fighting (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時在牆中窒息而死`
+    },
+    {
+      regex: /^(.*) was squashed by (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 壓扁了`
+    },
+    {
+      regex: /^(.*) was poked to death by a sweet berry bush whilst trying to escape (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時被甜莓灌木戳死了`
+    },
+    {
+      regex: /^(.*) didn't want to live in the same world as (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 不想與 ${transName(m2)} 活在同一個世界`
+    },
+    {
+      regex: /^(.*) withered away whilst fighting (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時凋零而死`
+    },
+
+    // 2. Item-related patterns (3 targets)
+    {
+      regex: /^(.*) went off with a bang due to a firework fired from (.*) by (.*)$/i,
+      format: (m1, item, m2) => `${transName(m1)} 因 ${transName(m2)} 使用 **${item}** 發射的煙火爆炸而身亡`
+    },
+    {
+      regex: /^(.*) was slain by (.*) using (.*)$/i,
+      format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 殺死了`
+    },
+    {
+      regex: /^(.*) was shot by (.*) using (.*)$/i,
+      format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 射殺了`
+    },
+    {
+      regex: /^(.*) was impaled by (.*) using (.*)$/i,
+      format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 刺穿了`
+    },
+    {
+      regex: /^(.*) was killed by (.*) trying to hurt (.*)$/i,
+      format: (m1, item, m2) => `${transName(m1)} 在試圖傷害 ${transName(m2)} 時被 **${item}** 殺死了`
+    },
+    {
+      regex: /^(.*) was killed by (.*) using magic$/i,
+      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 用魔法殺死了`
+    },
+    {
+      regex: /^(.*) was killed by (.*) using (.*)$/i,
+      format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 殺死了`
+    },
+    {
+      regex: /^(.*) was blown up by (.*) using (.*)$/i,
+      format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 炸死了`
+    },
+    {
+      regex: /^(.*) was blown up by (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 炸死了`
+    },
+
+    // 3. Slain / fireballed / shot (2 targets)
+    {
+      regex: /^(.*) was slain by (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 殺死了`
+    },
+    {
+      regex: /^(.*) was shot by (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 射殺了`
+    },
+    {
+      regex: /^(.*) was impaled by (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 刺穿了`
+    },
+    {
+      regex: /^(.*) was fireballed by (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 的火球燒死了`
+    },
+    {
+      regex: /^(.*) was killed trying to hurt (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在試圖傷害 ${transName(m2)} 時被殺死了`
+    },
+
+    // 4. Environmental and standalone (1 target)
+    {
+      regex: /^(.*) was pricked to death$/i,
+      format: (m1) => `${transName(m1)} 被仙人掌刺死了`
+    },
+    {
+      regex: /^(.*) drowned$/i,
+      format: (m1) => `${transName(m1)} 淹死了`
+    },
+    {
+      regex: /^(.*) experienced kinetic energy$/i,
+      format: (m1) => `${transName(m1)} 撞牆身亡`
+    },
+    {
+      regex: /^(.*) blew up$/i,
+      format: (m1) => `${transName(m1)} 爆炸了`
+    },
+    {
+      regex: /^(.*) was killed by \[Intentional Game Design\]$/i,
+      format: (m1) => `${transName(m1)} 被 [故意設計的遊戲機制] 殺死了 (例如在下界/終界睡覺)`
+    },
+    {
+      regex: /^(.*) hit the ground too hard$/i,
+      format: (m1) => `${transName(m1)} 摔得太重了`
+    },
+    {
+      regex: /death\.fell\.accident\.water/i,
+      format: () => `在水中不幸墜落`
+    },
+    {
+      regex: /^(.*) fell from a high place$/i,
+      format: (m1) => `${transName(m1)} 從高處摔了下來`
+    },
+    {
+      regex: /^(.*) fell off a ladder$/i,
+      format: (m1) => `${transName(m1)} 從梯子摔了下來`
+    },
+    {
+      regex: /^(.*) fell off some vines$/i,
+      format: (m1) => `${transName(m1)} 從藤蔓摔了下來`
+    },
+    {
+      regex: /^(.*) fell off some weeping vines$/i,
+      format: (m1) => `${transName(m1)} 從垂淚藤摔了下來`
+    },
+    {
+      regex: /^(.*) fell off some twisting vines$/i,
+      format: (m1) => `${transName(m1)} 從纏繞藤摔了下來`
+    },
+    {
+      regex: /^(.*) fell while climbing$/i,
+      format: (m1) => `${transName(m1)} 在攀爬時摔了下來`
+    },
+    {
+      regex: /^(.*) fell off scaffolding$/i,
+      format: (m1) => `${transName(m1)} 從鷹架摔了下來`
+    },
+    {
+      regex: /^(.*) was impaled on a stalagmite$/i,
+      format: (m1) => `${transName(m1)} 被石筍刺穿了`
+    },
+    {
+      regex: /^(.*) was skewered by a falling stalactite$/i,
+      format: (m1) => `${transName(m1)} 被掉落的鐘乳石刺穿了`
+    },
+    {
+      regex: /^(.*) was squashed by a falling anvil$/i,
+      format: (m1) => `${transName(m1)} 被掉落的鐵砧砸扁了`
+    },
+    {
+      regex: /^(.*) went up in flames$/i,
+      format: (m1) => `${transName(m1)} 燒起來了`
+    },
+    {
+      regex: /^(.*) burned to death$/i,
+      format: (m1) => `${transName(m1)} 被燒死了`
+    },
+    {
+      regex: /^(.*) went off with a bang$/i,
+      format: (m1) => `${transName(m1)} 因煙火爆炸而死亡`
+    },
+    {
+      regex: /^(.*) tried to swim in lava$/i,
+      format: (m1) => `${transName(m1)} 試圖在岩漿中游泳`
+    },
+    {
+      regex: /^(.*) was struck by lightning$/i,
+      format: (m1) => `${transName(m1)} 被雷劈死了`
+    },
+    {
+      regex: /^(.*) discovered the floor was lava$/i,
+      format: (m1) => `${transName(m1)} 發現地面是岩漿`
+    },
+    {
+      regex: /^(.*) was killed by magic$/i,
+      format: (m1) => `${transName(m1)} 被魔法殺死了`
+    },
+    {
+      regex: /^(.*) froze to death$/i,
+      format: (m1) => `${transName(m1)} 被凍死了`
+    },
+    {
+      regex: /^(.*) starved to death$/i,
+      format: (m1) => `${transName(m1)} 餓死了`
+    },
+    {
+      regex: /^(.*) suffocated in a wall$/i,
+      format: (m1) => `${transName(m1)} 在牆中窒息而死`
+    },
+    {
+      regex: /^(.*) was squished too much$/i,
+      format: (m1) => `${transName(m1)} 被擠壓死了`
+    },
+    {
+      regex: /^(.*) was poked to death by a sweet berry bush$/i,
+      format: (m1) => `${transName(m1)} 被甜莓灌木戳死了`
+    },
+    {
+      regex: /^(.*) fell out of the world$/i,
+      format: (m1) => `${transName(m1)} 掉出了世界外`
+    },
+    {
+      regex: /^(.*) withered away$/i,
+      format: (m1) => `${transName(m1)} 凋零而死`
+    },
+    {
+      regex: /^(.*) was stung to death$/i,
+      format: (m1) => `${transName(m1)} 被蜜蜂螫死了`
+    },
+    {
+      regex: /^(.*) was obliterated by a sonically-charged shriek$/i,
+      format: (m1) => `${transName(m1)} 被監守者的音波尖叫粉碎了`
+    },
+    {
+      regex: /^(.*) was shot by a skull from Wither$/i,
+      format: (m1) => `${transName(m1)} 被凋零怪的凋零之首射殺了`
+    },
+    {
+      regex: /^(.*) died$/i,
+      format: (m1) => `${transName(m1)} 死亡了`
+    }
   ];
 
-  let translated = details;
-  for (const item of translations) {
-    if (item.pattern.test(translated)) {
-      translated = translated.replace(item.pattern, item.replacement);
-      if (translated.startsWith(username)) {
-        translated = translated.replace(username, `**${username}**`);
-      }
-      return translated;
+  for (const rule of patternRules) {
+    const match = details.match(rule.regex);
+    if (match) {
+      return rule.format(...match.slice(1));
     }
   }
 
-  return translated.replace(username, `**${username}**`);
+  return details.replace(username, `**${username}**`);
 }
 
 function translateAdvancement(title, desc) {
