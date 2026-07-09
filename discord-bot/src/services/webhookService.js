@@ -1,6 +1,52 @@
 const { WebhookClient, EmbedBuilder } = require('discord.js');
 const config = require('../config');
 
+function translateDeathMessage(details, username) {
+  if (!details) return `${username} 死亡了`;
+
+  const translations = [
+    { pattern: /was slain by Zombie/i, replacement: '被 殭屍 殺死了' },
+    { pattern: /was slain by Skeleton/i, replacement: '被 骷髏 殺死了' },
+    { pattern: /was slain by Spider/i, replacement: '被 蜘蛛 殺死了' },
+    { pattern: /was slain by Cave Spider/i, replacement: '被 洞穴蜘蛛 殺死了' },
+    { pattern: /was slain by Enderman/i, replacement: '被 安德/末影人 殺死了' },
+    { pattern: /was slain by Witch/i, replacement: '被 女巫 殺死了' },
+    { pattern: /was slain by Slime/i, replacement: '被 史萊姆 殺死了' },
+    { pattern: /was slain by Drowned/i, replacement: '被 溺屍 殺死了' },
+    { pattern: /was slain by Phantom/i, replacement: '被 幻翼 殺死了' },
+    { pattern: /was slain by Creeper/i, replacement: '被 苦力怕 炸死了' },
+    { pattern: /was blown up by Creeper/i, replacement: '被 苦力怕 炸死了' },
+    { pattern: /was blown up by/i, replacement: '被 爆炸 炸死了' },
+    { pattern: /blew up/i, replacement: '爆炸了' },
+    { pattern: /drowned/i, replacement: '淹死了' },
+    { pattern: /burned to death/i, replacement: '被燒死了' },
+    { pattern: /went up in flames/i, replacement: '燒起來了' },
+    { pattern: /hit the ground too hard/i, replacement: '摔得太重了' },
+    { pattern: /fell from a high place/i, replacement: '從高處摔了下來' },
+    { pattern: /fell off a ladder/i, replacement: '從梯子摔了下來' },
+    { pattern: /suffocated in a wall/i, replacement: '在牆中窒息而死' },
+    { pattern: /starved to death/i, replacement: '餓死了' },
+    { pattern: /was killed by magic/i, replacement: '被魔法殺死了' },
+    { pattern: /withered away/i, replacement: '凋零而死' },
+    { pattern: /was squashed by a falling anvil/i, replacement: '被鐵砧砸扁了' },
+    { pattern: /was pricked to death/i, replacement: '被仙人掌刺死了' },
+    { pattern: /died/i, replacement: '死亡了' }
+  ];
+
+  let translated = details;
+  for (const item of translations) {
+    if (item.pattern.test(translated)) {
+      translated = translated.replace(item.pattern, item.replacement);
+      if (translated.startsWith(username)) {
+        translated = translated.replace(username, `**${username}**`);
+      }
+      return translated;
+    }
+  }
+
+  return translated.replace(username, `**${username}**`);
+}
+
 async function sendChat(sender, uuid, message, discordClient) {
   if (config.discord.chatWebhookUrl) {
     try {
@@ -71,7 +117,6 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
           iconURL: avatarUrl
         });
       await channel.send({
-        content: `**${username}** 加入了遊戲`,
         embeds: [embed]
       });
     } else if (eventType === 'leave') {
@@ -82,19 +127,18 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
           iconURL: avatarUrl
         });
       await channel.send({
-        content: `**${username}** 離開了遊戲`,
         embeds: [embed]
       });
     } else if (eventType === 'death') {
+      const translatedMsg = translateDeathMessage(details, username);
       const embed = new EmbedBuilder()
         .setColor(0xFF5555) // Red
         .setAuthor({
           name: `${username} 死亡了`,
           iconURL: avatarUrl
         })
-        .setDescription(`💀 ${details}`);
+        .setDescription(`💀 ${translatedMsg}`);
       await channel.send({
-        content: `💀 ${details}`,
         embeds: [embed]
       });
     } else if (eventType === 'advancement') {
@@ -105,7 +149,7 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
 
       const embed = new EmbedBuilder()
         .setColor(0x55FF55) // Light green
-        .setTitle(`${username} 已完成進度 ${title}`)
+        .setTitle(`${username} 已完成進度 [${title}]`)
         .setDescription(desc);
 
       if (itemId) {
@@ -114,7 +158,6 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
       }
 
       await channel.send({
-        content: `🏆 **${username}** 達成了進度 [${title}]`,
         embeds: [embed]
       });
     } else {

@@ -306,8 +306,8 @@ describe('Tier 1: Feature Coverage (F1-F5)', () => {
     mcClient.event('join', 'SteveF2', 'uuid-steve-f2', '');
 
     const msg = await msgPromise;
-    expect(msg.content).toContain('加入了遊戲');
-    expect(msg.content).toContain('SteveF2');
+    expect(msg.embeds[0].author.name).toContain('加入了伺服器');
+    expect(msg.embeds[0].author.name).toContain('SteveF2');
   });
 
   test('F2-3: Game event "leave" sends a sync message to Discord channel', async () => {
@@ -315,8 +315,8 @@ describe('Tier 1: Feature Coverage (F1-F5)', () => {
     mcClient.event('leave', 'SteveF2', 'uuid-steve-f2', '');
 
     const msg = await msgPromise;
-    expect(msg.content).toContain('離開了遊戲');
-    expect(msg.content).toContain('SteveF2');
+    expect(msg.embeds[0].author.name).toContain('離開了伺服器');
+    expect(msg.embeds[0].author.name).toContain('SteveF2');
   });
 
   test('F2-4: Game event "death" sends a death announcement message to Discord channel', async () => {
@@ -324,7 +324,8 @@ describe('Tier 1: Feature Coverage (F1-F5)', () => {
     mcClient.event('death', 'SteveF2', 'uuid-steve-f2', 'SteveF2 was pricked to death');
 
     const msg = await msgPromise;
-    expect(msg.content).toContain('SteveF2 was pricked to death');
+    expect(msg.embeds[0].description).toContain('被仙人掌刺死了');
+    expect(msg.embeds[0].description).toContain('SteveF2');
   });
 
   test('F2-5: Game event "advancement" sends an advancement notification to Discord channel', async () => {
@@ -332,8 +333,8 @@ describe('Tier 1: Feature Coverage (F1-F5)', () => {
     mcClient.event('advancement', 'SteveF2', 'uuid-steve-f2', 'Stone Age');
 
     const msg = await msgPromise;
-    expect(msg.content).toContain('達成了進度');
-    expect(msg.content).toContain('Stone Age');
+    expect(msg.embeds[0].title).toContain('SteveF2 已完成進度');
+    expect(msg.embeds[0].title).toContain('Stone Age');
   });
 
   // === Feature 3: Interactive Support Ticket System ===
