@@ -1,6 +1,6 @@
 const { WebhookClient, EmbedBuilder } = require('discord.js');
 const config = require('../config');
-const { PlayerStatsRepository } = require('../database/repositories');
+const { PlayerStatsRepository, DailyStatsRepository } = require('../database/repositories');
 const logger = require('../utils/logger');
 const discordQueue = require('../utils/discordQueue');
 
@@ -565,6 +565,16 @@ async function sendServerStop(discordClient) {
   }
 }
 
+function getTaipeiDateString(date = new Date()) {
+  const options = { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' };
+  const formatter = new Intl.DateTimeFormat('en-US', options);
+  const parts = formatter.formatToParts(date);
+  const year = parts.find(p => p.type === 'year').value;
+  const month = parts.find(p => p.type === 'month').value;
+  const day = parts.find(p => p.type === 'day').value;
+  return `${year}-${month}-${day}`;
+}
+
 async function sendEvent(eventType, username, uuid, details, discordClient) {
   if (!config.discord.channels.chatSync) return;
 
@@ -575,6 +585,18 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
     const avatarUrl = config.minecraft.avatarProvider.replace('{uuid}', uuid);
 
     if (eventType === 'join') {
+      const todayStr = getTaipeiDateString();
+      try {
+        await DailyStatsRepository.recordLogin(todayStr, username);
+        await DailyStatsRepository.incrementLogin(todayStr);
+      } catch (err) {
+        logger.error('Failed to log daily login statistics', { error: err });
+      }
+
+      // Deliver pending express mails
+      const expressService = require('./expressService');
+      expressService.deliverPendingMails(username);
+
       const embed = new EmbedBuilder()
         .setColor(0x55FF55) // Light green
         .setAuthor({
@@ -597,6 +619,8 @@ async function sendEvent(eventType, username, uuid, details, discordClient) {
     } else if (eventType === 'death') {
       try {
         await PlayerStatsRepository.incrementDeath(uuid, username);
+        const todayStr = getTaipeiDateString();
+        await DailyStatsRepository.incrementDeath(todayStr);
       } catch (err) {
         logger.error('Failed to increment death count in database', { error: err });
       }

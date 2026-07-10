@@ -453,6 +453,26 @@ process.on('message', async (msg) => {
       customId: interaction.customId,
       isChatInputCommand: () => isSlash,
       isButton: () => isButton,
+      isModalSubmit: () => interaction.type === 'modal',
+      isStringSelectMenu: () => interaction.type === 'select',
+      values: interaction.values || [],
+      fields: {
+        getTextInputValue: (id) => {
+          return interaction.fields && interaction.fields[id];
+        }
+      },
+      showModal: async (modal) => {
+        if (process.send) {
+          const json = typeof modal.toJSON === 'function' ? modal.toJSON() : modal;
+          const customId = json.customId || json.custom_id || modal.customId;
+          const title = json.title || modal.title;
+          process.send({
+            type: 'DISCORD_EVENT',
+            event: 'SHOW_MODAL',
+            payload: { customId, title }
+          });
+        }
+      },
       commandName: interaction.name,
       
       options: {
@@ -515,16 +535,32 @@ process.on('message', async (msg) => {
     });
   } else if (msg.type === 'MESSAGE_CREATE') {
     const { message } = msg;
-    activeClientInstance.emit('messageCreate', {
+    const authorObj = {
+      id: message.userId,
+      username: message.username,
+      tag: `${message.username}#1234`,
+      bot: message.bot || false
+    };
+    const msgObj = {
       content: message.content,
       channelId: message.channelId,
-      author: {
-        id: message.userId,
-        username: message.username,
-        tag: `${message.username}#1234`,
-        bot: message.bot || false
+      author: authorObj,
+      guild: message.channelId ? { id: 'mock_guild_id' } : null,
+      reply: async (options) => {
+        const content = typeof options === 'string' ? options : options.content;
+        const embeds = options.embeds ? options.embeds.map(e => typeof e.toJSON === 'function' ? e.toJSON() : e) : undefined;
+        const components = options.components ? options.components.map(c => typeof c.toJSON === 'function' ? c.toJSON() : c) : undefined;
+        if (process.send) {
+          process.send({
+            type: 'DISCORD_EVENT',
+            event: 'INTERACTION_REPLY',
+            payload: { type: 'reply', content, embeds, components }
+          });
+        }
+        return { id: 'mock_message_reply_id' };
       }
-    });
+    };
+    activeClientInstance.emit('messageCreate', msgObj);
   }
 });
 

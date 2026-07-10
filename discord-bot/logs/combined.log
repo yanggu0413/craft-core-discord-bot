@@ -45,3 +45,39 @@
 {"attempt":2,"level":"info","message":"Discord API call execution started (attempt 2/2)","metadata":{"test":"debug"},"timestamp":"2026-07-09 18:58:36"}
 {"attempt":2,"errorMessage":"Rate Limited","errorStatus":429,"level":"warn","message":"Discord API call failed (attempt 2/2)","metadata":{"test":"debug"},"timestamp":"2026-07-09 18:58:36"}
 {"attempt":2,"errorMessage":"Rate Limited","errorStatus":429,"level":"error","message":"Discord API call failed terminally (attempt 2/2)","metadata":{"test":"debug"},"timestamp":"2026-07-09 18:58:36"}
+{"level":"info","message":"Logged in as 開心的機器人#1293!","timestamp":"2026-07-10 11:36:11"}
+{"level":"info","message":"WebSocket server listening on port 8080","timestamp":"2026-07-10 11:36:11"}
+{"level":"info","message":"Initializing interaction and admin panels...","timestamp":"2026-07-10 11:36:11"}
+{"level":"info","message":"Key Panel not found, sending new...","timestamp":"2026-07-10 11:36:12"}
+{"attempt":1,"level":"info","message":"Discord API call execution started (attempt 1/3)","metadata":{"type":"key_panel_send"},"timestamp":"2026-07-10 11:36:12"}
+{"attempt":1,"level":"info","message":"Discord API call completed successfully (attempt 1/3)","metadata":{"type":"key_panel_send"},"timestamp":"2026-07-10 11:36:12"}
+{"level":"info","message":"Interaction Panel not found, sending new...","timestamp":"2026-07-10 11:36:13"}
+{"attempt":1,"level":"info","message":"Discord API call execution started (attempt 1/3)","metadata":{"type":"interaction_panel_send"},"timestamp":"2026-07-10 11:36:13"}
+{"attempt":1,"level":"info","message":"Discord API call completed successfully (attempt 1/3)","metadata":{"type":"interaction_panel_send"},"timestamp":"2026-07-10 11:36:13"}
+{"level":"info","message":"Admin Panel not found, sending new...","timestamp":"2026-07-10 11:36:13"}
+{"attempt":1,"level":"info","message":"Discord API call execution started (attempt 1/3)","metadata":{"type":"admin_panel_send"},"timestamp":"2026-07-10 11:36:13"}
+{"attempt":1,"level":"info","message":"Discord API call completed successfully (attempt 1/3)","metadata":{"type":"admin_panel_send"},"timestamp":"2026-07-10 11:36:14"}
+{"attempt":1,"level":"info","message":"Discord API call execution started (attempt 1/3)","metadata":{"type":"stats_board_send"},"timestamp":"2026-07-10 11:36:14"}
+{"attempt":1,"level":"info","message":"Discord API call completed successfully (attempt 1/3)","metadata":{"type":"stats_board_send"},"timestamp":"2026-07-10 11:36:15"}
+{"level":"info","message":"Logged in as TestBot#1234!","timestamp":"2026-07-10 11:36:48"}
+{"level":"info","message":"WebSocket server listening on port 8080","timestamp":"2026-07-10 11:36:48"}
+{"level":"info","message":"Initializing interaction and admin panels...","timestamp":"2026-07-10 11:36:48"}
+{"error":{"address":"::","code":"EADDRINUSE","errno":-4091,"port":8080,"syscall":"listen"},"level":"error","message":"Fatal error detected from origin uncaughtException","timestamp":"2026-07-10 11:36:48"}
+{"level":"info","message":"Initiating graceful shutdown...","timestamp":"2026-07-10 11:36:48"}
+{"level":"info","message":"Logged in as TestBot#1234!","timestamp":"2026-07-10 11:38:01"}
+{"level":"info","message":"WebSocket server listening on port 8080","timestamp":"2026-07-10 11:38:01"}
+{"level":"info","message":"Initializing interaction and admin panels...","timestamp":"2026-07-10 11:38:01"}
+{"level":"info","message":"Key Panel not found, sending new...","timestamp":"2026-07-10 11:38:01"}
+{"attempt":1,"level":"info","message":"Discord API call execution started (attempt 1/3)","metadata":{"type":"key_panel_send"},"timestamp":"2026-07-10 11:38:01"}
+{"attempt":1,"level":"info","message":"Discord API call completed successfully (attempt 1/3)","metadata":{"type":"key_panel_send"},"timestamp":"2026-07-10 11:38:01"}
+{"level":"info","message":"Interaction Panel not found, sending new...","timestamp":"2026-07-10 11:38:01"}
+{"attempt":1,"level":"info","message":"Discord API call execution started (attempt 1/3)","metadata":{"type":"interaction_panel_send"},"timestamp":"2026-07-10 11:38:01"}
+{"attempt":1,"level":"info","message":"Discord API call completed successfully (attempt 1/3)","metadata":{"type":"interaction_panel_send"},"timestamp":"2026-07-10 11:38:01"}
+{"level":"info","message":"Admin Panel not found, sending new...","timestamp":"2026-07-10 11:38:01"}
+{"attempt":1,"level":"info","message":"Discord API call execution started (attempt 1/3)","metadata":{"type":"admin_panel_send"},"timestamp":"2026-07-10 11:38:01"}
+{"attempt":1,"level":"info","message":"Discord API call completed successfully (attempt 1/3)","metadata":{"type":"admin_panel_send"},"timestamp":"2026-07-10 11:38:01"}
+{"error":{},"level":"warn","message":"Failed to fetch pinned messages for stats board","timestamp":"2026-07-10 11:38:01"}
+{"attempt":1,"level":"info","message":"Discord API call execution started (attempt 1/3)","metadata":{"type":"stats_board_send"},"timestamp":"2026-07-10 11:38:01"}
+{"attempt":1,"level":"info","message":"Discord API call completed successfully (attempt 1/3)","metadata":{"type":"stats_board_send"},"timestamp":"2026-07-10 11:38:01"}
+{"error":{},"level":"error","message":"Failed to pin new stats board message","timestamp":"2026-07-10 11:38:01"}
+{"level":"info","message":"Clock offset synchronized with Discord: -900ms","timestamp":"2026-07-10 11:38:01"}

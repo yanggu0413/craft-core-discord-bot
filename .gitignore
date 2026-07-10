@@ -9,8 +9,17 @@ discord-bot/src/database/*.db-wal
 discord-bot/*.db
 discord-bot/*.log
 
-# Gradle / Java (Ignored entirely)
-fabric-mod/
+# Gradle / Java (Ignored compile outputs and IDE metadata)
+fabric-mod/.gradle/
+fabric-mod/build/
+fabric-mod/out/
+fabric-mod/run/
+fabric-mod/local.properties
+fabric-mod/.settings/
+fabric-mod/.project
+fabric-mod/.classpath
+fabric-mod/*.log
+fabric-mod/*.tmp
 
 # Compiled Jar output (optional, but good to exclude from source repository)
 # fabric-mod/build/libs/

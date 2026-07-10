@@ -36,6 +36,26 @@ async function init(dbPath) {
     } catch (e) {
       // Ignore if column already exists
     }
+    try {
+      db.exec('ALTER TABLE bindings ADD COLUMN checkin_streak INTEGER DEFAULT 0');
+    } catch (e) {
+      // Ignore if column already exists
+    }
+    try {
+      db.exec('ALTER TABLE bindings ADD COLUMN total_checkins INTEGER DEFAULT 0');
+    } catch (e) {
+      // Ignore if column already exists
+    }
+    try {
+      db.exec('ALTER TABLE bindings ADD COLUMN subscribe_reminder INTEGER DEFAULT 0');
+    } catch (e) {
+      // Ignore if column already exists
+    }
+    try {
+      db.exec('ALTER TABLE bindings ADD COLUMN exchanged_ticks INTEGER DEFAULT 0');
+    } catch (e) {
+      // Ignore if column already exists
+    }
   } else {
     throw new Error(`Database initialization failed: schema.sql not found at ${schemaPath}`);
   }
@@ -102,11 +122,31 @@ async function init(dbPath) {
   `);
 
   // 6. Checkin & Key Operations
-  stmts.getUserKeys = db.prepare('SELECT keys_count, last_checkin, mc_username FROM bindings WHERE discord_id = ?');
+  stmts.getUserKeys = db.prepare('SELECT keys_count, last_checkin, mc_username, checkin_streak, total_checkins, subscribe_reminder, exchanged_ticks FROM bindings WHERE discord_id = ?');
   stmts.updateKeys = db.prepare('UPDATE bindings SET keys_count = ? WHERE discord_id = ?');
   stmts.setCheckin = db.prepare('UPDATE bindings SET last_checkin = ?, keys_count = keys_count + ? WHERE discord_id = ?');
+  stmts.setCheckinWithStreak = db.prepare('UPDATE bindings SET last_checkin = ?, checkin_streak = ?, total_checkins = total_checkins + 1, keys_count = keys_count + ? WHERE discord_id = ?');
+  stmts.toggleReminderSubscription = db.prepare('UPDATE bindings SET subscribe_reminder = ? WHERE discord_id = ?');
+  stmts.updateExchangedTicks = db.prepare('UPDATE bindings SET exchanged_ticks = ?, keys_count = keys_count + ? WHERE discord_id = ?');
+  stmts.getCheckinLeaderboard = db.prepare('SELECT mc_username, keys_count, checkin_streak, total_checkins FROM bindings ORDER BY keys_count DESC, checkin_streak DESC LIMIT ?');
+  stmts.getSubscribedUsers = db.prepare('SELECT discord_id, mc_username FROM bindings WHERE subscribe_reminder = 1');
   stmts.addKeysByMcUsername = db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE mc_username = ? COLLATE NOCASE');
   stmts.addKeysByDiscordId = db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE discord_id = ?');
+
+  // 7. Offline Mails Operations
+  stmts.createMail = db.prepare("INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, nbt, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
+  stmts.getPendingMails = db.prepare("SELECT * FROM offline_mails WHERE receiver_username = ? COLLATE NOCASE AND status = 'pending'");
+  stmts.getAllMails = db.prepare("SELECT * FROM offline_mails WHERE receiver_username = ? COLLATE NOCASE");
+  stmts.markMailDelivered = db.prepare("UPDATE offline_mails SET status = 'delivered', delivered_at = datetime('now') WHERE id = ?");
+
+  // 8. Daily Stats Operations
+  stmts.incrementMessage = db.prepare('INSERT INTO daily_stats (date, total_messages) VALUES (?, 1) ON CONFLICT(date) DO UPDATE SET total_messages = total_messages + 1');
+  stmts.incrementDailyDeath = db.prepare('INSERT INTO daily_stats (date, total_deaths) VALUES (?, 1) ON CONFLICT(date) DO UPDATE SET total_deaths = total_deaths + 1');
+  stmts.incrementLogin = db.prepare('INSERT INTO daily_stats (date, total_logins) VALUES (?, 1) ON CONFLICT(date) DO UPDATE SET total_logins = total_logins + 1');
+  stmts.recordLogin = db.prepare('INSERT OR IGNORE INTO daily_logins (date, mc_username) VALUES (?, ?)');
+  stmts.updateMaxOnline = db.prepare('INSERT INTO daily_stats (date, max_online) VALUES (?, ?) ON CONFLICT(date) DO UPDATE SET max_online = MAX(max_online, excluded.max_online)');
+  stmts.getStats = db.prepare('SELECT * FROM daily_stats WHERE date = ?');
+  stmts.getLoginCount = db.prepare('SELECT COUNT(*) as count FROM daily_logins WHERE date = ?');
 
   bindUserTx = (discordId, mcUuid, mcUsername, code) => {
     db.exec('BEGIN TRANSACTION');
@@ -212,12 +252,80 @@ async function setCheckin(discordId, dateStr, keysToAdd = 1) {
   return stmts.setCheckin.run(dateStr, keysToAdd, discordId);
 }
 
+async function setCheckinWithStreak(discordId, dateStr, streak, keysToAdd) {
+  return stmts.setCheckinWithStreak.run(dateStr, streak, keysToAdd, discordId);
+}
+
+async function toggleReminderSubscription(discordId, status) {
+  return stmts.toggleReminderSubscription.run(status, discordId);
+}
+
+async function updateExchangedTicks(discordId, newExchangedTicks, keysToAdd) {
+  return stmts.updateExchangedTicks.run(newExchangedTicks, keysToAdd, discordId);
+}
+
+async function getCheckinLeaderboard(limit = 10) {
+  return stmts.getCheckinLeaderboard.all(limit);
+}
+
+async function getSubscribedUsers() {
+  return stmts.getSubscribedUsers.all();
+}
+
 async function addKeysByMcUsername(mcUsername, keysToAdd = 6) {
   return stmts.addKeysByMcUsername.run(keysToAdd, mcUsername);
 }
 
 async function addKeysByDiscordId(discordId, keysToAdd = 6) {
   return stmts.addKeysByDiscordId.run(keysToAdd, discordId);
+}
+
+// Mailbox methods
+async function createMail(senderDiscordId, senderUsername, receiverUsername, itemId, quantity, nbt) {
+  return stmts.createMail.run(senderDiscordId, senderUsername, receiverUsername, itemId, quantity, nbt);
+}
+
+async function getPendingMails(receiverUsername) {
+  return stmts.getPendingMails.all(receiverUsername);
+}
+
+async function getAllMails(receiverUsername) {
+  return stmts.getAllMails.all(receiverUsername);
+}
+
+async function markMailDelivered(mailId) {
+  return stmts.markMailDelivered.run(mailId);
+}
+
+// Daily Stats methods
+async function incrementMessage(date) {
+  return stmts.incrementMessage.run(date);
+}
+
+async function incrementDailyDeath(date) {
+  return stmts.incrementDailyDeath.run(date);
+}
+
+async function incrementLogin(date) {
+  return stmts.incrementLogin.run(date);
+}
+
+async function recordLogin(date, mcUsername) {
+  return stmts.recordLogin.run(date, mcUsername);
+}
+
+async function updateMaxOnline(date, count) {
+  return stmts.updateMaxOnline.run(date, count);
+}
+
+async function getStats(date) {
+  const row = stmts.getStats.get(date);
+  return row !== undefined ? row : null;
+}
+
+async function getLoginCount(date) {
+  const row = stmts.getLoginCount.get(date);
+  return row !== undefined ? row.count : 0;
 }
 
 async function bindUser(discordId, mcUuid, mcUsername, code) {
@@ -259,6 +367,22 @@ module.exports = {
   getUserKeys,
   updateKeys,
   setCheckin,
+  setCheckinWithStreak,
+  toggleReminderSubscription,
+  updateExchangedTicks,
+  getCheckinLeaderboard,
+  getSubscribedUsers,
   addKeysByMcUsername,
-  addKeysByDiscordId
+  addKeysByDiscordId,
+  createMail,
+  getPendingMails,
+  getAllMails,
+  markMailDelivered,
+  incrementMessage,
+  incrementDailyDeath,
+  incrementLogin,
+  recordLogin,
+  updateMaxOnline,
+  getStats,
+  getLoginCount
 };

@@ -79,7 +79,7 @@ module.exports = {
     const session = require('../../websocket/session');
     if (session && session.isActive()) {
       try {
-        const result = await session.executeCommand(`playerinfo ${mcUsername}`, interaction.user.tag);
+        const result = await session.executeCommand(`playerinfo "${mcUsername}"`, interaction.user.tag);
         if (result.success) {
           const output = result.output;
           if (output.includes('Player not found') || output.includes('No player found')) {

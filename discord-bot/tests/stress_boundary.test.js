@@ -4,8 +4,8 @@ const path = require('path');
 const fs = require('fs');
 
 const 客服單Cmd = require('../src/bot/commands/客服單');
-const 封鎖Cmd = require('../src/bot/commands/封鎖');
-const 綁定Cmd = require('../src/bot/commands/綁定');
+const 封鎖Cmd = require('../src/bot/commands_legacy/封鎖');
+const 綁定Cmd = require('../src/bot/commands_legacy/綁定');
 
 const TEST_DB_FILE = path.join(__dirname, 'test_boundary.db');
 

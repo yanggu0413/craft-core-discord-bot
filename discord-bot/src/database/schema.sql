@@ -50,3 +50,34 @@ CREATE TABLE IF NOT EXISTS player_stats (
 );
 
 CREATE INDEX IF NOT EXISTS idx_player_stats_deaths ON player_stats(deaths);
+
+-- 6. Offline Mails Table (R3)
+CREATE TABLE IF NOT EXISTS offline_mails (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sender_discord_id TEXT,
+    sender_username TEXT,
+    receiver_username TEXT NOT NULL COLLATE NOCASE,
+    item_id TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    nbt TEXT,
+    status TEXT NOT NULL CHECK(status IN ('pending', 'delivered')) DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    delivered_at DATETIME
+);
+CREATE INDEX IF NOT EXISTS idx_offline_mails_receiver ON offline_mails(receiver_username, status);
+
+-- 7. Daily Stats Tables (R5)
+CREATE TABLE IF NOT EXISTS daily_stats (
+    date TEXT PRIMARY KEY,
+    max_online INTEGER DEFAULT 0,
+    total_logins INTEGER DEFAULT 0,
+    total_messages INTEGER DEFAULT 0,
+    total_deaths INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS daily_logins (
+    date TEXT,
+    mc_username TEXT,
+    PRIMARY KEY (date, mc_username)
+);
+

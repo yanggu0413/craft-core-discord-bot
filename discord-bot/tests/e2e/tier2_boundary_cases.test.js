@@ -5,7 +5,7 @@ const { DatabaseSync: Database } = require('node:sqlite');
 const MockMinecraftClient = require('./mock-minecraft-client');
 
 const TIER = 'tier2';
-const PORT = 8099;
+const PORT = 8092;
 const DB_FILE = path.resolve(__dirname, `../../db_${TIER}.db`);
 const SCHEMA_FILE = path.resolve(__dirname, '../../src/database/schema.sql');
 
@@ -439,8 +439,12 @@ describe('Tier 2: Boundary & Corner Cases (F1-F5)', () => {
   });
 
   test('F5-4: command execution fails instantly if MC server is not active', async () => {
+    const closePromise = new Promise(resolve => {
+      mcClient.once('close', resolve);
+    });
     mcClient.close();
-    await new Promise(r => setTimeout(r, 1000));
+    await closePromise;
+    await new Promise(r => setTimeout(r, 500));
 
     const replyPromise = waitForDiscordEvent('INTERACTION_REPLY', (payload) => payload.content !== undefined && payload.content !== null);
     triggerSlashCommand('封鎖', { '玩家名稱': 'Steve', '原因': 'steal' }, 'discord-admin', 'AdminUser');

@@ -6,17 +6,25 @@
 
 ## ✨ 功能一覽
 
+### 核心功能
 | 功能類別 | 功能描述 |
 |---|---|
-| 🔗 帳號綁定 | Discord ↔ Minecraft 雙向帳號連動，綁定後自動加入白名單 |
 | 💬 雙向聊天同步 | 遊戲內與 Discord 頻道即時雙向訊息同步（含玩家頭像 Webhook）|
 | 📊 伺服器狀態 | Discord 常駐狀態面板，顯示線上玩家、TPS、Ping 值 |
 | 🎫 客服單系統 | 點擊按鈕開啟私人頻道客服單，關閉時自動產出 Transcript |
-| 📢 公告系統 | 管理員使用 Modal 彈窗發送全伺服器精美公告（支援 @everyone）|
-| 📅 每日簽到 | `/checkin` 每日領取一把抽獎鑰匙 |
+| 📅 每日簽到 | `/checkin` 每日領取簽到獎勵 |
 | 🎰 幸運抽獎 | `/抽獎` 使用鑰匙開獎，即時發送原生物資至玩家背包 |
-| 🤝 聯名合作 | 管理員 `/聯名` 給予指定玩家 6 把抽獎鑰匙 |
-| ⚙️ 管理員指令 | `/封鎖`、`/踢出`、`/玩家資訊` 等，通過 WebSocket 即時在遊戲內執行 |
+| ☠️ 死亡排行榜 | `/死亡榜` 顯示伺服器玩家的死亡次數統計與排名 |
+
+### 🚀 Phase 2 全新升級功能
+| 功能類別 | 功能描述 |
+|---|---|
+| 🔑 雙面板分離 (Dual Panel) | 將**鑰匙領取面板**與**互動功能面板**獨立拆分，介面更乾淨，減少誤觸。玩家可透過鑰匙領取面板獲取每日簽到與聯名鑰匙，再到互動功能面板進行抽獎與查詢。 |
+| 🛡️ 管理員控制面板 (Admin Control Panel) | 全新後台控制面板，管理員可直接進行「強制綁定」、「解除綁定」以及「玩家資訊查詢」，免除在 Discord 中輸入複雜指令的繁瑣步驟。 |
+| 📦 郵件快遞與離線信箱 (Express & Offline Mailbox) | 支援離線發送物品！若玩家在線，系統將即時投遞至背包；若玩家離線，物品將暫存於離線信箱中，待玩家下次登入時自動快遞發送，保障獎勵不丟失。 |
+| 📢 公告草稿預覽與發佈 (Announcement Draft) | 支援公告發佈工作流：管理員在後台編輯公告後，可先產生「草稿預覽」，確認排版與文字無誤後，再一鍵「正式發佈」至全服，提升公告品質。 |
+| 📈 伺服器統計看板 (Consolidated Statistics Board) | 整合式伺服器統計看板，定時更新並釘選於指定頻道，一眼看清線上人數、今日聊天訊息量、系統負載等關鍵數據。 |
+| ✉️ DM 私訊驗證碼綁定 (DM Binding Verification) | 為了提高隱私安全，廢除公開頻道的 `/綁定` 指令，玩家只需私訊 (DM) 機器人輸入遊戲中獲得的 6 位數驗證碼，即可安全、安靜地完成帳號綁定。 |
 
 ---
 
@@ -28,7 +36,8 @@ discord-bot/
 │   ├── index.js                    # 極簡入口，全域錯誤防衛
 │   ├── config.js                   # 集中式設定管理
 │   ├── bot/
-│   │   ├── commands/               # 斜線指令模組
+│   │   ├── commands/               # 斜線指令模組 (生產環境)
+│   │   ├── commands_legacy/        # 舊版/備份斜線指令 (僅在測試環境載入)
 │   │   ├── handlers/               # 互動事件分流
 │   │   │   ├── commandHandler.js   # 斜線指令路由
 │   │   │   ├── buttonHandler.js    # 按鈕事件路由
@@ -62,7 +71,8 @@ discord-bot/
 │       ├── tier1_feature_coverage.test.js
 │       ├── tier2_boundary_cases.test.js
 │       ├── tier3_cross_feature.test.js
-│       └── tier4_real_world.test.js
+│       ├── tier4_real_world.test.js
+│       └── tier5_phase2_features.test.js
 └── logs/                           # Winston 結構化日誌輸出目錄
     ├── combined.log
     ├── error.log
@@ -103,14 +113,6 @@ errorHandler      → 集中式錯誤捕捉，回傳友善提示
 - 失敗請求支援自動重試機制。
 
 ### 4. 📝 結構化日誌系統 (Winston)
-```json
-{
-  "timestamp": "2026-07-09T10:05:33.123Z",
-  "level": "info",
-  "message": "Minecraft client authenticated",
-  "serverId": "lobby"
-}
-```
 - 日誌分級輸出至 `logs/combined.log` 和 `logs/error.log`。
 - Process 級別的 `uncaughtException` 與 `unhandledRejection` 分別記錄至 `logs/exceptions.log` 和 `logs/rejections.log`，**確保任何局部錯誤絕不導致 Bot 進程崩潰**。
 
@@ -171,7 +173,45 @@ pm2 start src/index.js --name craft-core-bot
 ```
 
 ### 6. 安裝 Fabric 模組
-將 `fabric-mod/build/libs/craftcore-*.jar` 放入 Minecraft 伺服器的 `mods/` 目錄並重啟伺服器即可。
+將專案根目錄的 `craftcore-1.0.0.jar` 或編譯生成的 `fabric-mod/build/libs/craftcore-*.jar` 放入 Minecraft 伺服器的 `mods/` 目錄並重啟伺服器即可。
+
+---
+
+## 📦 開源與編譯發佈指南 (Open Source & Release Guide)
+
+本專案支援完全開源編譯與部署。主要包含 Fabric 模組的編譯以及 Discord 機器人原始碼的打包發佈。
+
+### 1. Fabric 模組編譯 (Fabric Mod Compilation)
+Fabric 模組位於 `fabric-mod/` 目錄中。若要自行編譯產生 `.jar` 模組檔案，請遵循以下步驟：
+- 確保系統已安裝 Java JDK 17 或以上。
+- 進入 `fabric-mod/` 目錄：
+  ```bash
+  cd fabric-mod
+  ```
+- 執行 Gradle 編譯任務：
+  - Windows:
+    ```cmd
+    .\gradlew build
+    ```
+  - Linux / macOS:
+    ```bash
+    ./gradlew build
+    ```
+- 編譯完成後，生成的 `.jar` 檔案將位於 `fabric-mod/build/libs/` 目錄下（例如 `craftcore-1.0.0.jar`）。
+- 您可以將該 `.jar` 檔案複製到專案根目錄或直接部署至 Minecraft 伺服器的 `mods/` 目錄中。
+
+### 2. Discord 機器人打包 (Discord Bot Packaging)
+Discord 機器人位於 `discord-bot/` 目錄中。在進行開源釋出或部署時，需排除依賴庫（`node_modules`）與執行日誌（`logs`），將原始碼壓縮為 `discord-bot.zip`：
+- 在 Windows 環境下，可於 `discord-bot/` 目錄執行以下 PowerShell 指令進行打包：
+  ```powershell
+  powershell -Command "Compress-Archive -Path src, tests, config.json.template, .env.template, kill_port.js, package.json, package-lock.json, PROJECT.md, README.md, TEST_INFRA.md, TEST_READY.md -DestinationPath ..\discord-bot.zip -Force"
+  ```
+- 壓縮完成後，生成的 `discord-bot.zip` 將會放置於專案根目錄下。
+
+### 3. 已編譯釋出資源 (Compiled Release Assets)
+釋出版包含以下核心資產：
+- **`craftcore-1.0.0.jar`**: 已編譯的 Minecraft Fabric 伺服器端模組，負責與 Discord 機器人建立 WebSocket 通訊。
+- **`discord-bot.zip`**: Discord 機器人原始碼包，解壓後執行 `npm install` 與配置環境即可啟動。
 
 ---
 
@@ -184,21 +224,17 @@ pm2 start src/index.js --name craft-core-bot
 
 ---
 
-## 🤖 Discord 斜線指令
+## 🤖 Discord 斜線指令 (生產環境)
 
 | 指令 | 說明 | 權限 |
 |---|---|---|
-| `/綁定 <驗證碼>` | 使用遊戲內取得的驗證碼完成帳號綁定 | 所有人 |
-| `/解綁` | 解除 Discord 與 Minecraft 的帳號綁定 | 所有人 |
-| `/我的資訊` | 查詢自己的綁定資訊 | 所有人 |
-| `/checkin` | 每日簽到，獲得 1 把抽獎鑰匙 | 已綁定玩家 |
-| `/抽獎` | 使用抽獎鑰匙開獎，即時發送遊戲內物資 | 已綁定玩家 |
+| `/checkin` | 每日簽到，獲得簽到與領取面板鑰匙 | 已綁定玩家 |
+| `/抽獎` | 使用鑰匙開獎，即時發送或暫存至離線郵件信箱 | 已綁定玩家 |
+| `/解除綁定` | 解除 Discord 與 Minecraft 的帳號綁定關係 | 所有人 |
+| `/死亡榜` | 查詢玩家死亡排行看板 | 所有人 |
 | `/客服單` | 在頻道部署客服單開啟按鈕 | 管理員 |
-| `/公告` | 以精美格式向全伺服器發布公告 | 管理員 |
-| `/玩家資訊 <玩家名>` | 查詢玩家線上狀態、座標、上線時間 | 管理員 |
-| `/封鎖 <玩家名>` | 封禁指定玩家 | 管理員 |
-| `/踢出 <玩家名>` | 踢出指定玩家 | 管理員 |
-| `/聯名 <玩家>` | 給予指定玩家 6 把抽獎鑰匙（聯名合作獎勵）| 管理員 |
+
+*備註：為保護使用者隱私與提升系統安全性，舊版 `/綁定`、`/公告`、`/封鎖`、`/玩家資訊`、`/踢出`、`/聯名` 斜線指令已退役並移至 `commands_legacy/` 目錄（僅於測試環境加載）。相關功能已全面移轉至雙面板介面與管理員控制面板。*
 
 ---
 
@@ -214,6 +250,7 @@ npm test
 - **E2E Tier 2**：邊界條件與異常處理測試。
 - **E2E Tier 3**：跨模組功能組合測試。
 - **E2E Tier 4**：真實世界情境模擬測試。
+- **E2E Tier 5**：Phase 2 全新功能（包含雙面板、離線信箱、後台控制等）測試。
 
 ---
 

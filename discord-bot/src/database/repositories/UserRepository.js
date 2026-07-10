@@ -45,6 +45,26 @@ class UserRepository {
     return db.setCheckin(discordId, dateStr, keysToAdd);
   }
 
+  async setCheckinWithStreak(discordId, dateStr, streak, keysToAdd) {
+    return db.setCheckinWithStreak(discordId, dateStr, streak, keysToAdd);
+  }
+
+  async toggleReminderSubscription(discordId, status) {
+    return db.toggleReminderSubscription(discordId, status);
+  }
+
+  async updateExchangedTicks(discordId, newExchangedTicks, keysToAdd) {
+    return db.updateExchangedTicks(discordId, newExchangedTicks, keysToAdd);
+  }
+
+  async getCheckinLeaderboard(limit = 10) {
+    return db.getCheckinLeaderboard(limit);
+  }
+
+  async getSubscribedUsers() {
+    return db.getSubscribedUsers();
+  }
+
   async addKeysByMcUsername(mcUsername, keysToAdd) {
     return db.addKeysByMcUsername(mcUsername, keysToAdd);
   }

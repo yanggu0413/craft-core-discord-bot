@@ -1,10 +1,10 @@
 const mockDiscord = require('./e2e/preload-mock.js');
 const db = require('../src/database');
-const { execute: executeBan } = require('../src/bot/commands/封鎖');
-const { execute: executeKick } = require('../src/bot/commands/踢出');
+const { execute: executeBan } = require('../src/bot/commands_legacy/封鎖');
+const { execute: executeKick } = require('../src/bot/commands_legacy/踢出');
 const { execute: executeTicket } = require('../src/bot/commands/客服單');
-const { execute: executeBind } = require('../src/bot/commands/綁定');
-const { execute: executePlayerInfo } = require('../src/bot/commands/玩家資訊');
+const { execute: executeBind } = require('../src/bot/commands_legacy/綁定');
+const { execute: executePlayerInfo } = require('../src/bot/commands_legacy/玩家資訊');
 
 describe('Challenger Stress & Boundary Tests', () => {
   beforeEach(async () => {

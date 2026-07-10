@@ -46,7 +46,7 @@ module.exports = {
     // Check if player is online on the Minecraft server
     let isOnline = false;
     try {
-      const result = await session.executeCommand(`playerinfo ${binding.mc_username}`, interaction.user.tag);
+      const result = await session.executeCommand(`playerinfo "${binding.mc_username}"`, interaction.user.tag);
       if (result.success && result.output.includes('Online: true')) {
         isOnline = true;
       }
@@ -76,10 +76,10 @@ module.exports = {
 
     // Send item to player in game
     try {
-      await session.executeCommand(`give ${binding.mc_username} minecraft:${reward.id} ${reward.amount}`, 'system');
-      await session.executeCommand(`title ${binding.mc_username} subtitle {"text":"抽中了 ${reward.name} x ${reward.amount}！","color":"gold"}`, 'system');
-      await session.executeCommand(`title ${binding.mc_username} title {"text":"🎉 抽獎成功！","color":"yellow"}`, 'system');
-      await session.executeCommand(`playsound minecraft:entity.player.levelup master ${binding.mc_username}`, 'system');
+      await session.executeCommand(`give "${binding.mc_username}" minecraft:${reward.id} ${reward.amount}`, 'system');
+      await session.executeCommand(`title "${binding.mc_username}" subtitle {"text":"抽中了 ${reward.name} x ${reward.amount}！","color":"gold"}`, 'system');
+      await session.executeCommand(`title "${binding.mc_username}" title {"text":"🎉 抽獎成功！","color":"yellow"}`, 'system');
+      await session.executeCommand(`playsound minecraft:entity.player.levelup master "${binding.mc_username}"`, 'system');
     } catch (error) {
       logger.error('Failed to send reward in-game', { error });
       // We don't rollback keys here because RCON issues should be checked, but we inform the user
