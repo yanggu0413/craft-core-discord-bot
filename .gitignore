@@ -37,3 +37,8 @@ ORIGINAL_REQUEST.md
 PROJECT.md
 TEST_INFRA.md
 TEST_READY.md
+
+# Compiled release assets
+craftcore-1.0.0.jar
+discord-bot.zip
+
