@@ -53,6 +53,8 @@
 
 ---
 
-## 📖 完整使用教學 (GitHub Wiki)
+## 📖 完整使用教學 (GitBook)
 
-請造訪我們的 [Github Wiki](https://github.com/yanggu0413/craft-core-shop/wiki) 獲取最詳細的操作引導與管理員指令手冊。
+請造訪我們的 **[GitBook 線上文件網站]** 獲取最詳細的操作引導與管理員指令手冊。
+*(文檔已透過 GitSync 與專案根目錄的 `docs/` 資料夾自動同步)*
+
