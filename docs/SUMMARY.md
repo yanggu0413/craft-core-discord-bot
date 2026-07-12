@@ -10,3 +10,5 @@
   * [【第五篇】市場均價與趨勢](Market-Analytics.md)
 * [🛠️ 管理員控制指南](Admin-Manual.md)
   * [【第六篇】管理員與指令手冊](Admin-Manual.md)
+* [🤖 Discord 機器人連動指南](Discord-Integration.md)
+
