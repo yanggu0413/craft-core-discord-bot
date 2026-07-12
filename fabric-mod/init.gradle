@@ -1,0 +1,3 @@
+allprojects {
+    layout.buildDirectory.set(new File(rootProject.projectDir, "build-reviewer"))
+}

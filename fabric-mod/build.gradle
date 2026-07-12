@@ -1,0 +1,65 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap' version '1.17.2'
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+loom {
+    accessWidenerPath = file("src/main/resources/craftcore.accesswidener")
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Loom compilation dependencies
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings files("C:/Users/Yanggu/.gradle/caches/fabric-loom/1.21.11/loom.mappings.1_21_11.layered+hash.2198-v2/mappings.jar")
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // JUnit 5 and Mockito for testing
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.2"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.10.2"
+    testImplementation "org.junit.platform:junit-platform-launcher:1.10.2"
+    testImplementation "org.mockito:mockito-core:5.11.0"
+    testImplementation "org.ow2.asm:asm:9.6"
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+}
+
+java {
+    withSourcesJar()
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+test {
+    useJUnitPlatform()
+    jvmArgs '-XX:+EnableDynamicAgentLoading'
+    systemProperty 'net.bytebuddy.experimental', 'true'
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.archivesBaseName}"}
+    }
+}

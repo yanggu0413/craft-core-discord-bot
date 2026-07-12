@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "craftcore",
+  "name": "Craft-Core Link",
+  "description": "WebSocket integration client connecting the Minecraft server with Discord.",
+  "version": "${version}",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.CraftCoreMod"
+    ]
+  },
+  "mixins": [
+    "craftcore.mixins.json"
+  ],
+  "accessWidener": "craftcore.accesswidener",
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~26.2",
+    "java": ">=21"
+  }
+}

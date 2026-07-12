@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "com.craftcore.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "ServerPlayerEntityMixin",
+    "PlayerAdvancementTrackerMixin",
+    "BlockBehaviourMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

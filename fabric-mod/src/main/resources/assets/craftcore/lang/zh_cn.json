@@ -1,0 +1,20 @@
+{
+  "item.minecraft.coal": "煤炭",
+  "item.minecraft.iron_ingot": "铁锭",
+  "item.minecraft.copper_ingot": "铜锭",
+  "item.minecraft.diamond": "钻石",
+  "item.minecraft.netherite_scrap": "下界合金碎片",
+  "block.minecraft.stone": "石头",
+  "block.minecraft.cobblestone": "圆石",
+  "block.minecraft.deepslate": "深层岩",
+  "block.minecraft.diorite": "闪长岩",
+  "block.minecraft.granite": "花岗岩",
+  "block.minecraft.andesite": "安山岩",
+  "block.minecraft.dirt": "泥土",
+  "block.minecraft.sand": "沙子",
+  "item.minecraft.rotten_flesh": "腐肉",
+  "block.minecraft.chest": "箱子",
+  "chat.bulk_multiple_error": "§c[Craft-Core] 交易数量必须是整批数量（%d）的倍数！",
+  "chat.transaction_receipt_buy": "§a[Craft-Core] 交易成功！\n§f- 购买商品: §b%s x%d\n§f- 交易总额: §e$%s\n§f- 交易税金 (5%%): §c$%s (已销毁)\n§f- 实收金额: §a$%s",
+  "chat.transaction_receipt_sell": "§a[Craft-Core] 交易成功！\n§f- 出售商品: §b%s x%d\n§f- 交易总额: §e$%s\n§f- 交易税金 (5%%): §c$%s (已销毁)\n§f- 实得金额: §a$%s"
+}

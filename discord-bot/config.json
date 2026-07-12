@@ -1,0 +1,21 @@
+{
+  "discord": {
+    "clientId": "1353160821315997787",
+    "guildId": "1341702987537449000",
+    "adminRoleId": "1248891236480188517, 988642621834547260, 1286603217056174080",
+    "channels": {
+      "chatSync": "1524354139809648673",
+      "status": "1524354671064383558",
+      "ticketCategory": "9999000011112222",
+      "ticketLogs": ""
+    },
+    "chatWebhookUrl": "https://discord.com/api/webhooks/mock_webhook_id/mock_token"
+  },
+  "websocket": {
+    "port": 8080
+  },
+  "minecraft": {
+    "avatarProvider": "https://mc-heads.net/avatar/{uuid}",
+    "statusUpdateIntervalMs": 10000
+  }
+}

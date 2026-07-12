@@ -1,0 +1,25 @@
+{
+  "name": "craft-core-bot",
+  "version": "2.0.0",
+  "description": "Discord Bot for Craft-Core Minecraft server linkage",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "deploy": "node src/bot/deploy-commands.js",
+    "test": "jest --runInBand --testTimeout=30000"
+  },
+  "dependencies": {
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "p-queue": "^6.6.2",
+    "winston": "^3.19.0",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
