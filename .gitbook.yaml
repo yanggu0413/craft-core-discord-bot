@@ -1,0 +1,3 @@
+# GitBook GitSync Configuration
+# Only import the Traditional Chinese wiki docs under the docs/ directory as the public Wiki
+root: ./docs
