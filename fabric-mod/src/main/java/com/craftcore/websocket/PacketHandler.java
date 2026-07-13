@@ -279,6 +279,178 @@ public class PacketHandler {
                     });
                     break;
                 }
+                case "checkin_response": {
+                    CheckinResponsePayload payload = GSON.fromJson(payloadObj, CheckinResponsePayload.class);
+                    server.execute(() -> {
+                        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(payload.username);
+                        if (player != null) {
+                            if (payload.success) {
+                                com.craftcore.economy.EconomyManager.addMoney(payload.username, 150.0);
+                                net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                                    net.minecraft.resources.Identifier.parse(payload.item)
+                                ).map(net.minecraft.core.Holder::value).orElse(net.minecraft.world.item.Items.AIR);
+                                if (itemObj != null && itemObj != net.minecraft.world.item.Items.AIR) {
+                                    net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(itemObj, payload.amount);
+                                    player.getInventory().add(stack);
+                                    if (!stack.isEmpty()) {
+                                        player.drop(stack, false);
+                                    }
+                                }
+                                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                                    net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
+                                String trans = com.craftcore.shop.TranslationManager.getTranslatedName(payload.item);
+                                player.sendSystemMessage(Component.literal("§b[Craft-Core] §a簽到成功！獲得 $150 元與 " + trans + " x" + payload.amount + "！"));
+                            } else {
+                                player.sendSystemMessage(Component.literal(payload.message));
+                            }
+                        }
+                    });
+                    break;
+                }
+                case "luckydraw_response": {
+                    LuckydrawResponsePayload payload = GSON.fromJson(payloadObj, LuckydrawResponsePayload.class);
+                    server.execute(() -> {
+                        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(payload.username);
+                        if (player != null) {
+                            if (payload.success) {
+                                com.craftcore.economy.EconomyManager.addMoney(payload.username, 150.0);
+                                net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                                    net.minecraft.resources.Identifier.parse(payload.item)
+                                ).map(net.minecraft.core.Holder::value).orElse(net.minecraft.world.item.Items.AIR);
+                                if (itemObj != null && itemObj != net.minecraft.world.item.Items.AIR) {
+                                    net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(itemObj, payload.amount);
+                                    player.getInventory().add(stack);
+                                    if (!stack.isEmpty()) {
+                                        player.drop(stack, false);
+                                    }
+                                }
+                                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                                    net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
+                                String trans = com.craftcore.shop.TranslationManager.getTranslatedName(payload.item);
+                                player.sendSystemMessage(Component.literal("§b[Craft-Core] §a幸運大抽獎成功！獲得 $150 元與 " + trans + " x" + payload.amount + "！"));
+                            } else {
+                                player.sendSystemMessage(Component.literal(payload.message));
+                            }
+                        }
+                    });
+                    break;
+                }
+                case "claims_query": {
+                    ClaimsQueryPayload payload = GSON.fromJson(payloadObj, ClaimsQueryPayload.class);
+                    java.util.List<ClaimEntry> entries = new java.util.ArrayList<>();
+                    for (com.craftcore.claim.ClaimManager.Claim c : com.craftcore.claim.ClaimManager.getClaims()) {
+                        ClaimsPermissions perms = new ClaimsPermissions(
+                            c.permissions.build,
+                            c.permissions.breakBlocks,
+                            c.permissions.containers,
+                            c.permissions.interact
+                        );
+                        entries.add(new ClaimEntry(c.id, c.name, c.owner, c.chunks, c.corners, c.dimension, perms));
+                    }
+                    ClaimsResponsePayload response = new ClaimsResponsePayload(payload.query_id, entries, true, "Success");
+                    client.send(new Packet("claims_response", response));
+                    break;
+                }
+                case "claims_permission_update": {
+                    ClaimsPermissionUpdatePayload payload = GSON.fromJson(payloadObj, ClaimsPermissionUpdatePayload.class);
+                    boolean isAuth = client.isAuthenticated();
+                    if (!isAuth) {
+                        client.send(new Packet("claims_permission_response", new GenericActionResponsePayload(payload.query_id, false, "Unauthorized", 0.0)));
+                        break;
+                    }
+                    server.execute(() -> {
+                        com.craftcore.claim.ClaimManager.Claim claim = com.craftcore.claim.ClaimManager.getClaim(payload.claimId);
+                        if (claim == null) {
+                            client.send(new Packet("claims_permission_response", new GenericActionResponsePayload(payload.query_id, false, "Claim not found", 0.0)));
+                            return;
+                        }
+                        
+                        java.util.List<String> allowedList = null;
+                        if ("build".equalsIgnoreCase(payload.permissionType)) {
+                            allowedList = claim.permissions.build;
+                        } else if ("break".equalsIgnoreCase(payload.permissionType)) {
+                            allowedList = claim.permissions.breakBlocks;
+                        } else if ("containers".equalsIgnoreCase(payload.permissionType)) {
+                            allowedList = claim.permissions.containers;
+                        } else if ("interact".equalsIgnoreCase(payload.permissionType)) {
+                            allowedList = claim.permissions.interact;
+                        }
+                        
+                        if (allowedList != null) {
+                            if ("grant".equalsIgnoreCase(payload.action)) {
+                                if (!allowedList.contains(payload.player)) {
+                                    allowedList.add(payload.player);
+                                }
+                            } else if ("revoke".equalsIgnoreCase(payload.action)) {
+                                allowedList.remove(payload.player);
+                            }
+                            com.craftcore.claim.ClaimManager.save();
+                            client.send(new Packet("claims_permission_response", new GenericActionResponsePayload(payload.query_id, true, "Permission updated successfully", 0.0)));
+                        } else {
+                            client.send(new Packet("claims_permission_response", new GenericActionResponsePayload(payload.query_id, false, "Invalid permission type", 0.0)));
+                        }
+                    });
+                    break;
+                }
+                case "join_response": {
+                    JoinResponsePayload payload = GSON.fromJson(payloadObj, JoinResponsePayload.class);
+                    server.execute(() -> {
+                        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(payload.username);
+                        if (player != null) {
+                            com.craftcore.task.DailyTaskManager.displayGreetingCard(player, payload.hasCheckedIn, payload.pendingMailCount);
+                        }
+                    });
+                    break;
+                }
+                case "daily_tasks_query": {
+                    DailyTasksQueryPayload payload = GSON.fromJson(payloadObj, DailyTasksQueryPayload.class);
+                    boolean isAuth = client.isAuthenticated();
+                    java.util.List<java.util.Map<String, Object>> taskList = new java.util.ArrayList<>();
+                    String dateStr = com.craftcore.task.DailyTaskManager.getTaipeiDate();
+                    boolean success = false;
+                    if (isAuth) {
+                        try {
+                            String username = payload.username;
+                            com.craftcore.task.DailyTaskManager.DailyTaskDef[] dailyTasks = com.craftcore.task.DailyTaskManager.getDailyTasks(dateStr);
+                            
+                            int slayProgress = com.craftcore.economy.EconomyManager.getDailyTaskSlayProgress(username);
+                            int mineProgress = com.craftcore.economy.EconomyManager.getDailyTaskGatherProgress(username);
+
+                            java.util.Map<String, Object> t1 = new java.util.HashMap<>();
+                            t1.put("type", dailyTasks[0].type);
+                            t1.put("target", dailyTasks[0].target);
+                            t1.put("count", dailyTasks[0].count);
+                            t1.put("reward", dailyTasks[0].reward);
+                            t1.put("progress", slayProgress);
+                            taskList.add(t1);
+
+                            java.util.Map<String, Object> t2 = new java.util.HashMap<>();
+                            t2.put("type", dailyTasks[1].type);
+                            t2.put("target", dailyTasks[1].target);
+                            t2.put("count", dailyTasks[1].count);
+                            t2.put("reward", dailyTasks[1].reward);
+                            t2.put("progress", mineProgress);
+                            taskList.add(t2);
+
+                            success = true;
+                        } catch (Exception e) {
+                            success = false;
+                        }
+                    }
+                    DailyTasksResponsePayload response = new DailyTasksResponsePayload(payload.query_id, payload.username, taskList, dateStr, success);
+                    client.send(new Packet("daily_tasks_response", response));
+                    break;
+                }
+                case "lockboxes_query": {
+                    LockboxesQueryPayload payload = GSON.fromJson(payloadObj, LockboxesQueryPayload.class);
+                    java.util.List<LockboxEntry> entries = new java.util.ArrayList<>();
+                    for (com.craftcore.claim.LockboxManager.Lockbox l : com.craftcore.claim.LockboxManager.getLockboxes()) {
+                        entries.add(new LockboxEntry(l.id, l.location, l.owner, l.authorized));
+                    }
+                    LockboxesResponsePayload response = new LockboxesResponsePayload(payload.query_id, entries, true, "Success");
+                    client.send(new Packet("lockboxes_response", response));
+                    break;
+                }
             }
         } catch (Exception e) {
             System.err.println("[CraftCore] Error parsing or handling packet: " + e.getMessage());

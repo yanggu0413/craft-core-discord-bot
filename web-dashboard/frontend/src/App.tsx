@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Sun, Moon, Shield, DollarSign, ShoppingBag, BarChart3, 
-  User, Copy, Search, LogOut, ArrowUpDown, ChevronRight,
-  TrendingUp, Award, AwardIcon, Compass, Sparkles, RefreshCw,
-  Mail, Settings, Bell, ChevronDown, Check, AlertTriangle
-} from 'lucide-react';
-import { 
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, 
-  Tooltip, CartesianGrid, Legend 
-} from 'recharts';
+import { useState, useEffect, useRef } from 'react';
+import { Check, AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
+import DashboardLayout from './components/DashboardLayout';
+import HomeView from './components/views/HomeView';
+import ExplorerView from './components/views/ExplorerView';
+import MarketView from './components/views/MarketView';
+import OwnerView from './components/views/OwnerView';
+import ClaimsView from './components/views/ClaimsView';
+import LockboxesView from './components/views/LockboxesView';
+import { Card, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { cn } from './lib/utils';
 
-// API Configuration
+// 後端介面設定
 const API_URL = 'http://localhost:3000/api';
 const WS_URL = 'ws://localhost:3000/ws';
 
@@ -42,59 +42,84 @@ interface TradeLog {
 }
 
 export default function App() {
-  // Theme state
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  // 主題設定：預設使用淺色模式
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('theme_mode');
+    return saved ? saved === 'dark' : false;
+  });
 
-  // Auth state
+  // 同步樣式類名與主題狀態
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+      localStorage.setItem('theme_mode', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+      localStorage.setItem('theme_mode', 'light');
+    }
+  }, [isDarkMode]);
+
+  // 登入憑證與帳號狀態
   const [token, setToken] = useState<string | null>(localStorage.getItem('jwt_token'));
   const [username, setUsername] = useState<string | null>(localStorage.getItem('mc_username'));
-  const [uuid, setUuid] = useState<string | null>(localStorage.getItem('mc_uuid'));
+  const [, setUuid] = useState<string | null>(localStorage.getItem('mc_uuid'));
   const [userBalance, setUserBalance] = useState<number>(0);
-  const [devLoginInput, setDevLoginInput] = useState('Yanggu');
 
-  // Page routing
-  const [activeTab, setActiveTab] = useState<'home' | 'explorer' | 'market' | 'owner'>('home');
+  // 個人福利與收發件狀態
+  const [keysCount, setKeysCount] = useState<number>(0);
+  const [checkinStreak, setCheckinStreak] = useState<number>(0);
+  const [totalCheckins, setTotalCheckins] = useState<number>(0);
+  const [lastCheckin, setLastCheckin] = useState<string | null>(null);
+  const [mails, setMails] = useState<any[]>([]);
+  const [liveTrades, setLiveTrades] = useState<any[]>([]);
 
-  // Data states
+  // 當前選單分頁
+  const [activeTab, setActiveTab] = useState<'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes'>('home');
+
+  // 全域數據狀態
   const [stats, setStats] = useState({ totalCirculation: 0, accumulatedSalesTax: 0, totalShopsCount: 0 });
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [shops, setShops] = useState<ChestShop[]>([]);
-  const [analytics, setAnalytics] = useState<any>({});
+  const [analytics, setAnalytics] = useState<Record<string, any[]>>({});
+  const [claims, setClaims] = useState<any[]>([]);
+  const [lockboxes, setLockboxes] = useState<any[]>([]);
   const [selectedMineral, setSelectedMineral] = useState('minecraft:diamond');
-  
-  // Search & Filter state
+  const [dailyTasks, setDailyTasks] = useState<any[]>([]);
+  const [dailyTasksDate, setDailyTasksDate] = useState<string>('');
+
+  // 搜尋與篩選狀態 (商店導航使用)
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'stock_desc'>('price_asc');
 
-  // Loading states
+  // 載入與更新狀態
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Toast Notifications list
-  const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'info' }[]>([]);
+  // 提示訊息列表
+  const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'info' | 'error' }[]>([]);
 
-  // Owner Panel states
-  const [renameShopCoords, setRenameShopCoords] = useState<string | null>(null);
-  const [newShopName, setNewShopName] = useState('');
-
-  // Refs for tracking WS
+  // 建立套接字參照
   const wsRef = useRef<WebSocket | null>(null);
 
-  // Toast trigger helper
-  const triggerToast = (message: string, type: 'success' | 'info' = 'success') => {
+  // 觸發提示訊息工具
+  const triggerToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     const id = Math.random().toString();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 6000);
+    }, 7000);
   };
 
-  // Sync token search parameters on redirect oauth callback load
+  // 驗證開放授權重新導向參數
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tokenParam = params.get('token');
     const userParam = params.get('username');
     const uuidParam = params.get('uuid');
+    const errorParam = params.get('error');
+    const discordUsername = params.get('discord_username');
 
     if (tokenParam && userParam && uuidParam) {
       localStorage.setItem('jwt_token', tokenParam);
@@ -103,48 +128,112 @@ export default function App() {
       setToken(tokenParam);
       setUsername(userParam);
       setUuid(uuidParam);
-      // Clean URL params
       window.history.replaceState({}, document.title, window.location.pathname);
       triggerToast(`歡迎回來，${userParam}！`, 'success');
+    } else if (errorParam === 'not_bound') {
+      const nameStr = discordUsername ? `您的通訊軟體帳號（@${decodeURIComponent(discordUsername)}）` : '您的通訊軟體帳號';
+      triggerToast(`${nameStr}尚未與遊戲角色連結綁定。請先登入遊戲輸入指令「/discord link」獲取驗證碼，再前往官方通訊伺服器使用指令進行綁定。`, 'error');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (errorParam) {
+      triggerToast(`登入失敗：安全驗證錯誤（${errorParam}）`, 'error');
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
-  // Fetch initial server stats, leaderboard & shops
+  // 獲取伺服器基礎數據
   const fetchData = async () => {
     setIsRefreshing(true);
     try {
-      // 1. Stats
+      // 1. 系統統計
       const statsRes = await fetch(`${API_URL}/stats`);
       const statsJson = await statsRes.json();
       if (statsJson.success) setStats(statsJson.stats);
 
-      // 2. Leaderboard
+      // 2. 富豪榜
       const leadRes = await fetch(`${API_URL}/leaderboard`);
       const leadJson = await leadRes.json();
       if (leadJson.success) setLeaderboard(leadJson.leaderboard);
 
-      // 3. Shops list
+      // 3. 商店列表
       const shopsRes = await fetch(`${API_URL}/shops`);
       const shopsJson = await shopsRes.json();
       if (shopsJson.success) setShops(shopsJson.shops);
 
-      // 4. Analytics
+      // 4. 市場行情
       const analRes = await fetch(`${API_URL}/market/analytics`);
       const analJson = await analRes.json();
       if (analJson.success) setAnalytics(analJson.analytics);
 
-      // 5. User balance if logged in
+      // 5. 即時成交歷史
+      try {
+        const recentRes = await fetch(`${API_URL}/market/recent`);
+        const recentJson = await recentRes.json();
+        if (recentJson.success) {
+          setLiveTrades(recentJson.trades || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch recent trades', err);
+      }
+
+      // 6. 登入玩家的帳戶資料與信箱
       if (token) {
-        const userProfileRes = await fetch(`${API_URL}/user/profile`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const userProfileJson = await userProfileRes.json();
-        if (userProfileJson.success) {
-          setUserBalance(userProfileJson.user.balance);
+        try {
+          const profileRes = await fetch(`${API_URL}/user/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const profileJson = await profileRes.json();
+          if (profileJson.success) {
+            setUserBalance(profileJson.user.balance);
+            setKeysCount(profileJson.user.keys_count || 0);
+            setCheckinStreak(profileJson.user.checkin_streak || 0);
+            setTotalCheckins(profileJson.user.total_checkins || 0);
+            setLastCheckin(profileJson.user.last_checkin || null);
+          }
+        } catch (err) {
+          console.error('Failed to fetch profile', err);
+        }
+
+        try {
+          const mailsRes = await fetch(`${API_URL}/user/mails`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const mailsJson = await mailsRes.json();
+          if (mailsJson.success) {
+            setMails(mailsJson.mails || []);
+          }
+        } catch (err) {
+          console.error('Failed to fetch mails', err);
         }
       }
+
+      // 7. 今日每日任務
+      try {
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const tasksRes = await fetch(`${API_URL}/tasks/daily`, { headers });
+        const tasksJson = await tasksRes.json();
+        if (tasksJson.success) {
+          setDailyTasks(tasksJson.tasks || []);
+          setDailyTasksDate(tasksJson.date || '');
+        }
+      } catch (err) {
+        console.error('Failed to fetch tasks', err);
+      }
+
+      // 8. 領地列表
+      const claimsRes = await fetch(`${API_URL}/claims`);
+      const claimsJson = await claimsRes.json();
+      if (claimsJson.success) setClaims(claimsJson.claims);
+
+      // 9. 密碼鎖列表
+      const lockboxesRes = await fetch(`${API_URL}/lockboxes`);
+      const lockboxesJson = await lockboxesRes.json();
+      if (lockboxesJson.success) setLockboxes(lockboxesJson.lockboxes);
+
     } catch (err) {
-      console.error('Failed to fetch API data', err);
+      console.error('Failed to fetch data', err);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -155,13 +244,13 @@ export default function App() {
     fetchData();
   }, [token]);
 
-  // Establish Live WebSocket connection with Backend
+  // 建立套接字連線
   useEffect(() => {
     const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log('Live WS connection to backend established.');
+      console.log('Live WS connection active.');
     };
 
     ws.onmessage = (event) => {
@@ -173,22 +262,31 @@ export default function App() {
           const log = payload as TradeLog;
           const cleanedItem = log.item.replace('minecraft:', '').toUpperCase();
           triggerToast(
-            `🛒 交易動態：${log.buyer} 向 ${log.seller} 購買了 ${log.quantity} 個 ${cleanedItem}，總額 $${log.net_profit + log.tax_deducted} 元！`,
+            `交易動態：玩家 ${log.buyer} 向店主 ${log.seller} 購買了 ${log.quantity} 個 ${cleanedItem}，成交金額 $${log.net_profit + log.tax_deducted} 元！`,
             'info'
           );
-          // Auto refresh stats dynamically
+          
+          setLiveTrades((prev) => [
+            {
+              time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+              buyer: log.buyer,
+              seller: log.seller,
+              item: cleanedItem,
+              quantity: log.quantity,
+              profit: log.net_profit
+            },
+            ...prev
+          ].slice(0, 15));
+
           fetchData();
         }
       } catch (err) {
-        console.error('Error handling live WS packet', err);
+        console.error('Error parsing live WS packet', err);
       }
     };
 
     ws.onclose = () => {
-      console.warn('Live WS disconnected, reconnecting in 5s...');
-      setTimeout(() => {
-        // Simple reconnect
-      }, 5000);
+      console.warn('Live WS closed. Reconnecting...');
     };
 
     return () => {
@@ -196,29 +294,6 @@ export default function App() {
     };
   }, []);
 
-  // Developer Bypass Auth Login handler
-  const handleDevLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!devLoginInput.trim()) return;
-
-    try {
-      const res = await fetch(`${API_URL}/auth/dev-login?username=${devLoginInput.trim()}`);
-      const data = await res.json();
-      if (data.success) {
-        localStorage.setItem('jwt_token', data.token);
-        localStorage.setItem('mc_username', data.user.mc_username);
-        localStorage.setItem('mc_uuid', data.user.mc_uuid);
-        setToken(data.token);
-        setUsername(data.user.mc_username);
-        setUuid(data.user.mc_uuid);
-        triggerToast('開發者模式登入成功！', 'success');
-      } else {
-        triggerToast('登入失敗：' + data.message, 'info');
-      }
-    } catch (err) {
-      triggerToast('開發者登入發生錯誤！', 'info');
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('jwt_token');
@@ -228,24 +303,31 @@ export default function App() {
     setUsername(null);
     setUuid(null);
     setUserBalance(0);
-    triggerToast('已成功登出。', 'success');
+    triggerToast('帳號已安全登出。', 'success');
   };
 
-  // Coords Copy Action helper
+  const handleLoginTrigger = () => {
+    fetch(`${API_URL}/auth/url`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.url) window.location.href = json.url;
+      })
+      .catch(() => triggerToast('安全驗證連結獲取失敗，請改用下方開發者測試通道登入。', 'error'));
+  };
+
+  // 複製對應座標的傳送指令
   const handleCopyTpCommand = (location: string) => {
     const coords = location.split(',').map(s => s.trim());
     if (coords.length === 3) {
       const cmd = `/tp ${coords[0]} ${coords[1]} ${coords[2]}`;
       navigator.clipboard.writeText(cmd);
-      triggerToast(`已複製傳送指令: ${cmd}`, 'success');
+      triggerToast(`已成功複製傳送指令：${cmd}`, 'success');
     }
   };
 
-  // Rename Chest Shop Escalated post
-  const handleRenameShopSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!renameShopCoords || !newShopName.trim() || !token) return;
-
+  // 遠端更改商店名稱
+  const handleRenameShopSubmit = async (coords: string, newName: string) => {
+    if (!token) return;
     try {
       const res = await fetch(`${API_URL}/shop/rename`, {
         method: 'POST',
@@ -254,25 +336,23 @@ export default function App() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          coords: renameShopCoords,
-          custom_name: newShopName.trim()
+          coords,
+          custom_name: newName.trim()
         })
       });
       const data = await res.json();
       if (data.success) {
-        triggerToast('商店重命名成功！已扣除 $5,000 手續費。', 'success');
-        setRenameShopCoords(null);
-        setNewShopName('');
+        triggerToast('商店告示牌名稱修改成功！帳戶已扣除金幣手續費 $5,000 元。', 'success');
         fetchData();
       } else {
-        triggerToast(`❌ 失敗: ${data.message}`, 'info');
+        triggerToast(`更名失敗：${data.message}`, 'error');
       }
-    } catch (err: any) {
-      triggerToast('更名過程發生錯誤！', 'info');
+    } catch (err) {
+      triggerToast('更名操作連線失敗，請檢查網路連線。', 'error');
     }
   };
 
-  // Withdraw Shop escrow money
+  // 提領商店累積的交易營收
   const handleWithdrawRevenue = async (coords: string) => {
     if (!token) return;
     try {
@@ -286,17 +366,17 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        triggerToast(data.message, 'success');
+        triggerToast(data.message || '金幣提領成功！已匯入您的個人帳戶。', 'success');
         fetchData();
       } else {
-        triggerToast(`❌ 提領失敗: ${data.message}`, 'info');
+        triggerToast(`提領失敗：${data.message}`, 'error');
       }
     } catch (err) {
-      triggerToast('提領營收發生錯誤', 'info');
+      triggerToast('提領營收連線異常，請稍後再試。', 'error');
     }
   };
 
-  // Upgrade slots limit post
+  // 升級商店插槽上限
   const handleUpgradeSlots = async () => {
     if (!token) return;
     try {
@@ -306,646 +386,174 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        triggerToast('成功升級商店插槽上限！', 'success');
+        triggerToast('成功提升商店最大註冊數量上限！', 'success');
         fetchData();
       } else {
-        triggerToast(`❌ 升級失敗: ${data.message}`, 'info');
+        triggerToast(`升級失敗：${data.message}`, 'error');
       }
     } catch (err) {
-      triggerToast('升級過程發生錯誤', 'info');
+      triggerToast('升級申請連線錯誤', 'error');
     }
   };
 
-  // Filtered Chest Shops logic
-  const filteredShops = shops
-    .filter(shop => {
-      const cleanItem = shop.item.replace('minecraft:', '').toLowerCase();
-      const customName = (shop.custom_name || '').toLowerCase();
-      const owner = shop.owner.toLowerCase();
-      const query = searchQuery.toLowerCase();
-      return cleanItem.includes(query) || customName.includes(query) || owner.includes(query);
-    })
-    .sort((a, b) => {
-      if (sortBy === 'price_asc') return a.buy_price - b.buy_price;
-      if (sortBy === 'price_desc') return b.buy_price - a.buy_price;
-      if (sortBy === 'stock_desc') return b.stock - a.stock;
-      return 0;
-    });
-
-  // Toggle Dark Mode
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
+  // 更新領地保護區玩家權限
+  const handleUpdatePermission = async (claimId: string, permissionType: string, player: string, action: 'grant' | 'revoke') => {
+    try {
+      const res = await fetch(`${API_URL}/claims/permission`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ claimId, permissionType, player, action })
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast(data.message || '領地授權名單更新成功！', 'success');
+        // 重新獲取最新的領地保護區資料
+        const claimsRes = await fetch(`${API_URL}/claims`);
+        const claimsJson = await claimsRes.json();
+        if (claimsJson.success) setClaims(claimsJson.claims);
+      } else {
+        triggerToast(data.message || '更新授權名單失敗！', 'error');
+      }
+    } catch (err: any) {
+      triggerToast(`連線失敗：${err.message}`, 'error');
+    }
   };
 
   return (
-    <div className={`min-h-screen font-sans ${isDarkMode ? 'dark bg-darkBg text-zinc-100' : 'light bg-lightBg text-zinc-800'}`}>
-      
-      {/* 1. Header Navigation Bar */}
-      <header className="sticky top-0 z-40 w-full glass-panel border-b py-3 px-6 flex items-center justify-between transition-all">
-        <div className="flex items-center space-x-3">
-          <div className="bg-gradient-to-tr from-emerald-500 to-teal-400 p-2 rounded-xl text-white shadow-lg shadow-emerald-500/20">
-            <Compass className="w-6 h-6 animate-pulse" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-              CRAFT-CORE
-            </h1>
-            <p className="text-xs opacity-60">聯名伺服器 Web 資訊板</p>
-          </div>
+    <DashboardLayout
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      isDarkMode={isDarkMode}
+      toggleTheme={() => setIsDarkMode(!isDarkMode)}
+      token={token}
+      username={username}
+      userBalance={userBalance}
+      handleLogout={handleLogout}
+      handleLoginTrigger={handleLoginTrigger}
+    >
+      {/* 連線同步狀態 */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-24 space-y-4">
+          <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-xs text-muted-foreground">正在同步遊戲伺服器數據，請稍候...</p>
         </div>
-
-        {/* Navigation Tabs */}
-        <nav className="hidden md:flex space-x-1">
-          {[
-            { id: 'home', label: '📊 數據總覽', icon: BarChart3 },
-            { id: 'explorer', label: '🏪 商店導航', icon: ShoppingBag },
-            { id: 'market', label: '📈 市場行情', icon: TrendingUp },
-            { id: 'owner', label: '🔑 店主管理', icon: User }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                activeTab === tab.id 
-                  ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-400 shadow-inner' 
-                  : 'hover:bg-zinc-500/10 opacity-70 hover:opacity-100'
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        {/* User Auth Section / Theme switch */}
-        <div className="flex items-center space-x-4">
-          <button 
-            onClick={toggleTheme}
-            className="p-2.5 rounded-xl hover:bg-zinc-500/15 transition-all text-zinc-400 hover:text-emerald-400"
-            title="切換主題"
-          >
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
-
-          {token && username ? (
-            <div className="flex items-center space-x-3 bg-zinc-500/10 py-1.5 pl-3 pr-2 rounded-2xl border border-zinc-500/10">
-              <img 
-                src={`https://mc-heads.net/avatar/${username}/32`} 
-                alt={username}
-                className="w-7 h-7 rounded-lg shadow-md"
-              />
-              <div className="text-left hidden sm:block">
-                <p className="text-xs font-semibold leading-tight">{username}</p>
-                <p className="text-[10px] text-emerald-400 font-medium">💰 ${userBalance.toLocaleString()} 元</p>
-              </div>
-              <button 
-                onClick={handleLogout}
-                className="p-1.5 rounded-lg hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition-all ml-1"
-                title="登出系統"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <button 
-              onClick={() => {
-                // If developer mode is detected, just trigger popup, otherwise link oauth url
-                fetch(`${API_URL}/auth/url`)
-                  .then(res => res.json())
-                  .then(json => {
-                    if (json.url) window.location.href = json.url;
-                  })
-                  .catch(() => triggerToast('OAuth 連結獲取失敗，請使用開發者登入！', 'info'));
-              }}
-              className="bg-emerald-500 hover:bg-emerald-400 text-white font-medium text-sm px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center space-x-2"
-            >
-              <span>🔑 綁定登入</span>
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* 2. Main Layout Content Area */}
-      <main className="max-w-7xl mx-auto p-6 md:p-8 animate-fade-in">
-        
-        {/* Sync loading spinner */}
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-32 space-y-4">
-            <RefreshCw className="w-12 h-12 text-emerald-500 animate-spin" />
-            <p className="text-sm opacity-60">正在對接 Minecraft 伺服器，請稍候...</p>
-          </div>
-        ) : (
-          <>
-            {/* Login Required / Dev Login Section on top if not authenticated */}
-            {!token && (
-              <div className="mb-8 p-6 glass-panel rounded-3xl border flex flex-col md:flex-row items-center justify-between gap-6 bg-gradient-to-r from-emerald-500/10 to-teal-500/5">
+      ) : (
+        <div className="space-y-6">
+          {/* 未登入狀態下的橫幅 */}
+          {!token && (
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-6">
                 <div className="text-left space-y-2">
-                  <div className="flex items-center space-x-2 text-emerald-400 font-bold">
-                    <Sparkles className="w-5 h-5" />
-                    <span>對話串接已啟用 (WebSocket RPC Active)</span>
+                  <div className="inline-flex items-center space-x-1.5 px-2 py-0.5 border border-emerald-500/20 bg-emerald-500/10 rounded-[2px] text-[10px] text-emerald-500 font-bold">
+                    <Sparkles className="w-3 h-3" />
+                    <span>伺服器即時通訊服務已啟用</span>
                   </div>
-                  <h2 className="text-2xl font-bold">請先登入您的 Minecraft 帳號</h2>
-                  <p className="text-sm opacity-70">
-                    您需要與 Discord Bot 建立綁定，登入後即可享有遙控修改商店標題、提領餘額以及資產統計。
-                  </p>
+                  <CardTitle className="text-base font-bold">請先連結並登入您的遊戲帳號</CardTitle>
+                  <CardDescription className="text-xs leading-relaxed">
+                    請先在遊戲中輸入指令「/discord link」獲取驗證碼，並於官方 Discord 伺服器中輸入指令進行綁定。完成後即可點擊右上方的「Discord 帳號登入」按鈕進行安全登入，隨時查詢領地狀態、遙控商店更名與提領金幣。
+                  </CardDescription>
                 </div>
-                
-                {/* Developer Login Card */}
-                <form onSubmit={handleDevLogin} className="flex items-center space-x-3 bg-zinc-500/10 p-2 rounded-2xl border border-zinc-500/10 w-full md:w-auto">
-                  <input 
-                    type="text"
-                    placeholder="輸入測試玩家 IGN"
-                    value={devLoginInput}
-                    onChange={(e) => setDevLoginInput(e.target.value)}
-                    className="bg-transparent border-0 outline-none text-sm px-3 py-2 w-32 md:w-40 text-center font-semibold tracking-wider text-emerald-400 placeholder:text-zinc-500"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-zinc-700 hover:bg-zinc-600 text-zinc-100 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0"
-                  >
-                    🛠️ 測試登入
-                  </button>
-                </form>
-              </div>
-            )}
+              </CardHeader>
+            </Card>
+          )}
 
-            {/* TAB CONTENT A: Home Panel */}
-            {activeTab === 'home' && (
-              <div className="space-y-8">
-                {/* Statistics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {[
-                    { title: '💰 總流通金幣 (Circulation)', value: `$${stats.totalCirculation.toLocaleString()} 元`, desc: '全服綁定玩家總持有金幣', color: 'from-emerald-500 to-teal-400' },
-                    { title: '🏛️ 累計收繳稅額 (Sales Tax)', value: `$${Number(stats.accumulatedSalesTax.toFixed(1)).toLocaleString()} 元`, desc: '胸口商店累計交易徵收稅款', color: 'from-blue-500 to-cyan-400' },
-                    { title: '🏪 營運中胸口商店 (Active Shops)', value: `${stats.totalShopsCount} 間`, desc: '當前伺服器運作中的商店總數', color: 'from-amber-500 to-orange-400' }
-                  ].map((card, i) => (
-                    <div key={i} className="glass-panel p-6 rounded-3xl border text-left relative overflow-hidden group">
-                      <div className={`absolute top-0 left-0 w-2 h-full bg-gradient-to-b ${card.color}`} />
-                      <h3 className="text-xs font-semibold tracking-wider opacity-65 uppercase">{card.title}</h3>
-                      <p className="text-3xl font-extrabold mt-3 tracking-tight">{card.value}</p>
-                      <p className="text-xs opacity-60 mt-2">{card.desc}</p>
-                    </div>
-                  ))}
-                </div>
+          {/* 各分頁視圖切換 */}
+          {activeTab === 'home' && (
+            <HomeView
+              stats={stats}
+              dailyTasks={dailyTasks}
+              dailyTasksDate={dailyTasksDate}
+              token={token}
+              username={username}
+              checkinStreak={checkinStreak}
+              totalCheckins={totalCheckins}
+              keysCount={keysCount}
+              lastCheckin={lastCheckin}
+              mails={mails}
+              leaderboard={leaderboard}
+              liveTrades={liveTrades}
+              fetchData={fetchData}
+              isRefreshing={isRefreshing}
+            />
+          )}
 
-                {/* Main Content Splitted Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Left: Wealth Leaderboard */}
-                  <div className="lg:col-span-2 glass-panel rounded-3xl border p-6 flex flex-col">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center space-x-3">
-                        <Award className="w-6 h-6 text-amber-400" />
-                        <h2 className="text-xl font-bold tracking-tight">🏆 伺服器財富富豪榜</h2>
-                      </div>
-                      <button 
-                        onClick={fetchData} 
-                        disabled={isRefreshing}
-                        className="text-xs flex items-center space-x-1.5 opacity-60 hover:opacity-100 transition-all hover:text-emerald-400 disabled:opacity-30"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                        <span>重新整理</span>
-                      </button>
-                    </div>
+          {activeTab === 'explorer' && (
+            <ExplorerView
+              shops={shops}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              handleCopyTpCommand={handleCopyTpCommand}
+            />
+          )}
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="border-b border-zinc-500/10 text-xs opacity-60 uppercase font-semibold">
-                            <th className="py-3 px-4 w-16">排名</th>
-                            <th className="py-3 px-4">玩家名稱 (IGN)</th>
-                            <th className="py-3 px-4 text-right">財富餘額</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-500/5">
-                          {leaderboard.slice(0, 10).map((player, idx) => {
-                            let medal = <span className="font-semibold opacity-60">{idx + 1}</span>;
-                            if (idx === 0) medal = <span className="text-2xl">🥇</span>;
-                            else if (idx === 1) medal = <span className="text-2xl">🥈</span>;
-                            else if (idx === 2) medal = <span className="text-2xl">🥉</span>;
+          {activeTab === 'market' && (
+            <MarketView
+              analytics={analytics}
+              selectedMineral={selectedMineral}
+              setSelectedMineral={setSelectedMineral}
+              isDarkMode={isDarkMode}
+            />
+          )}
 
-                            return (
-                              <tr key={idx} className="hover:bg-zinc-500/5 transition-all rounded-xl">
-                                <td className="py-3.5 px-4 font-bold text-sm">{medal}</td>
-                                <td className="py-3.5 px-4 flex items-center space-x-3">
-                                  <img 
-                                    src={`https://mc-heads.net/avatar/${player.username}/24`} 
-                                    alt={player.username}
-                                    className="w-6 h-6 rounded-md"
-                                  />
-                                  <span className="font-semibold text-sm">{player.username}</span>
-                                </td>
-                                <td className="py-3.5 px-4 text-right font-extrabold text-emerald-400 text-sm">
-                                  ${player.balance.toLocaleString()} 元
-                                </td>
-                              </tr>
-                            );
-                          })}
-                          {leaderboard.length === 0 && (
-                            <tr>
-                              <td colSpan={3} className="py-8 text-center text-sm opacity-60">目前暫無任何排行榜數據</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+          {activeTab === 'owner' && (
+            <OwnerView
+              shops={shops}
+              token={token}
+              username={username}
+              handleWithdrawRevenue={handleWithdrawRevenue}
+              handleRenameShopSubmit={handleRenameShopSubmit}
+              handleUpgradeSlots={handleUpgradeSlots}
+            />
+          )}
 
-                  {/* Right: Live trade feed widget */}
-                  <div className="glass-panel rounded-3xl border p-6 flex flex-col text-left">
-                    <div className="flex items-center space-x-2.5 mb-6">
-                      <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
-                      <h2 className="text-lg font-bold">🛒 即時交易動態日誌</h2>
-                    </div>
+          {activeTab === 'claims' && (
+            <ClaimsView
+              claims={claims}
+              username={username}
+              handleUpdatePermission={handleUpdatePermission}
+            />
+          )}
 
-                    <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
-                      {/* We will populate some mock dynamic logs if empty */}
-                      {[
-                        { time: '17:52', buyer: 'Yanggu', seller: 'Rory', item: '鑽石', profit: 5000 },
-                        { time: '17:48', buyer: 'Alice', seller: 'Bob', item: '鐵錠 x 64', profit: 1600 },
-                        { time: '17:40', buyer: 'Charlie', seller: 'Yanggu', item: '獄髓碎片', profit: 4500 }
-                      ].map((trade, i) => (
-                        <div key={i} className="p-3 bg-zinc-500/5 hover:bg-zinc-500/10 rounded-2xl border border-zinc-500/5 text-xs transition-all space-y-1">
-                          <div className="flex items-center justify-between text-[10px] opacity-60">
-                            <span>⏱️ {trade.time}</span>
-                            <span className="text-emerald-400 font-bold">成交 ${trade.profit} 元</span>
-                          </div>
-                          <p className="leading-relaxed">
-                            <span className="font-semibold text-emerald-400">{trade.buyer}</span> 購買了 
-                            <span className="font-semibold text-amber-400"> {trade.item} </span>
-                            (賣家: <span className="opacity-80">{trade.seller}</span>)
-                          </p>
-                        </div>
-                      ))}
-                      <div className="text-center py-4 text-[10px] opacity-50 border-t border-zinc-500/5 mt-4">
-                        💡 遊戲內交易箱子時，網頁將自動彈出實時更新！
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB CONTENT B: Shop Explorer */}
-            {activeTab === 'explorer' && (
-              <div className="space-y-6">
-                {/* Search and Filters toolbar */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 glass-panel rounded-3xl border">
-                  {/* Search box */}
-                  <div className="flex items-center bg-zinc-500/10 px-4 py-2.5 rounded-2xl border border-zinc-500/5 w-full md:max-w-md">
-                    <Search className="w-5 h-5 text-zinc-400 shrink-0 mr-2" />
-                    <input 
-                      type="text" 
-                      placeholder="模糊關鍵字搜尋商品、擁有者..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="bg-transparent border-0 outline-none w-full text-sm placeholder:text-zinc-500 text-zinc-100"
-                    />
-                  </div>
-
-                  {/* Sorter toggles */}
-                  <div className="flex items-center space-x-2 w-full md:w-auto shrink-0 justify-end">
-                    <button
-                      onClick={() => setSortBy('price_asc')}
-                      className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                        sortBy === 'price_asc' 
-                          ? 'bg-emerald-500 text-white border-emerald-500' 
-                          : 'bg-zinc-500/10 hover:bg-zinc-500/15 border-transparent'
-                      }`}
-                    >
-                      💰 價格低到高
-                    </button>
-                    <button
-                      onClick={() => setSortBy('price_desc')}
-                      className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                        sortBy === 'price_desc' 
-                          ? 'bg-emerald-500 text-white border-emerald-500' 
-                          : 'bg-zinc-500/10 hover:bg-zinc-500/15 border-transparent'
-                      }`}
-                    >
-                      📈 價格高到低
-                    </button>
-                    <button
-                      onClick={() => setSortBy('stock_desc')}
-                      className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                        sortBy === 'stock_desc' 
-                          ? 'bg-emerald-500 text-white border-emerald-500' 
-                          : 'bg-zinc-500/10 hover:bg-zinc-500/15 border-transparent'
-                      }`}
-                    >
-                      🎒 庫存多到少
-                    </button>
-                  </div>
-                </div>
-
-                {/* Directory Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredShops.map((shop, i) => {
-                    const cleanItem = shop.item.replace('minecraft:', '').replace('_', ' ').toUpperCase();
-                    return (
-                      <div key={i} className="glass-panel p-5 rounded-3xl border text-left flex flex-col justify-between hover:shadow-lg hover:shadow-emerald-500/5 transition-all group">
-                        
-                        <div className="space-y-3">
-                          {/* Header name */}
-                          <div className="flex items-start justify-between">
-                            <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-md">
-                              📍 {shop.location}
-                            </span>
-                            <button
-                              onClick={() => handleCopyTpCommand(shop.location)}
-                              className="text-zinc-400 hover:text-emerald-400 transition-all"
-                              title="複製傳送指令 (/tp)"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-
-                          <h3 className="font-extrabold text-base tracking-wide group-hover:text-emerald-400 transition-all leading-tight">
-                            {shop.custom_name || `${shop.owner} 的胸口商店`}
-                          </h3>
-
-                          {/* Item Block info */}
-                          <div className="flex items-center space-x-3 p-3 bg-zinc-500/5 rounded-2xl border border-zinc-500/5">
-                            <img 
-                              src={`https://mc-heads.net/avatar/${shop.owner}/24`} 
-                              alt={shop.owner}
-                              className="w-6 h-6 rounded-md"
-                              title={`店主: ${shop.owner}`}
-                            />
-                            <div className="text-xs">
-                              <p className="font-semibold text-amber-400">{cleanItem}</p>
-                              <p className="opacity-60 text-[10px]">店主：{shop.owner}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Trade Actions/Escrow info */}
-                        <div className="mt-4 pt-3 border-t border-zinc-500/5 flex items-center justify-between text-xs">
-                          <div>
-                            <p className="opacity-60 text-[10px]">買入價格</p>
-                            <p className="font-extrabold text-emerald-400">${shop.buy_price} 元</p>
-                          </div>
-                          <div>
-                            <p className="opacity-60 text-[10px]">賣出回購</p>
-                            <p className="font-extrabold text-amber-500">
-                              {shop.sell_price > 0 ? `$${shop.sell_price} 元` : '不收購'}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="opacity-60 text-[10px]">剩餘庫存</p>
-                            <p className="font-bold">{shop.stock} 個</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {filteredShops.length === 0 && (
-                    <div className="col-span-full py-16 text-center text-sm opacity-60">
-                      🔍 找不到任何符合過濾條件的胸口商店
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* TAB CONTENT C: Market Analytics */}
-            {activeTab === 'market' && (
-              <div className="space-y-8">
-                {/* Mineral Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  {[
-                    { id: 'minecraft:diamond', name: '💎 鑽石 (Diamond)', avgPrice: '$530 元', trend: '+1.9%' },
-                    { id: 'minecraft:netherite_ingot', name: '🔥 獄髓合金 (Netherite)', avgPrice: '$4700 元', trend: '+3.2%' },
-                    { id: 'minecraft:iron_ingot', name: '⚙️ 鐵錠 (Iron Ingot)', avgPrice: '$29 元', trend: '+3.5%' }
-                  ].map((item, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedMineral(item.id)}
-                      className={`glass-panel p-6 rounded-3xl border text-left flex justify-between items-center transition-all ${
-                        selectedMineral === item.id 
-                          ? 'border-emerald-500 bg-emerald-500/5 shadow-lg shadow-emerald-500/5' 
-                          : 'border-zinc-500/10 hover:bg-zinc-500/5'
-                      }`}
-                    >
-                      <div>
-                        <h4 className="text-sm font-bold opacity-80">{item.name}</h4>
-                        <p className="text-2xl font-black mt-2">{item.avgPrice}</p>
-                      </div>
-                      <span className="text-xs bg-emerald-500/20 text-emerald-400 font-bold px-2 py-1 rounded-md">
-                        {item.trend}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Price trend Recharts graph */}
-                <div className="glass-panel p-6 rounded-3xl border text-left">
-                  <h3 className="text-lg font-bold mb-6 flex items-center space-x-2">
-                    <TrendingUp className="w-5 h-5 text-emerald-500" />
-                    <span>礦物價格交易量波動趨勢 (7天交易圖表)</span>
-                  </h3>
-
-                  <div className="w-full h-80">
-                    {analytics[selectedMineral] ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart
-                          data={analytics[selectedMineral]}
-                          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                        >
-                          <defs>
-                            <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                            </linearGradient>
-                            <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
-                              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                          <XAxis dataKey="date" stroke="#888888" fontSize={11} />
-                          <YAxis yAxisId="left" stroke="#10b981" fontSize={11} label={{ value: '平均價格 ($)', angle: -90, position: 'insideLeft', style: { fill: '#10b981', fontSize: 11 } }} />
-                          <YAxis yAxisId="right" orientation="right" stroke="#f59e0b" fontSize={11} label={{ value: '交易數量', angle: 90, position: 'insideRight', style: { fill: '#f59e0b', fontSize: 11 } }} />
-                          <Tooltip 
-                            contentStyle={{ 
-                              backgroundColor: isDarkMode ? '#1f1f23' : '#ffffff', 
-                              borderColor: 'rgba(16, 185, 129, 0.2)',
-                              color: isDarkMode ? '#f4f4f5' : '#18181b',
-                              borderRadius: '12px'
-                            }} 
-                          />
-                          <Area yAxisId="left" type="monotone" dataKey="price" name="平均價格" stroke="#10b981" fillOpacity={1} fill="url(#colorPrice)" strokeWidth={2} />
-                          <Area yAxisId="right" type="monotone" dataKey="volume" name="交易數量" stroke="#f59e0b" fillOpacity={1} fill="url(#colorVolume)" strokeWidth={1.5} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-full opacity-50 text-xs">
-                        目前暫無此項礦物的走勢數據
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB CONTENT D: Owner Management Panel */}
-            {activeTab === 'owner' && (
-              <div className="space-y-6">
-                {!token ? (
-                  <div className="py-16 text-center space-y-4">
-                    <User className="w-16 h-16 opacity-30 mx-auto" />
-                    <h3 className="text-xl font-bold">請先綁定您的 Minecraft 帳號</h3>
-                    <p className="text-sm opacity-60">店主面板需要通過 JWT 認證才能讀取您在遊戲內擁有的商店。</p>
-                  </div>
-                ) : (
-                  <div className="space-y-8">
-                    {/* Owner stats & upgrades banner */}
-                    <div className="glass-panel p-6 rounded-3xl border flex flex-col md:flex-row items-center justify-between gap-6 bg-gradient-to-r from-emerald-500/5 to-teal-500/10">
-                      <div className="text-left space-y-1">
-                        <h3 className="text-xl font-black">🏪 店主遙控中心</h3>
-                        <p className="text-xs opacity-75">
-                          您可以在這裡直接修改實體告示牌名稱（手續費 $5,000 元）或一鍵領取商店託管的買賣營收金幣。
-                        </p>
-                      </div>
-
-                      <div className="flex items-center space-x-3 shrink-0">
-                        <button
-                          onClick={handleUpgradeSlots}
-                          className="bg-emerald-500 hover:bg-emerald-400 text-white font-semibold text-xs px-5 py-3 rounded-xl transition-all"
-                        >
-                          ⚡ 升級商店插槽上限
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Owner Shops Grid list */}
-                    <div className="space-y-4 text-left">
-                      <h3 className="text-lg font-bold">您的旗下胸口商店 (Owned Chest Shops)</h3>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {shops
-                          .filter(shop => shop.owner.toLowerCase() === username?.toLowerCase())
-                          .map((shop, i) => {
-                            const cleanItem = shop.item.replace('minecraft:', '').toUpperCase();
-                            return (
-                              <div key={i} className="glass-panel p-6 rounded-3xl border flex flex-col justify-between gap-4">
-                                <div className="space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-md">
-                                      📍 {shop.location}
-                                    </span>
-                                    <span className="text-xs opacity-60">庫存：{shop.stock} 個</span>
-                                  </div>
-
-                                  <h4 className="font-extrabold text-base">
-                                    {shop.custom_name || `${shop.owner} 的胸口商店`}
-                                  </h4>
-
-                                  <div className="flex items-center space-x-2 text-xs opacity-80">
-                                    <span className="text-amber-400 font-bold">{cleanItem}</span>
-                                    <span>⟫ 買入價格 ${shop.buy_price} | 回購價 ${shop.sell_price}</span>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center space-x-2 pt-3 border-t border-zinc-500/5">
-                                  <button
-                                    onClick={() => handleWithdrawRevenue(shop.location)}
-                                    className="bg-zinc-500/10 hover:bg-zinc-500/15 text-emerald-400 hover:text-emerald-300 font-bold text-xs px-4 py-2.5 rounded-xl border border-transparent transition-all w-1/2"
-                                  >
-                                    💰 提領營收
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setRenameShopCoords(shop.location);
-                                      setNewShopName(shop.custom_name || '');
-                                    }}
-                                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold text-xs px-4 py-2.5 rounded-xl border border-transparent transition-all w-1/2"
-                                  >
-                                    ✏️ 遙控更名
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        
-                        {shops.filter(shop => shop.owner.toLowerCase() === username?.toLowerCase()).length === 0 && (
-                          <div className="col-span-full py-16 text-center text-sm opacity-60 bg-zinc-500/5 rounded-3xl border border-dashed border-zinc-500/10">
-                            🏝️ 您目前在伺服器中尚無註冊胸口商店
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-      </main>
-
-      {/* 3. Global Toast Notifications Overlay */}
-      <div className="fixed bottom-6 right-6 z-50 space-y-3 max-w-md w-full">
-        {toasts.map((toast) => (
-          <div 
-            key={toast.id} 
-            className={`p-4 rounded-2xl shadow-xl flex items-start space-x-3 border animate-fade-in ${
-              toast.type === 'success' 
-                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' 
-                : 'bg-zinc-800 border-zinc-700 text-zinc-100'
-            }`}
-          >
-            {toast.type === 'success' ? (
-              <Check className="w-5 h-5 shrink-0 mt-0.5" />
-            ) : (
-              <ShoppingBag className="w-5 h-5 shrink-0 mt-0.5 text-emerald-400" />
-            )}
-            <p className="text-xs font-semibold leading-relaxed text-left">{toast.message}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* 4. Owner Rename Shop Modal Overlay */}
-      {renameShopCoords && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="glass-panel p-6 rounded-3xl border max-w-md w-full space-y-4 bg-zinc-900 text-zinc-100">
-            <div className="text-left space-y-1">
-              <h3 className="text-lg font-bold">✏️ 遙控更改商店名稱</h3>
-              <p className="text-xs opacity-65">
-                坐標：`{renameShopCoords}`。此操作將於遊戲內收取手續費 $5,000 元，並實時改寫告示牌文字。
-              </p>
-            </div>
-
-            <form onSubmit={handleRenameShopSubmit} className="space-y-4">
-              <input
-                type="text"
-                value={newShopName}
-                onChange={(e) => setNewShopName(e.target.value)}
-                placeholder="輸入全新商店招牌名稱"
-                className="w-full bg-zinc-500/10 border border-zinc-500/15 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 text-zinc-100"
-                maxLength={20}
-                required
-              />
-
-              <div className="flex items-center space-x-3 justify-end text-xs">
-                <button
-                  type="button"
-                  onClick={() => setRenameShopCoords(null)}
-                  className="px-4 py-2.5 rounded-xl hover:bg-zinc-500/10 text-zinc-400"
-                >
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-5 py-2.5 rounded-xl transition-all"
-                >
-                  儲存並改名
-                </button>
-              </div>
-            </form>
-          </div>
+          {activeTab === 'lockboxes' && (
+            <LockboxesView
+              lockboxes={lockboxes}
+            />
+          )}
         </div>
       )}
 
-    </div>
+      {/* 全域提示通知浮窗 */}
+      <div className="fixed bottom-6 right-6 z-50 space-y-2 max-w-sm w-full">
+        {toasts.map((toast) => (
+          <div 
+            key={toast.id} 
+            className={cn(
+              "p-3 rounded-[4px] border flex items-start space-x-2.5 text-xs text-foreground transition-all duration-200 bg-card shadow-none animate-fade-in",
+              toast.type === 'success' && "border-emerald-500/30 text-emerald-500",
+              toast.type === 'error' && "border-red-500/30 text-red-500",
+              toast.type === 'info' && "border-border text-foreground"
+            )}
+          >
+            <div className="shrink-0 mt-0.5">
+              {toast.type === 'success' ? (
+                <Check className="w-4 h-4 text-emerald-500" />
+              ) : toast.type === 'error' ? (
+                <AlertCircle className="w-4 h-4 text-red-500" />
+              ) : (
+                <span className="relative flex h-2 w-2 mt-1">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                </span>
+              )}
+            </div>
+            <p className="text-xs font-bold leading-normal text-left flex-1 text-foreground">
+              {toast.message}
+            </p>
+          </div>
+        ))}
+      </div>
+    </DashboardLayout>
   );
 }

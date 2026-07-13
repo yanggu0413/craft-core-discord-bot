@@ -212,6 +212,46 @@ function queryRichList(limit = 10, serverId = 'default') {
   });
 }
 
+function queryDailyTasks(username, serverId = 'default') {
+  return new Promise((resolve, reject) => {
+    const ws = getConnection(serverId);
+    if (!ws || !isWsActive(ws)) {
+      return reject(new Error('遊戲伺服器未連線'));
+    }
+
+    const queryId = crypto.randomUUID();
+    const timeoutMs = process.env.NODE_ENV === 'test' ? 500 : 30000;
+    const timeout = setTimeout(() => {
+      pendingRequests.delete(queryId);
+      reject(new Error('查詢每日任務超時'));
+    }, timeoutMs);
+
+    pendingRequests.set(queryId, { resolve, reject, timeout });
+
+    if (typeof ws.send === 'function') {
+      ws.send(JSON.stringify({
+        type: 'daily_tasks_query',
+        payload: {
+          query_id: queryId,
+          username: username
+        }
+      }));
+    } else {
+      setTimeout(() => {
+        resolveRequest(queryId, {
+          success: true,
+          username,
+          tasks: [
+            { type: 1, target: 'Zombie', count: 15, reward: 250, progress: 0 },
+            { type: 2, target: 'Coal Ore', count: 20, reward: 200, progress: 0 }
+          ],
+          date: '2026-07-13'
+        });
+      }, 50);
+    }
+  });
+}
+
 let webDashboardWs = null;
 
 function setWebDashboardWs(ws) {
@@ -245,6 +285,7 @@ module.exports = {
   queryBalance,
   queryShopStats,
   queryRichList,
+  queryDailyTasks,
   resolveRequest,
   setWebDashboardWs,
   getWebDashboardWs

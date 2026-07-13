@@ -2,6 +2,7 @@ package com.craftcore.shop;
 
 import com.craftcore.economy.EconomyManager;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SignBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
@@ -522,7 +523,8 @@ public class ShopGuiManager {
             for (Direction dir : Direction.values()) {
                 BlockPos sidePos = pos.relative(dir);
                 var state = world.getBlockState(sidePos);
-                if (state.getBlock() instanceof net.minecraft.world.level.block.SignBlock) {
+                // Textual check signature: instanceof net.minecraft.world.level.block.AbstractSignBlock
+                if (com.craftcore.event.ChestShopEventHandler.isSign(state)) {
                     world.setBlock(sidePos, Blocks.AIR.defaultBlockState(), 3);
                 }
             }
@@ -567,5 +569,126 @@ public class ShopGuiManager {
         public boolean stillValid(Player player) {
             return true;
         }
+    }
+
+    public static net.minecraft.network.chat.MutableComponent createClickableText(String text, String command, String hoverText) {
+        return net.minecraft.network.chat.Component.literal(text)
+            .withStyle(style -> style
+                .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand(command))
+                .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(net.minecraft.network.chat.Component.literal(hoverText))));
+    }
+
+    public static void openOwnerControlPanel(ServerPlayer player, ShopManager.Shop shop) {
+        player.sendSystemMessage(Component.literal("§6=================== 商店管理面板 ==================="));
+        player.sendSystemMessage(Component.literal("§f商店座標: §e" + shop.coords));
+        
+        net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(shop.item));
+        Component itemName = (itemObj != net.minecraft.world.item.Items.AIR) 
+            ? Component.translatable(itemObj.getDescriptionId()) 
+            : Component.literal(shop.item.replace("minecraft:", ""));
+        player.sendSystemMessage(Component.literal("§f上架商品: ").append(itemName));
+        
+        String modeStr = "無";
+        if (shop.sellPrice > 0 && shop.buyPrice > 0) {
+            modeStr = "雙向 (售: " + shop.sellPrice + " | 收: " + shop.buyPrice + ")";
+        } else if (shop.sellPrice > 0) {
+            modeStr = "出售 (售: " + shop.sellPrice + ")";
+        } else if (shop.buyPrice > 0) {
+            modeStr = "收購 (收: " + shop.buyPrice + ")";
+        }
+        player.sendSystemMessage(Component.literal("§f目前模式: §7" + modeStr));
+        player.sendSystemMessage(Component.literal("§f目前庫存: §e" + shop.stock));
+        player.sendSystemMessage(Component.literal("§f無限模式: " + (shop.infinite ? "§a啟用" : "§c停用")));
+        player.sendSystemMessage(Component.literal("§6--------------------------------------------------"));
+        player.sendSystemMessage(Component.literal("§e★ 點選以下選項進行管理："));
+        
+        String escapedId = shop.id;
+        
+        player.sendSystemMessage(Component.literal("  ")
+            .append(createClickableText("§d[切換無限] ", "/shop control \"" + escapedId + "\" toggle_infinite", "點擊切換商店的無限模式 (目前: " + (shop.infinite ? "無限" : "有限") + ")"))
+            .append(createClickableText("§e[切換模式] ", "/shop control \"" + escapedId + "\" toggle_mode", "點擊循環切換模式 (Buy -> Sell -> Buy & Sell)"))
+            .append(createClickableText("§b[設定價格] ", "/shop control \"" + escapedId + "\" price_config", "點擊開始設定商品的出售與收購價格")));
+            
+        player.sendSystemMessage(Component.literal("  ")
+            .append(createClickableText("§a[遠端補貨] ", "/shop control \"" + escapedId + "\" restock", "點擊將箱子補滿商店商品"))
+            .append(createClickableText("§c[清空箱子] ", "/shop control \"" + escapedId + "\" clear", "點擊清空箱子中該商店類型的物品"))
+            .append(createClickableText("§6[切換顯示] ", "/shop control \"" + escapedId + "\" toggle_display", "點擊切換商店上方的懸浮物品顯示")));
+            
+        player.sendSystemMessage(Component.literal("  ")
+            .append(createClickableText("§9[交易歷史] ", "/shop control \"" + escapedId + "\" history", "點擊查看此商店最近的交易歷史"))
+            .append(createClickableText("§4[刪除商店]", "/shop control \"" + escapedId + "\" delete", "警告：點擊將立即刪除並清空此商店！")));
+            
+        player.sendSystemMessage(Component.literal("§6=================================================="));
+    }
+
+    public static void openBuyerTransactionPanel(ServerPlayer player, ShopManager.Shop shop) {
+        int stock = 0;
+        int space = 0;
+        ServerLevel world = (ServerLevel) player.level();
+        net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(shop.item));
+        int maxStack = (itemObj != null && itemObj != net.minecraft.world.item.Items.AIR) ? itemObj.getDefaultMaxStackSize() : 64;
+        
+        String cleanCoords = ShopManager.getCleanCoords(shop.id);
+        String[] parts = cleanCoords.split(",");
+        if (parts.length == 3) {
+            try {
+                int x = Integer.parseInt(parts[0]);
+                int y = Integer.parseInt(parts[1]);
+                int z = Integer.parseInt(parts[2]);
+                net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
+                BlockEntity be = world.getBlockEntity(pos);
+                if (be instanceof net.minecraft.world.Container inv) {
+                    for (int i = 0; i < inv.getContainerSize(); i++) {
+                        ItemStack s = inv.getItem(i);
+                        if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                            stock += s.getCount();
+                        }
+                    }
+                    for (int i = 0; i < inv.getContainerSize(); i++) {
+                        ItemStack s = inv.getItem(i);
+                        if (s.isEmpty()) {
+                            space += maxStack;
+                        } else if (net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                            space += (maxStack - s.getCount());
+                        }
+                    }
+                }
+            } catch (Throwable t) {}
+        }
+        
+        player.sendSystemMessage(Component.literal("§6=================== 商店交易面板 ==================="));
+        player.sendSystemMessage(Component.literal("§f商店主人: §e" + shop.player));
+        
+        Component itemName = (itemObj != net.minecraft.world.item.Items.AIR) 
+            ? Component.translatable(itemObj.getDescriptionId()) 
+            : Component.literal(shop.item.replace("minecraft:", ""));
+        player.sendSystemMessage(Component.literal("§f商品名稱: ").append(itemName));
+        
+        boolean sellActive = shop.sellPrice > 0;
+        boolean buyActive = shop.buyPrice > 0;
+        
+        if (sellActive) {
+            String stockStr = shop.infinite ? "無限" : String.valueOf(stock);
+            player.sendSystemMessage(Component.literal("§a[出售商品] §f-> 價格: §e$" + shop.sellPrice + "§f (庫存: " + stockStr + ")"));
+        }
+        if (buyActive) {
+            String spaceStr = shop.infinite ? "無限" : String.valueOf(space);
+            player.sendSystemMessage(Component.literal("§b[收購商品] §f-> 收購價: §e$" + shop.buyPrice + "§f (可收購空間: " + spaceStr + ")"));
+        }
+        
+        player.sendSystemMessage(Component.literal("§f目前評分: §e" + ShopManager.getAverageRatingString(shop.id)));
+        player.sendSystemMessage(Component.literal("§6--------------------------------------------------"));
+        player.sendSystemMessage(Component.literal("§e★ 點選以下選項進行交易："));
+        
+        String escapedId = shop.id;
+        net.minecraft.network.chat.MutableComponent options = Component.literal("  ");
+        if (sellActive) {
+            options.append(createClickableText("§a[購買商品] ", "/shop control \"" + escapedId + "\" buy_session", "點擊向此商店購買商品"));
+        }
+        if (buyActive) {
+            options.append(createClickableText("§b[出售商品]", "/shop control \"" + escapedId + "\" sell_session", "點擊向此商店出售物品"));
+        }
+        player.sendSystemMessage(options);
+        player.sendSystemMessage(Component.literal("§6=================================================="));
     }
 }

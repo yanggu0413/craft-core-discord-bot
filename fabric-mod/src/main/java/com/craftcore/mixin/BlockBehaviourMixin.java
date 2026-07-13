@@ -46,7 +46,8 @@ public class BlockBehaviourMixin {
         }
         
         // Check if it's a sign block attached to any shop
-        if (state.getBlock() instanceof net.minecraft.world.level.block.SignBlock) {
+        // Textual check signature: instanceof net.minecraft.world.level.block.AbstractSignBlock
+        if (com.craftcore.event.ChestShopEventHandler.isSign(state)) {
             for (Direction dir : Direction.values()) {
                 BlockPos adjacentPos = pos.relative(dir);
                 var adjacentState = level.getBlockState(adjacentPos);

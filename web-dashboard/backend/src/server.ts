@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import WebSocket, { WebSocketServer } from 'ws';
+// @ts-ignore
 import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 import fs from 'fs';
@@ -40,6 +41,23 @@ try {
       )
     `);
   }
+
+  if (db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        shop_coords TEXT,
+        buyer TEXT,
+        seller TEXT,
+        item TEXT,
+        quantity INTEGER,
+        unit_price REAL,
+        tax_deducted REAL,
+        net_profit REAL
+      )
+    `);
+  }
 } catch (error) {
   console.error('Failed to initialize database connection', error);
 }
@@ -47,39 +65,16 @@ try {
 // -------------------------------------------------------------
 // Live Memory Statistics & Trade Logs (Phase 4-5 Stats Engine)
 // -------------------------------------------------------------
-let accumulatedSalesTax = 12500.0; // Start mock accumulated tax
-let totalShopsCount = 12;
-
-// Generate mock historical analytics data for key minerals
-const mineralPrices: Record<string, { date: string; price: number; volume: number }[]> = {
-  'minecraft:diamond': [
-    { date: '7/06', price: 480, volume: 15 },
-    { date: '7/07', price: 490, volume: 20 },
-    { date: '7/08', price: 510, volume: 28 },
-    { date: '7/09', price: 500, volume: 22 },
-    { date: '7/10', price: 520, volume: 35 },
-    { date: '7/11', price: 515, volume: 40 },
-    { date: '7/12', price: 530, volume: 45 }
-  ],
-  'minecraft:netherite_ingot': [
-    { date: '7/06', price: 4200, volume: 2 },
-    { date: '7/07', price: 4300, volume: 3 },
-    { date: '7/08', price: 4500, volume: 1 },
-    { date: '7/09', price: 4400, volume: 4 },
-    { date: '7/10', price: 4600, volume: 3 },
-    { date: '7/11', price: 4550, volume: 5 },
-    { date: '7/12', price: 4700, volume: 6 }
-  ],
-  'minecraft:iron_ingot': [
-    { date: '7/06', price: 25, volume: 120 },
-    { date: '7/07', price: 24, volume: 150 },
-    { date: '7/08', price: 26, volume: 90 },
-    { date: '7/09', price: 25, volume: 110 },
-    { date: '7/10', price: 27, volume: 200 },
-    { date: '7/11', price: 28, volume: 240 },
-    { date: '7/12', price: 29, volume: 300 }
-  ]
-};
+let accumulatedSalesTax = 0;
+if (db) {
+  try {
+    const row = db.prepare('SELECT SUM(tax_deducted) as total FROM transactions').get() as any;
+    accumulatedSalesTax = row?.total || 0;
+  } catch (e) {
+    accumulatedSalesTax = 0;
+  }
+}
+let totalShopsCount = 0;
 
 // -------------------------------------------------------------
 // WebSocket RPC Client (Bridge Link to Discord Bot)
@@ -126,18 +121,15 @@ function connectToBotWS() {
 
       // Handle real-time transaction log broadcast
       if (type === 'transaction_log') {
-        // Log locally & accumulate stats
         const log = payload;
         accumulatedSalesTax += log.tax_deducted || 0;
-        
-        // Append trade data dynamically to mineral price list if matching item
-        const itemKey = log.item;
-        if (mineralPrices[itemKey]) {
-          const currentList = mineralPrices[itemKey];
-          const lastIndex = currentList.length - 1;
-          if (lastIndex >= 0) {
-            currentList[lastIndex].price = log.unit_price;
-            currentList[lastIndex].volume += log.quantity;
+
+        if (db) {
+          try {
+            const insertTx = db.prepare('INSERT INTO transactions (shop_coords, buyer, seller, item, quantity, unit_price, tax_deducted, net_profit) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+            insertTx.run(log.shop_coords || log.coords || '', log.buyer, log.seller, log.item, log.quantity, log.unit_price, log.tax_deducted || 0, log.net_profit || 0);
+          } catch (dbErr) {
+            console.error('Failed to save transaction log to database:', dbErr);
           }
         }
 
@@ -281,22 +273,71 @@ app.get('/api/auth/callback', async (req: Request, res: Response) => {
     return res.status(400).send('Missing authorization code');
   }
 
-  // Under normal production code, exchange token with Discord API. 
-  // For sandbox testing stability, we offer a fallback mockup bypass token.
-  const mockDiscordId = '123456789012345678';
-  if (!db) return res.status(500).send('Database connection unavailable');
+  if (!db) {
+    return res.status(500).send('Database connection unavailable');
+  }
+
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
   try {
-    const getBinding = db.prepare('SELECT * FROM bindings WHERE discord_id = ?');
-    const binding = getBinding.get(mockDiscordId) as any;
+    // 1. Exchange OAuth code for access token from Discord API
+    const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: process.env.DISCORD_CLIENT_ID || '',
+        client_secret: process.env.DISCORD_CLIENT_SECRET || '',
+        grant_type: 'authorization_code',
+        code: code as string,
+        redirect_uri: process.env.DISCORD_REDIRECT_URI || '',
+      }).toString(),
+    });
 
-    if (!binding) {
-      return res.redirect('http://localhost:5173/login?error=not_bound');
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('[Discord OAuth] Token exchange failed:', errorText);
+      return res.redirect(`${frontendUrl}/?error=token_exchange_failed`);
     }
 
-    const token = jwt.sign({ mc_uuid: binding.mc_uuid, mc_username: binding.mc_username, discord_id: mockDiscordId }, JWT_SECRET, { expiresIn: '7d' });
-    res.redirect(`http://localhost:5173/login?token=${token}&username=${binding.mc_username}&uuid=${binding.mc_uuid}`);
+    const tokenData = (await tokenResponse.json()) as any;
+    const accessToken = tokenData.access_token;
+
+    // 2. Fetch user profile information from Discord API
+    const userResponse = await fetch('https://discord.com/api/users/@me', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!userResponse.ok) {
+      console.error('[Discord OAuth] Failed to fetch user profile');
+      return res.redirect(`${frontendUrl}/?error=user_fetch_failed`);
+    }
+
+    const userData = (await userResponse.json()) as any;
+    const realDiscordId = userData.id;
+
+    // 3. Search for Minecraft binding by real Discord User ID
+    const getBinding = db.prepare('SELECT * FROM bindings WHERE discord_id = ?');
+    const binding = getBinding.get(realDiscordId) as any;
+
+    if (!binding) {
+      console.warn(`[Discord OAuth] Discord User ${userData.username}#${userData.discriminator} (${realDiscordId}) is not bound in database.`);
+      // Redirect back with details so frontend can show helpful information
+      return res.redirect(`${frontendUrl}/?error=not_bound&discord_id=${realDiscordId}&discord_username=${encodeURIComponent(userData.username)}`);
+    }
+
+    // 4. Generate local JWT token for dashboard authentication
+    const token = jwt.sign(
+      { mc_uuid: binding.mc_uuid, mc_username: binding.mc_username, discord_id: realDiscordId },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.redirect(`${frontendUrl}/?token=${token}&username=${binding.mc_username}&uuid=${binding.mc_uuid}`);
   } catch (err: any) {
+    console.error('[Discord OAuth] Callback error:', err);
     res.status(500).send(err.message);
   }
 });
@@ -304,6 +345,100 @@ app.get('/api/auth/callback', async (req: Request, res: Response) => {
 // -------------------------------------------------------------
 // Core Business endpoints
 // -------------------------------------------------------------
+
+function getTaipeiDateString(): string {
+  const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' };
+  const formatter = new Intl.DateTimeFormat('zh-TW', options);
+  const formatted = formatter.format(new Date());
+  return formatted.replace(/\//g, '-');
+}
+
+function getHashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (31 * hash + str.charCodeAt(i)) | 0;
+  }
+  return hash;
+}
+
+class SeededRandom {
+  private seed: number;
+  constructor(seed: number) {
+    this.seed = Number(BigInt(seed) & 0xffffffffn);
+  }
+  nextInt(bound: number): number {
+    const nextSeed = (BigInt(this.seed) * 1103515245n + 12345n) & 0x7fffffffn;
+    this.seed = Number(nextSeed);
+    return this.seed % bound;
+  }
+}
+
+const SLAY_POOL = [
+  { type: 1, target: 'Zombie', count: 15, reward: 250 },
+  { type: 1, target: 'Skeleton', count: 10, reward: 300 },
+  { type: 1, target: 'Creeper', count: 5, reward: 400 }
+];
+
+const MINE_POOL = [
+  { type: 2, target: 'Coal Ore', count: 20, reward: 200 },
+  { type: 2, target: 'Iron Ore', count: 10, reward: 300 },
+  { type: 2, target: 'Diamond Ore', count: 3, reward: 1000 }
+];
+
+function getDailyTasksFallback(dateStr: string) {
+  const hash = getHashCode(dateStr);
+  const rand = new SeededRandom(hash);
+  const slayIdx = rand.nextInt(SLAY_POOL.length);
+  const mineIdx = rand.nextInt(MINE_POOL.length);
+  return [
+    { ...SLAY_POOL[slayIdx] },
+    { ...MINE_POOL[mineIdx] }
+  ];
+}
+
+// 0. Daily Tasks Progress
+app.get('/api/tasks/daily', async (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  let username: string | null = null;
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      username = decoded.mc_username;
+    } catch (err) {
+      // Ignore token verification errors, treat as anonymous
+    }
+  }
+
+  const dateStr = getTaipeiDateString();
+
+  if (username) {
+    try {
+      const response = await sendWsQuery('daily_tasks_query', { username });
+      return res.json({
+        success: true,
+        tasks: response.tasks,
+        date: response.date
+      });
+    } catch (error: any) {
+      const tasks = getDailyTasksFallback(dateStr);
+      return res.json({
+        success: true,
+        tasks: tasks.map(t => ({ ...t, progress: 0 })),
+        date: dateStr,
+        offline: true
+      });
+    }
+  } else {
+    const tasks = getDailyTasksFallback(dateStr);
+    return res.json({
+      success: true,
+      tasks: tasks.map(t => ({ ...t, progress: 0 })),
+      date: dateStr
+    });
+  }
+});
 
 // 1. Server Global Stats
 app.get('/api/stats', async (req: Request, res: Response) => {
@@ -346,49 +481,160 @@ app.get('/api/shops', async (req: Request, res: Response) => {
     totalShopsCount = shops.length;
     res.json({ success: true, shops });
   } catch (error: any) {
-    // If gameserver is offline, return fallback local state
+    // If gameserver is offline, return empty registry list
     res.json({
       success: true,
-      shops: [
-        { location: '100, 64, -200', owner: 'Yanggu', item: 'minecraft:diamond', stock: 12, buy_price: 500.0, sell_price: 450.0, custom_name: '楊谷鑽石專賣店' },
-        { location: '120, 64, -230', owner: 'Rory', item: 'minecraft:netherite_ingot', stock: 4, buy_price: 4500.0, sell_price: 0.0, custom_name: '獄髓合金專賣店' },
-        { location: '-50, 70, 310', owner: 'Alice', item: 'minecraft:iron_ingot', stock: 230, buy_price: 25.0, sell_price: 20.0, custom_name: '平價鐵錠直營店' },
-        { location: '-52, 70, 310', owner: 'Alice', item: 'minecraft:experience_bottle', stock: 64, buy_price: 5.0, sell_price: 0.0, custom_name: '經驗藥水販賣機' }
-      ]
+      shops: []
     });
   }
 });
 
 // 4. Market Prices History Charts
 app.get('/api/market/analytics', (req: Request, res: Response) => {
-  res.json({ success: true, analytics: mineralPrices });
+  try {
+    if (!db) {
+      return res.json({
+        success: true,
+        analytics: {
+          'minecraft:diamond': [],
+          'minecraft:netherite_ingot': [],
+          'minecraft:iron_ingot': []
+        }
+      });
+    }
+
+    // Query aggregated transaction data for past trade history
+    const getLogs = db.prepare(`
+      SELECT 
+        item,
+        strftime('%m/%d', timestamp, 'localtime') as date,
+        AVG(unit_price) as price,
+        SUM(quantity) as volume
+      FROM transactions
+      GROUP BY item, date
+      ORDER BY date ASC
+    `);
+    const rows = getLogs.all() as any[];
+
+    // Group by item key
+    const analytics: Record<string, any[]> = {
+      'minecraft:diamond': [],
+      'minecraft:netherite_ingot': [],
+      'minecraft:iron_ingot': []
+    };
+    for (const row of rows) {
+      // Normalize item key
+      const item = row.item.startsWith('minecraft:') ? row.item : `minecraft:${row.item}`;
+      if (!analytics[item]) {
+        analytics[item] = [];
+      }
+      analytics[item].push({
+        date: row.date,
+        price: Math.round(row.price * 10) / 10,
+        volume: row.volume
+      });
+    }
+
+    res.json({ success: true, analytics });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
-// 5. User Personal Profile & Balance Info
+// 4b. Recent Real-time Trade Logs
+app.get('/api/market/recent', (req: Request, res: Response) => {
+  if (!db) return res.json({ success: true, trades: [] });
+  try {
+    const getRecent = db.prepare('SELECT timestamp, buyer, seller, item, quantity, net_profit FROM transactions ORDER BY timestamp DESC LIMIT 10');
+    const rows = getRecent.all() as any[];
+    const trades = rows.map((row) => {
+      const dateObj = new Date(row.timestamp);
+      // Format as HH:MM
+      const time = dateObj.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+      return {
+        time,
+        buyer: row.buyer,
+        seller: row.seller,
+        item: row.item.replace('minecraft:', '').toUpperCase(),
+        quantity: row.quantity,
+        profit: row.net_profit
+      };
+    });
+    res.json({ success: true, trades });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 5. User Personal Profile & Balance Info (Integrates check-in stats & keys)
 app.get('/api/user/profile', authenticateToken, async (req: CustomRequest, res: Response) => {
   const user = req.user;
   if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
 
+  let balance = 1000.0; // Default mock fallback
   try {
     const response = await sendWsQuery('balance_query', { username: user.mc_username });
-    res.json({
-      success: true,
-      user: {
-        mc_username: user.mc_username,
-        mc_uuid: user.mc_uuid,
-        balance: response.balance
-      }
-    });
+    if (response && typeof response.balance === 'number') {
+      balance = response.balance;
+    }
   } catch (error: any) {
-    // Fallback if websocket offline
-    res.json({
-      success: true,
-      user: {
-        mc_username: user.mc_username,
-        mc_uuid: user.mc_uuid,
-        balance: 1000.0 // Default mock balance
+    console.warn('[Profile API] Failed to fetch live balance via WS:', error.message);
+  }
+
+  let dbStats = {
+    keys_count: 0,
+    checkin_streak: 0,
+    total_checkins: 0,
+    last_checkin: null
+  };
+
+  if (db) {
+    try {
+      const getBinding = db.prepare('SELECT keys_count, checkin_streak, total_checkins, last_checkin FROM bindings WHERE mc_username = ? COLLATE NOCASE');
+      const binding = getBinding.get(user.mc_username) as any;
+      if (binding) {
+        dbStats = {
+          keys_count: binding.keys_count || 0,
+          checkin_streak: binding.checkin_streak || 0,
+          total_checkins: binding.total_checkins || 0,
+          last_checkin: binding.last_checkin || null
+        };
       }
-    });
+    } catch (dbErr) {
+      console.error('[Profile API] Database query failed:', dbErr);
+    }
+  }
+
+  res.json({
+    success: true,
+    user: {
+      mc_username: user.mc_username,
+      mc_uuid: user.mc_uuid,
+      balance,
+      ...dbStats
+    }
+  });
+});
+
+// 5b. User Mailbox & Pending Courier Packages
+app.get('/api/user/mails', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+
+  if (!db) {
+    return res.status(500).json({ success: false, message: '資料庫連結不可用' });
+  }
+
+  try {
+    const getMails = db.prepare(`
+      SELECT * FROM offline_mails 
+      WHERE receiver_username = ? COLLATE NOCASE OR sender_username = ? COLLATE NOCASE 
+      ORDER BY created_at DESC
+    `);
+    const mails = getMails.all(user.mc_username, user.mc_username);
+    res.json({ success: true, mails });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -458,6 +704,121 @@ app.post('/api/user/upgrade', authenticateToken, async (req: CustomRequest, res:
     }
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/claims
+app.get('/api/claims', async (req: Request, res: Response) => {
+  try {
+    const response = await sendWsQuery('claims_query', {});
+    res.json({ success: true, claims: response.claims || [] });
+  } catch (error: any) {
+    // Fallback: Read from config/craft-core-shop/claims.json
+    try {
+      const claimsFile = path.resolve(__dirname, '../../../config/craft-core-shop/claims.json');
+      if (fs.existsSync(claimsFile)) {
+        const raw = fs.readFileSync(claimsFile, 'utf8');
+        const claimsMap = JSON.parse(raw);
+        const claimsArray = Object.values(claimsMap).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          owner: c.owner,
+          chunks: c.chunks,
+          corners: c.corners,
+          dimension: c.dimension,
+          permissions: {
+            build: c.permissions?.build || [],
+            break: c.permissions?.break || [],
+            containers: c.permissions?.containers || [],
+            interact: c.permissions?.interact || []
+          }
+        }));
+        return res.json({ success: true, claims: claimsArray });
+      }
+    } catch (fsErr) {
+      console.error('Failed to read claims fallback:', fsErr);
+    }
+    res.json({ success: true, claims: [] });
+  }
+});
+
+// POST /api/claims/permission
+app.post('/api/claims/permission', async (req: Request, res: Response) => {
+  const { claimId, permissionType, player, action } = req.body;
+  if (!claimId || !permissionType || !player || !action) {
+    return res.status(400).json({ success: false, message: '缺少必要參數' });
+  }
+
+  try {
+    const result = await sendWsQuery('claims_permission_update', {
+      claimId,
+      permissionType,
+      player,
+      action
+    });
+    if (result.success) {
+      res.json({ success: true, message: '權限更新成功' });
+    } else {
+      res.status(400).json({ success: false, message: result.message || '更新失敗' });
+    }
+  } catch (error: any) {
+    // Fallback: Write directly to claims.json file
+    try {
+      const claimsFile = path.resolve(__dirname, '../../../config/craft-core-shop/claims.json');
+      if (fs.existsSync(claimsFile)) {
+        const raw = fs.readFileSync(claimsFile, 'utf8');
+        const claimsMap = JSON.parse(raw);
+        if (claimsMap[claimId]) {
+          const claim = claimsMap[claimId];
+          if (!claim.permissions) {
+            claim.permissions = { build: [], break: [], containers: [], interact: [] };
+          }
+          let key = permissionType === 'break' ? 'break' : permissionType;
+          if (!claim.permissions[key]) {
+            claim.permissions[key] = [];
+          }
+          if (action === 'grant') {
+            if (!claim.permissions[key].includes(player)) {
+              claim.permissions[key].push(player);
+            }
+          } else if (action === 'revoke') {
+            claim.permissions[key] = claim.permissions[key].filter((p: string) => p !== player);
+          }
+          fs.writeFileSync(claimsFile, JSON.stringify(claimsMap, null, 2), 'utf8');
+          return res.json({ success: true, message: '權限更新成功 (本地備份)' });
+        }
+      }
+    } catch (fsErr) {
+      console.error('Failed to update claims fallback:', fsErr);
+    }
+    res.status(500).json({ success: false, message: error.message || '遊戲伺服器未連線' });
+  }
+});
+
+// GET /api/lockboxes
+app.get('/api/lockboxes', async (req: Request, res: Response) => {
+  try {
+    const response = await sendWsQuery('lockboxes_query', {});
+    res.json({ success: true, lockboxes: response.lockboxes || [] });
+  } catch (error: any) {
+    // Fallback: Read from config/craft-core-shop/lockboxes.json
+    try {
+      const lockboxFile = path.resolve(__dirname, '../../../config/craft-core-shop/lockboxes.json');
+      if (fs.existsSync(lockboxFile)) {
+        const raw = fs.readFileSync(lockboxFile, 'utf8');
+        const lockboxMap = JSON.parse(raw);
+        const lockboxArray = Object.values(lockboxMap).map((l: any) => ({
+          id: l.id,
+          location: l.location,
+          owner: l.owner,
+          authorized: l.authorized || []
+        }));
+        return res.json({ success: true, lockboxes: lockboxArray });
+      }
+    } catch (fsErr) {
+      console.error('Failed to read lockboxes fallback:', fsErr);
+    }
+    res.json({ success: true, lockboxes: [] });
   }
 });
 

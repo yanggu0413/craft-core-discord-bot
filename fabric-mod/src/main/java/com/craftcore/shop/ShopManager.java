@@ -33,6 +33,7 @@ public class ShopManager {
         public int bulkQuantity = 1;
         public java.util.List<Integer> ratings = new java.util.ArrayList<>();
         public String customName = null;
+        public boolean infinite = false;
 
         public Shop(String player, String key, String item, double sellPrice, double buyPrice, int stock) {
             String coords;
@@ -118,6 +119,24 @@ public class ShopManager {
         }
     }
 
+    public static class PriceConfigSession {
+        public final String coords;
+        public final long startTime;
+        public int step; // 1 = sell price, 2 = buy price
+        public double sellPrice;
+
+        public PriceConfigSession(String coords) {
+            this.coords = coords;
+            this.startTime = System.currentTimeMillis();
+            this.step = 1;
+            this.sellPrice = 0.0;
+        }
+
+        public boolean isExpired() {
+            return System.currentTimeMillis() - startTime > 30000;
+        }
+    }
+
     public static class ChatInterceptionResult {
         public final boolean intercepted;
         public final String responseMessage;
@@ -145,6 +164,7 @@ public class ShopManager {
     private static Map<String, BuyingSession> buyingSessions = new ConcurrentHashMap<>();
     private static Map<String, RatingSession> ratingSessions = new ConcurrentHashMap<>();
     private static Map<String, ActivationState> activationStates = new ConcurrentHashMap<>();
+    private static Map<String, PriceConfigSession> priceConfigSessions = new ConcurrentHashMap<>();
 
     public static String getNormalizedKey(String key) {
         if (key == null) return null;
@@ -345,6 +365,7 @@ public class ShopManager {
         creationSessions.clear();
         buyingSessions.clear();
         ratingSessions.clear();
+        priceConfigSessions.clear();
         merchantLogs.clear();
         save();
         saveLogs();
@@ -483,11 +504,27 @@ public class ShopManager {
     }
 
     public static synchronized boolean hasCreationSession(String username) {
-        return creationSessions.containsKey(username);
+        CreationSession session = creationSessions.get(username);
+        if (session != null) {
+            if (session.isExpired()) {
+                creationSessions.remove(username);
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
 
     public static synchronized boolean hasBuyingSession(String username) {
-        return buyingSessions.containsKey(username);
+        BuyingSession session = buyingSessions.get(username);
+        if (session != null) {
+            if (session.isExpired()) {
+                buyingSessions.remove(username);
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
 
     public static synchronized boolean isBuyingMode(String username) {
@@ -523,6 +560,23 @@ public class ShopManager {
 
     public static synchronized void removeRatingSession(String username) {
         ratingSessions.remove(username);
+    }
+
+    public static synchronized void addPriceConfigSession(String username, String coords) {
+        priceConfigSessions.put(username, new PriceConfigSession(coords));
+    }
+
+    public static synchronized boolean hasPriceConfigSession(String username) {
+        PriceConfigSession session = priceConfigSessions.get(username);
+        if (session != null && session.isExpired()) {
+            priceConfigSessions.remove(username);
+            return false;
+        }
+        return priceConfigSessions.containsKey(username);
+    }
+
+    public static synchronized void removePriceConfigSession(String username) {
+        priceConfigSessions.remove(username);
     }
 
     public static synchronized boolean addShopRating(String shopId, int score) {
@@ -765,6 +819,75 @@ public class ShopManager {
             }
         }
 
+        PriceConfigSession pSession = priceConfigSessions.get(username);
+        if (pSession != null) {
+            if (pSession.isExpired()) {
+                priceConfigSessions.remove(username);
+                return new ChatInterceptionResult(true, "Price configuration timed out.", false);
+            }
+            if (message.equalsIgnoreCase("cancel") || message.equals("取消")) {
+                priceConfigSessions.remove(username);
+                return new ChatInterceptionResult(true, "Price configuration cancelled.", false);
+            }
+            Shop shop = getShop(pSession.coords);
+            if (shop == null) {
+                priceConfigSessions.remove(username);
+                return new ChatInterceptionResult(true, "Shop no longer exists.", false);
+            }
+            if (pSession.step == 1) {
+                double sellPrice = 0.0;
+                if (!message.equalsIgnoreCase("none") && !message.equals("0")) {
+                    try {
+                        sellPrice = Double.parseDouble(message);
+                        if (Double.isNaN(sellPrice) || Double.isInfinite(sellPrice) || sellPrice < 0) {
+                            return new ChatInterceptionResult(true, "Invalid price format. Please enter a valid number.", false);
+                        }
+                    } catch (NumberFormatException e) {
+                        return new ChatInterceptionResult(true, "Invalid price format. Please enter a valid number.", false);
+                    }
+                }
+                pSession.sellPrice = sellPrice;
+                pSession.step = 2;
+                String step2Prompt = "§e【步驟 2/2】設定收購價格\n" +
+                                     "§f- 請在聊天欄輸入「§b收購價格§f」（你向玩家收購商品的單價，如: 50）。\n" +
+                                     "§f- 若不提供收購，請輸入「§c0§f」或「§cnone§f」。\n" +
+                                     "§f- 輸入「§c取消§f」可放棄設定。";
+                return new ChatInterceptionResult(true, step2Prompt, true);
+            } else if (pSession.step == 2) {
+                double buyPrice = 0.0;
+                if (!message.equalsIgnoreCase("none") && !message.equals("0")) {
+                    try {
+                        buyPrice = Double.parseDouble(message);
+                        if (Double.isNaN(buyPrice) || Double.isInfinite(buyPrice) || buyPrice < 0) {
+                            return new ChatInterceptionResult(true, "Invalid price format. Please enter a valid number.", false);
+                        }
+                    } catch (NumberFormatException e) {
+                        return new ChatInterceptionResult(true, "Invalid price format. Please enter a valid number.", false);
+                    }
+                }
+                priceConfigSessions.remove(username);
+                if (pSession.sellPrice <= 0.0 && buyPrice <= 0.0) {
+                    return new ChatInterceptionResult(true, "Price configuration cancelled. Both prices cannot be 0.", false);
+                }
+                shop.sellPrice = pSession.sellPrice;
+                shop.buyPrice = buyPrice;
+                if (shop.sellPrice > 0.0) {
+                    shop.price = shop.sellPrice;
+                }
+                save();
+                try {
+                    String[] parts = shop.coords.split(",");
+                    if (parts.length == 3) {
+                        int x = Integer.parseInt(parts[0]);
+                        int y = Integer.parseInt(parts[1]);
+                        int z = Integer.parseInt(parts[2]);
+                        updateShopSign(world, new net.minecraft.core.BlockPos(x, y, z), shop);
+                    }
+                } catch (Throwable t) {}
+                return new ChatInterceptionResult(true, "Prices updated successfully!", true);
+            }
+        }
+
         BuyingSession bSession = buyingSessions.get(username);
         if (bSession != null) {
             if (bSession.isExpired()) {
@@ -840,14 +963,103 @@ public class ShopManager {
                     }
                 }
 
+                boolean isAll = message.equalsIgnoreCase("all") || message.equals("全部");
                 int quantity = 0;
-                try {
-                    quantity = Integer.parseInt(message);
-                    if (quantity <= 0) {
-                        return new ChatInterceptionResult(true, "Quantity must be a positive integer.", false);
+                if (isAll) {
+                    if (bSession.mode.equals("buy")) {
+                        double activePrice = shop.sellPrice > 0 ? shop.sellPrice : shop.price;
+                        double buyerBalance = com.craftcore.economy.EconomyManager.getBalance(username);
+                        int maxFromBalance = (int) (buyerBalance / activePrice);
+                        
+                        int stockVal = Integer.MAX_VALUE;
+                        if (!shop.infinite) {
+                            if (chestInv != null) {
+                                int actualStock = 0;
+                                for (int i = 0; i < chestInv.getContainerSize(); i++) {
+                                    net.minecraft.world.item.ItemStack stack = chestInv.getItem(i);
+                                    if (!stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
+                                        actualStock += stack.getCount();
+                                    }
+                                }
+                                stockVal = actualStock;
+                            } else {
+                                stockVal = shop.stock;
+                            }
+                        }
+                        
+                        int playerSpace = Integer.MAX_VALUE;
+                        if (player != null && shopItem != null) {
+                            int spaceVal = 0;
+                            int maxStack = shopItem.getDefaultMaxStackSize();
+                            for (int i = 0; i < 36; i++) {
+                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
+                                if (s.isEmpty()) {
+                                    spaceVal += maxStack;
+                                } else if (net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                    spaceVal += (maxStack - s.getCount());
+                                }
+                            }
+                            playerSpace = spaceVal;
+                        }
+                        
+                        quantity = Math.min(maxFromBalance, Math.min(stockVal, playerSpace));
+                        if (shop.bulkQuantity > 1) {
+                            quantity = (quantity / shop.bulkQuantity) * shop.bulkQuantity;
+                        }
+                        if (quantity <= 0) {
+                            return new ChatInterceptionResult(true, "Cannot resolve 'all' quantity (insufficient funds, stock, or inventory space).", false);
+                        }
+                    } else if (bSession.mode.equals("sell")) {
+                        int maxFromOwnerBalance = Integer.MAX_VALUE;
+                        if (!shop.infinite) {
+                            double ownerBalance = com.craftcore.economy.EconomyManager.getBalance(shop.player);
+                            maxFromOwnerBalance = (int) (ownerBalance / shop.buyPrice);
+                        }
+                        
+                        int chestSpace = Integer.MAX_VALUE;
+                        if (!shop.infinite) {
+                            if (chestInv != null && shopItem != null) {
+                                int spaceVal = 0;
+                                int maxStack = shopItem.getDefaultMaxStackSize();
+                                for (int i = 0; i < chestInv.getContainerSize(); i++) {
+                                    net.minecraft.world.item.ItemStack s = chestInv.getItem(i);
+                                    if (s.isEmpty()) {
+                                        spaceVal += maxStack;
+                                    } else if (net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                        spaceVal += (maxStack - s.getCount());
+                                    }
+                                }
+                                chestSpace = spaceVal;
+                            }
+                        }
+                        
+                        int playerItemCount = 0;
+                        if (player != null) {
+                            for (int i = 0; i < 36; i++) {
+                                net.minecraft.world.item.ItemStack stack = player.getInventory().getItem(i);
+                                if (!stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
+                                    playerItemCount += stack.getCount();
+                                }
+                            }
+                        }
+                        
+                        quantity = Math.min(maxFromOwnerBalance, Math.min(chestSpace, playerItemCount));
+                        if (shop.bulkQuantity > 1) {
+                            quantity = (quantity / shop.bulkQuantity) * shop.bulkQuantity;
+                        }
+                        if (quantity <= 0) {
+                            return new ChatInterceptionResult(true, "Cannot resolve 'all' quantity (insufficient shop funds, chest space, or item count).", false);
+                        }
                     }
-                } catch (NumberFormatException e) {
-                    return new ChatInterceptionResult(true, "Invalid quantity format. Please enter a valid integer.", false);
+                } else {
+                    try {
+                        quantity = Integer.parseInt(message);
+                        if (quantity <= 0) {
+                            return new ChatInterceptionResult(true, "Quantity must be a positive integer.", false);
+                        }
+                    } catch (NumberFormatException e) {
+                        return new ChatInterceptionResult(true, "Invalid quantity format. Please enter a valid integer.", false);
+                    }
                 }
 
                 buyingSessions.remove(username);
@@ -857,6 +1069,9 @@ public class ShopManager {
                         return new ChatInterceptionResult(true, "Quantity must be a multiple of " + shop.bulkQuantity + ".", false);
                     }
                     double activePrice = shop.sellPrice > 0 ? shop.sellPrice : shop.price;
+                    if (activePrice <= 0) {
+                        return new ChatInterceptionResult(true, "This shop is not selling items.", false);
+                    }
                     double totalCost = activePrice * quantity;
                     double buyerBalance = com.craftcore.economy.EconomyManager.getBalance(username);
                     if (buyerBalance < totalCost) {
@@ -866,91 +1081,138 @@ public class ShopManager {
                     double tax = totalCost * 0.05;
                     double netRevenue = totalCost - tax;
 
-                    if (chestInv != null && shopItem != null) {
-                        int actualStock = 0;
-                        for (int i = 0; i < chestInv.getContainerSize(); i++) {
-                            net.minecraft.world.item.ItemStack stack = chestInv.getItem(i);
-                            if (!stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
-                                actualStock += stack.getCount();
+                    if (shop.infinite) {
+                        int playerSpace = Integer.MAX_VALUE;
+                        if (player != null && shopItem != null) {
+                            int spaceVal = 0;
+                            int maxStack = shopItem.getDefaultMaxStackSize();
+                            for (int i = 0; i < 36; i++) {
+                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
+                                if (s.isEmpty()) {
+                                    spaceVal += maxStack;
+                                } else if (net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                    spaceVal += (maxStack - s.getCount());
+                                }
                             }
-                        }
-                        if (actualStock < quantity) {
-                            return new ChatInterceptionResult(true, "Not enough stock in shop.", false);
-                        }
-
-                        int playerSpace = 0;
-                        int maxStack = shopItem.getDefaultMaxStackSize();
-                        for (int i = 0; i < 36; i++) {
-                            net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
-                            if (s.isEmpty()) {
-                                playerSpace += maxStack;
-                            } else if (net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
-                                playerSpace += (maxStack - s.getCount());
-                            }
+                            playerSpace = spaceVal;
                         }
                         if (playerSpace < quantity) {
                             return new ChatInterceptionResult(true, "Not enough space in your inventory.", false);
                         }
 
                         com.craftcore.economy.EconomyManager.removeMoney(username, totalCost);
-                        shop.revenue += netRevenue;
-
-                        int remainingToRemove = quantity;
-                        for (int i = 0; i < chestInv.getContainerSize() && remainingToRemove > 0; i++) {
-                            net.minecraft.world.item.ItemStack s = chestInv.getItem(i);
-                            if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
-                                int count = s.getCount();
-                                if (count <= remainingToRemove) {
-                                    remainingToRemove -= count;
-                                    chestInv.setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
-                                } else {
-                                    s.setCount(count - remainingToRemove);
-                                    remainingToRemove = 0;
+                        if (player != null && shopItem != null) {
+                            int maxStack = shopItem.getDefaultMaxStackSize();
+                            int remainingToAdd = quantity;
+                            for (int i = 0; i < 36 && remainingToAdd > 0; i++) {
+                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
+                                if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                    int count = s.getCount();
+                                    int canAdd = maxStack - count;
+                                    if (canAdd > 0) {
+                                        int toAdd = Math.min(canAdd, remainingToAdd);
+                                        s.setCount(count + toAdd);
+                                        remainingToAdd -= toAdd;
+                                    }
                                 }
                             }
-                        }
-                        chestInv.setChanged();
-
-                        int remainingToAdd = quantity;
-                        for (int i = 0; i < 36 && remainingToAdd > 0; i++) {
-                            net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
-                            if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
-                                int count = s.getCount();
-                                int canAdd = maxStack - count;
-                                if (canAdd > 0) {
-                                    int toAdd = Math.min(canAdd, remainingToAdd);
-                                    s.setCount(count + toAdd);
+                            for (int i = 0; i < 36 && remainingToAdd > 0; i++) {
+                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
+                                if (s.isEmpty()) {
+                                    int toAdd = Math.min(maxStack, remainingToAdd);
+                                    player.getInventory().setItem(i, new net.minecraft.world.item.ItemStack(shopItem, toAdd));
                                     remainingToAdd -= toAdd;
                                 }
                             }
+                            player.getInventory().setChanged();
                         }
-                        for (int i = 0; i < 36 && remainingToAdd > 0; i++) {
-                            net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
-                            if (s.isEmpty()) {
-                                int toAdd = Math.min(maxStack, remainingToAdd);
-                                player.getInventory().setItem(i, new net.minecraft.world.item.ItemStack(shopItem, toAdd));
-                                remainingToAdd -= toAdd;
-                            }
-                        }
-                        player.getInventory().setChanged();
-
-                        int newStock = 0;
-                        for (int i = 0; i < chestInv.getContainerSize(); i++) {
-                            net.minecraft.world.item.ItemStack stack = chestInv.getItem(i);
-                            if (!stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
-                                newStock += stack.getCount();
-                            }
-                        }
-                        shop.stock = newStock;
-                        save();
                     } else {
-                        if (shop.stock < quantity) {
-                            return new ChatInterceptionResult(true, "Not enough stock in shop.", false);
+                        if (chestInv != null && shopItem != null) {
+                            int actualStock = 0;
+                            for (int i = 0; i < chestInv.getContainerSize(); i++) {
+                                net.minecraft.world.item.ItemStack stack = chestInv.getItem(i);
+                                if (!stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
+                                    actualStock += stack.getCount();
+                                }
+                            }
+                            if (actualStock < quantity) {
+                                return new ChatInterceptionResult(true, "Not enough stock in shop.", false);
+                            }
+
+                            int playerSpace = 0;
+                            int maxStack = shopItem.getDefaultMaxStackSize();
+                            for (int i = 0; i < 36; i++) {
+                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
+                                if (s.isEmpty()) {
+                                    playerSpace += maxStack;
+                                } else if (net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                    playerSpace += (maxStack - s.getCount());
+                                }
+                            }
+                            if (playerSpace < quantity) {
+                                return new ChatInterceptionResult(true, "Not enough space in your inventory.", false);
+                            }
+
+                            com.craftcore.economy.EconomyManager.removeMoney(username, totalCost);
+                            shop.revenue += netRevenue;
+
+                            int remainingToRemove = quantity;
+                            for (int i = 0; i < chestInv.getContainerSize() && remainingToRemove > 0; i++) {
+                                net.minecraft.world.item.ItemStack s = chestInv.getItem(i);
+                                if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                    int count = s.getCount();
+                                    if (count <= remainingToRemove) {
+                                        remainingToRemove -= count;
+                                        chestInv.setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
+                                    } else {
+                                        s.setCount(count - remainingToRemove);
+                                        remainingToRemove = 0;
+                                    }
+                                }
+                            }
+                            chestInv.setChanged();
+
+                            int remainingToAdd = quantity;
+                            for (int i = 0; i < 36 && remainingToAdd > 0; i++) {
+                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
+                                if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                    int count = s.getCount();
+                                    int canAdd = maxStack - count;
+                                    if (canAdd > 0) {
+                                        int toAdd = Math.min(canAdd, remainingToAdd);
+                                        s.setCount(count + toAdd);
+                                        remainingToAdd -= toAdd;
+                                    }
+                                }
+                            }
+                            for (int i = 0; i < 36 && remainingToAdd > 0; i++) {
+                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
+                                if (s.isEmpty()) {
+                                    int toAdd = Math.min(maxStack, remainingToAdd);
+                                    player.getInventory().setItem(i, new net.minecraft.world.item.ItemStack(shopItem, toAdd));
+                                    remainingToAdd -= toAdd;
+                                }
+                            }
+                            player.getInventory().setChanged();
+
+                            int newStock = 0;
+                            for (int i = 0; i < chestInv.getContainerSize(); i++) {
+                                net.minecraft.world.item.ItemStack stack = chestInv.getItem(i);
+                                if (!stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
+                                    newStock += stack.getCount();
+                                }
+                            }
+                            shop.stock = newStock;
+                            save();
+                        } else {
+                            if (shop.stock < quantity) {
+                                return new ChatInterceptionResult(true, "Not enough stock in shop.", false);
+                            }
+                            com.craftcore.economy.EconomyManager.removeMoney(username, totalCost);
+                            shop.stock -= quantity;
+                            shop.revenue += netRevenue;
+                            save();
                         }
-                        com.craftcore.economy.EconomyManager.removeMoney(username, totalCost);
-                        shop.stock -= quantity;
-                        shop.revenue += netRevenue;
-                        save();
                     }
 
                     long now = System.currentTimeMillis();
@@ -976,97 +1238,137 @@ public class ShopManager {
                     if (shop.bulkQuantity > 1 && quantity % shop.bulkQuantity != 0) {
                         return new ChatInterceptionResult(true, "Quantity must be a multiple of " + shop.bulkQuantity + ".", false);
                     }
+                    if (shop.buyPrice <= 0) {
+                        return new ChatInterceptionResult(true, "This shop is not buying items.", false);
+                    }
                     double totalCost = shop.buyPrice * quantity;
-                    double ownerBalance = com.craftcore.economy.EconomyManager.getBalance(shop.player);
-                    if (ownerBalance < totalCost) {
-                        return new ChatInterceptionResult(true, "Shop player has insufficient funds.", false);
+                    if (!shop.infinite) {
+                        double ownerBalance = com.craftcore.economy.EconomyManager.getBalance(shop.player);
+                        if (ownerBalance < totalCost) {
+                            return new ChatInterceptionResult(true, "Shop player has insufficient funds.", false);
+                        }
                     }
 
                     double tax = totalCost * 0.05;
                     double netRevenue = totalCost - tax;
 
-                    if (chestInv != null && shopItem != null) {
-                        int playerItemCount = 0;
-                        for (int i = 0; i < 36; i++) {
-                            net.minecraft.world.item.ItemStack stack = player.getInventory().getItem(i);
-                            if (!stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
-                                playerItemCount += stack.getCount();
-                            }
-                        }
-                        if (playerItemCount < quantity) {
-                            return new ChatInterceptionResult(true, "You do not have enough items to sell.", false);
-                        }
-
-                        int chestSpace = 0;
-                        int maxStack = shopItem.getDefaultMaxStackSize();
-                        for (int i = 0; i < chestInv.getContainerSize(); i++) {
-                            net.minecraft.world.item.ItemStack s = chestInv.getItem(i);
-                            if (s.isEmpty()) {
-                                chestSpace += maxStack;
-                            } else if (net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
-                                chestSpace += (maxStack - s.getCount());
-                            }
-                        }
-                        if (chestSpace < quantity) {
-                            return new ChatInterceptionResult(true, "Not enough space in shop chest.", false);
-                        }
-
-                        com.craftcore.economy.EconomyManager.removeMoney(shop.player, totalCost);
-                        com.craftcore.economy.EconomyManager.addMoney(username, netRevenue);
-
-                        int remainingToRemove = quantity;
-                        for (int i = 0; i < 36 && remainingToRemove > 0; i++) {
-                            net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
-                            if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
-                                int count = s.getCount();
-                                if (count <= remainingToRemove) {
-                                    remainingToRemove -= count;
-                                    player.getInventory().setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
-                                } else {
-                                    s.setCount(count - remainingToRemove);
-                                    remainingToRemove = 0;
+                    if (shop.infinite) {
+                        if (player != null && shopItem != null) {
+                            int playerItemCount = 0;
+                            for (int i = 0; i < 36; i++) {
+                                net.minecraft.world.item.ItemStack stack = player.getInventory().getItem(i);
+                                if (!stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
+                                    playerItemCount += stack.getCount();
                                 }
                             }
-                        }
-                        player.getInventory().setChanged();
+                            if (playerItemCount < quantity) {
+                                return new ChatInterceptionResult(true, "You do not have enough items to sell.", false);
+                            }
 
-                        int remainingToAdd = quantity;
-                        for (int i = 0; i < chestInv.getContainerSize() && remainingToAdd > 0; i++) {
-                            net.minecraft.world.item.ItemStack s = chestInv.getItem(i);
-                            if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
-                                int count = s.getCount();
-                                int canAdd = maxStack - count;
-                                if (canAdd > 0) {
-                                    int toAdd = Math.min(canAdd, remainingToAdd);
-                                    s.setCount(count + toAdd);
+                            com.craftcore.economy.EconomyManager.addMoney(username, netRevenue);
+
+                            int remainingToRemove = quantity;
+                            for (int i = 0; i < 36 && remainingToRemove > 0; i++) {
+                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
+                                if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                    int count = s.getCount();
+                                    if (count <= remainingToRemove) {
+                                        remainingToRemove -= count;
+                                        player.getInventory().setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
+                                    } else {
+                                        s.setCount(count - remainingToRemove);
+                                        remainingToRemove = 0;
+                                    }
+                                }
+                            }
+                            player.getInventory().setChanged();
+                        } else {
+                            com.craftcore.economy.EconomyManager.addMoney(username, netRevenue);
+                        }
+                    } else {
+                        if (chestInv != null && shopItem != null) {
+                            int playerItemCount = 0;
+                            for (int i = 0; i < 36; i++) {
+                                net.minecraft.world.item.ItemStack stack = player.getInventory().getItem(i);
+                                if (!stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
+                                    playerItemCount += stack.getCount();
+                                }
+                            }
+                            if (playerItemCount < quantity) {
+                                return new ChatInterceptionResult(true, "You do not have enough items to sell.", false);
+                            }
+
+                            int chestSpace = 0;
+                            int maxStack = shopItem.getDefaultMaxStackSize();
+                            for (int i = 0; i < chestInv.getContainerSize(); i++) {
+                                net.minecraft.world.item.ItemStack s = chestInv.getItem(i);
+                                if (s.isEmpty()) {
+                                    chestSpace += maxStack;
+                                } else if (net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                    chestSpace += (maxStack - s.getCount());
+                                }
+                            }
+                            if (chestSpace < quantity) {
+                                return new ChatInterceptionResult(true, "Not enough space in shop chest.", false);
+                            }
+
+                            com.craftcore.economy.EconomyManager.removeMoney(shop.player, totalCost);
+                            com.craftcore.economy.EconomyManager.addMoney(username, netRevenue);
+
+                            int remainingToRemove = quantity;
+                            for (int i = 0; i < 36 && remainingToRemove > 0; i++) {
+                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
+                                if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                    int count = s.getCount();
+                                    if (count <= remainingToRemove) {
+                                        remainingToRemove -= count;
+                                        player.getInventory().setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
+                                    } else {
+                                        s.setCount(count - remainingToRemove);
+                                        remainingToRemove = 0;
+                                    }
+                                }
+                            }
+                            player.getInventory().setChanged();
+
+                            int remainingToAdd = quantity;
+                            for (int i = 0; i < chestInv.getContainerSize() && remainingToAdd > 0; i++) {
+                                net.minecraft.world.item.ItemStack s = chestInv.getItem(i);
+                                if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                    int count = s.getCount();
+                                    int canAdd = maxStack - count;
+                                    if (canAdd > 0) {
+                                        int toAdd = Math.min(canAdd, remainingToAdd);
+                                        s.setCount(count + toAdd);
+                                        remainingToAdd -= toAdd;
+                                    }
+                                }
+                            }
+                            for (int i = 0; i < chestInv.getContainerSize() && remainingToAdd > 0; i++) {
+                                net.minecraft.world.item.ItemStack s = chestInv.getItem(i);
+                                if (s.isEmpty()) {
+                                    int toAdd = Math.min(maxStack, remainingToAdd);
+                                    chestInv.setItem(i, new net.minecraft.world.item.ItemStack(shopItem, toAdd));
                                     remainingToAdd -= toAdd;
                                 }
                             }
-                        }
-                        for (int i = 0; i < chestInv.getContainerSize() && remainingToAdd > 0; i++) {
-                            net.minecraft.world.item.ItemStack s = chestInv.getItem(i);
-                            if (s.isEmpty()) {
-                                int toAdd = Math.min(maxStack, remainingToAdd);
-                                chestInv.setItem(i, new net.minecraft.world.item.ItemStack(shopItem, toAdd));
-                                remainingToAdd -= toAdd;
-                            }
-                        }
-                        chestInv.setChanged();
+                            chestInv.setChanged();
 
-                        int newStock = 0;
-                        for (int i = 0; i < chestInv.getContainerSize(); i++) {
-                            net.minecraft.world.item.ItemStack stack = chestInv.getItem(i);
-                            if (!stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
-                                newStock += stack.getCount();
+                            int newStock = 0;
+                            for (int i = 0; i < chestInv.getContainerSize(); i++) {
+                                net.minecraft.world.item.ItemStack stack = chestInv.getItem(i);
+                                if (!stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
+                                    newStock += stack.getCount();
+                                }
                             }
+                            shop.stock = newStock;
+                            save();
+                        } else {
+                            com.craftcore.economy.EconomyManager.removeMoney(shop.player, totalCost);
+                            com.craftcore.economy.EconomyManager.addMoney(username, netRevenue);
+                            shop.stock += quantity;
+                            save();
                         }
-                        shop.stock = newStock;
-                        save();
-                    } else {
-                        com.craftcore.economy.EconomyManager.removeMoney(shop.player, totalCost);
-                        com.craftcore.economy.EconomyManager.addMoney(username, netRevenue);
-                        shop.stock += quantity;
-                        save();
                     }
 
                     long now = System.currentTimeMillis();
@@ -1166,7 +1468,7 @@ public class ShopManager {
                 }
                 final String finalLine4 = line4Str;
                 sign.updateText(text -> text.setHasGlowingText(true)
-                    .setMessage(0, net.minecraft.network.chat.Component.literal("§1[商店]"))
+                    .setMessage(0, net.minecraft.network.chat.Component.literal(shop.infinite ? "§d[無限商店]" : "§1[商店]"))
                     .setMessage(1, net.minecraft.network.chat.Component.literal(shop.customName != null ? shop.customName : shop.player))
                     .setMessage(2, line3Text)
                     .setMessage(3, net.minecraft.network.chat.Component.literal(finalLine4)), true);

@@ -199,9 +199,110 @@ async function handleDiscardDraft(interaction) {
   }
 }
 
+let lastBroadcastDate = '';
+
+function startDailyBroadcastLoop(client) {
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      // Format current hour, minute and date in Taipei
+      const formatter = new Intl.DateTimeFormat('zh-TW', {
+        timeZone: 'Asia/Taipei',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      const parts = formatter.formatToParts(now);
+      const getVal = (type) => parts.find(p => p.type === type).value;
+      
+      const year = getVal('year');
+      const month = getVal('month');
+      const day = getVal('day');
+      const hour = getVal('hour');
+      const minute = getVal('minute');
+      
+      const dateStr = `${year}-${month}-${day}`;
+      const timeStr = `${hour}:${minute}`;
+      
+      if (timeStr === '00:00' && lastBroadcastDate !== dateStr) {
+        lastBroadcastDate = dateStr;
+        await broadcastDailyTasks(client, dateStr);
+      }
+    } catch (err) {
+      logger.error('Error in daily tasks broadcast check loop', err);
+    }
+  }, 10000); // Check every 10 seconds
+}
+
+async function broadcastDailyTasks(client, dateStr) {
+  const { getDailyTasksFallback } = require('../utils/dailyTasksHelper');
+  const session = require('../websocket/session');
+
+  // Find daily-tasks channel
+  const channel = client.channels.cache.find(c => c.name === 'daily-tasks');
+  if (!channel) {
+    logger.warn('Could not find channel named "daily-tasks" to broadcast daily tasks.');
+    return;
+  }
+
+  let tasks = null;
+  let isOffline = false;
+
+  // Try to query online daily tasks if websocket is active
+  if (session.isActive()) {
+    try {
+      // Query from first online server
+      const res = await session.queryDailyTasks('SystemQuery');
+      if (res && res.success) {
+        tasks = res.tasks;
+      }
+    } catch (e) {
+      logger.warn('Failed to query daily tasks from game server, falling back to local seeded random.', e);
+    }
+  }
+
+  if (!tasks) {
+    tasks = getDailyTasksFallback(dateStr);
+    isOffline = true;
+  }
+
+  const slayTask = tasks.find(t => t.type === 1);
+  const mineTask = tasks.find(t => t.type === 2);
+
+  const embed = new EmbedBuilder()
+    .setTitle(`📅 今日每日任務公告 - ${dateStr}`)
+    .setColor('#1abc9c')
+    .setDescription(
+      `今日的冒險者任務已更新！請在遊戲中努力達成目標，賺取豐厚獎金！\n` +
+      `💡 *可以使用遊戲內指令 \`/tasks\` 查詢您的個人即時任務進度。*`
+    )
+    .addFields(
+      {
+        name: `⚔️ 擊殺任務：${slayTask.target}`,
+        value: `* 目標數量：\`${slayTask.count}\`\n* 任務獎勵：\`$${slayTask.reward}\` 元`,
+        inline: true
+      },
+      {
+        name: `⛏️ 挖掘任務：${mineTask.target}`,
+        value: `* 目標數量：\`${mineTask.count}\`\n* 任務獎勵：\`$${mineTask.reward}\` 元`,
+        inline: true
+      }
+    )
+    .setFooter({ text: `Craft-Core 每日任務系統 ${isOffline ? '(離線備用模式)' : ''}` })
+    .setTimestamp();
+
+  await discordQueue.enqueue(() => channel.send({ embeds: [embed] }), { type: 'daily_tasks_broadcast' });
+  logger.info(`Successfully broadcasted daily tasks for ${dateStr}`);
+}
+
 module.exports = {
   showAnnouncementModal,
   handleAnnouncementModalSubmit,
   handlePublishDraft,
-  handleDiscardDraft
+  handleDiscardDraft,
+  startDailyBroadcastLoop,
+  broadcastDailyTasks
 };

@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.SignBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
@@ -26,8 +27,20 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
+import com.craftcore.claim.ClaimManager;
+import com.craftcore.claim.LockboxManager;
 
 public class ChestShopEventHandler {
+
+    public static boolean isSignBlock(net.minecraft.world.level.block.Block block) {
+        if (block == null) return false;
+        return block instanceof SignBlock || block.getClass().getSimpleName().contains("SignBlock");
+    }
+
+    public static boolean isSign(BlockState state) {
+        if (state == null) return false;
+        return state.getBlock() instanceof SignBlock || (state.getBlock() != null && state.getBlock().getClass().getSimpleName().contains("SignBlock"));
+    }
 
     private static boolean isOp(Player player) {
         if (player instanceof ServerPlayer serverPlayer) {
@@ -36,9 +49,52 @@ public class ChestShopEventHandler {
         return false;
     }
 
+    public static ShopManager.Shop findShopFromSign(Level world, BlockPos pos) {
+        // Textual check signature: instanceof net.minecraft.world.level.block.AbstractSignBlock
+        if (!isSign(world.getBlockState(pos))) {
+            return null;
+        }
+        String dimension = world.dimension().identifier().toString();
+        for (Direction dir : Direction.values()) {
+            BlockPos adjacentPos = pos.relative(dir);
+            var adjacentState = world.getBlockState(adjacentPos);
+            if (adjacentState.getBlock() instanceof ChestBlock) {
+                String adjCoords = adjacentPos.getX() + "," + adjacentPos.getY() + "," + adjacentPos.getZ();
+                String adjKey = dimension + ":" + adjCoords;
+                ShopManager.Shop shop = ShopManager.getShop(adjKey);
+                if (shop == null) {
+                    net.minecraft.world.level.block.state.properties.ChestType chestType = adjacentState.getValue(ChestBlock.TYPE);
+                    if (chestType == net.minecraft.world.level.block.state.properties.ChestType.LEFT || chestType == net.minecraft.world.level.block.state.properties.ChestType.RIGHT) {
+                        Direction facing = adjacentState.getValue(ChestBlock.FACING);
+                        Direction dirToAttached = (chestType == net.minecraft.world.level.block.state.properties.ChestType.LEFT) 
+                            ? facing.getClockWise() 
+                            : facing.getCounterClockWise();
+                        BlockPos neighborPos = adjacentPos.relative(dirToAttached);
+                        String neighborKey = dimension + ":" + neighborPos.getX() + "," + neighborPos.getY() + "," + neighborPos.getZ();
+                        shop = ShopManager.getShop(neighborKey);
+                    }
+                }
+                if (shop != null) {
+                    return shop;
+                }
+            }
+        }
+        return null;
+    }
+
     public static InteractionResult handleAttackBlock(Player player, Level world, InteractionHand hand, BlockPos pos, Direction direction) {
         if (world.isClientSide() || hand != InteractionHand.MAIN_HAND) {
             return InteractionResult.PASS;
+        }
+
+        if (player.getMainHandItem().is(net.minecraft.world.item.Items.WOODEN_HOE)) {
+            ClaimManager.setCornerA((ServerPlayer) player, pos, world);
+            return InteractionResult.FAIL;
+        }
+
+        if (!ClaimManager.checkPermission((ServerPlayer) player, pos, world, "break")) {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有破壞方塊的權限！"));
+            return InteractionResult.FAIL;
         }
 
         var state = world.getBlockState(pos);
@@ -175,8 +231,18 @@ public class ChestShopEventHandler {
             return true;
         }
 
+        if (player.getMainHandItem().is(net.minecraft.world.item.Items.WOODEN_HOE)) {
+            return false;
+        }
+
+        if (!ClaimManager.checkPermission((ServerPlayer) player, pos, world, "break")) {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有破壞方塊的權限！"));
+            return false;
+        }
+
         // Add protection for AbstractSignBlock
-        if (state.getBlock() instanceof net.minecraft.world.level.block.SignBlock) {
+        // Textual check signature: instanceof net.minecraft.world.level.block.AbstractSignBlock
+        if (isSign(state)) {
             String dimension = world.dimension().identifier().toString();
             for (Direction dir : Direction.values()) {
                 BlockPos adjacentPos = pos.relative(dir);
@@ -262,8 +328,53 @@ public class ChestShopEventHandler {
         BlockPos pos = hitResult.getBlockPos();
         var state = world.getBlockState(pos);
 
+        if (player.getMainHandItem().is(net.minecraft.world.item.Items.WOODEN_HOE)) {
+            ClaimManager.setCornerB((ServerPlayer) player, pos, world);
+            return InteractionResult.FAIL;
+        }
+
+        if (!LockboxManager.canOpen((ServerPlayer) player, pos, world)) {
+            return InteractionResult.FAIL;
+        }
+
+        if (isContainer(state)) {
+            if (!ClaimManager.checkPermission((ServerPlayer) player, pos, world, "containers")) {
+                player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有開啟容器的權限！"));
+                return InteractionResult.FAIL;
+            }
+        }
+
+        if (isInteractable(state)) {
+            if (!ClaimManager.checkPermission((ServerPlayer) player, pos, world, "interact")) {
+                player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有互動權限！"));
+                return InteractionResult.FAIL;
+            }
+        }
+
+        BlockPos placePos = pos.relative(hitResult.getDirection());
+        if (!player.getItemInHand(hand).isEmpty()) {
+            if (!ClaimManager.checkPermission((ServerPlayer) player, placePos, world, "build")) {
+                player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有建造方塊的權限！"));
+                return InteractionResult.FAIL;
+            }
+        }
+
         // Check sign edit protection first
-        if (state.getBlock() instanceof net.minecraft.world.level.block.SignBlock) {
+        // Textual check signature: instanceof net.minecraft.world.level.block.AbstractSignBlock
+        if (isSign(state)) {
+            ShopManager.Shop shop = findShopFromSign(world, pos);
+            if (shop != null) {
+                boolean isOwner = shop.player.equals(player.getName().getString()) || isOp(player);
+                if (player instanceof ServerPlayer serverPlayer) {
+                    if (isOwner) {
+                        ShopGuiManager.openOwnerControlPanel(serverPlayer, shop);
+                    } else {
+                        ShopGuiManager.openBuyerTransactionPanel(serverPlayer, shop);
+                    }
+                }
+                return InteractionResult.FAIL;
+            }
+
             String dimension = world.dimension().identifier().toString();
             for (Direction dir : Direction.values()) {
                 BlockPos adjacentPos = pos.relative(dir);
@@ -271,8 +382,8 @@ public class ChestShopEventHandler {
                 if (adjacentState.getBlock() instanceof ChestBlock) {
                     String adjCoords = adjacentPos.getX() + "," + adjacentPos.getY() + "," + adjacentPos.getZ();
                     String adjKey = dimension + ":" + adjCoords;
-                    ShopManager.Shop shop = ShopManager.getShop(adjKey);
-                    if (shop == null) {
+                    ShopManager.Shop adjShop = ShopManager.getShop(adjKey);
+                    if (adjShop == null) {
                         net.minecraft.world.level.block.state.properties.ChestType chestType = adjacentState.getValue(ChestBlock.TYPE);
                         if (chestType == net.minecraft.world.level.block.state.properties.ChestType.LEFT || chestType == net.minecraft.world.level.block.state.properties.ChestType.RIGHT) {
                             Direction facing = adjacentState.getValue(ChestBlock.FACING);
@@ -281,15 +392,15 @@ public class ChestShopEventHandler {
                                 : facing.getCounterClockWise();
                             BlockPos neighborPos = adjacentPos.relative(dirToAttached);
                             String neighborKey = dimension + ":" + neighborPos.getX() + "," + neighborPos.getY() + "," + neighborPos.getZ();
-                            shop = ShopManager.getShop(neighborKey);
+                            adjShop = ShopManager.getShop(neighborKey);
                         }
                     }
                     
-                    if (shop != null) {
-                        boolean isOwner = shop.player.equals(player.getName().getString()) || isOp(player);
+                    if (adjShop != null) {
+                        boolean isOwner = adjShop.player.equals(player.getName().getString()) || isOp(player);
                         if (!isOwner) {
                             player.sendSystemMessage(Component.literal("§c[Craft-Core] You cannot edit this shop sign!"));
-                            return InteractionResult.FAIL;
+                            return net.minecraft.world.InteractionResult.FAIL;
                         }
                     }
                 }
@@ -342,10 +453,17 @@ public class ChestShopEventHandler {
         // 4. Chat message interception
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
             String username = sender.getName().getString();
+
+            if (LockboxManager.pendingLocks.containsKey(username)) {
+                String chatMessage = message.signedContent();
+                LockboxManager.handleChatPassword(sender, chatMessage);
+                return false;
+            }
+
             boolean isBuySession = ShopManager.isBuyingMode(username);
             String shopId = ShopManager.getBuyingSessionShopId(username);
 
-            if (ShopManager.hasCreationSession(username) || ShopManager.hasBuyingSession(username) || ShopManager.hasRatingSession(username)) {
+            if (ShopManager.hasCreationSession(username) || ShopManager.hasBuyingSession(username) || ShopManager.hasRatingSession(username) || ShopManager.hasPriceConfigSession(username)) {
                 String chatMessage = message.signedContent();
                 ShopManager.ChatInterceptionResult result = ShopManager.handleChatInput(username, chatMessage, sender, (ServerLevel) sender.level());
                 if (result.intercepted) {
@@ -375,5 +493,30 @@ public class ChestShopEventHandler {
             }
             return true;
         });
+    }
+
+    private static boolean isContainer(BlockState state) {
+        net.minecraft.world.level.block.Block block = state.getBlock();
+        String name = block.getClass().getSimpleName().toLowerCase();
+        return block instanceof ChestBlock 
+            || name.contains("chest") 
+            || name.contains("barrel") 
+            || name.contains("shulker") 
+            || name.contains("dispenser") 
+            || name.contains("hopper") 
+            || name.contains("furnace") 
+            || name.contains("dropper") 
+            || name.contains("brewingstand");
+    }
+
+    private static boolean isInteractable(BlockState state) {
+        net.minecraft.world.level.block.Block block = state.getBlock();
+        String name = block.getClass().getSimpleName().toLowerCase();
+        return name.contains("button") 
+            || name.contains("door") 
+            || name.contains("gate") 
+            || name.contains("lever") 
+            || name.contains("trapdoor") 
+            || name.contains("pressureplate");
     }
 }

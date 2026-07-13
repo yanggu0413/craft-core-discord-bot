@@ -22,6 +22,14 @@ import java.util.concurrent.TimeUnit;
 public class ServerLifecycleHandler {
     private static ScheduledExecutorService telemetryScheduler;
     public static MinecraftServer serverInstance = null;
+    private static ScheduledExecutorService greetingScheduler = null;
+
+    public static synchronized ScheduledExecutorService getGreetingScheduler() {
+        if (greetingScheduler == null || greetingScheduler.isShutdown()) {
+            greetingScheduler = Executors.newSingleThreadScheduledExecutor();
+        }
+        return greetingScheduler;
+    }
 
     public static void register() {
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
@@ -31,12 +39,19 @@ public class ServerLifecycleHandler {
             ConfigManager.loadPlayers();
             CraftCoreMod.startWSClient(server);
             ChestShopEventHandler.register();
+            com.craftcore.task.DailyTaskManager.register();
         });
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             System.out.println("[CraftCore] Server stopping. Cleaning up resources.");
             serverInstance = null;
             stopTelemetryLoop();
+            synchronized (ServerLifecycleHandler.class) {
+                if (greetingScheduler != null) {
+                    greetingScheduler.shutdown();
+                    greetingScheduler = null;
+                }
+            }
             CraftCoreMod.stopWSClient();
         });
 
@@ -51,6 +66,16 @@ public class ServerLifecycleHandler {
                     client.send(new Packet("event", new Packet.EventPayload(
                             "join", username, uuid, username + " joined the game"
                     )));
+
+                    getGreetingScheduler().schedule(() -> {
+                        try {
+                            if (client.isAuthenticated()) {
+                                client.send(new Packet("join_query", new Packet.JoinQueryPayload(username, uuid)));
+                            }
+                        } catch (Exception e) {
+                            System.err.println("[CraftCore] Failed to send join_query: " + e.getMessage());
+                        }
+                    }, 1500, TimeUnit.MILLISECONDS);
                 }
             }
         });

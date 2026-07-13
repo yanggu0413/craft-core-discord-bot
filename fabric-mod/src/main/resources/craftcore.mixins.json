@@ -5,7 +5,8 @@
   "mixins": [
     "ServerPlayerEntityMixin",
     "PlayerAdvancementTrackerMixin",
-    "BlockBehaviourMixin"
+    "BlockBehaviourMixin",
+    "LivingEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

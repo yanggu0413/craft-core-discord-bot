@@ -269,4 +269,179 @@ public class Packet {
         public String query_id;
         public String username;
     }
+
+    public static class CheckinRequestPayload {
+        public String username;
+        public String uuid;
+
+        public CheckinRequestPayload(String username, String uuid) {
+            this.username = username;
+            this.uuid = uuid;
+        }
+    }
+
+    public static class CheckinResponsePayload {
+        public String username;
+        public boolean success;
+        public String item;
+        public int amount;
+        public int keysAwarded;
+        public int streak;
+        public String message;
+    }
+
+    public static class LuckydrawRequestPayload {
+        public String username;
+        public String uuid;
+
+        public LuckydrawRequestPayload(String username, String uuid) {
+            this.username = username;
+            this.uuid = uuid;
+        }
+    }
+
+    public static class LuckydrawResponsePayload {
+        public String username;
+        public boolean success;
+        public String item;
+        public int amount;
+        public int keysLeft;
+        public String message;
+    }
+
+    public static class ClaimsQueryPayload {
+        public String query_id;
+    }
+
+    public static class ClaimsResponsePayload {
+        public String query_id;
+        public List<ClaimEntry> claims;
+        public boolean success;
+        public String message;
+
+        public ClaimsResponsePayload(String queryId, List<ClaimEntry> claims, boolean success, String message) {
+            this.query_id = queryId;
+            this.claims = claims;
+            this.success = success;
+            this.message = message;
+        }
+    }
+
+    public static class ClaimEntry {
+        public String id;
+        public String name;
+        public String owner;
+        public int chunks;
+        public String[] corners;
+        public String dimension;
+        public ClaimsPermissions permissions;
+
+        public ClaimEntry(String id, String name, String owner, int chunks, String[] corners, String dimension, ClaimsPermissions permissions) {
+            this.id = id;
+            this.name = name;
+            this.owner = owner;
+            this.chunks = chunks;
+            this.corners = corners;
+            this.dimension = dimension;
+            this.permissions = permissions;
+        }
+    }
+
+    public static class ClaimsPermissions {
+        public List<String> build;
+        @com.google.gson.annotations.SerializedName("break")
+        public List<String> breakBlocks;
+        public List<String> containers;
+        public List<String> interact;
+
+        public ClaimsPermissions(List<String> build, List<String> breakBlocks, List<String> containers, List<String> interact) {
+            this.build = build;
+            this.breakBlocks = breakBlocks;
+            this.containers = containers;
+            this.interact = interact;
+        }
+    }
+
+    public static class ClaimsPermissionUpdatePayload {
+        public String query_id;
+        public String claimId;
+        public String permissionType; // "build" | "break" | "containers" | "interact"
+        public String player;
+        public String action; // "grant" | "revoke"
+    }
+
+    public static class LockboxesQueryPayload {
+        public String query_id;
+    }
+
+    public static class LockboxesResponsePayload {
+        public String query_id;
+        public List<LockboxEntry> lockboxes;
+        public boolean success;
+        public String message;
+
+        public LockboxesResponsePayload(String queryId, List<LockboxEntry> lockboxes, boolean success, String message) {
+            this.query_id = queryId;
+            this.lockboxes = lockboxes;
+            this.success = success;
+            this.message = message;
+        }
+    }
+
+    public static class LockboxEntry {
+        public String id;
+        public String location;
+        public String owner;
+        public List<String> authorized;
+
+        public LockboxEntry(String id, String location, String owner, List<String> authorized) {
+            this.id = id;
+            this.location = location;
+            this.owner = owner;
+            this.authorized = authorized;
+        }
+    }
+
+    public static class JoinQueryPayload {
+        public String username;
+        public String uuid;
+
+        public JoinQueryPayload(String username, String uuid) {
+            this.username = username;
+            this.uuid = uuid;
+        }
+    }
+
+    public static class JoinResponsePayload {
+        public String username;
+        public boolean hasCheckedIn;
+        public int pendingMailCount;
+
+        public JoinResponsePayload(String username, boolean hasCheckedIn, int pendingMailCount) {
+            this.username = username;
+            this.hasCheckedIn = hasCheckedIn;
+            this.pendingMailCount = pendingMailCount;
+        }
+    }
+
+    public static class DailyTasksQueryPayload {
+        public String query_id;
+        public String username;
+    }
+
+    public static class DailyTasksResponsePayload {
+        public String query_id;
+        public String username;
+        public List<java.util.Map<String, Object>> tasks;
+        public String date;
+        public boolean success;
+
+        public DailyTasksResponsePayload(String queryId, String username, List<java.util.Map<String, Object>> tasks, String date, boolean success) {
+            this.query_id = queryId;
+            this.username = username;
+            this.tasks = tasks;
+            this.date = date;
+            this.success = success;
+        }
+    }
 }

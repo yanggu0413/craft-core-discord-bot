@@ -29,6 +29,10 @@ client.once('ready', async () => {
   const statsBoardService = require('./services/statsBoardService');
   statsBoardService.startStatsBoardLoop(client);
 
+  // Start daily tasks announcement scheduler
+  const announcementService = require('./services/announcementService');
+  announcementService.startDailyBroadcastLoop(client);
+
   // Sync clock offset on ready and every hour
   const clock = require('./utils/clock');
   await clock.syncClock();

@@ -21,6 +21,9 @@ public class EconomyManager {
         public int trashSoldToday = 0;
         public String lastResetDate = "";
         public int upgradedShopSlots = 0;
+        public int dailyTaskSlayProgress = 0;
+        public int dailyTaskGatherProgress = 0;
+        public String dailyTaskDate = "";
     }
 
     private static Map<String, PlayerData> dataMap = new ConcurrentHashMap<>();
@@ -85,6 +88,17 @@ public class EconomyManager {
         currentDateOverride = date;
     }
 
+    public static String getCurrentDateOverride() {
+        return currentDateOverride;
+    }
+
+    public static String getTaipeiDate() {
+        if (currentDateOverride != null) {
+            return currentDateOverride;
+        }
+        return java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Taipei")).toLocalDate().toString();
+    }
+
     private static String getCurrentDate() {
         return currentDateOverride != null ? currentDateOverride : java.time.LocalDate.now().toString();
     }
@@ -97,7 +111,35 @@ public class EconomyManager {
             data.trashSoldToday = 0;
             data.lastResetDate = today;
         }
+        String todayTaipei = getTaipeiDate();
+        if (!todayTaipei.equals(data.dailyTaskDate)) {
+            data.dailyTaskSlayProgress = 0;
+            data.dailyTaskGatherProgress = 0;
+            data.dailyTaskDate = todayTaipei;
+        }
         return data;
+    }
+
+    public static synchronized int getDailyTaskSlayProgress(String username) {
+        PlayerData data = getOrCreate(username);
+        return data.dailyTaskSlayProgress;
+    }
+
+    public static synchronized int getDailyTaskGatherProgress(String username) {
+        PlayerData data = getOrCreate(username);
+        return data.dailyTaskGatherProgress;
+    }
+
+    public static synchronized void incrementDailyTaskSlayProgress(String username, int amount) {
+        PlayerData data = getOrCreate(username);
+        data.dailyTaskSlayProgress += amount;
+        save();
+    }
+
+    public static synchronized void incrementDailyTaskGatherProgress(String username, int amount) {
+        PlayerData data = getOrCreate(username);
+        data.dailyTaskGatherProgress += amount;
+        save();
     }
 
     public static synchronized double getBalance(String username) {
