@@ -11,8 +11,12 @@ import { Card, CardDescription, CardHeader, CardTitle } from './components/ui/ca
 import { cn } from './lib/utils';
 
 // 後端介面設定
-const API_URL = 'http://localhost:3000/api';
-const WS_URL = 'ws://localhost:3000/ws';
+const API_URL = window.location.port === '5173'
+  ? 'http://localhost:3000/api'
+  : `${window.location.protocol}//${window.location.host}/api`;
+const WS_URL = window.location.port === '5173'
+  ? 'ws://localhost:3000/ws'
+  : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
 interface LeaderboardEntry {
   username: string;
