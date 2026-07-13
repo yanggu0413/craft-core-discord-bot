@@ -13,10 +13,15 @@ yarn-debug.log*
 yarn-error.log*
 db_*.db
 db_*.db-journal
+db_*.db-shm
+db_*.db-wal
 .env
 .env.*
 **/.env
 **/.env.*
+**/*.db-shm
+**/*.db-wal
+
 
 
 # PM2

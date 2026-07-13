@@ -275,14 +275,11 @@ public class DiscordCommand {
             dispatcher.register(Commands.literal("economy")
                     .executes(context -> {
                         ServerPlayer player = context.getSource().getPlayer();
-                        if (player == null) {
-                            context.getSource().sendSystemMessage(Component.literal("此指令只能由遊戲內玩家執行。"));
-                            return 0;
+                        if (player != null) {
+                            player.sendSystemMessage(Component.literal("§c❌ 本伺服器已全面啟用玩家自由市場經濟，系統收購功能已關閉！請使用 /shop 與其他玩家進行交易。"));
+                        } else {
+                            context.getSource().sendSystemMessage(Component.literal("系統收購功能已關閉。"));
                         }
-                        player.openMenu(new SimpleMenuProvider(
-                            (syncId, playerInv, playerEntity) -> new com.craftcore.shop.ShopGuiManager.EconomyScreenHandler(syncId, playerInv, (ServerPlayer) playerEntity),
-                            Component.literal("Economy Sell Shop")
-                        ));
                         return 1;
                     })
                     .then(Commands.literal("top")
