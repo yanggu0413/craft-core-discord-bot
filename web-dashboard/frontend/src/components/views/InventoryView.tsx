@@ -220,10 +220,12 @@ export default function InventoryView({
                           <>
                             {/* Minecraft Item/Block Icon */}
                             <MinecraftItemIcon itemId={item.itemId} className="w-10 h-10 object-contain" />
-                            {/* Stack Count (Vanilla Minecraft Style) */}
-                            <span className="absolute bottom-1 right-1.5 font-mono text-xs font-black text-white drop-shadow-[1px_1px_0px_rgba(0,0,0,0.9)] select-none">
-                              {item.count}
-                            </span>
+                            {/* Stack Count (Vanilla Minecraft Style: only show if count > 1) */}
+                            {item.count > 1 && (
+                              <span className="absolute bottom-1 right-1.5 font-mono text-xs font-black text-white drop-shadow-[1px_1px_0px_rgba(0,0,0,0.9)] select-none">
+                                {item.count}
+                              </span>
+                            )}
                           </>
                         ) : (
                           <span className="text-[9px] text-muted-foreground/30 font-mono">{index}</span>
