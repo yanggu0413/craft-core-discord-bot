@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useState } from 'react';
-import { BookOpen, BarChart3, Copy, Check, ExternalLink, ShieldCheck, Mail, Sparkles, Server, MessageSquare, Play, HelpCircle } from 'lucide-react';
+import { BookOpen, BarChart3, Copy, Check, ExternalLink, ShieldCheck, Mail, Sparkles, Server, MessageSquare, Play, HelpCircle, ClipboardList } from 'lucide-react';
 
 export default function Home() {
   const [copiedJava, setCopiedJava] = useState(false);
@@ -25,8 +25,8 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-white text-zinc-800">
       <Head>
-        <title>CRAFT-CORE | 官方入口網站</title>
-        <meta name="description" content="歡迎加入 CRAFT-CORE 生存伺服器。支援 Java 26.2 (Fabric) 與基岩版最新版雙端連入。" />
+        <title>Craft-Core 原味生存伺服器 | 官方網站</title>
+        <meta name="description" content="歡迎加入 Craft-Core 原味生存伺服器。支援 Java 26.2 (Fabric) 與基岩版最新版雙端連入。" />
         <link rel="icon" href="/favicon.png" />
       </Head>
 
@@ -69,13 +69,13 @@ export default function Home() {
 
         <div className="relative z-10 max-w-3xl text-white">
           <div className="text-sm font-extrabold tracking-widest text-blue-400 uppercase mb-3">
-            FABRIC 1.21+ / BE LATEST / 雙端互通
+            JAVA 26.2 / 基岩最新 / 雙端互通
           </div>
           <h1 className="text-6xl md:text-8xl font-black tracking-tight leading-none mb-6 drop-shadow-md">
             CRAFT-CORE
           </h1>
           <p className="text-base md:text-lg font-medium opacity-90 mb-8 max-w-xl mx-auto leading-relaxed">
-            體驗最純粹的生存冒險！搭載先進自動化設施、自定義商業經濟與郵局包裹。在這裡，與志同道合的夥伴建立繁榮的科技城鎮。
+            一個很單純又簡單（？）的生存伺服器
           </p>
 
           {/* Action Buttons */}
@@ -110,9 +110,19 @@ export default function Home() {
             <div className="flex justify-center text-blue-600">
               <Server className="w-8 h-8" />
             </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">原味生存 × 科技經濟</h2>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">自主研發經濟和商店系統</h2>
             <p className="text-sm md:text-base text-zinc-500 max-w-lg mx-auto leading-relaxed">
-              享受最純粹的生存冒險，配合先進自動化紅石建設，與成熟的玩家自由交易市場！
+              享受最純粹的生存冒險，配合交易系統，讓你遊玩不無聊！
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex justify-center text-blue-600">
+              <ClipboardList className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">每日任務與生存挑戰</h2>
+            <p className="text-sm md:text-base text-zinc-500 max-w-lg mx-auto leading-relaxed">
+              在探索世界與建造的同時完成各種生存任務，輕鬆賺取遊戲幣、物資與抽獎鑰匙！
             </p>
           </div>
 
@@ -173,7 +183,7 @@ export default function Home() {
                   <span className="text-xs font-extrabold bg-blue-100 px-2.5 py-1 rounded">Java 版 (PC)</span>
                 </div>
                 <p className="text-sm text-zinc-500 mb-8 leading-relaxed">
-                  支援原版 Java 客戶端。採用先進的 Fabric 框架，效能出眾。<strong className="text-blue-600 font-bold block mt-2">注意：必須使用 26.2 版本連入，其餘版本皆無法加入！</strong>
+                  支援原版 Java 客戶端。採用 Fabric 框架架設，效能出眾。<strong className="text-blue-600 font-bold block mt-2">注意：必須使用 26.2 版本連入，其餘版本皆無法加入！</strong>
                 </p>
               </div>
               <div className="space-y-4">
@@ -241,7 +251,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="w-full border-t border-zinc-200 bg-zinc-50 py-10 text-sm text-zinc-400">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>&copy; {new Date().getFullYear()} CRAFT-CORE 生存伺服器. 保留所有權利。</p>
+          <p>&copy; {new Date().getFullYear()} Craft-Core 原味生存伺服器. 保留所有權利。</p>
           <div className="flex space-x-6">
             <a href="https://docs.craft-core.xyz" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-600">伺服器規章</a>
             <a href="https://discord.gg/XJZZwG7jR4" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-600">聯絡我們</a>
