@@ -39,7 +39,7 @@ public class SidebarManager {
     }
 
     private static void updateAllSidebars(MinecraftServer server) {
-        double mspt = server.getAverageTickTime();
+        double mspt = server.getAverageTickTimeNanos() / 1_000_000.0;
         double tps = Math.min(20.0, 1000.0 / mspt);
 
         Scoreboard scoreboard = server.getScoreboard();
@@ -74,7 +74,7 @@ public class SidebarManager {
         List<String> oldLines = previousLines.get(uuid);
         if (oldLines != null) {
             for (String oldLine : oldLines) {
-                scoreboard.resetSinglePlayerScore(oldLine, objective);
+                scoreboard.resetSinglePlayerScore(() -> oldLine, objective);
             }
         }
 
@@ -92,7 +92,7 @@ public class SidebarManager {
         for (int i = 0; i < newLines.size(); i++) {
             String lineText = newLines.get(i);
             int scoreValue = newLines.size() - i;
-            scoreboard.getOrCreatePlayerScore(lineText, objective).setScore(scoreValue);
+            scoreboard.getOrCreatePlayerScore(() -> lineText, objective).set(scoreValue);
         }
 
         // 5. Save previous lines
