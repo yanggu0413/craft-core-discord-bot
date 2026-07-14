@@ -27,7 +27,7 @@ export default function Home() {
       <Head>
         <title>CRAFT-CORE | 官方入口網站</title>
         <meta name="description" content="歡迎加入 CRAFT-CORE 生存伺服器。支援 Java 26.2 (Fabric) 與基岩版最新版雙端連入。" />
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/favicon.png" />
       </Head>
 
       {/* Navigation Header */}
