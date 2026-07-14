@@ -160,6 +160,43 @@ export default function InventoryView({
     return items.find((item) => item.slot === index) || null;
   });
 
+  const renderSlot = (index: number) => {
+    const item = gridSlots[index];
+    const isSelected = selectedSlot?.slot === index;
+    return (
+      <div
+        key={index}
+        onClick={() => item && setSelectedSlot(item)}
+        className={`w-12 h-12 bg-[#8b8b8b] border-t-[3px] border-l-[3px] border-[#373737] border-b-[3px] border-r-[3px] border-white flex items-center justify-center relative cursor-pointer select-none shrink-0 ${
+          isSelected 
+            ? 'outline outline-[3px] outline-[#ffffff] z-20 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]' 
+            : item 
+              ? 'hover:bg-[#a0a0a0] active:bg-[#777777] shadow-[inset_0_0_4px_rgba(0,0,0,0.3)]' 
+              : 'shadow-[inset_0_0_4px_rgba(0,0,0,0.3)] cursor-not-allowed'
+        }`}
+        title={item ? `${item.displayName}\n(ID: ${item.itemId})` : `第 ${index} 格 (空)`}
+      >
+        {item ? (
+          <>
+            {/* Minecraft Item/Block Icon */}
+            <MinecraftItemIcon itemId={item.itemId} className="w-8 h-8 object-contain" />
+            {/* Stack Count (Vanilla Minecraft Style) */}
+            {item.count > 1 && (
+              <span 
+                className="absolute bottom-[2px] right-[4px] font-mono text-[11px] font-black text-white select-none z-10"
+                style={{
+                  textShadow: '1px 1px 0px #3f3f3f, 2px 2px 0px #3f3f3f'
+                }}
+              >
+                {item.count}
+              </span>
+            )}
+          </>
+        ) : null}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-1 text-left flex justify-between items-center">
@@ -199,40 +236,22 @@ export default function InventoryView({
               </div>
             ) : (
               <div className="space-y-4">
-                {/* 36格背包網格 9x4 */}
-                <div className="grid grid-cols-9 gap-1.5 p-3 bg-muted/20 border border-border rounded-[4px] max-w-full overflow-x-auto">
-                  {gridSlots.map((item, index) => {
-                    const isSelected = selectedSlot?.slot === index;
-                    return (
-                      <div
-                        key={index}
-                        onClick={() => item && setSelectedSlot(item)}
-                        className={`aspect-square border flex flex-col items-center justify-center relative group cursor-pointer transition-all rounded-[2px] ${
-                          isSelected 
-                            ? 'border-emerald-500 bg-emerald-500/10' 
-                            : item 
-                              ? 'border-border bg-muted/40 hover:border-primary hover:bg-muted/70' 
-                              : 'border-border bg-muted/10 cursor-not-allowed'
-                        }`}
-                        title={item ? `${item.displayName}\n(ID: ${item.itemId})` : `第 ${index + 1} 格 (空)`}
-                      >
-                        {item ? (
-                          <>
-                            {/* Minecraft Item/Block Icon */}
-                            <MinecraftItemIcon itemId={item.itemId} className="w-10 h-10 object-contain" />
-                            {/* Stack Count (Vanilla Minecraft Style: only show if count > 1) */}
-                            {item.count > 1 && (
-                              <span className="absolute bottom-1 right-1.5 font-mono text-xs font-black text-white drop-shadow-[1px_1px_0px_rgba(0,0,0,0.9)] select-none">
-                                {item.count}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-[9px] text-muted-foreground/30 font-mono">{index}</span>
-                        )}
-                      </div>
-                    );
-                  })}
+                {/* Minecraft Inset GUI Container */}
+                <div className="p-4 bg-[#c6c6c6] border-t-2 border-l-2 border-white border-b-2 border-r-2 border-[#555555] rounded-[2px] shadow-lg max-w-full overflow-x-auto flex justify-center">
+                  <div className="flex flex-col space-y-3">
+                    {/* Main Inventory: 3 rows of 9 (slots 9 to 35) */}
+                    <div className="grid grid-cols-9 gap-[4px]">
+                      {Array.from({ length: 27 }, (_, i) => renderSlot(i + 9))}
+                    </div>
+
+                    {/* Separator Gap (approx. 8px) */}
+                    <div className="h-2" />
+
+                    {/* Hotbar: 1 row of 9 (slots 0 to 8) */}
+                    <div className="grid grid-cols-9 gap-[4px]">
+                      {Array.from({ length: 9 }, (_, i) => renderSlot(i))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex items-start space-x-2 text-[10px] text-muted-foreground bg-muted/30 p-2 rounded-[2px] text-left">
