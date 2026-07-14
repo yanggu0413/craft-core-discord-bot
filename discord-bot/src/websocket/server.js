@@ -17,7 +17,7 @@ const authSchema = z.object({
 });
 
 function start(discordClient) {
-  wss = new WebSocketServer({ port: config.websocket.port });
+  wss = new WebSocketServer({ port: config.websocket.port, host: '0.0.0.0' });
   logger.info(`WebSocket server listening on port ${config.websocket.port}`);
 
   wss.on('connection', (ws, req) => {
