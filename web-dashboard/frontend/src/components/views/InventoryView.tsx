@@ -167,25 +167,32 @@ export default function InventoryView({
       <div
         key={index}
         onClick={() => item && setSelectedSlot(item)}
-        className={`w-12 h-12 bg-[#8b8b8b] border-t-[3px] border-l-[3px] border-[#373737] border-b-[3px] border-r-[3px] border-white flex items-center justify-center relative cursor-pointer select-none shrink-0 ${
-          isSelected 
-            ? 'outline outline-[3px] outline-[#ffffff] z-20 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]' 
-            : item 
-              ? 'hover:bg-[#a0a0a0] active:bg-[#777777] shadow-[inset_0_0_4px_rgba(0,0,0,0.3)]' 
-              : 'shadow-[inset_0_0_4px_rgba(0,0,0,0.3)] cursor-not-allowed'
-        }`}
+        className="flex items-center justify-center relative cursor-pointer select-none shrink-0"
+        style={{
+          width: '48px',
+          height: '48px',
+          backgroundColor: '#8b8b8b',
+          borderTop: '3px solid #373737',
+          borderLeft: '3px solid #373737',
+          borderBottom: '3px solid #ffffff',
+          borderRight: '3px solid #ffffff',
+          boxSizing: 'border-box',
+          outline: isSelected ? '3px solid #ffffff' : 'none',
+          zIndex: isSelected ? 20 : 1,
+          boxShadow: 'inset 2px 2px 4px rgba(0, 0, 0, 0.4)'
+        }}
         title={item ? `${item.displayName}\n(ID: ${item.itemId})` : `第 ${index} 格 (空)`}
       >
         {item ? (
           <>
-            {/* Minecraft Item/Block Icon */}
-            <MinecraftItemIcon itemId={item.itemId} className="w-8 h-8 object-contain" />
+            {/* Minecraft Item/Block Icon (Enlarged to 85% of slot to match game scale) */}
+            <MinecraftItemIcon itemId={item.itemId} className="w-[38px] h-[38px] object-contain" />
             {/* Stack Count (Vanilla Minecraft Style) */}
             {item.count > 1 && (
               <span 
                 className="absolute bottom-[2px] right-[4px] font-mono text-[11px] font-black text-white select-none z-10"
                 style={{
-                  textShadow: '1px 1px 0px #3f3f3f, 2px 2px 0px #3f3f3f'
+                  textShadow: '1.5px 1.5px 0px #3f3f3f'
                 }}
               >
                 {item.count}
@@ -223,9 +230,9 @@ export default function InventoryView({
               <CardTitle>個人遊戲背包 (36 格)</CardTitle>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex justify-center">
             {!isOnline ? (
-              <div className="py-12 flex flex-col items-center justify-center text-center space-y-4 border border-dashed border-border rounded-[4px]">
+              <div className="w-full py-12 flex flex-col items-center justify-center text-center space-y-4 border border-dashed border-border rounded-[4px]">
                 <div className="bg-amber-500/10 p-3 rounded-full">
                   <ShieldAlert className="w-8 h-8 text-amber-500" />
                 </div>
@@ -235,9 +242,19 @@ export default function InventoryView({
                 </CardDescription>
               </div>
             ) : (
-              <div className="space-y-4">
-                {/* Minecraft Inset GUI Container */}
-                <div className="p-4 bg-[#c6c6c6] border-t-2 border-l-2 border-white border-b-2 border-r-2 border-[#555555] rounded-[2px] shadow-lg max-w-full overflow-x-auto flex justify-center">
+              <div className="space-y-4 w-full flex flex-col items-center">
+                {/* Minecraft Inset GUI Container (1:1 replica of GUI texture colors and borders) */}
+                <div 
+                  className="p-4 shadow-xl max-w-full overflow-x-auto flex justify-center"
+                  style={{
+                    backgroundColor: '#c6c6c6',
+                    borderTop: '3px solid #ffffff',
+                    borderLeft: '3px solid #ffffff',
+                    borderBottom: '3px solid #555555',
+                    borderRight: '3px solid #555555',
+                    boxSizing: 'border-box'
+                  }}
+                >
                   <div className="flex flex-col space-y-3">
                     {/* Main Inventory: 3 rows of 9 (slots 9 to 35) */}
                     <div className="grid grid-cols-9 gap-[4px]">
