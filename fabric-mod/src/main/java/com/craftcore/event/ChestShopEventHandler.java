@@ -126,13 +126,13 @@ public class ChestShopEventHandler {
                 if (isOwner) {
                     return InteractionResult.PASS;
                 } else {
-                    player.sendSystemMessage(Component.literal("§c[Craft-Core] You cannot break this chest shop!"));
+                    player.sendSystemMessage(Component.literal("§c[Craft-Core] 您不能破壞此箱子商店！"));
                     player.playSound(SoundEvents.CHEST_LOCKED, 1.0f, 1.0f);
 
                     // Enter transaction flow (Requirement 5)
                     net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(shop.item));
                     if (itemObj == net.minecraft.world.item.Items.AIR) {
-                        player.sendSystemMessage(Component.literal("§c[Craft-Core] Internal Error: Item not found!"));
+                        player.sendSystemMessage(Component.literal("§c[Craft-Core] 內部錯誤：找不到物品！"));
                         return InteractionResult.FAIL;
                     }
 
@@ -161,7 +161,7 @@ public class ChestShopEventHandler {
                     boolean buyActive = shop.buyPrice > 0;
 
                     if (!sellActive && !buyActive) {
-                        player.sendSystemMessage(Component.literal("§c[Craft-Core] This shop has no active prices."));
+                        player.sendSystemMessage(Component.literal("§c[Craft-Core] 此商店目前沒有設定任何價格。"));
                         return InteractionResult.FAIL;
                     }
 
@@ -267,7 +267,7 @@ public class ChestShopEventHandler {
                     if (shop != null) {
                         boolean isOwner = shop.player.equals(player.getName().getString()) || isOp(player);
                         if (!isOwner) {
-                            player.sendSystemMessage(Component.literal("§c[Craft-Core] You cannot break this shop sign!"));
+                            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您不能破壞此商店告示牌！"));
                             return false;
                         }
                     }
@@ -308,10 +308,10 @@ public class ChestShopEventHandler {
                         ShopGuiManager.cleanupShopVisuals(serverWorld, targetPos);
                     }
                     ShopManager.unregisterShop(targetKey);
-                    player.sendSystemMessage(Component.literal("§b[Craft-Core] §fShop deleted."));
+                    player.sendSystemMessage(Component.literal("§b[Craft-Core] §f商店已成功註銷。"));
                     return true;
                 } else {
-                    player.sendSystemMessage(Component.literal("§c[Craft-Core] You cannot break this chest shop!"));
+                    player.sendSystemMessage(Component.literal("§c[Craft-Core] 您不能破壞此箱子商店！"));
                     player.playSound(SoundEvents.CHEST_LOCKED, 1.0f, 1.0f);
                     return false;
                 }
@@ -399,7 +399,7 @@ public class ChestShopEventHandler {
                     if (adjShop != null) {
                         boolean isOwner = adjShop.player.equals(player.getName().getString()) || isOp(player);
                         if (!isOwner) {
-                            player.sendSystemMessage(Component.literal("§c[Craft-Core] You cannot edit this shop sign!"));
+                            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您不能編輯此商店告示牌！"));
                             return net.minecraft.world.InteractionResult.FAIL;
                         }
                     }
@@ -431,7 +431,7 @@ public class ChestShopEventHandler {
                 if (isOwner) {
                     return InteractionResult.PASS;
                 } else {
-                    player.sendSystemMessage(Component.literal("§c[Craft-Core] You cannot open this chest shop!"));
+                    player.sendSystemMessage(Component.literal("§c[Craft-Core] 您不能開啟此箱子商店！"));
                     player.playSound(SoundEvents.CHEST_LOCKED, 1.0f, 1.0f);
                     return InteractionResult.FAIL;
                 }

@@ -51,10 +51,10 @@ public class DiscordCommand {
                                         double amount = DoubleArgumentType.getDouble(context, "amount");
                                         boolean success = com.craftcore.economy.EconomyManager.addMoney(username, amount);
                                         if (success) {
-                                            context.getSource().sendSystemMessage(Component.literal("Added " + amount + " to " + username));
+                                            context.getSource().sendSystemMessage(Component.literal("§b[Craft-Core] §a成功將 $" + amount + " 加至玩家 " + username + " 的帳戶！"));
                                             return 1;
                                         } else {
-                                            context.getSource().sendSystemMessage(Component.literal("Failed to add money."));
+                                            context.getSource().sendSystemMessage(Component.literal("§c[Craft-Core] 加金幣失敗！"));
                                             return 0;
                                         }
                                     })))
@@ -69,10 +69,10 @@ public class DiscordCommand {
                                         double amount = DoubleArgumentType.getDouble(context, "amount");
                                         boolean success = com.craftcore.economy.EconomyManager.removeMoney(username, amount);
                                         if (success) {
-                                            context.getSource().sendSystemMessage(Component.literal("Removed " + amount + " from " + username));
+                                            context.getSource().sendSystemMessage(Component.literal("§b[Craft-Core] §a成功將 $" + amount + " 自玩家 " + username + " 的帳戶中扣除！"));
                                             return 1;
                                         } else {
-                                            context.getSource().sendSystemMessage(Component.literal("Failed to remove money."));
+                                            context.getSource().sendSystemMessage(Component.literal("§c[Craft-Core] 扣除金幣失敗！"));
                                             return 0;
                                         }
                                     })))
@@ -299,7 +299,7 @@ public class DiscordCommand {
                                 }
                                 player.openMenu(new SimpleMenuProvider(
                                     (syncId, playerInv, playerEntity) -> new com.craftcore.shop.ShopGuiManager.EcoTopScreenHandler(syncId, playerInv),
-                                    Component.literal("Wealth Leaderboard")
+                                    Component.literal("富豪排行榜")
                                 ));
                                 return 1;
                             })
@@ -316,7 +316,7 @@ public class DiscordCommand {
                                 }
                                 player.openMenu(new SimpleMenuProvider(
                                     (syncId, playerInv, playerEntity) -> new com.craftcore.shop.ShopGuiManager.EcoTopScreenHandler(syncId, playerInv),
-                                    Component.literal("Wealth Leaderboard")
+                                    Component.literal("富豪排行榜")
                                 ));
                                 return 1;
                             })
@@ -505,13 +505,13 @@ public class DiscordCommand {
             } else {
                 dim = dimKey;
             }
-            source.sendSystemMessage(Component.literal(String.format("Online: true, Coords: X: %.2f Y: %.2f Z: %.2f, Dimension: %s", x, y, z, dim)));
+            source.sendSystemMessage(Component.literal(String.format("在線狀態: 線上, 座標: X: %.2f Y: %.2f Z: %.2f, 維度: %s", x, y, z, dim)));
         } else {
             String lastOnline = ConfigManager.getPlayerLastOnline(username);
             if (lastOnline == null) {
-                lastOnline = "Unknown";
+                lastOnline = "未知";
             }
-            source.sendSystemMessage(Component.literal(String.format("Online: false, LastOnline: %s", lastOnline)));
+            source.sendSystemMessage(Component.literal(String.format("在線狀態: 離線, 最後上線時間: %s", lastOnline)));
         }
         return 1;
     }
@@ -775,13 +775,13 @@ public class DiscordCommand {
                     com.craftcore.shop.ShopGuiManager.cleanupShopVisuals(world, pos);
                 }
                 com.craftcore.shop.ShopManager.unregisterShop(shop.id);
-                player.sendSystemMessage(Component.literal("§b[Craft-Core] §fShop deleted."));
+                player.sendSystemMessage(Component.literal("§b[Craft-Core] §f商店已註銷。"));
                 player.playSound(net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE.value(), 1.0f, 1.0f);
                 break;
                 
             case "buy_session":
                 if (shop.sellPrice <= 0) {
-                    player.sendSystemMessage(Component.literal("§c[Craft-Core] This shop is not selling items."));
+                    player.sendSystemMessage(Component.literal("§c[Craft-Core] 此商店目前未出售商品。"));
                     return 0;
                 }
                 com.craftcore.shop.ShopManager.BuyingSession bSession = new com.craftcore.shop.ShopManager.BuyingSession(shop.id);
@@ -793,7 +793,7 @@ public class DiscordCommand {
                 
             case "sell_session":
                 if (shop.buyPrice <= 0) {
-                    player.sendSystemMessage(Component.literal("§c[Craft-Core] This shop is not buying items."));
+                    player.sendSystemMessage(Component.literal("§c[Craft-Core] 此商店目前未收購商品。"));
                     return 0;
                 }
                 com.craftcore.shop.ShopManager.BuyingSession sSession = new com.craftcore.shop.ShopManager.BuyingSession(shop.id);

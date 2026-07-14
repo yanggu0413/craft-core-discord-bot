@@ -427,14 +427,14 @@ public class ShopGuiManager {
                 }
 
                 if (totalSold > 0) {
-                    player.sendSystemMessage(Component.literal("§b[Craft-Core] §fSuccessfully sold §a" + totalSold + " §fitems, earning §a$" + totalEarned + "§f."));
+                    player.sendSystemMessage(Component.literal("§b[Craft-Core] §f成功出售 §a" + totalSold + " §f個物品，共賺取 §a$" + totalEarned + "§f 元！"));
                     player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
                 }
                 if (totalRejected > 0) {
-                    player.sendSystemMessage(Component.literal("§c[Craft-Core] §f" + totalRejected + " items were rejected (limit reached or invalid items)."));
+                    player.sendSystemMessage(Component.literal("§c[Craft-Core] §f" + totalRejected + " 個物品被拒收（已達每日回收上限或為無效回收物品）。"));
                 }
                 if (totalSold == 0 && totalRejected == 0) {
-                    player.sendSystemMessage(Component.literal("§c[Craft-Core] No items to sell! Place items in slots 0-24."));
+                    player.sendSystemMessage(Component.literal("§c[Craft-Core] 沒有可出售的物品！請將物品放入 0-24 號格子中。"));
                 }
                 this.broadcastChanges();
                 return;
