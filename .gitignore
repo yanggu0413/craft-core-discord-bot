@@ -82,3 +82,6 @@ fetch_version_json.py
 find_all_26_2.py
 fabric-mod/read_utf16.py
 fabric-mod/schemas_error.log
+
+# Local Database
+discord-bot/src/database/database.db
