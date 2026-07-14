@@ -45,7 +45,7 @@ export default function Home() {
             <a href="https://dash.craft-core.xyz" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-zinc-600 hover:text-blue-600 transition-colors">
               玩家面板
             </a>
-            <a href="https://discord.gg/invite" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-zinc-600 hover:text-blue-600 transition-colors">
+            <a href="https://discord.gg/XJZZwG7jR4" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-zinc-600 hover:text-blue-600 transition-colors">
               Discord
             </a>
             <a 
@@ -88,7 +88,7 @@ export default function Home() {
               <span>{copiedGeneral ? '已複製 IP！' : '複製伺服器 IP'}</span>
             </button>
             <a
-              href="https://discord.gg/invite"
+              href="https://discord.gg/XJZZwG7jR4"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-sm font-extrabold backdrop-blur-sm transition-colors flex items-center justify-center space-x-2.5"
@@ -244,7 +244,7 @@ export default function Home() {
           <p>&copy; {new Date().getFullYear()} CRAFT-CORE 生存伺服器. 保留所有權利。</p>
           <div className="flex space-x-6">
             <a href="https://docs.craft-core.xyz" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-600">伺服器規章</a>
-            <a href="https://dash.craft-core.xyz" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-600">聯絡我們</a>
+            <a href="https://discord.gg/XJZZwG7jR4" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-600">聯絡我們</a>
           </div>
         </div>
       </footer>
