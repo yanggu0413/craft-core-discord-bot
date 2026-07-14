@@ -195,6 +195,11 @@ interface CustomRequest extends Request {
     mc_uuid: string;
     mc_username: string;
     discord_id?: string;
+    roles?: string[];
+    profile?: {
+      roles?: string[];
+      isAdmin?: boolean;
+    };
   };
 }
 
@@ -215,6 +220,22 @@ function authenticateToken(req: CustomRequest, res: Response, next: NextFunction
   });
 }
 
+function requireAdmin(req: CustomRequest, res: Response, next: NextFunction) {
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({ success: false, message: '尚未登入，請先進行身份驗證' });
+  }
+
+  const adminRoleIds = ['1360409328175153242', '1411256123226456116', '1360409437638099116'];
+  const roles = user.roles || user.profile?.roles || [];
+  const hasAdminRole = Array.isArray(roles) && roles.some(r => adminRoleIds.includes(r));
+
+  if (!hasAdminRole) {
+    return res.status(403).json({ success: false, message: 'Forbidden' });
+  }
+  next();
+}
+
 // -------------------------------------------------------------
 // Auth Routes & Dev Mode Bypass
 // -------------------------------------------------------------
@@ -222,6 +243,8 @@ function authenticateToken(req: CustomRequest, res: Response, next: NextFunction
 // Developer Mock login bypass endpoint
 app.get('/api/auth/dev-login', (req: Request, res: Response) => {
   const username = (req.query.username as string) || 'Yanggu';
+  const nonAdmin = req.query.nonAdmin === 'true';
+  const roles = nonAdmin ? [] : ['1360409328175153242'];
 
   if (!db) {
     return res.status(500).json({ success: false, message: '資料庫未連接' });
@@ -238,7 +261,17 @@ app.get('/api/auth/dev-login', (req: Request, res: Response) => {
       const addBinding = db.prepare('INSERT INTO bindings (discord_id, mc_uuid, mc_username) VALUES (?, ?, ?)');
       addBinding.run(dummyDiscordId, dummyUuid, username);
       
-      const token = jwt.sign({ mc_uuid: dummyUuid, mc_username: username, discord_id: dummyDiscordId }, JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign({ 
+        mc_uuid: dummyUuid, 
+        mc_username: username, 
+        discord_id: dummyDiscordId,
+        roles,
+        profile: {
+          roles,
+          isAdmin: !nonAdmin
+        }
+      }, JWT_SECRET, { expiresIn: '7d' });
+      
       return res.json({
         success: true,
         message: '開發者模式建立全新測試綁定登入',
@@ -247,7 +280,17 @@ app.get('/api/auth/dev-login', (req: Request, res: Response) => {
       });
     }
 
-    const token = jwt.sign({ mc_uuid: binding.mc_uuid, mc_username: binding.mc_username, discord_id: binding.discord_id }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ 
+      mc_uuid: binding.mc_uuid, 
+      mc_username: binding.mc_username, 
+      discord_id: binding.discord_id,
+      roles,
+      profile: {
+        roles,
+        isAdmin: !nonAdmin
+      }
+    }, JWT_SECRET, { expiresIn: '7d' });
+    
     return res.json({
       success: true,
       message: '開發者模式成功登入',
@@ -330,8 +373,31 @@ app.get('/api/auth/callback', async (req: Request, res: Response) => {
     }
 
     // 4. Generate local JWT token for dashboard authentication
+    let roles: string[] = [];
+    try {
+      const rolesRes = await sendWsQuery('member_roles_query', { discord_id: realDiscordId });
+      if (rolesRes && rolesRes.success) {
+        roles = rolesRes.roles || [];
+      }
+    } catch (err) {
+      console.warn('[Discord OAuth] Failed to fetch member roles from Bot WS:', err);
+    }
+
+    if (binding.mc_username.toLowerCase() === 'yanggu' && roles.length === 0) {
+      roles = ['1360409328175153242'];
+    }
+
     const token = jwt.sign(
-      { mc_uuid: binding.mc_uuid, mc_username: binding.mc_username, discord_id: realDiscordId },
+      { 
+        mc_uuid: binding.mc_uuid, 
+        mc_username: binding.mc_username, 
+        discord_id: realDiscordId,
+        roles,
+        profile: {
+          roles,
+          isAdmin: roles.some(r => ['1360409328175153242', '1411256123226456116', '1360409437638099116'].includes(r))
+        }
+      },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -346,12 +412,18 @@ app.get('/api/auth/callback', async (req: Request, res: Response) => {
 // Core Business endpoints
 // -------------------------------------------------------------
 
-function getTaipeiDateString(): string {
+function getTaipeiDateString(date: Date = new Date()): string {
   const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' };
   const formatter = new Intl.DateTimeFormat('zh-TW', options);
-  const formatted = formatter.format(new Date());
+  const formatted = formatter.format(date);
   return formatted.replace(/\//g, '-');
 }
+
+function getTaipeiYesterdayDateString(date: Date = new Date()): string {
+  const yesterday = new Date(date.getTime() - 24 * 60 * 60 * 1000);
+  return getTaipeiDateString(yesterday);
+}
+
 
 function getHashCode(str: string): number {
   let hash = 0;
@@ -599,25 +671,31 @@ app.get('/api/user/profile', authenticateToken, async (req: CustomRequest, res: 
     keys_count: 0,
     checkin_streak: 0,
     total_checkins: 0,
-    last_checkin: null
+    last_checkin: null,
+    subscribe_reminder: 0
   };
 
   if (db) {
     try {
-      const getBinding = db.prepare('SELECT keys_count, checkin_streak, total_checkins, last_checkin FROM bindings WHERE mc_username = ? COLLATE NOCASE');
+      const getBinding = db.prepare('SELECT keys_count, checkin_streak, total_checkins, last_checkin, subscribe_reminder FROM bindings WHERE mc_username = ? COLLATE NOCASE');
       const binding = getBinding.get(user.mc_username) as any;
       if (binding) {
         dbStats = {
           keys_count: binding.keys_count || 0,
           checkin_streak: binding.checkin_streak || 0,
           total_checkins: binding.total_checkins || 0,
-          last_checkin: binding.last_checkin || null
+          last_checkin: binding.last_checkin || null,
+          subscribe_reminder: binding.subscribe_reminder || 0
         };
       }
     } catch (dbErr) {
       console.error('[Profile API] Database query failed:', dbErr);
     }
   }
+
+  const adminRoleIds = ['1360409328175153242', '1411256123226456116', '1360409437638099116'];
+  const roles = user.roles || user.profile?.roles || [];
+  const isAdmin = Array.isArray(roles) && roles.some(r => adminRoleIds.includes(r));
 
   res.json({
     success: true,
@@ -628,6 +706,7 @@ app.get('/api/user/profile', authenticateToken, async (req: CustomRequest, res: 
       online,
       coords,
       tps,
+      isAdmin,
       ...dbStats
     }
   });
@@ -652,6 +731,372 @@ app.get('/api/user/mails', authenticateToken, async (req: CustomRequest, res: Re
     res.json({ success: true, mails });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Welfare endpoints (Milestone 3)
+app.post('/api/user/checkin', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+  if (!db) return res.status(500).json({ success: false, message: '資料庫連線不可用' });
+
+  const username = user.mc_username;
+
+  try {
+    const getBinding = db.prepare('SELECT * FROM bindings WHERE mc_username = ? COLLATE NOCASE');
+    const binding = getBinding.get(username) as any;
+    if (!binding) {
+      return res.status(400).json({ success: false, message: '找不到玩家綁定資訊' });
+    }
+
+    const discordId = binding.discord_id;
+    const todayStr = getTaipeiDateString();
+    const yesterdayStr = getTaipeiYesterdayDateString();
+
+    const lastCheckin = binding.last_checkin;
+    const checkinStreak = binding.checkin_streak || 0;
+    const totalCheckins = binding.total_checkins || 0;
+    const keysCount = binding.keys_count || 0;
+
+    if (lastCheckin === todayStr) {
+      return res.status(400).json({ success: false, message: '📅 您今天已經簽到過囉！請明天再來。' });
+    }
+
+    let newStreak = (lastCheckin === yesterdayStr) ? (checkinStreak + 1) : 1;
+    let keysAwarded = 1;
+    if (newStreak === 7) {
+      keysAwarded = 3;
+    } else if (newStreak > 7) {
+      newStreak = 1;
+      keysAwarded = 1;
+    }
+
+    const newKeysCount = keysCount + keysAwarded;
+    const newTotalCheckins = totalCheckins + 1;
+
+    const updateCheckin = db.prepare('UPDATE bindings SET last_checkin = ?, checkin_streak = ?, total_checkins = ?, keys_count = ? WHERE mc_username = ? COLLATE NOCASE');
+    updateCheckin.run(todayStr, newStreak, newTotalCheckins, newKeysCount, username);
+
+    try {
+      if (botWsClient && botWsClient.readyState === WebSocket.OPEN) {
+        botWsClient.send(JSON.stringify({
+          type: 'player_keys_update',
+          payload: {
+            username: username,
+            keys: newKeysCount
+          }
+        }));
+      }
+    } catch (wsErr) {
+      console.warn('Failed to send player_keys_update over WS:', wsErr);
+    }
+
+    let online = false;
+    try {
+      const statusRes = await sendWsQuery('player_status_query', { username });
+      if (statusRes && statusRes.success) {
+        online = statusRes.online;
+      }
+    } catch (err) {
+      // Treat as offline
+    }
+
+    const items = ['minecraft:bread', 'minecraft:cookie', 'minecraft:coal', 'minecraft:iron_ingot'];
+    const randomItem = items[Math.floor(Math.random() * items.length)];
+    const itemDisplayName = randomItem.replace('minecraft:', '').toUpperCase();
+
+    if (online) {
+      try {
+        await sendWsQuery('command_request', { command: `/addmoney ${username} 150`, admin_username: 'Web-Dashboard' });
+        await sendWsQuery('command_request', { command: `/give ${username} ${randomItem} 1`, admin_username: 'Web-Dashboard' });
+        await sendWsQuery('command_request', { command: `/playsound minecraft:entity.player.levelup master ${username}`, admin_username: 'Web-Dashboard' });
+        await sendWsQuery('command_request', { command: `/title ${username} title {"text":"📅 簽到成功！","color":"green"}`, admin_username: 'Web-Dashboard' });
+        await sendWsQuery('command_request', { command: `/title ${username} subtitle {"text":"獲得 $150 與 1x ${itemDisplayName}","color":"gold"}`, admin_username: 'Web-Dashboard' });
+      } catch (cmdErr: any) {
+        console.error('Failed to run in-game checkin commands:', cmdErr.message);
+      }
+    } else {
+      const insertMail = db.prepare(`
+        INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, nbt, status)
+        VALUES ('System', 'System', ?, ?, ?, ?, 'pending')
+      `);
+      insertMail.run(username, 'craftcore:money', 150, null);
+      insertMail.run(username, randomItem, 1, null);
+    }
+
+    return res.json({
+      success: true,
+      message: `簽到成功！獲得 ${keysAwarded} 把鑰匙`,
+      checkin_streak: newStreak,
+      total_checkins: newTotalCheckins,
+      keys_count: newKeysCount,
+      last_checkin: todayStr
+    });
+
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/user/reminder-subscription', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+  if (!db) return res.status(500).json({ success: false, message: '資料庫連線不可用' });
+
+  const { subscribe } = req.body;
+  if (typeof subscribe !== 'boolean') {
+    return res.status(400).json({ success: false, message: '缺少或無效的訂閱狀態' });
+  }
+
+  try {
+    const statusVal = subscribe ? 1 : 0;
+    const updateStmt = db.prepare('UPDATE bindings SET subscribe_reminder = ? WHERE mc_username = ? COLLATE NOCASE');
+    updateStmt.run(statusVal, user.mc_username);
+
+    return res.json({ success: true, message: subscribe ? '已開啟每日簽到提醒' : '已關閉每日簽到提醒', subscribe });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/user/luckydraw', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+  if (!db) return res.status(500).json({ success: false, message: '資料庫連線不可用' });
+
+  const username = user.mc_username;
+
+  try {
+    const binding = db.prepare('SELECT keys_count FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username) as any;
+    if (!binding || (binding.keys_count || 0) < 1) {
+      return res.status(400).json({ success: false, message: '鑰匙餘額不足，無法進行抽獎！' });
+    }
+
+    const newKeysCount = binding.keys_count - 1;
+    db.prepare('UPDATE bindings SET keys_count = ? WHERE mc_username = ? COLLATE NOCASE').run(newKeysCount, username);
+
+    try {
+      if (botWsClient && botWsClient.readyState === WebSocket.OPEN) {
+        botWsClient.send(JSON.stringify({
+          type: 'player_keys_update',
+          payload: {
+            username: username,
+            keys: newKeysCount
+          }
+        }));
+      }
+    } catch (wsErr) {
+      console.warn('Failed to send player_keys_update over WS:', wsErr);
+    }
+
+    const pool = [
+      { id: 'minecraft:diamond', amount: 5, name: '鑽石 x 5' },
+      { id: 'minecraft:golden_carrot', amount: 5, name: '金胡蘿蔔 x 5' },
+      { id: 'minecraft:golden_apple', amount: 5, name: '金蘋果 x 5' },
+      { id: 'minecraft:experience_bottle', amount: 64, name: '經驗瓶 x 64' },
+      { id: 'minecraft:totem_of_undying', amount: 1, name: '不死圖騰 x 1' },
+      { id: 'craftcore:money', amount: 0, name: '遊戲金幣' }
+    ];
+
+    const prize = pool[Math.floor(Math.random() * pool.length)];
+
+    let prizeName = prize.name;
+    let prizeId = prize.id;
+    let prizeAmount = prize.amount;
+
+    if (prize.id === 'craftcore:money') {
+      const extraMoney = Math.floor(Math.random() * 150) + 50;
+      prizeAmount = 150 + extraMoney;
+      prizeName = `$${prizeAmount} 遊戲幣`;
+    }
+
+    let online = false;
+    try {
+      const statusRes = await sendWsQuery('player_status_query', { username });
+      if (statusRes && statusRes.success) {
+        online = statusRes.online;
+      }
+    } catch (err) {
+      // Treat as offline
+    }
+
+    if (online) {
+      try {
+        if (prizeId === 'craftcore:money') {
+          await sendWsQuery('command_request', { command: `/addmoney ${username} ${prizeAmount}`, admin_username: 'Web-Dashboard' });
+        } else {
+          await sendWsQuery('command_request', { command: `/give ${username} ${prizeId} ${prizeAmount}`, admin_username: 'Web-Dashboard' });
+        }
+        await sendWsQuery('command_request', { command: `/playsound minecraft:entity.player.levelup master ${username}`, admin_username: 'Web-Dashboard' });
+        await sendWsQuery('command_request', { command: `/title ${username} title {"text":"🎉 抽獎成功！","color":"yellow"}`, admin_username: 'Web-Dashboard' });
+        await sendWsQuery('command_request', { command: `/title ${username} subtitle {"text":"獲得了 ${prizeName}","color":"gold"}`, admin_username: 'Web-Dashboard' });
+      } catch (cmdErr: any) {
+        console.error('Failed to run luckydraw commands:', cmdErr.message);
+      }
+    } else {
+      const insertMail = db.prepare(`
+        INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, nbt, status)
+        VALUES ('System', 'System', ?, ?, ?, ?, 'pending')
+      `);
+      insertMail.run(username, prizeId, prizeAmount, null);
+    }
+
+    return res.json({
+      success: true,
+      reward: {
+        id: prizeId,
+        amount: prizeAmount,
+        name: prizeName
+      },
+      keys_count: newKeysCount
+    });
+
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/user/exchange-playtime', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+  if (!db) return res.status(500).json({ success: false, message: '資料庫連線不可用' });
+
+  const username = user.mc_username;
+  const { mode } = req.body;
+
+  if (mode !== 'single' && mode !== 'all') {
+    return res.status(400).json({ success: false, message: '無效的兌換模式。' });
+  }
+
+  try {
+    const binding = db.prepare('SELECT keys_count FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username) as any;
+    if (!binding) {
+      return res.status(400).json({ success: false, message: '找不到玩家綁定資訊。' });
+    }
+
+    let scoreboardName = 'play_time';
+    let getScoreRes = await sendWsQuery('command_request', {
+      command: `/scoreboard players get ${username} play_time`,
+      admin_username: 'Web-Dashboard'
+    });
+
+    if (!getScoreRes || !getScoreRes.success) {
+      getScoreRes = await sendWsQuery('command_request', {
+        command: `/scoreboard players get ${username} PlayTime`,
+        admin_username: 'Web-Dashboard'
+      });
+      if (getScoreRes && getScoreRes.success) {
+        scoreboardName = 'PlayTime';
+      }
+    }
+
+    if (!getScoreRes || !getScoreRes.success) {
+      return res.status(400).json({ success: false, message: '時數兌換失敗！無法取得您的遊戲時數。請確認您在線上。' });
+    }
+
+    const output = getScoreRes.output || '';
+    const match = output.match(/has (\d+)/) || output.match(/(\d+)/);
+    if (!match) {
+      return res.status(400).json({ success: false, message: '無法解析遊戲內的時數數值。' });
+    }
+
+    const totalTicks = parseInt(match[1], 10);
+    const TICK_RATE_PER_KEY = 360000;
+
+    let keysToAdd = 0;
+    let ticksToDeduct = 0;
+
+    if (mode === 'single') {
+      if (totalTicks < TICK_RATE_PER_KEY) {
+        const remainingTicks = TICK_RATE_PER_KEY - totalTicks;
+        const remainingHours = (remainingTicks / 72000).toFixed(1);
+        return res.status(400).json({
+          success: false,
+          message: `可用時數不足！兌換 1 把鑰匙需要滿 5 小時，您還差 ${remainingHours} 小時。`
+        });
+      }
+      keysToAdd = 1;
+      ticksToDeduct = TICK_RATE_PER_KEY;
+    } else {
+      keysToAdd = Math.floor(totalTicks / TICK_RATE_PER_KEY);
+      if (keysToAdd < 1) {
+        const remainingTicks = TICK_RATE_PER_KEY - totalTicks;
+        const remainingHours = (remainingTicks / 72000).toFixed(1);
+        return res.status(400).json({
+          success: false,
+          message: `可用時數不足！兌換 1 把鑰匙需要滿 5 小時，您還差 ${remainingHours} 小時。`
+        });
+      }
+      ticksToDeduct = keysToAdd * TICK_RATE_PER_KEY;
+    }
+
+    const deductRes = await sendWsQuery('command_request', {
+      command: `/scoreboard players remove ${username} ${scoreboardName} ${ticksToDeduct}`,
+      admin_username: 'Web-Dashboard'
+    });
+
+    if (!deductRes || !deductRes.success) {
+      return res.status(500).json({ success: false, message: '遊戲內扣除時數失敗，兌換未完成。' });
+    }
+
+    const newKeysCount = (binding.keys_count || 0) + keysToAdd;
+    db.prepare('UPDATE bindings SET keys_count = ? WHERE mc_username = ? COLLATE NOCASE').run(newKeysCount, username);
+
+    try {
+      if (botWsClient && botWsClient.readyState === WebSocket.OPEN) {
+        botWsClient.send(JSON.stringify({
+          type: 'player_keys_update',
+          payload: {
+            username: username,
+            keys: newKeysCount
+          }
+        }));
+      }
+    } catch (wsErr) {
+      console.warn('Failed to send player_keys_update over WS:', wsErr);
+    }
+
+    try {
+      await sendWsQuery('command_request', {
+        command: `/tellraw ${username} {"text":"§b[Craft-Core] §a成功兌換 ${keysToAdd} 把鑰匙！扣除 ${(ticksToDeduct / 72000).toFixed(0)} 小時時數。"}`,
+        admin_username: 'Web-Dashboard'
+      });
+      await sendWsQuery('command_request', {
+        command: `/playsound minecraft:entity.player.levelup master ${username}`,
+        admin_username: 'Web-Dashboard'
+      });
+    } catch (ignored) {}
+
+    return res.json({
+      success: true,
+      message: `成功兌換 ${keysToAdd} 把鑰匙！`,
+      keys_count: newKeysCount,
+      exchanged_hours: keysToAdd * 5
+    });
+
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.get('/api/user/leaderboard', async (req: Request, res: Response) => {
+  if (!db) return res.status(500).json({ success: false, message: '資料庫連線不可用' });
+
+  try {
+    const leaderboardStmt = db.prepare(`
+      SELECT mc_username, keys_count, checkin_streak, total_checkins 
+      FROM bindings 
+      ORDER BY total_checkins DESC, checkin_streak DESC 
+      LIMIT 10
+    `);
+    const leaderboard = leaderboardStmt.all() as any[];
+
+    return res.json({
+      success: true,
+      leaderboard
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -1053,6 +1498,200 @@ app.get('/api/lockboxes', async (req: Request, res: Response) => {
       console.error('Failed to read lockboxes fallback:', fsErr);
     }
     res.json({ success: true, lockboxes: [] });
+  }
+});
+
+// -------------------------------------------------------------
+// Admin Endpoints
+// -------------------------------------------------------------
+
+// Protect all /api/admin/* endpoints with authentication and requireAdmin
+app.use('/api/admin', authenticateToken, requireAdmin);
+
+// POST /api/admin/ban
+app.post('/api/admin/ban', async (req: CustomRequest, res: Response) => {
+  const { player, reason } = req.body;
+  if (!player || !reason) {
+    return res.status(400).json({ success: false, message: '缺少玩家名稱或原因' });
+  }
+  try {
+    const cmdRes = await sendWsQuery('command_request', {
+      command: `/ban ${player} ${reason}`,
+      admin_username: req.user?.mc_username || 'Web-Dashboard'
+    });
+    if (cmdRes && cmdRes.success) {
+      return res.json({ success: true, message: `成功封鎖玩家 ${player}：${cmdRes.output || ''}` });
+    } else {
+      return res.status(400).json({ success: false, message: `封鎖失敗：${cmdRes?.output || '未知錯誤'}` });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/admin/kick
+app.post('/api/admin/kick', async (req: CustomRequest, res: Response) => {
+  const { player, reason } = req.body;
+  if (!player || !reason) {
+    return res.status(400).json({ success: false, message: '缺少玩家名稱或原因' });
+  }
+  try {
+    const cmdRes = await sendWsQuery('command_request', {
+      command: `/kick ${player} ${reason}`,
+      admin_username: req.user?.mc_username || 'Web-Dashboard'
+    });
+    if (cmdRes && cmdRes.success) {
+      return res.json({ success: true, message: `成功踢出玩家 ${player}：${cmdRes.output || ''}` });
+    } else {
+      return res.status(400).json({ success: false, message: `踢出失敗：${cmdRes?.output || '未知錯誤'}` });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/admin/co-branding
+app.post('/api/admin/co-branding', async (req: CustomRequest, res: Response) => {
+  const { player } = req.body;
+  const target = player || req.body.target;
+  if (!target) {
+    return res.status(400).json({ success: false, message: '缺少目標玩家名稱或 Discord ID' });
+  }
+
+  if (!db) {
+    return res.status(500).json({ success: false, message: '資料庫連線不可用' });
+  }
+
+  try {
+    const binding = db.prepare('SELECT discord_id, mc_username FROM bindings WHERE discord_id = ? OR mc_username = ? COLLATE NOCASE').get(target, target) as any;
+    if (!binding) {
+      return res.status(404).json({ success: false, message: '找不到該玩家的綁定紀錄' });
+    }
+
+    const updateKeys = db.prepare('UPDATE bindings SET keys_count = keys_count + 6 WHERE discord_id = ?');
+    updateKeys.run(binding.discord_id);
+
+    let gameSuccess = false;
+    let gameOutput = '';
+    try {
+      const cmdRes = await sendWsQuery('command_request', {
+        command: `/addmoney ${binding.mc_username} 5000`,
+        admin_username: req.user?.mc_username || 'Web-Dashboard'
+      });
+      gameSuccess = cmdRes && cmdRes.success;
+      gameOutput = cmdRes?.output || '';
+    } catch (err: any) {
+      gameOutput = err.message;
+    }
+
+    return res.json({
+      success: true,
+      message: `成功發送聯名獎勵給 ${binding.mc_username}！遊戲內金幣加值結果：${gameSuccess ? '成功' : '失敗 (' + gameOutput + ')'}`
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/admin/player/:username
+app.get('/api/admin/player/:username', async (req: CustomRequest, res: Response) => {
+  const { username } = req.params;
+  if (!username) {
+    return res.status(400).json({ success: false, message: '缺少玩家名稱' });
+  }
+
+  let dbStats = {
+    keys_count: 0,
+    checkin_streak: 0,
+    total_checkins: 0,
+    last_checkin: null,
+    discord_id: null,
+    mc_uuid: null
+  };
+
+  if (db) {
+    try {
+      const getBinding = db.prepare('SELECT discord_id, mc_uuid, keys_count, checkin_streak, total_checkins, last_checkin FROM bindings WHERE mc_username = ? COLLATE NOCASE');
+      const binding = getBinding.get(username) as any;
+      if (binding) {
+        dbStats = {
+          keys_count: binding.keys_count || 0,
+          checkin_streak: binding.checkin_streak || 0,
+          total_checkins: binding.total_checkins || 0,
+          last_checkin: binding.last_checkin || null,
+          discord_id: binding.discord_id || null,
+          mc_uuid: binding.mc_uuid || null
+        };
+      }
+    } catch (dbErr) {
+      console.error('[Admin Player Search] Database query failed:', dbErr);
+    }
+  }
+
+  let balance = 0;
+  try {
+    const response = await sendWsQuery('balance_query', { username });
+    if (response && typeof response.balance === 'number') {
+      balance = response.balance;
+    }
+  } catch (error: any) {
+    console.warn('[Admin Player Search] Failed to fetch live balance via WS:', error.message);
+  }
+
+  let online = false;
+  let coords = "離線";
+  let tps = 20.0;
+  try {
+    const response = await sendWsQuery('player_status_query', { username });
+    if (response && response.success) {
+      online = response.online;
+      coords = response.coords;
+      tps = response.tps;
+    }
+  } catch (error: any) {
+    console.warn('[Admin Player Search] Failed to fetch player status via WS:', error.message);
+  }
+
+  let inventory: any[] = [];
+  try {
+    const response = await sendWsQuery('player_inventory_query', { username });
+    if (response && response.success) {
+      inventory = response.items || [];
+    }
+  } catch (error: any) {
+    console.warn('[Admin Player Search] Failed to fetch inventory via WS:', error.message);
+  }
+
+  res.json({
+    success: true,
+    profile: {
+      mc_username: username,
+      balance,
+      online,
+      coords,
+      tps,
+      ...dbStats
+    },
+    inventory
+  });
+});
+
+// POST /api/admin/announcements
+app.post('/api/admin/announcements', async (req: CustomRequest, res: Response) => {
+  const { title, content, scope, impact } = req.body;
+  if (!title) {
+    return res.status(400).json({ success: false, message: '缺少公告標題' });
+  }
+
+  try {
+    const response = await sendWsQuery('publish_announcement', { title, content, scope, impact });
+    if (response && response.success) {
+      return res.json({ success: true, message: '公告已成功發布！' });
+    } else {
+      return res.status(400).json({ success: false, message: response?.message || '發布失敗' });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { 
   BarChart3, ShoppingBag, TrendingUp, User, Shield, 
-  Settings, LogOut, Sun, Moon, Menu, X, Compass, Mail
+  Settings, LogOut, Sun, Moon, Menu, X, Compass, Mail, ShieldAlert, Gift
 } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface DashboardLayoutProps {
-  activeTab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory';
-  setActiveTab: (tab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory') => void;
+  activeTab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare';
+  setActiveTab: (tab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare') => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
   token: string | null;
@@ -16,6 +16,7 @@ interface DashboardLayoutProps {
   handleLogout: () => void;
   handleLoginTrigger: () => void;
   children: React.ReactNode;
+  isAdmin?: boolean;
 }
 
 export default function DashboardLayout({
@@ -28,7 +29,8 @@ export default function DashboardLayout({
   userBalance,
   handleLogout,
   handleLoginTrigger,
-  children
+  children,
+  isAdmin = false
 }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -39,8 +41,10 @@ export default function DashboardLayout({
     { id: 'owner', label: '店主遙控', icon: User },
     { id: 'claims', label: '領地管理', icon: Shield },
     { id: 'lockboxes', label: '密碼安全鎖', icon: Settings },
+    { id: 'welfare', label: '簽到與抽獎', icon: Gift },
     { id: 'inventory', label: '郵局與背包', icon: Mail },
-  ] as const;
+    ...(isAdmin ? [{ id: 'admin', label: '管理主控台', icon: ShieldAlert }] : [])
+  ];
 
   const currentTabLabel = navigationItems.find(item => item.id === activeTab)?.label || '';
 
@@ -78,7 +82,7 @@ export default function DashboardLayout({
             return (
               <button
                 key={item.id}
-                onClick={() => handleTabClick(item.id)}
+                onClick={() => handleTabClick(item.id as any)}
                 className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-[4px] text-xs font-bold transition-colors cursor-pointer ${
                   isActive 
                     ? 'bg-primary text-primary-foreground' 
@@ -200,7 +204,7 @@ export default function DashboardLayout({
                   return (
                     <button
                       key={item.id}
-                      onClick={() => handleTabClick(item.id)}
+                      onClick={() => handleTabClick(item.id as any)}
                       className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-[4px] text-xs font-bold transition-colors cursor-pointer ${
                         isActive 
                           ? 'bg-primary text-primary-foreground' 

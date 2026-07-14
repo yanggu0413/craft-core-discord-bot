@@ -258,6 +258,60 @@ async function handle(packet, discordClient) {
       break;
     }
 
+    case 'publish_announcement': {
+      const { query_id, title, content, scope, impact } = payload;
+      try {
+        const announcementService = require('../services/announcementService');
+        await announcementService.publishAnnouncementDirectly(discordClient, title, content, scope, impact);
+        session.send({
+          type: 'publish_announcement_response',
+          payload: {
+            query_id,
+            success: true,
+            message: '公告發布成功'
+          }
+        });
+      } catch (err) {
+        session.send({
+          type: 'publish_announcement_response',
+          payload: {
+            query_id,
+            success: false,
+            message: err.message
+          }
+        });
+      }
+      break;
+    }
+
+    case 'member_roles_query': {
+      const { query_id, discord_id } = payload;
+      try {
+        const guild = await discordClient.guilds.fetch(config.discord.guildId);
+        const member = await guild.members.fetch(discord_id);
+        const roles = Array.from(member.roles.cache.keys());
+        session.send({
+          type: 'member_roles_response',
+          payload: {
+            query_id,
+            success: true,
+            roles
+          }
+        });
+      } catch (err) {
+        session.send({
+          type: 'member_roles_response',
+          payload: {
+            query_id,
+            success: false,
+            roles: [],
+            message: err.message
+          }
+        });
+      }
+      break;
+    }
+
     default:
       logger.warn(`Unknown packet type: ${type}`);
   }

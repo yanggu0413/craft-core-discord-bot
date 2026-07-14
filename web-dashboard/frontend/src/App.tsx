@@ -8,6 +8,8 @@ import OwnerView from './components/views/OwnerView';
 import ClaimsView from './components/views/ClaimsView';
 import LockboxesView from './components/views/LockboxesView';
 import InventoryView from './components/views/InventoryView';
+import AdminView from './components/views/AdminView';
+import WelfareView from './components/views/WelfareView';
 import { Card, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { cn } from './lib/utils';
 
@@ -80,11 +82,13 @@ export default function App() {
   const [checkinStreak, setCheckinStreak] = useState<number>(0);
   const [totalCheckins, setTotalCheckins] = useState<number>(0);
   const [lastCheckin, setLastCheckin] = useState<string | null>(null);
+  const [subscribeReminder, setSubscribeReminder] = useState<number>(0);
   const [mails, setMails] = useState<any[]>([]);
   const [liveTrades, setLiveTrades] = useState<any[]>([]);
 
   // 當前選單分頁
-  const [activeTab, setActiveTab] = useState<'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare'>('home');
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   // 全域數據狀態
   const [stats, setStats] = useState({ totalCirculation: 0, accumulatedSalesTax: 0, totalShopsCount: 0 });
@@ -190,16 +194,18 @@ export default function App() {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const profileJson = await profileRes.json();
-          if (profileJson.success) {
-            setUserBalance(profileJson.user.balance);
-            setKeysCount(profileJson.user.keys_count || 0);
-            setCheckinStreak(profileJson.user.checkin_streak || 0);
-            setTotalCheckins(profileJson.user.total_checkins || 0);
-            setLastCheckin(profileJson.user.last_checkin || null);
-            setIsOnline(!!profileJson.user.online);
-            setPlayerCoords(profileJson.user.coords || '離線');
-            setServerTps(typeof profileJson.user.tps === 'number' ? profileJson.user.tps : 20.0);
-          }
+            if (profileJson.success) {
+              setUserBalance(profileJson.user.balance);
+              setKeysCount(profileJson.user.keys_count || 0);
+              setCheckinStreak(profileJson.user.checkin_streak || 0);
+              setTotalCheckins(profileJson.user.total_checkins || 0);
+              setLastCheckin(profileJson.user.last_checkin || null);
+              setSubscribeReminder(profileJson.user.subscribe_reminder || 0);
+              setIsOnline(!!profileJson.user.online);
+              setPlayerCoords(profileJson.user.coords || '離線');
+              setServerTps(typeof profileJson.user.tps === 'number' ? profileJson.user.tps : 20.0);
+              setIsAdmin(!!profileJson.user.isAdmin);
+            }
         } catch (err) {
           console.error('Failed to fetch profile', err);
         }
@@ -314,6 +320,8 @@ export default function App() {
     setUsername(null);
     setUuid(null);
     setUserBalance(0);
+    setIsAdmin(false);
+    setActiveTab('home');
     triggerToast('帳號已安全登出。', 'success');
   };
 
@@ -485,6 +493,7 @@ export default function App() {
       userBalance={userBalance}
       handleLogout={handleLogout}
       handleLoginTrigger={handleLoginTrigger}
+      isAdmin={isAdmin}
     >
       {/* 連線同步狀態 */}
       {isLoading ? (
@@ -591,6 +600,33 @@ export default function App() {
               userBalance={userBalance}
               triggerToast={triggerToast}
               fetchData={fetchData}
+            />
+          )}
+
+          {activeTab === 'welfare' && (
+            <WelfareView
+              token={token}
+              isOnline={isOnline}
+              triggerToast={triggerToast}
+              fetchData={fetchData}
+              keysCount={keysCount}
+              checkinStreak={checkinStreak}
+              totalCheckins={totalCheckins}
+              lastCheckin={lastCheckin}
+              subscribeReminder={subscribeReminder}
+              setSubscribeReminder={setSubscribeReminder}
+              setKeysCount={setKeysCount}
+              setCheckinStreak={setCheckinStreak}
+              setTotalCheckins={setTotalCheckins}
+              setLastCheckin={setLastCheckin}
+              API_URL={API_URL}
+            />
+          )}
+
+          {activeTab === 'admin' && isAdmin && (
+            <AdminView
+              token={token}
+              triggerToast={triggerToast}
             />
           )}
         </div>

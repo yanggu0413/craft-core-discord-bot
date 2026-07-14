@@ -92,4 +92,22 @@ public class SerializationTest {
         assertEquals(0.0, payloadObj.get("tax_deducted").getAsDouble(), 0.01);
         assertEquals(1500.0, payloadObj.get("net_profit").getAsDouble(), 0.01);
     }
+
+    @Test
+    public void testPlayerInventoryResponsePayloadSerialization() {
+        Packet.InventoryItem item = new Packet.InventoryItem(40, "minecraft:shield", 1, "Shield", "");
+        Packet.PlayerInventoryResponsePayload payload = new Packet.PlayerInventoryResponsePayload("query-1", true, List.of(item));
+        Packet packet = new Packet("player_inventory_response", payload);
+        String json = GSON.toJson(packet);
+
+        JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+        assertEquals("player_inventory_response", obj.get("type").getAsString());
+        JsonObject payloadObj = obj.getAsJsonObject("payload");
+        assertEquals("query-1", payloadObj.get("query_id").getAsString());
+        assertTrue(payloadObj.get("success").getAsBoolean());
+        assertEquals(1, payloadObj.getAsJsonArray("items").size());
+        JsonObject itemObj = payloadObj.getAsJsonArray("items").get(0).getAsJsonObject();
+        assertEquals(40, itemObj.get("slot").getAsInt());
+        assertEquals("minecraft:shield", itemObj.get("itemId").getAsString());
+    }
 }

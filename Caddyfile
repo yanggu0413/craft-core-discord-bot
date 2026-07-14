@@ -1,0 +1,28 @@
+# Craft-Core Ecosystem Caddy Configuration
+
+# Main Portal Website
+craft-core.xyz, www.craft-core.xyz {
+    root * website/out
+    file_server
+    try_files {path} {path}.html {path}/ =404
+}
+
+# Wiki Documentation
+docs.craft-core.xyz {
+    root * docs/.vitepress/dist
+    file_server
+    try_files {path} {path}.html {path}/ =404
+}
+
+# Dashboard Frontend Proxy
+dash.craft-core.xyz {
+    handle /api/* {
+        reverse_proxy localhost:3000
+    }
+    handle /ws {
+        reverse_proxy localhost:3000
+    }
+    handle {
+        reverse_proxy localhost:5173
+    }
+}

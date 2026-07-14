@@ -298,11 +298,78 @@ async function broadcastDailyTasks(client, dateStr) {
   logger.info(`Successfully broadcasted daily tasks for ${dateStr}`);
 }
 
+async function publishAnnouncementDirectly(client, title, content, scope, impact) {
+  const clock = require('../utils/clock');
+  const offset = clock.getOffset();
+  const adjustedDate = new Date(Date.now() - offset);
+  const year = adjustedDate.getFullYear();
+  const month = String(adjustedDate.getMonth() + 1).padStart(2, '0');
+  const day = String(adjustedDate.getDate()).padStart(2, '0');
+
+  const formattedAnnouncementParts = [
+    `<@&${ANNOUNCEMENT_PING_ROLE_ID}>`,
+    '',
+    `# 📢 ｜ 伺服器公告：${title}`,
+    '',
+    '親愛的玩家們：',
+    ''
+  ];
+
+  if (content) {
+    formattedAnnouncementParts.push(content, '');
+  }
+
+  formattedAnnouncementParts.push(
+    '---',
+    '',
+    '## 📌 ｜ 公告核心內容',
+    ''
+  );
+
+  formattedAnnouncementParts.push(`* 🗓️ **發布時間**：${year} / ${month} / ${day}`);
+  if (scope) {
+    formattedAnnouncementParts.push(`* ⚙️ **影響範圍**：${scope}`);
+  }
+  if (impact) {
+    formattedAnnouncementParts.push(`* ⚠️ **重要影響**：${impact}`);
+  }
+
+  formattedAnnouncementParts.push(
+    '',
+    '---',
+    '',
+    '## 💡 ｜ 相關頻道與回報',
+    '',
+    '如果你對本次公告有任何疑問，或在遊戲內遇到問題，請多加利用以下頻道：',
+    '* 💬 想要參與討論、發表心得 ➡️ <#1524353968623583364>',
+    '* 🎫 發現任何 BUG 或有緊急申訴 ➡️ <#1524353880169910403>（利用開單系統私密處理）',
+    '',
+    '感謝大家對 **Craft-Core** 的支持與配合，我們會持續優化，帶給大家更穩定的遊戲體驗！',
+    '',
+    '**Craft-Core 管理團隊 敬上**',
+    `*${year}.${month}.${day}*`
+  );
+
+  const finalContent = formattedAnnouncementParts.join('\n');
+  const channel = await client.channels.fetch(ANNOUNCEMENT_CHANNEL_ID);
+  if (!channel) {
+    throw new Error('找不到公告頻道');
+  }
+
+  await discordQueue.enqueue(() => channel.send({
+    content: finalContent,
+    allowedMentions: { roles: [ANNOUNCEMENT_PING_ROLE_ID], parse: [] }
+  }), { type: 'announcement_publish' });
+
+  return true;
+}
+
 module.exports = {
   showAnnouncementModal,
   handleAnnouncementModalSubmit,
   handlePublishDraft,
   handleDiscardDraft,
   startDailyBroadcastLoop,
-  broadcastDailyTasks
+  broadcastDailyTasks,
+  publishAnnouncementDirectly
 };

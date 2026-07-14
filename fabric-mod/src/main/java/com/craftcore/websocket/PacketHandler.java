@@ -539,7 +539,7 @@ public class PacketHandler {
                         
                         java.util.List<InventoryItem> itemsList = new java.util.ArrayList<>();
                         net.minecraft.world.entity.player.Inventory inv = player.getInventory();
-                        for (int slot = 0; slot < 36; slot++) {
+                        for (int slot = 0; slot < 41; slot++) {
                             net.minecraft.world.item.ItemStack stack = inv.getItem(slot);
                             if (!stack.isEmpty()) {
                                 String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
