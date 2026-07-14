@@ -26,23 +26,23 @@ export default function Home() {
       <header className="sticky top-0 z-40 w-full border-b border-zinc-200 bg-white/95 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="font-black text-lg tracking-wider text-orange-600">CRAFT-CORE</span>
-            <span className="text-[10px] bg-orange-100 text-orange-700 font-bold px-1.5 py-0.5 rounded">原味生存</span>
+            <span className="font-black text-lg tracking-wider text-blue-600">CRAFT-CORE</span>
+            <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded">原味生存</span>
           </div>
 
           <nav className="flex items-center space-x-6">
-            <a href="https://docs.craft-core.xyz" target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-zinc-600 hover:text-orange-600 transition-colors flex items-center space-x-1">
+            <a href="https://docs.craft-core.xyz" target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-zinc-600 hover:text-blue-600 transition-colors flex items-center space-x-1">
               <span>📚 官方維基</span>
             </a>
-            <a href="https://dash.craft-core.xyz" target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-zinc-600 hover:text-orange-600 transition-colors flex items-center space-x-1">
+            <a href="https://dash.craft-core.xyz" target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-zinc-600 hover:text-blue-600 transition-colors flex items-center space-x-1">
               <span>📊 玩家面板</span>
             </a>
-            <a href="https://discord.gg/invite" target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-zinc-600 hover:text-orange-600 transition-colors flex items-center space-x-1">
+            <a href="https://discord.gg/invite" target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-zinc-600 hover:text-blue-600 transition-colors flex items-center space-x-1">
               <span>💬 Discord</span>
             </a>
             <a 
               href="https://dash.craft-core.xyz" 
-              className="hidden sm:inline-flex items-center space-x-1 px-3 py-1.5 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-black transition-colors"
+              className="hidden sm:inline-flex items-center space-x-1 px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black transition-colors"
             >
               <span>🚀 立即加入</span>
             </a>
@@ -59,7 +59,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/45 z-0"></div>
 
         <div className="relative z-10 max-w-2xl text-white">
-          <div className="text-xs font-extrabold tracking-widest text-orange-400 uppercase mb-3">
+          <div className="text-xs font-extrabold tracking-widest text-blue-400 uppercase mb-3">
             FABRIC 1.21+ / BE LATEST / 雙端互通
           </div>
           <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-none mb-4 drop-shadow-md">
@@ -73,7 +73,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               onClick={() => copyToClipboard('mc.craft-core.xyz', setCopiedGeneral)}
-              className="w-full sm:w-auto px-6 py-3 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-extrabold shadow-lg transition-colors flex items-center justify-center space-x-2 cursor-pointer"
+              className="w-full sm:w-auto px-6 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold shadow-lg transition-colors flex items-center justify-center space-x-2 cursor-pointer"
             >
               {copiedGeneral ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               <span>{copiedGeneral ? '已複製 IP！' : '複製伺服器 IP'}</span>
@@ -84,7 +84,7 @@ export default function Home() {
               rel="noopener noreferrer"
               className="w-full sm:w-auto px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-extrabold backdrop-blur-sm transition-colors flex items-center justify-center space-x-2"
             >
-              <MessageSquare className="w-4 h-4 text-orange-400" />
+              <MessageSquare className="w-4 h-4 text-blue-400" />
               <span>加入 Discord 社群</span>
             </a>
           </div>
@@ -98,7 +98,7 @@ export default function Home() {
         <section className="w-full max-w-2xl space-y-10 text-center mb-20">
           
           <div className="space-y-3">
-            <div className="flex justify-center text-orange-500 text-xl font-bold">🎮</div>
+            <div className="flex justify-center text-blue-600 text-xl font-bold">🎮</div>
             <h2 className="text-xl font-extrabold tracking-tight">原味生存 × 科技經濟</h2>
             <p className="text-xs text-zinc-500 max-w-md mx-auto leading-relaxed">
               享受最純粹的生存冒險，配合先進自動化紅石建設，與成熟的玩家自由交易市場！
@@ -106,15 +106,15 @@ export default function Home() {
           </div>
 
           <div className="space-y-3">
-            <div className="flex justify-center text-orange-500 text-xl font-bold">🔧</div>
+            <div className="flex justify-center text-blue-600 text-xl font-bold">🔧</div>
             <h2 className="text-xl font-extrabold tracking-tight">實用指令與快捷 GUI</h2>
             <p className="text-xs text-zinc-500 max-w-md mx-auto leading-relaxed">
-              支援經典實用指令 <code className="bg-zinc-100 text-orange-600 px-1 rounded font-mono text-[11px]">/home</code>、<code className="bg-zinc-100 text-orange-600 px-1 rounded font-mono text-[11px]">/tpa</code>、<code className="bg-zinc-100 text-orange-600 px-1 rounded font-mono text-[11px]">/back</code>、<code className="bg-zinc-100 text-orange-600 px-1 rounded font-mono text-[11px]">/spawn</code> 等，一鍵便捷操作。
+              支援經典實用指令 <code className="bg-zinc-100 text-blue-600 px-1 rounded font-mono text-[11px]">/home</code>、<code className="bg-zinc-100 text-blue-600 px-1 rounded font-mono text-[11px]">/tpa</code>、<code className="bg-zinc-100 text-blue-600 px-1 rounded font-mono text-[11px]">/back</code>、<code className="bg-zinc-100 text-blue-600 px-1 rounded font-mono text-[11px]">/spawn</code> 等，一鍵便捷操作。
             </p>
           </div>
 
           <div className="space-y-3">
-            <div className="flex justify-center text-orange-500 text-xl font-bold">📬</div>
+            <div className="flex justify-center text-blue-600 text-xl font-bold">📬</div>
             <h2 className="text-xl font-extrabold tracking-tight">離線雲端郵箱快遞</h2>
             <p className="text-xs text-zinc-500 max-w-md mx-auto leading-relaxed">
               支援遊戲內或網頁端跨界發信，隨時傳遞物資給在線或離線好友，上線即自動派發通知。
@@ -122,7 +122,7 @@ export default function Home() {
           </div>
 
           <div className="space-y-3">
-            <div className="flex justify-center text-orange-500 text-xl font-bold">🔐</div>
+            <div className="flex justify-center text-blue-600 text-xl font-bold">🔐</div>
             <h2 className="text-xl font-extrabold tracking-tight">財產領地防爆保護</h2>
             <p className="text-xs text-zinc-500 max-w-md mx-auto leading-relaxed">
               自訂防爆、防噴、防破壞領地，密碼鎖直接與個人帳號綁定，並支持網頁後端即時配置管理。
@@ -152,11 +152,11 @@ export default function Home() {
             {/* Java Card */}
             <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-6 text-left flex flex-col justify-between">
               <div>
-                <div className="flex items-center space-x-2 text-orange-600 mb-2">
-                  <span className="text-xs font-extrabold bg-orange-100 px-2 py-0.5 rounded">Java 版 (PC)</span>
+                <div className="flex items-center space-x-2 text-blue-600 mb-2">
+                  <span className="text-xs font-extrabold bg-blue-100 px-2 py-0.5 rounded">Java 版 (PC)</span>
                 </div>
                 <p className="text-xs text-zinc-500 mb-6 leading-relaxed">
-                  支援原版 Java 客戶端。採用先進的 Fabric 框架，效能出眾，直連即可遊玩。
+                  支援原版 Java 客戶端。採用先進的 Fabric 框架，效能出眾。<strong className="text-blue-600">注意：必須使用 26.2 版本連入，其餘版本皆無法加入！</strong>
                 </p>
               </div>
               <div className="space-y-3">
@@ -166,12 +166,12 @@ export default function Home() {
                     onClick={() => copyToClipboard('mc.craft-core.xyz', setCopiedJava)}
                     className="p-1 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-700 transition-colors"
                   >
-                    {copiedJava ? <Check className="w-4 h-4 text-orange-500" /> : <Copy className="w-4 h-4" />}
+                    {copiedJava ? <Check className="w-4 h-4 text-blue-500" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
                 <div className="flex justify-between items-center text-[11px] text-zinc-400">
-                  <span>🧩 支援版本: 26.2 (Fabric)</span>
-                  {copiedJava && <span className="text-orange-600 font-bold">IP 已複製！</span>}
+                  <span>🧩 支援版本: 26.2 (必須使用此版本)</span>
+                  {copiedJava && <span className="text-blue-600 font-bold">IP 已複製！</span>}
                 </div>
               </div>
             </div>
@@ -193,12 +193,12 @@ export default function Home() {
                     onClick={() => copyToClipboard('mc.craft-core.xyz:19132', setCopiedBedrock)}
                     className="p-1 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-700 transition-colors"
                   >
-                    {copiedBedrock ? <Check className="w-4 h-4 text-orange-500" /> : <Copy className="w-4 h-4" />}
+                    {copiedBedrock ? <Check className="w-4 h-4 text-blue-500" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
                 <div className="flex justify-between items-center text-[11px] text-zinc-400">
                   <span>🧩 支援版本: 最新版本</span>
-                  {copiedBedrock && <span className="text-orange-600 font-bold">IP已複製！</span>}
+                  {copiedBedrock && <span className="text-blue-600 font-bold">IP 已複製！</span>}
                 </div>
               </div>
             </div>
@@ -212,7 +212,7 @@ export default function Home() {
             href="https://docs.craft-core.xyz"
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full py-3.5 bg-white border border-zinc-200 hover:border-orange-500 rounded-xl text-xs font-bold text-center text-zinc-600 hover:text-orange-600 transition-all shadow-sm flex items-center justify-center space-x-2"
+            className="block w-full py-3.5 bg-white border border-zinc-200 hover:border-blue-500 rounded-xl text-xs font-bold text-center text-zinc-600 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center space-x-2"
           >
             <BookOpen className="w-4 h-4" />
             <span>點我查看伺服器規章與詳細玩法介紹</span>

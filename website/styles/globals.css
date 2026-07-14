@@ -5,12 +5,13 @@
 :root {
   --background: #ffffff;
   --foreground: #18181b;
-  --card: #ffffff;
+  --card: #f9f9fb;
   --card-border: #e4e4e7;
-  --primary: #f97316; /* Orange accent like Sunrise Server */
-  --primary-hover: #ea580c;
-  --secondary: #3b82f6;
-  --muted: #4b5563;
+  --primary: #2563eb; /* Premium Lapis Blue */
+  --primary-hover: #1d4ed8;
+  --secondary: #10b981; /* Secondary emerald green */
+  --accent: #3b82f6;
+  --muted: #71717a;
 }
 
 body {
