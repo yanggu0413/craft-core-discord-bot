@@ -11,6 +11,16 @@ import net.minecraft.network.chat.Component;
 public class PacketHandler {
     private static final Gson GSON = new Gson();
 
+    private static net.minecraft.server.level.ServerPlayer getPlayerCaseInsensitive(MinecraftServer server, String username) {
+        if (username == null) return null;
+        for (net.minecraft.server.level.ServerPlayer p : server.getPlayerList().getPlayers()) {
+            if (p.getName().getString().equalsIgnoreCase(username)) {
+                return p;
+            }
+        }
+        return null;
+    }
+
     public static void handle(String json, MinecraftServer server, CraftCoreWSClient client) {
         try {
             JsonObject jsonObject = JsonParser.parseString(json).getAsJsonObject();
@@ -33,7 +43,7 @@ public class PacketHandler {
                 case "bind_code_response": {
                     BindCodeResponsePayload payload = GSON.fromJson(payloadObj, BindCodeResponsePayload.class);
                     server.execute(() -> {
-                        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(payload.username);
+                        net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
                         if (player != null) {
                             player.sendSystemMessage(Component.literal(payload.message));
                         }
@@ -283,7 +293,7 @@ public class PacketHandler {
                     CheckinResponsePayload payload = GSON.fromJson(payloadObj, CheckinResponsePayload.class);
                     server.execute(() -> {
                         com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
-                        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(payload.username);
+                        net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
                         if (player != null) {
                             if (payload.success) {
                                 com.craftcore.economy.EconomyManager.addMoney(payload.username, 150.0);
@@ -312,7 +322,7 @@ public class PacketHandler {
                     LuckydrawResponsePayload payload = GSON.fromJson(payloadObj, LuckydrawResponsePayload.class);
                     server.execute(() -> {
                         com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
-                        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(payload.username);
+                        net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
                         if (player != null) {
                             if (payload.success) {
                                 com.craftcore.economy.EconomyManager.addMoney(payload.username, 150.0);
@@ -405,7 +415,7 @@ public class PacketHandler {
                     JoinResponsePayload payload = GSON.fromJson(payloadObj, JoinResponsePayload.class);
                     server.execute(() -> {
                         com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
-                        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(payload.username);
+                        net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
                         if (player != null) {
                             com.craftcore.task.DailyTaskManager.displayGreetingCard(player, payload.hasCheckedIn, payload.pendingMailCount);
                         }
@@ -467,7 +477,7 @@ public class PacketHandler {
                     DailyTaskClaimRequestPayload payload = GSON.fromJson(payloadObj, DailyTaskClaimRequestPayload.class);
                     server.execute(() -> {
                         String username = payload.username;
-                        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(username);
+                        net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, username);
                         if (player == null) {
                             client.send(new Packet("daily_task_claim_response", new GenericActionResponsePayload(payload.query_id, false, "Player is offline", 0.0)));
                             return;
@@ -504,7 +514,7 @@ public class PacketHandler {
                     PlayerStatusQueryPayload payload = GSON.fromJson(payloadObj, PlayerStatusQueryPayload.class);
                     server.execute(() -> {
                         String username = payload.username;
-                        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(username);
+                        net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, username);
                         double mspt = server.getAverageTickTimeNanos() / 1_000_000.0;
                         double tps = Math.min(20.0, 1000.0 / mspt);
                         
@@ -521,7 +531,7 @@ public class PacketHandler {
                     PlayerInventoryQueryPayload payload = GSON.fromJson(payloadObj, PlayerInventoryQueryPayload.class);
                     server.execute(() -> {
                         String username = payload.username;
-                        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(username);
+                        net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, username);
                         if (player == null) {
                             client.send(new Packet("player_inventory_response", new PlayerInventoryResponsePayload(payload.query_id, false, new java.util.ArrayList<>())));
                             return;
@@ -549,7 +559,7 @@ public class PacketHandler {
                     TakeItemRequestPayload payload = GSON.fromJson(payloadObj, TakeItemRequestPayload.class);
                     server.execute(() -> {
                         String username = payload.username;
-                        net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(username);
+                        net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, username);
                         if (player == null) {
                             client.send(new Packet("take_item_response", new GenericActionResponsePayload(payload.query_id, false, "Player is offline", 0.0)));
                             return;
