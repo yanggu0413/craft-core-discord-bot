@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import MinecraftItemIcon from '../ui/MinecraftItemIcon';
 
 interface ChestShop {
   location: string;
@@ -134,7 +135,10 @@ export default function ExplorerView({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="font-mono font-bold text-amber-500 text-xs">{cleanItemName}</span>
+                      <div className="flex items-center space-x-2">
+                        <MinecraftItemIcon itemId={shop.item} className="w-5 h-5" />
+                        <span className="font-mono font-bold text-amber-500 text-xs">{cleanItemName}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right font-bold text-emerald-500 font-mono">
                       ${shop.buy_price} 元

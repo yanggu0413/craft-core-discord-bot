@@ -3,6 +3,7 @@ import { Package, Send, DollarSign, ShieldAlert, Info, RefreshCw } from 'lucide-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import MinecraftItemIcon from '../ui/MinecraftItemIcon';
 
 interface InventoryItem {
   slot: number;
@@ -217,12 +218,10 @@ export default function InventoryView({
                       >
                         {item ? (
                           <>
-                            {/* Display Name Abbreviation */}
-                            <span className="text-[10px] font-bold text-center px-1 truncate w-full text-foreground">
-                              {item.displayName.substring(0, 4)}
-                            </span>
-                            {/* Stack Count */}
-                            <span className="absolute bottom-0.5 right-1 font-mono text-[9px] font-bold text-emerald-500 bg-background/80 px-1 rounded-[1px]">
+                            {/* Minecraft Item/Block Icon */}
+                            <MinecraftItemIcon itemId={item.itemId} className="w-10 h-10 object-contain" />
+                            {/* Stack Count (Vanilla Minecraft Style) */}
+                            <span className="absolute bottom-1 right-1.5 font-mono text-xs font-black text-white drop-shadow-[1px_1px_0px_rgba(0,0,0,0.9)] select-none">
                               {item.count}
                             </span>
                           </>
@@ -300,9 +299,12 @@ export default function InventoryView({
                   <Package className="w-4 h-4 text-emerald-500" />
                   <CardTitle className="text-sm font-bold">寄送物品快遞</CardTitle>
                 </div>
-                <CardDescription className="text-[10px]">
-                  將選中的物品 <span className="font-bold text-foreground">{selectedSlot.displayName}</span> 寄送給指定玩家。
-                </CardDescription>
+                <div className="text-[10px] text-muted-foreground flex items-center space-x-2 mt-1.5 bg-muted/30 p-2 rounded-[2px]">
+                  <MinecraftItemIcon itemId={selectedSlot.itemId} className="w-8 h-8" />
+                  <div>
+                    將選中的物品 <span className="font-bold text-foreground">{selectedSlot.displayName}</span> 寄送給指定玩家。
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSendItem} className="space-y-3">
