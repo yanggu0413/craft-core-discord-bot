@@ -282,6 +282,7 @@ public class PacketHandler {
                 case "checkin_response": {
                     CheckinResponsePayload payload = GSON.fromJson(payloadObj, CheckinResponsePayload.class);
                     server.execute(() -> {
+                        com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
                         net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(payload.username);
                         if (player != null) {
                             if (payload.success) {
@@ -310,6 +311,7 @@ public class PacketHandler {
                 case "luckydraw_response": {
                     LuckydrawResponsePayload payload = GSON.fromJson(payloadObj, LuckydrawResponsePayload.class);
                     server.execute(() -> {
+                        com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
                         net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(payload.username);
                         if (player != null) {
                             if (payload.success) {
@@ -332,6 +334,13 @@ public class PacketHandler {
                                 player.sendSystemMessage(Component.literal(payload.message));
                             }
                         }
+                    });
+                    break;
+                }
+                case "player_keys_update": {
+                    PlayerKeysUpdatePayload payload = GSON.fromJson(payloadObj, PlayerKeysUpdatePayload.class);
+                    server.execute(() -> {
+                        com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keys);
                     });
                     break;
                 }
@@ -395,6 +404,7 @@ public class PacketHandler {
                 case "join_response": {
                     JoinResponsePayload payload = GSON.fromJson(payloadObj, JoinResponsePayload.class);
                     server.execute(() -> {
+                        com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
                         net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayerByName(payload.username);
                         if (player != null) {
                             com.craftcore.task.DailyTaskManager.displayGreetingCard(player, payload.hasCheckedIn, payload.pendingMailCount);
@@ -422,6 +432,7 @@ public class PacketHandler {
                             t1.put("count", dailyTasks[0].count);
                             t1.put("reward", dailyTasks[0].reward);
                             t1.put("progress", slayProgress);
+                            t1.put("claimed", com.craftcore.economy.EconomyManager.getDailyTaskSlayClaimed(username));
                             taskList.add(t1);
 
                             java.util.Map<String, Object> t2 = new java.util.HashMap<>();
@@ -430,6 +441,7 @@ public class PacketHandler {
                             t2.put("count", dailyTasks[1].count);
                             t2.put("reward", dailyTasks[1].reward);
                             t2.put("progress", mineProgress);
+                            t2.put("claimed", com.craftcore.economy.EconomyManager.getDailyTaskGatherClaimed(username));
                             taskList.add(t2);
 
                             success = true;
@@ -449,6 +461,152 @@ public class PacketHandler {
                     }
                     LockboxesResponsePayload response = new LockboxesResponsePayload(payload.query_id, entries, true, "Success");
                     client.send(new Packet("lockboxes_response", response));
+                    break;
+                }
+                case "daily_task_claim_request": {
+                    DailyTaskClaimRequestPayload payload = GSON.fromJson(payloadObj, DailyTaskClaimRequestPayload.class);
+                    server.execute(() -> {
+                        String username = payload.username;
+                        ServerPlayer player = server.getPlayerList().getPlayerByName(username);
+                        if (player == null) {
+                            client.send(new Packet("daily_task_claim_response", new GenericActionResponsePayload(payload.query_id, false, "Player is offline", 0.0)));
+                            return;
+                        }
+                        String dateStr = com.craftcore.task.DailyTaskManager.getTaipeiDate();
+                        com.craftcore.task.DailyTaskManager.DailyTaskDef[] dailyTasks = com.craftcore.task.DailyTaskManager.getDailyTasks(dateStr);
+                        
+                        int slayProgress = com.craftcore.economy.EconomyManager.getDailyTaskSlayProgress(username);
+                        boolean slayClaimed = com.craftcore.economy.EconomyManager.getDailyTaskSlayClaimed(username);
+                        int mineProgress = com.craftcore.economy.EconomyManager.getDailyTaskGatherProgress(username);
+                        boolean mineClaimed = com.craftcore.economy.EconomyManager.getDailyTaskGatherClaimed(username);
+                        
+                        boolean slayCompletable = (slayProgress >= dailyTasks[0].count) && !slayClaimed;
+                        boolean mineCompletable = (mineProgress >= dailyTasks[1].count) && !mineClaimed;
+                        
+                        if (!slayCompletable && !mineCompletable) {
+                            client.send(new Packet("daily_task_claim_response", new GenericActionResponsePayload(payload.query_id, false, "No completable tasks or already claimed", 0.0)));
+                            return;
+                        }
+                        
+                        if (slayCompletable) {
+                            com.craftcore.economy.EconomyManager.setDailyTaskSlayClaimed(username, true);
+                            com.craftcore.task.DailyTaskManager.completeTask(player, dailyTasks[0]);
+                        }
+                        if (mineCompletable) {
+                            com.craftcore.economy.EconomyManager.setDailyTaskGatherClaimed(username, true);
+                            com.craftcore.task.DailyTaskManager.completeTask(player, dailyTasks[1]);
+                        }
+                        client.send(new Packet("daily_task_claim_response", new GenericActionResponsePayload(payload.query_id, true, "Tasks claimed successfully", 0.0)));
+                    });
+                    break;
+                }
+                case "player_status_query": {
+                    PlayerStatusQueryPayload payload = GSON.fromJson(payloadObj, PlayerStatusQueryPayload.class);
+                    server.execute(() -> {
+                        String username = payload.username;
+                        ServerPlayer player = server.getPlayerList().getPlayerByName(username);
+                        double mspt = server.getAverageTickTime();
+                        double tps = Math.min(20.0, 1000.0 / mspt);
+                        
+                        if (player == null) {
+                            client.send(new Packet("player_status_response", new PlayerStatusResponsePayload(payload.query_id, false, "離線", tps, true)));
+                        } else {
+                            String coordsStr = player.getBlockX() + ", " + player.getBlockY() + ", " + player.getBlockZ();
+                            client.send(new Packet("player_status_response", new PlayerStatusResponsePayload(payload.query_id, true, coordsStr, tps, true)));
+                        }
+                    });
+                    break;
+                }
+                case "player_inventory_query": {
+                    PlayerInventoryQueryPayload payload = GSON.fromJson(payloadObj, PlayerInventoryQueryPayload.class);
+                    server.execute(() -> {
+                        String username = payload.username;
+                        ServerPlayer player = server.getPlayerList().getPlayerByName(username);
+                        if (player == null) {
+                            client.send(new Packet("player_inventory_response", new PlayerInventoryResponsePayload(payload.query_id, false, new java.util.ArrayList<>())));
+                            return;
+                        }
+                        
+                        java.util.List<InventoryItem> itemsList = new java.util.ArrayList<>();
+                        net.minecraft.world.entity.player.Inventory inv = player.getInventory();
+                        for (int slot = 0; slot < 36; slot++) {
+                            net.minecraft.world.item.ItemStack stack = inv.getItem(slot);
+                            if (!stack.isEmpty()) {
+                                String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                                String displayName = stack.getHoverName().getString();
+                                String nbt = "";
+                                try {
+                                    nbt = stack.getComponents().toString();
+                                } catch (Exception ignored) {}
+                                itemsList.add(new InventoryItem(slot, itemId, stack.getCount(), displayName, nbt));
+                            }
+                        }
+                        client.send(new Packet("player_inventory_response", new PlayerInventoryResponsePayload(payload.query_id, true, itemsList)));
+                    });
+                    break;
+                }
+                case "take_item_request": {
+                    TakeItemRequestPayload payload = GSON.fromJson(payloadObj, TakeItemRequestPayload.class);
+                    server.execute(() -> {
+                        String username = payload.username;
+                        ServerPlayer player = server.getPlayerList().getPlayerByName(username);
+                        if (player == null) {
+                            client.send(new Packet("take_item_response", new GenericActionResponsePayload(payload.query_id, false, "Player is offline", 0.0)));
+                            return;
+                        }
+                        net.minecraft.world.entity.player.Inventory inv = player.getInventory();
+                        int slot = payload.slot;
+                        if (slot < 0 || slot >= 36) {
+                            client.send(new Packet("take_item_response", new GenericActionResponsePayload(payload.query_id, false, "Invalid slot index", 0.0)));
+                            return;
+                        }
+                        net.minecraft.world.item.ItemStack stack = inv.getItem(slot);
+                        if (stack.isEmpty()) {
+                            client.send(new Packet("take_item_response", new GenericActionResponsePayload(payload.query_id, false, "Slot is empty", 0.0)));
+                            return;
+                        }
+                        String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                        if (!itemId.equalsIgnoreCase(payload.itemId)) {
+                            client.send(new Packet("take_item_response", new GenericActionResponsePayload(payload.query_id, false, "Item mismatch in slot", 0.0)));
+                            return;
+                        }
+                        if (stack.getCount() < payload.quantity) {
+                            client.send(new Packet("take_item_response", new GenericActionResponsePayload(payload.query_id, false, "Insufficient item count in slot", 0.0)));
+                            return;
+                        }
+                        stack.shrink(payload.quantity);
+                        player.containerMenu.broadcastChanges();
+                        client.send(new Packet("take_item_response", new GenericActionResponsePayload(payload.query_id, true, "Success", 0.0)));
+                    });
+                    break;
+                }
+                case "lockbox_update": {
+                    LockboxUpdatePayload payload = GSON.fromJson(payloadObj, LockboxUpdatePayload.class);
+                    server.execute(() -> {
+                        boolean ok = false;
+                        String msg = "";
+                        
+                        try {
+                            if ("grant".equalsIgnoreCase(payload.action)) {
+                                ok = com.craftcore.claim.LockboxManager.grantPermission(payload.lockboxId, payload.targetPlayer);
+                                msg = ok ? "Access granted" : "Failed to grant access";
+                            } else if ("revoke".equalsIgnoreCase(payload.action)) {
+                                ok = com.craftcore.claim.LockboxManager.revokePermission(payload.lockboxId, payload.targetPlayer);
+                                msg = ok ? "Access revoked" : "Failed to revoke access";
+                            } else if ("change_password".equalsIgnoreCase(payload.action)) {
+                                ok = com.craftcore.claim.LockboxManager.changePassword(payload.lockboxId, payload.newPassword);
+                                msg = ok ? "Password updated" : "Failed to update password";
+                            } else if ("delete".equalsIgnoreCase(payload.action)) {
+                                ok = com.craftcore.claim.LockboxManager.removeLockbox(payload.lockboxId);
+                                msg = ok ? "Lockbox deleted" : "Failed to delete lockbox";
+                            } else {
+                                msg = "Invalid action";
+                            }
+                        } catch (Exception e) {
+                            msg = e.getMessage();
+                        }
+                        client.send(new Packet("lockbox_update_response", new GenericActionResponsePayload(payload.query_id, ok, msg, 0.0)));
+                    });
                     break;
                 }
             }

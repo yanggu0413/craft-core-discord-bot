@@ -110,6 +110,8 @@ async function handle(packet, discordClient) {
       }
 
       await UserRepository.setCheckinWithStreak(discordId, todayStr, newStreak, keysAwarded);
+      const updatedKeysObj = await UserRepository.getUserKeys(discordId);
+      const keysCount = updatedKeysObj ? updatedKeysObj.keys_count : 0;
 
       const items = ['minecraft:cookie', 'minecraft:apple', 'minecraft:bread', 'minecraft:iron_ingot', 'minecraft:coal'];
       const randomItem = items[Math.floor(Math.random() * items.length)];
@@ -123,6 +125,7 @@ async function handle(packet, discordClient) {
           amount: 1,
           keysAwarded,
           streak: newStreak,
+          keysCount,
           message: `§b[Craft-Core] §a簽到成功！獲得 $150 元與額外道具。`
         }
       });
@@ -179,6 +182,7 @@ async function handle(packet, discordClient) {
           item: prize.id,
           amount: prize.amount,
           keysLeft: userKeys.keys_count - 1,
+          keysCount: userKeys.keys_count - 1,
           message: `§b[Craft-Core] §a幸運大抽獎成功！`
         }
       });
@@ -216,9 +220,11 @@ async function handle(packet, discordClient) {
         const OfflineMailRepository = require('../database/repositories/OfflineMailRepository');
         const binding = await UserRepository.getBindingByMcUsername(username);
         let hasCheckedIn = false;
+        let keysCount = 0;
         if (binding) {
           const userKeys = await UserRepository.getUserKeys(binding.discord_id);
           if (userKeys) {
+            keysCount = userKeys.keys_count || 0;
             const dateOptions = { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' };
             const formatter = new Intl.DateTimeFormat('zh-TW', dateOptions);
             const formatted = formatter.format(new Date());
@@ -233,7 +239,8 @@ async function handle(packet, discordClient) {
           payload: {
             username,
             hasCheckedIn,
-            pendingMailCount
+            pendingMailCount,
+            keysCount
           }
         });
       } catch (err) {
@@ -243,7 +250,8 @@ async function handle(packet, discordClient) {
           payload: {
             username,
             hasCheckedIn: false,
-            pendingMailCount: 0
+            pendingMailCount: 0,
+            keysCount: 0
           }
         });
       }

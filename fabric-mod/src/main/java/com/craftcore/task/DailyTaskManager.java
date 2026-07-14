@@ -109,7 +109,8 @@ public class DailyTaskManager {
                     EconomyManager.incrementDailyTaskSlayProgress(username, 1);
                     int newProgress = oldProgress + 1;
                     if (newProgress == slayTask.count) {
-                        completeTask(killer, slayTask);
+                        killer.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                        killer.sendSystemMessage(Component.literal("§b[Craft-Core] §f您的每日任務【擊殺 " + slayTask.target + "】已達到 100% 進度！請輸入指令「§e/tasks claim§f」手動領取獎金！"));
                     }
                 }
             }
@@ -133,7 +134,8 @@ public class DailyTaskManager {
                 EconomyManager.incrementDailyTaskGatherProgress(username, 1);
                 int newProgress = oldProgress + 1;
                 if (newProgress == mineTask.count) {
-                    completeTask(serverPlayer, mineTask);
+                    serverPlayer.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                    serverPlayer.sendSystemMessage(Component.literal("§b[Craft-Core] §f您的每日任務【挖掘 " + mineTask.target + "】已達到 100% 進度！請輸入指令「§e/tasks claim§f」手動領取獎金！"));
                 }
             }
         }
@@ -171,22 +173,27 @@ public class DailyTaskManager {
 
         int slayProgress = EconomyManager.getDailyTaskSlayProgress(username);
         int mineProgress = EconomyManager.getDailyTaskGatherProgress(username);
+        boolean slayClaimed = EconomyManager.getDailyTaskSlayClaimed(username);
+        boolean mineClaimed = EconomyManager.getDailyTaskGatherClaimed(username);
 
         player.sendSystemMessage(Component.literal("§6=================== 歡迎回來 ==================="));
         player.sendSystemMessage(Component.literal("§a歡迎玩家 §e" + username + " §a登入伺服器！"));
         player.sendSystemMessage(Component.literal("§e★ 今日每日任務 (" + dateStr + ")："));
 
-        String slayStatus = (slayProgress >= slayTask.count) ? "§a[已完成]" : "§7[未完成]";
+        String slayStatus = (slayProgress >= slayTask.count) ? (slayClaimed ? "§a[已領取]" : "§e[待領取]") : "§7[未完成]";
         player.sendSystemMessage(Component.literal("§f- 擊殺 " + slayTask.target + ": §e" + slayProgress + "§f/§e" + slayTask.count + " §f(獎金 §e$" + (int)slayTask.reward + "§f) " + slayStatus));
 
-        String mineStatusStr = (mineProgress >= mineTask.count) ? "§a[已完成]" : "§7[未完成]";
+        String mineStatusStr = (mineProgress >= mineTask.count) ? (mineClaimed ? "§a[已領取]" : "§e[待領取]") : "§7[未完成]";
         player.sendSystemMessage(Component.literal("§f- 挖掘 " + mineTask.target + ": §e" + mineProgress + "§f/§e" + mineTask.count + " §f(獎金 §e$" + (int)mineTask.reward + "§f) " + mineStatusStr));
 
-        if (!hasCheckedIn) {
-            player.sendSystemMessage(Component.literal("§c★ 提示: 您今天尚未簽到！請至 Discord 使用 /簽到 獲得獎勵。"));
+        if (hasCheckedIn) {
+            player.sendSystemMessage(Component.literal("§a★ 簽到狀態: 今日已完成簽到！"));
+        } else {
+            player.sendSystemMessage(Component.literal("§c★ 簽到狀態: 今日尚未簽到！可輸入 /checkin 或於 Discord 簽到以獲取抽獎鑰匙！"));
         }
+        player.sendSystemMessage(Component.literal("§e★ 幸運抽獎: 遊戲內輸入 /luckydraw 可消耗鑰匙進行物資抽獎！"));
         if (pendingMailCount > 0) {
-            player.sendSystemMessage(Component.literal("§e★ 提示: 您的信箱有 §c" + pendingMailCount + " §e封未讀郵件，請盡速領取！"));
+            player.sendSystemMessage(Component.literal("§e★ 郵政快遞: 您的信箱有 §c" + pendingMailCount + " §e封未領取快遞，請盡速領取！"));
         }
         player.sendSystemMessage(Component.literal("§6============================================="));
     }

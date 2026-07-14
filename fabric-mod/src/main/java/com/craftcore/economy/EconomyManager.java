@@ -23,6 +23,9 @@ public class EconomyManager {
         public int upgradedShopSlots = 0;
         public int dailyTaskSlayProgress = 0;
         public int dailyTaskGatherProgress = 0;
+        public boolean dailyTaskSlayClaimed = false;
+        public boolean dailyTaskGatherClaimed = false;
+        public int lotteryKeys = 0;
         public String dailyTaskDate = "";
     }
 
@@ -115,6 +118,8 @@ public class EconomyManager {
         if (!todayTaipei.equals(data.dailyTaskDate)) {
             data.dailyTaskSlayProgress = 0;
             data.dailyTaskGatherProgress = 0;
+            data.dailyTaskSlayClaimed = false;
+            data.dailyTaskGatherClaimed = false;
             data.dailyTaskDate = todayTaipei;
         }
         return data;
@@ -128,6 +133,39 @@ public class EconomyManager {
     public static synchronized int getDailyTaskGatherProgress(String username) {
         PlayerData data = getOrCreate(username);
         return data.dailyTaskGatherProgress;
+    }
+
+    public static synchronized boolean getDailyTaskSlayClaimed(String username) {
+        PlayerData data = getOrCreate(username);
+        return data.dailyTaskSlayClaimed;
+    }
+
+    public static synchronized boolean getDailyTaskGatherClaimed(String username) {
+        PlayerData data = getOrCreate(username);
+        return data.dailyTaskGatherClaimed;
+    }
+
+    public static synchronized void setDailyTaskSlayClaimed(String username, boolean claimed) {
+        PlayerData data = getOrCreate(username);
+        data.dailyTaskSlayClaimed = claimed;
+        save();
+    }
+
+    public static synchronized void setDailyTaskGatherClaimed(String username, boolean claimed) {
+        PlayerData data = getOrCreate(username);
+        data.dailyTaskGatherClaimed = claimed;
+        save();
+    }
+
+    public static synchronized int getLotteryKeys(String username) {
+        PlayerData data = getOrCreate(username);
+        return data.lotteryKeys;
+    }
+
+    public static synchronized void setLotteryKeys(String username, int keys) {
+        PlayerData data = getOrCreate(username);
+        data.lotteryKeys = keys;
+        save();
     }
 
     public static synchronized void incrementDailyTaskSlayProgress(String username, int amount) {

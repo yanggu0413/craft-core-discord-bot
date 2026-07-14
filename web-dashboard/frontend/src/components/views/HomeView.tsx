@@ -1,4 +1,4 @@
-import { Award, Calendar, Key, Mail, RefreshCw, TrendingUp } from 'lucide-react';
+import { Award, Calendar, Key, Mail, RefreshCw, TrendingUp, Activity, MapPin } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Button } from '../ui/button';
@@ -18,6 +18,7 @@ interface HomeViewProps {
   dailyTasksDate: string;
   token: string | null;
   username: string | null;
+  userBalance: number;
   checkinStreak: number;
   totalCheckins: number;
   keysCount: number;
@@ -27,6 +28,10 @@ interface HomeViewProps {
   liveTrades: any[];
   fetchData: () => Promise<void>;
   isRefreshing: boolean;
+  isOnline: boolean;
+  playerCoords: string;
+  serverTps: number;
+  onClaimReward: () => Promise<void>;
 }
 
 export default function HomeView({
@@ -35,6 +40,7 @@ export default function HomeView({
   dailyTasksDate,
   token,
   username,
+  userBalance,
   checkinStreak,
   totalCheckins,
   keysCount,
@@ -43,7 +49,11 @@ export default function HomeView({
   leaderboard,
   liveTrades,
   fetchData,
-  isRefreshing
+  isRefreshing,
+  isOnline,
+  playerCoords,
+  serverTps,
+  onClaimReward
 }: HomeViewProps) {
   return (
     <div className="space-y-6">
@@ -104,6 +114,7 @@ export default function HomeView({
             {dailyTasks.map((task, idx) => {
               const progressPct = Math.min(100, Math.max(0, (task.progress || 0) / task.count * 100));
               const isCompleted = (task.progress || 0) >= task.count;
+              const isClaimed = task.claimed;
               return (
                 <div key={idx} className="p-4 bg-muted/30 border border-border rounded-[4px] flex flex-col justify-between space-y-3">
                   <div className="space-y-1">
@@ -113,8 +124,8 @@ export default function HomeView({
                       }`}>
                         {task.type === 1 ? '擊殺任務' : '挖掘任務'}
                       </span>
-                      <span className={`text-[10px] font-bold ${isCompleted ? 'text-emerald-500' : 'text-muted-foreground'}`}>
-                        {isCompleted ? '已完成' : '進行中'}
+                      <span className={`text-[10px] font-bold ${isClaimed ? 'text-emerald-500' : isCompleted ? 'text-amber-500 animate-pulse' : 'text-muted-foreground'}`}>
+                        {isClaimed ? '已領取' : isCompleted ? '待領取' : '進行中'}
                       </span>
                     </div>
                     <h4 className="font-bold text-sm">
@@ -125,7 +136,7 @@ export default function HomeView({
                     </p>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <div className="flex justify-between text-[10px] font-mono">
                       <span>進度：{task.progress || 0} / {task.count}</span>
                       <span>{Math.round(progressPct)}%</span>
@@ -133,11 +144,20 @@ export default function HomeView({
                     <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
                       <div 
                         className={`h-full rounded-full transition-all duration-300 ${
-                          isCompleted ? 'bg-emerald-500' : task.type === 1 ? 'bg-red-500' : 'bg-blue-500'
+                          isClaimed ? 'bg-emerald-500' : isCompleted ? 'bg-amber-500' : task.type === 1 ? 'bg-red-500' : 'bg-blue-500'
                         }`} 
                         style={{ width: `${progressPct}%` }}
                       />
                     </div>
+                    {token && isCompleted && !isClaimed && (
+                      <Button 
+                        size="sm" 
+                        onClick={() => onClaimReward()} 
+                        className="w-full h-8 text-[11px] font-bold mt-2"
+                      >
+                        領取任務獎勵 ${task.reward}
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -151,9 +171,60 @@ export default function HomeView({
         </CardContent>
       </Card>
 
-      {/* 登入後顯示：個人簽到與收件箱 */}
+      {/* 登入後顯示：即時狀態、個人簽到與收件箱 */}
       {token && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* 遊戲即時狀態 */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center space-x-2">
+                <Activity className="w-4 h-4 text-emerald-500" />
+                <CardTitle>遊戲即時狀態</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="p-3 bg-muted/30 border border-border rounded-[4px] flex items-center justify-between">
+                  <div>
+                    <p className="text-[9px] text-muted-foreground uppercase font-bold">目前線上狀態</p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-ping' : 'bg-red-500'}`}></span>
+                      <p className="text-sm font-bold text-foreground">{isOnline ? '線上' : '離線'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-muted/30 border border-border rounded-[4px] flex items-center justify-between">
+                  <div>
+                    <p className="text-[9px] text-muted-foreground uppercase font-bold">遊戲內座標</p>
+                    <div className="flex items-center space-x-1 mt-1">
+                      <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                      <p className="text-sm font-mono font-bold text-foreground">{playerCoords}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-muted/30 border border-border rounded-[4px] flex items-center justify-between">
+                  <div>
+                    <p className="text-[9px] text-muted-foreground uppercase font-bold">遊戲內金幣餘額</p>
+                    <p className="text-sm font-bold mt-1 text-emerald-500 font-mono">
+                      ${userBalance.toLocaleString()} 元
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-muted/30 border border-border rounded-[4px] flex items-center justify-between">
+                  <div>
+                    <p className="text-[9px] text-muted-foreground uppercase font-bold">伺服器 TPS</p>
+                    <p className={`text-sm font-bold mt-1 ${serverTps > 18 ? 'text-emerald-500' : serverTps > 15 ? 'text-amber-500' : 'text-red-500'}`}>
+                      {serverTps.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* 個人簽到與抽獎福利 */}
           <Card>
             <CardHeader className="pb-4">

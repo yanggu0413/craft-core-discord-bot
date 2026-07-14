@@ -56,7 +56,7 @@ public class ShopGuiManager {
     public static void openShopList(ServerPlayer player) {
         player.openMenu(new SimpleMenuProvider(
             (syncId, playerInv, playerEntity) -> new ShopListScreenHandler(syncId, playerInv, ShopManager.getShops(), player),
-            Component.literal("Shop List")
+            Component.literal("商店列表")
         ));
     }
 
@@ -89,14 +89,14 @@ public class ShopGuiManager {
 
         player.openMenu(new SimpleMenuProvider(
             (syncId, playerInv, playerEntity) -> new ShopListScreenHandler(syncId, playerInv, filtered, player),
-            Component.literal("Shop Search: " + query)
+            Component.literal("商店搜尋: " + query)
         ));
     }
 
     public static void openSubMenu(ServerPlayer player, ShopManager.Shop shop) {
         player.openMenu(new SimpleMenuProvider(
             (syncId, playerInv, playerEntity) -> new ShopSubMenuScreenHandler(syncId, playerInv, shop, player),
-            Component.literal(shop.customName != null ? shop.customName : "Manage Shop")
+            Component.literal(shop.customName != null ? shop.customName : "管理商店")
         ));
     }
 
@@ -115,23 +115,23 @@ public class ShopGuiManager {
                 ShopManager.Shop shop = shops.get(shopIdx);
                 Item itemObj = BuiltInRegistries.ITEM.getValue(Identifier.parse(shop.item));
                 ItemStack stack = new ItemStack(itemObj);
-                stack.set(DataComponents.CUSTOM_NAME, Component.literal(shop.customName != null ? "§6" + shop.customName : "§6" + shop.player + "'s Shop"));
+                stack.set(DataComponents.CUSTOM_NAME, Component.literal(shop.customName != null ? "§6" + shop.customName : "§6" + shop.player + " 的商店"));
 
                 List<Component> lore = new ArrayList<>();
-                lore.add(Component.literal("§7Location: §f" + shop.coords));
+                lore.add(Component.literal("§7位置: §f" + shop.coords));
                 if (shop.sellPrice > 0 && shop.buyPrice > 0) {
-                    lore.add(Component.literal("§7Price: §a售$" + shop.sellPrice + " | 收$" + shop.buyPrice));
+                    lore.add(Component.literal("§7價格: §a售$" + shop.sellPrice + " | 收$" + shop.buyPrice));
                 } else if (shop.sellPrice > 0) {
-                    lore.add(Component.literal("§7Price: §a售$" + shop.sellPrice));
+                    lore.add(Component.literal("§7價格: §a售$" + shop.sellPrice));
                 } else if (shop.buyPrice > 0) {
-                    lore.add(Component.literal("§7Price: §b收$" + shop.buyPrice));
+                    lore.add(Component.literal("§7價格: §b收$" + shop.buyPrice));
                 } else {
-                    lore.add(Component.literal("§7Price: §a$" + shop.price));
+                    lore.add(Component.literal("§7價格: §a$" + shop.price));
                 }
-                lore.add(Component.literal("§7Stock: §e" + shop.stock));
-                lore.add(Component.literal("§7Rating: §e" + ShopManager.getAverageRatingString(shop.id)));
+                lore.add(Component.literal("§7庫存: §e" + shop.stock));
+                lore.add(Component.literal("§7評分: §e" + ShopManager.getAverageRatingString(shop.id)));
                 if (shop.player.equals(getPlayerNameSafely(player)) || isOp(player)) {
-                    lore.add(Component.literal("§7Revenue: §d$" + shop.revenue));
+                    lore.add(Component.literal("§7營業額: §d$" + shop.revenue));
                 }
                 stack.set(DataComponents.LORE, new ItemLore(lore));
 
@@ -248,13 +248,13 @@ public class ShopGuiManager {
             this.player = player;
 
             ItemStack tpStack = new ItemStack(Items.ENDER_PEARL);
-            tpStack.set(DataComponents.CUSTOM_NAME, Component.literal("§aTeleport to Shop"));
-            List<Component> tpLore = List.of(Component.literal("§7Teleport to: §f" + shop.coords));
+            tpStack.set(DataComponents.CUSTOM_NAME, Component.literal("§a傳送到商店"));
+            List<Component> tpLore = List.of(Component.literal("§7傳送至座標: §f" + shop.coords));
             tpStack.set(DataComponents.LORE, new ItemLore(tpLore));
             this.getContainer().setItem(10, tpStack);
 
             ItemStack backStack = new ItemStack(Items.BARRIER);
-            backStack.set(DataComponents.CUSTOM_NAME, Component.literal("§cBack to List"));
+            backStack.set(DataComponents.CUSTOM_NAME, Component.literal("§c返回列表"));
             this.getContainer().setItem(12, backStack);
 
             boolean isOwner = shop.player.equals(getPlayerNameSafely(player)) || isOp(player);
@@ -270,13 +270,13 @@ public class ShopGuiManager {
 
 
                 ItemStack withdrawStack = new ItemStack(Items.GOLD_INGOT);
-                withdrawStack.set(DataComponents.CUSTOM_NAME, Component.literal("§eRemote Withdraw"));
-                List<Component> withdrawLore = List.of(Component.literal("§7Pending Revenue: §d$" + shop.revenue));
+                withdrawStack.set(DataComponents.CUSTOM_NAME, Component.literal("§e遠端提領營業額"));
+                List<Component> withdrawLore = List.of(Component.literal("§7累積營業額: §d$" + shop.revenue));
                 withdrawStack.set(DataComponents.LORE, new ItemLore(withdrawLore));
                 this.getContainer().setItem(15, withdrawStack);
 
                 ItemStack deleteStack = new ItemStack(Items.TNT);
-                deleteStack.set(DataComponents.CUSTOM_NAME, Component.literal("§4Delete Shop"));
+                deleteStack.set(DataComponents.CUSTOM_NAME, Component.literal("§c註銷商店"));
                 this.getContainer().setItem(16, deleteStack);
             }
         }
@@ -298,7 +298,7 @@ public class ShopGuiManager {
                             spe.getYRot(), spe.getXRot(),
                             net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING
                         ));
-                        spe.sendSystemMessage(Component.literal("§b[Craft-Core] §fTeleported to " + shop.coords));
+                        spe.sendSystemMessage(Component.literal("§b[Craft-Core] §f成功傳送到座標 " + shop.coords));
                     } else if (slotId == 12) {
                         spe.closeContainer();
                         openShopList(spe);
@@ -322,9 +322,16 @@ public class ShopGuiManager {
                             } else if (slotId == 15) {
                                 spe.closeContainer();
                                 String res = ShopManager.clickShopGUI(getPlayerNameSafely(spe), shop.coords, "withdraw", isOp(spe));
-                                spe.sendSystemMessage(Component.literal("§b[Craft-Core] §f" + res));
                                 if (res.startsWith("Withdrew")) {
+                                    String amt = res.replace("Withdrew ", "");
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §a成功提領營業額 $" + amt + " 元！"));
                                     spe.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                                } else if (res.equals("Permission denied")) {
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §c權限不足，無法提領！"));
+                                } else if (res.equals("No revenue to withdraw")) {
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §c目前沒有待提領的營業額。"));
+                                } else {
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §f" + res));
                                 }
                             } else if (slotId == 16) {
                                 spe.closeContainer();
@@ -335,7 +342,13 @@ public class ShopGuiManager {
                                 BlockPos shopPos = new BlockPos(x, y, z);
                                 cleanupShopVisuals((ServerLevel) spe.level(), shopPos);
                                 String res = ShopManager.clickShopGUI(getPlayerNameSafely(spe), shop.coords, "delete", isOp(spe));
-                                spe.sendSystemMessage(Component.literal("§b[Craft-Core] §f" + res));
+                                if (res.equals("Shop deleted")) {
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §a商店已成功註銷！"));
+                                } else if (res.equals("Permission denied")) {
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §c權限不足，無法註銷！"));
+                                } else {
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §f" + res));
+                                }
                             }
                         }
                     }
@@ -374,8 +387,8 @@ public class ShopGuiManager {
             this.getContainer().setItem(25, instBook);
 
             ItemStack greenWool = new ItemStack(Items.WOOL.green());
-            greenWool.set(DataComponents.CUSTOM_NAME, Component.literal("§aClick to Sell Items"));
-            List<Component> lore = List.of(Component.literal("§7Places items in slots 0-24"), Component.literal("§7and click here to sell them."));
+            greenWool.set(DataComponents.CUSTOM_NAME, Component.literal("§a點擊出售物品"));
+            List<Component> lore = List.of(Component.literal("§7將欲出售的物品放至 0-24 號格子"), Component.literal("§7並點擊此處完成出售。"));
             greenWool.set(DataComponents.LORE, new ItemLore(lore));
             this.getContainer().setItem(26, greenWool);
         }

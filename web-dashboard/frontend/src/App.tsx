@@ -7,6 +7,7 @@ import MarketView from './components/views/MarketView';
 import OwnerView from './components/views/OwnerView';
 import ClaimsView from './components/views/ClaimsView';
 import LockboxesView from './components/views/LockboxesView';
+import InventoryView from './components/views/InventoryView';
 import { Card, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { cn } from './lib/utils';
 
@@ -70,6 +71,9 @@ export default function App() {
   const [username, setUsername] = useState<string | null>(localStorage.getItem('mc_username'));
   const [, setUuid] = useState<string | null>(localStorage.getItem('mc_uuid'));
   const [userBalance, setUserBalance] = useState<number>(0);
+  const [isOnline, setIsOnline] = useState<boolean>(false);
+  const [playerCoords, setPlayerCoords] = useState<string>('離線');
+  const [serverTps, setServerTps] = useState<number>(20.0);
 
   // 個人福利與收發件狀態
   const [keysCount, setKeysCount] = useState<number>(0);
@@ -80,7 +84,7 @@ export default function App() {
   const [liveTrades, setLiveTrades] = useState<any[]>([]);
 
   // 當前選單分頁
-  const [activeTab, setActiveTab] = useState<'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory'>('home');
 
   // 全域數據狀態
   const [stats, setStats] = useState({ totalCirculation: 0, accumulatedSalesTax: 0, totalShopsCount: 0 });
@@ -192,6 +196,9 @@ export default function App() {
             setCheckinStreak(profileJson.user.checkin_streak || 0);
             setTotalCheckins(profileJson.user.total_checkins || 0);
             setLastCheckin(profileJson.user.last_checkin || null);
+            setIsOnline(!!profileJson.user.online);
+            setPlayerCoords(profileJson.user.coords || '離線');
+            setServerTps(typeof profileJson.user.tps === 'number' ? profileJson.user.tps : 20.0);
           }
         } catch (err) {
           console.error('Failed to fetch profile', err);
@@ -400,6 +407,50 @@ export default function App() {
     }
   };
 
+  // 領取每日任務獎勵
+  const handleClaimReward = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/tasks/claim`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast('成功領取每日任務獎勵！', 'success');
+        fetchData();
+      } else {
+        triggerToast(`領取失敗：${data.message}`, 'error');
+      }
+    } catch (err) {
+      triggerToast('領取任務獎勵連線異常，請稍後再試。', 'error');
+    }
+  };
+
+  // 管理密碼鎖安全箱
+  const handleUpdateLockbox = async (lockboxId: string, action: string, targetPlayer?: string, newPassword?: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/lockboxes/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ lockboxId, action, targetPlayer, newPassword })
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast(data.message || '密碼鎖設定更新成功！', 'success');
+        fetchData();
+      } else {
+        triggerToast(`更新失敗：${data.message}`, 'error');
+      }
+    } catch (err) {
+      triggerToast('更新密碼鎖連線錯誤，請稍後重試。', 'error');
+    }
+  };
+
   // 更新領地保護區玩家權限
   const handleUpdatePermission = async (claimId: string, permissionType: string, player: string, action: 'grant' | 'revoke') => {
     try {
@@ -469,6 +520,7 @@ export default function App() {
               dailyTasksDate={dailyTasksDate}
               token={token}
               username={username}
+              userBalance={userBalance}
               checkinStreak={checkinStreak}
               totalCheckins={totalCheckins}
               keysCount={keysCount}
@@ -478,6 +530,10 @@ export default function App() {
               liveTrades={liveTrades}
               fetchData={fetchData}
               isRefreshing={isRefreshing}
+              isOnline={isOnline}
+              playerCoords={playerCoords}
+              serverTps={serverTps}
+              onClaimReward={handleClaimReward}
             />
           )}
 
@@ -523,6 +579,18 @@ export default function App() {
           {activeTab === 'lockboxes' && (
             <LockboxesView
               lockboxes={lockboxes}
+              onUpdateLockbox={handleUpdateLockbox}
+              currentUser={username}
+            />
+          )}
+
+          {activeTab === 'inventory' && (
+            <InventoryView
+              token={token}
+              isOnline={isOnline}
+              userBalance={userBalance}
+              triggerToast={triggerToast}
+              fetchData={fetchData}
             />
           )}
         </div>

@@ -17,6 +17,7 @@ public class CraftCoreMod implements ModInitializer {
         ConfigManager.loadPlayers();
         ServerLifecycleHandler.register();
         DiscordCommand.register();
+        com.craftcore.task.SidebarManager.register();
     }
 
     public static synchronized void startWSClient(MinecraftServer server) {

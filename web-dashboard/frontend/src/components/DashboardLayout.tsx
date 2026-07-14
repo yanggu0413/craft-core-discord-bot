@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { 
   BarChart3, ShoppingBag, TrendingUp, User, Shield, 
-  Settings, LogOut, Sun, Moon, Menu, X, Compass
+  Settings, LogOut, Sun, Moon, Menu, X, Compass, Mail
 } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface DashboardLayoutProps {
-  activeTab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes';
-  setActiveTab: (tab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes') => void;
+  activeTab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory';
+  setActiveTab: (tab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory') => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
   token: string | null;
@@ -39,6 +39,7 @@ export default function DashboardLayout({
     { id: 'owner', label: '店主遙控', icon: User },
     { id: 'claims', label: '領地管理', icon: Shield },
     { id: 'lockboxes', label: '密碼安全鎖', icon: Settings },
+    { id: 'inventory', label: '郵局與背包', icon: Mail },
   ] as const;
 
   const currentTabLabel = navigationItems.find(item => item.id === activeTab)?.label || '';

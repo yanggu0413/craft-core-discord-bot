@@ -581,6 +581,20 @@ app.get('/api/user/profile', authenticateToken, async (req: CustomRequest, res: 
     console.warn('[Profile API] Failed to fetch live balance via WS:', error.message);
   }
 
+  let online = false;
+  let coords = "離線";
+  let tps = 20.0;
+  try {
+    const response = await sendWsQuery('player_status_query', { username: user.mc_username });
+    if (response && response.success) {
+      online = response.online;
+      coords = response.coords;
+      tps = response.tps;
+    }
+  } catch (error: any) {
+    console.warn('[Profile API] Failed to fetch player status via WS:', error.message);
+  }
+
   let dbStats = {
     keys_count: 0,
     checkin_streak: 0,
@@ -611,6 +625,9 @@ app.get('/api/user/profile', authenticateToken, async (req: CustomRequest, res: 
       mc_username: user.mc_username,
       mc_uuid: user.mc_uuid,
       balance,
+      online,
+      coords,
+      tps,
       ...dbStats
     }
   });
@@ -635,6 +652,223 @@ app.get('/api/user/mails', authenticateToken, async (req: CustomRequest, res: Re
     res.json({ success: true, mails });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/tasks/claim', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+
+  try {
+    const response = await sendWsQuery('daily_task_claim_request', { username: user.mc_username });
+    if (response && response.success) {
+      res.json({ success: true, message: '成功領取獎勵！' });
+    } else {
+      res.status(400).json({ success: false, message: response?.message || '領取失敗，任務尚未完成或已領取。' });
+    }
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.get('/api/user/inventory', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+
+  try {
+    const response = await sendWsQuery('player_inventory_query', { username: user.mc_username });
+    if (response && response.success) {
+      res.json({ success: true, items: response.items });
+    } else {
+      res.status(400).json({ success: false, message: '查詢背包失敗，請確認您在遊戲線上狀態。' });
+    }
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/mail/send', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+
+  const { receiver, type, amount, slot, itemId, quantity, nbt } = req.body;
+  if (!receiver) return res.status(400).json({ success: false, message: '缺少收件人姓名' });
+  if (type !== 'money' && type !== 'item') return res.status(400).json({ success: false, message: '無效的郵寄類型' });
+
+  if (!db) {
+    return res.status(500).json({ success: false, message: '資料庫連結不可用' });
+  }
+
+  try {
+    const getBinding = db.prepare('SELECT discord_id FROM bindings WHERE mc_username = ? COLLATE NOCASE');
+    const senderBinding = getBinding.get(user.mc_username) as any;
+    const senderDiscordId = senderBinding ? senderBinding.discord_id : 'web-dashboard';
+
+    if (type === 'money') {
+      const transferAmount = Number(amount);
+      if (isNaN(transferAmount) || transferAmount <= 0) {
+        return res.status(400).json({ success: false, message: '金額必須為正數' });
+      }
+
+      let balance = 0;
+      try {
+        const balRes = await sendWsQuery('balance_query', { username: user.mc_username });
+        if (balRes && typeof balRes.balance === 'number') {
+          balance = balRes.balance;
+        }
+      } catch (err: any) {
+        return res.status(400).json({ success: false, message: '無法取得您目前的金幣餘額，請確認遊戲伺服器是否在線。' });
+      }
+
+      if (balance < transferAmount) {
+        return res.status(400).json({ success: false, message: '金幣餘額不足，無法寄送' });
+      }
+
+      const cmdRes = await sendWsQuery('command_request', {
+        command: `removemoney "${user.mc_username}" ${transferAmount}`,
+        admin_username: 'Web-Dashboard'
+      });
+      if (!cmdRes || !cmdRes.success) {
+        return res.status(400).json({ success: false, message: '扣除寄件者餘額失敗：' + (cmdRes?.output || '未知錯誤') });
+      }
+
+      const insertMail = db.prepare(`
+        INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, nbt, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending')
+      `);
+      insertMail.run(senderDiscordId, user.mc_username, receiver, 'craftcore:money', transferAmount, null);
+
+      try {
+        await sendWsQuery('command_request', {
+          command: `tellraw ${receiver} {"text":"§b[Craft-Core] §e玩家 ${user.mc_username} 寄給您了一封快遞，請登入遊戲或重新切換分流領取！"}`,
+          admin_username: 'Web-Dashboard'
+        });
+      } catch (ignored) {}
+
+      return res.json({ success: true, message: '金幣匯款成功寄出！' });
+    } else {
+      const itemSlot = Number(slot);
+      const itemQuantity = Number(quantity);
+      if (isNaN(itemSlot) || itemSlot < 0 || itemSlot >= 36) {
+        return res.status(400).json({ success: false, message: '無效的背包格子索引' });
+      }
+      if (isNaN(itemQuantity) || itemQuantity <= 0) {
+        return res.status(400).json({ success: false, message: '數量必須為正整數' });
+      }
+      if (!itemId) {
+        return res.status(400).json({ success: false, message: '缺少物品 ID' });
+      }
+
+      const takeRes = await sendWsQuery('take_item_request', {
+        username: user.mc_username,
+        slot: itemSlot,
+        quantity: itemQuantity,
+        itemId: itemId
+      });
+
+      if (!takeRes || !takeRes.success) {
+        return res.status(400).json({ success: false, message: '從您的遊戲背包扣除物品失敗，請確認物品及數量是否正確且您在線上。' });
+      }
+
+      const insertMail = db.prepare(`
+        INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, nbt, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending')
+      `);
+      insertMail.run(senderDiscordId, user.mc_username, receiver, itemId, itemQuantity, nbt || null);
+
+      try {
+        await sendWsQuery('command_request', {
+          command: `tellraw ${receiver} {"text":"§b[Craft-Core] §e玩家 ${user.mc_username} 寄給您了一件快遞包裹，請登入遊戲或重新切換分流領取！"}`,
+          admin_username: 'Web-Dashboard'
+        });
+      } catch (ignored) {}
+
+      return res.json({ success: true, message: '物品快遞包裹成功寄出！' });
+    }
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post('/api/lockboxes/update', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+
+  const { lockboxId, action, targetPlayer, newPassword } = req.body;
+  if (!lockboxId || !action) {
+    return res.status(400).json({ success: false, message: '缺少密碼鎖 ID 或操作參數' });
+  }
+
+  const isGameOnline = botWsClient && botWsClient.readyState === WebSocket.OPEN;
+  
+  if (isGameOnline) {
+    try {
+      const response = await sendWsQuery('lockbox_update', {
+        lockboxId,
+        action,
+        targetPlayer,
+        newPassword
+      });
+      if (response && response.success) {
+        return res.json({ success: true, message: '密碼鎖設定更新成功！' });
+      } else {
+        return res.status(400).json({ success: false, message: response?.message || '更新失敗' });
+      }
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  } else {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const possiblePaths = [
+        path.resolve('config/craft-core-shop/lockboxes.json'),
+        path.resolve('../config/craft-core-shop/lockboxes.json'),
+        path.resolve('fabric-mod/config/craft-core-shop/lockboxes.json'),
+        path.resolve('../fabric-mod/config/craft-core-shop/lockboxes.json')
+      ];
+      let lockboxPath = "";
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+          lockboxPath = p;
+          break;
+        }
+      }
+      if (!lockboxPath) {
+        lockboxPath = possiblePaths[0];
+      }
+      if (!fs.existsSync(lockboxPath)) {
+        return res.status(400).json({ success: false, message: '遊戲伺服器離線且找不到密碼鎖設定檔' });
+      }
+      const data = JSON.parse(fs.readFileSync(lockboxPath, 'utf8'));
+      const lockbox = data[lockboxId];
+      if (!lockbox) {
+        return res.status(404).json({ success: false, message: '找不到該密碼鎖記錄' });
+      }
+
+      if (lockbox.owner !== user.mc_username) {
+        return res.status(403).json({ success: false, message: '您無權修改此密碼鎖' });
+      }
+
+      if (action === 'grant') {
+        if (!lockbox.authorized.includes(targetPlayer)) {
+          lockbox.authorized.push(targetPlayer);
+        }
+      } else if (action === 'revoke') {
+        lockbox.authorized = lockbox.authorized.filter((p: string) => p !== targetPlayer);
+      } else if (action === 'change_password') {
+        lockbox.password = newPassword;
+      } else if (action === 'delete') {
+        delete data[lockboxId];
+      } else {
+        return res.status(400).json({ success: false, message: '無效的操作' });
+      }
+
+      fs.writeFileSync(lockboxPath, JSON.stringify(data, null, 2), 'utf8');
+      return res.json({ success: true, message: '（伺服器離線，已直接保存至設定檔）密碼鎖更新成功！' });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: '離線更新密碼鎖錯誤：' + err.message });
+    }
   }
 });
 

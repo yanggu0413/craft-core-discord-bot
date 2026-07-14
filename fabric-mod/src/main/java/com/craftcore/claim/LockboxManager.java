@@ -227,4 +227,43 @@ public class LockboxManager {
         player.playSound(SoundEvents.CHEST_LOCKED, 1.0f, 1.0f);
         return false;
     }
+
+    public static synchronized boolean grantPermission(String id, String targetPlayer) {
+        Lockbox lockbox = lockboxes.get(id);
+        if (lockbox == null) return false;
+        if (!lockbox.authorized.contains(targetPlayer)) {
+            lockbox.authorized.add(targetPlayer);
+            save();
+            return true;
+        }
+        return false;
+    }
+
+    public static synchronized boolean revokePermission(String id, String targetPlayer) {
+        Lockbox lockbox = lockboxes.get(id);
+        if (lockbox == null) return false;
+        if (lockbox.authorized.contains(targetPlayer)) {
+            lockbox.authorized.remove(targetPlayer);
+            save();
+            return true;
+        }
+        return false;
+    }
+
+    public static synchronized boolean changePassword(String id, String newPassword) {
+        Lockbox lockbox = lockboxes.get(id);
+        if (lockbox == null) return false;
+        lockbox.password = newPassword;
+        save();
+        return true;
+    }
+
+    public static synchronized boolean removeLockbox(String id) {
+        if (lockboxes.containsKey(id)) {
+            lockboxes.remove(id);
+            save();
+            return true;
+        }
+        return false;
+    }
 }

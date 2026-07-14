@@ -287,6 +287,7 @@ public class Packet {
         public int amount;
         public int keysAwarded;
         public int streak;
+        public int keysCount;
         public String message;
     }
 
@@ -306,7 +307,13 @@ public class Packet {
         public String item;
         public int amount;
         public int keysLeft;
+        public int keysCount;
         public String message;
+    }
+
+    public static class PlayerKeysUpdatePayload {
+        public String username;
+        public int keys;
     }
 
     public static class ClaimsQueryPayload {
@@ -416,11 +423,13 @@ public class Packet {
         public String username;
         public boolean hasCheckedIn;
         public int pendingMailCount;
+        public int keysCount;
 
-        public JoinResponsePayload(String username, boolean hasCheckedIn, int pendingMailCount) {
+        public JoinResponsePayload(String username, boolean hasCheckedIn, int pendingMailCount, int keysCount) {
             this.username = username;
             this.hasCheckedIn = hasCheckedIn;
             this.pendingMailCount = pendingMailCount;
+            this.keysCount = keysCount;
         }
     }
 
@@ -443,5 +452,80 @@ public class Packet {
             this.date = date;
             this.success = success;
         }
+    }
+
+    public static class DailyTaskClaimRequestPayload {
+        public String query_id;
+        public String username;
+    }
+
+    public static class PlayerStatusQueryPayload {
+        public String query_id;
+        public String username;
+    }
+
+    public static class PlayerStatusResponsePayload {
+        public String query_id;
+        public boolean online;
+        public String coords;
+        public double tps;
+        public boolean success;
+
+        public PlayerStatusResponsePayload(String queryId, boolean online, String coords, double tps, boolean success) {
+            this.query_id = queryId;
+            this.online = online;
+            this.coords = coords;
+            this.tps = tps;
+            this.success = success;
+        }
+    }
+
+    public static class PlayerInventoryQueryPayload {
+        public String query_id;
+        public String username;
+    }
+
+    public static class PlayerInventoryResponsePayload {
+        public String query_id;
+        public boolean success;
+        public List<InventoryItem> items;
+
+        public PlayerInventoryResponsePayload(String queryId, boolean success, List<InventoryItem> items) {
+            this.query_id = queryId;
+            this.success = success;
+            this.items = items;
+        }
+    }
+
+    public static class InventoryItem {
+        public int slot;
+        public String itemId;
+        public int count;
+        public String displayName;
+        public String nbt;
+
+        public InventoryItem(int slot, String itemId, int count, String displayName, String nbt) {
+            this.slot = slot;
+            this.itemId = itemId;
+            this.count = count;
+            this.displayName = displayName;
+            this.nbt = nbt;
+        }
+    }
+
+    public static class TakeItemRequestPayload {
+        public String query_id;
+        public String username;
+        public int slot;
+        public int quantity;
+        public String itemId;
+    }
+
+    public static class LockboxUpdatePayload {
+        public String query_id;
+        public String lockboxId;
+        public String action; // grant | revoke | change_password | delete
+        public String targetPlayer;
+        public String newPassword;
     }
 }

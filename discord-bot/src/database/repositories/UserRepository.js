@@ -38,15 +38,21 @@ class UserRepository {
   }
 
   async updateKeys(discordId, newCount) {
-    return db.updateKeys(discordId, newCount);
+    const res = await db.updateKeys(discordId, newCount);
+    await this.syncKeysToGameByDiscordId(discordId);
+    return res;
   }
 
   async setCheckin(discordId, dateStr, keysToAdd) {
-    return db.setCheckin(discordId, dateStr, keysToAdd);
+    const res = await db.setCheckin(discordId, dateStr, keysToAdd);
+    await this.syncKeysToGameByDiscordId(discordId);
+    return res;
   }
 
   async setCheckinWithStreak(discordId, dateStr, streak, keysToAdd) {
-    return db.setCheckinWithStreak(discordId, dateStr, streak, keysToAdd);
+    const res = await db.setCheckinWithStreak(discordId, dateStr, streak, keysToAdd);
+    await this.syncKeysToGameByDiscordId(discordId);
+    return res;
   }
 
   async toggleReminderSubscription(discordId, status) {
@@ -54,7 +60,9 @@ class UserRepository {
   }
 
   async updateExchangedTicks(discordId, newExchangedTicks, keysToAdd) {
-    return db.updateExchangedTicks(discordId, newExchangedTicks, keysToAdd);
+    const res = await db.updateExchangedTicks(discordId, newExchangedTicks, keysToAdd);
+    await this.syncKeysToGameByDiscordId(discordId);
+    return res;
   }
 
   async getCheckinLeaderboard(limit = 10) {
@@ -66,15 +74,51 @@ class UserRepository {
   }
 
   async addKeysByMcUsername(mcUsername, keysToAdd) {
-    return db.addKeysByMcUsername(mcUsername, keysToAdd);
+    const res = await db.addKeysByMcUsername(mcUsername, keysToAdd);
+    await this.syncKeysToGame(mcUsername);
+    return res;
   }
 
   async addKeysByDiscordId(discordId, keysToAdd) {
-    return db.addKeysByDiscordId(discordId, keysToAdd);
+    const res = await db.addKeysByDiscordId(discordId, keysToAdd);
+    await this.syncKeysToGameByDiscordId(discordId);
+    return res;
   }
 
   async bindUser(discordId, mcUuid, mcUsername, code) {
     return db.bindUser(discordId, mcUuid, mcUsername, code);
+  }
+
+  async syncKeysToGame(mcUsername) {
+    try {
+      const binding = await this.getBindingByMcUsername(mcUsername);
+      if (binding) {
+        const userKeys = await this.getUserKeys(binding.discord_id);
+        if (userKeys) {
+          const session = require('../../websocket/session');
+          session.send({
+            type: 'player_keys_update',
+            payload: {
+              username: mcUsername,
+              keys: userKeys.keys_count || 0
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.error('[UserRepository] Failed to sync keys to game for ' + mcUsername, e);
+    }
+  }
+
+  async syncKeysToGameByDiscordId(discordId) {
+    try {
+      const binding = await this.getBindingByDiscordId(discordId);
+      if (binding) {
+        await this.syncKeysToGame(binding.mc_username);
+      }
+    } catch (e) {
+      console.error('[UserRepository] Failed to sync keys to game for discordId ' + discordId, e);
+    }
   }
 }
 

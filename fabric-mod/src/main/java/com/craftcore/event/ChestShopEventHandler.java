@@ -469,10 +469,11 @@ public class ChestShopEventHandler {
                 if (result.intercepted) {
                     if (result.responseMessage != null) {
                         for (String line : result.responseMessage.split("\n")) {
-                            if (line.startsWith("§b[Craft-Core]") || line.startsWith("§f-") || line.startsWith("§e★") || line.startsWith("§6=")) {
-                                sender.sendSystemMessage(Component.literal(line));
+                            String translated = translateMessage(line);
+                            if (translated.startsWith("§b[Craft-Core]") || translated.startsWith("§c[Craft-Core]") || translated.startsWith("§a") || translated.startsWith("§c") || translated.startsWith("§f-") || translated.startsWith("§e★") || translated.startsWith("§6=")) {
+                                sender.sendSystemMessage(Component.literal(translated));
                             } else {
-                                sender.sendSystemMessage(Component.literal("§b[Craft-Core] §f" + line));
+                                sender.sendSystemMessage(Component.literal("§b[Craft-Core] §f" + translated));
                             }
                         }
                     }
@@ -493,6 +494,67 @@ public class ChestShopEventHandler {
             }
             return true;
         });
+    }
+
+    private static String translateMessage(String msg) {
+        if (msg == null) return null;
+        String clean = msg.replace("§b[Craft-Core] §f", "").replace("§b[Craft-Core] ", "").replace("§c[Craft-Core] ", "").trim();
+        
+        // Exact matches
+        if (clean.equals("Shop creation timed out.")) return "§c商店建立超時。";
+        if (clean.equals("Shop creation cancelled.")) return "§c商店建立已取消。";
+        if (clean.equals("Price must be a positive number.")) return "§c價格必須為正數。";
+        if (clean.equals("Shop created successfully!")) return "§a商店建立成功！";
+        if (clean.equals("Failed to create shop.")) return "§c建立商店失敗。";
+        if (clean.equals("Invalid price format. Please enter a valid number.")) return "§c無效的價格格式，請輸入有效的數字。";
+        
+        if (clean.equals("Rating session timed out.")) return "§c評分超時。";
+        if (clean.equals("Rating cancelled.")) return "§c評分已取消。";
+        
+        if (clean.equals("Price configuration timed out.")) return "§c價格設定超時。";
+        if (clean.equals("Price configuration cancelled.")) return "§c價格設定已取消。";
+        if (clean.equals("Prices updated successfully!")) return "§a價格已更新成功！";
+        
+        if (clean.equals("Purchase timed out.")) return "§c交易超時。";
+        if (clean.equals("Transaction cancelled.")) return "§c交易已取消。";
+        if (clean.equals("Shop no longer exists.")) return "§c商店已不存在。";
+        if (clean.equals("Invalid choice. Please enter 「買」 or 「賣」, or 「取消」 to abort.")) return "§c無效的選擇，請輸入「買」或「賣」，或輸入「取消」中斷。";
+        
+        if (clean.equals("Quantity must be a positive integer.")) return "§c數量必須為正整數。";
+        if (clean.equals("Invalid quantity format. Please enter a valid integer.")) return "§c無效的數量格式，請輸入有效的整數。";
+        if (clean.equals("This shop is not selling items.")) return "§c此商店目前未出售商品。";
+        if (clean.equals("This shop is not buying items.")) return "§c此商店目前未收購商品。";
+        if (clean.equals("Insufficient funds.")) return "§c金幣不足。";
+        if (clean.equals("Not enough space in your inventory.")) return "§c您的背包空間不足。";
+        if (clean.equals("Transaction successful!")) return "§a交易成功！";
+        
+        if (clean.equals("Not enough items in shop chest.")) return "§c商店箱子內物品不足。";
+        if (clean.equals("Not enough space in shop chest.")) return "§c商店箱子空間不足。";
+        if (clean.equals("Shop owner does not have enough money.")) return "§c商店老闆餘額不足。";
+        if (clean.equals("You do not have enough items.")) return "§c您的物品數量不足。";
+        if (clean.equals("Not enough items in your inventory.")) return "§c您背包中的物品數量不足。";
+        if (clean.equals("Transaction cancelled: Shop chest was broken.")) return "§c交易已取消：商店箱子已被破壞。";
+        if (clean.equals("Price configuration cancelled. Both prices cannot be 0.")) return "§c價格設定取消：價格不能同時為 0。";
+        
+        // Starts with prefix / dynamic contents
+        if (clean.startsWith("Transaction successful! Received $")) {
+            String val = clean.replace("Transaction successful! Received $", "").replace("!", "").trim();
+            return "§a交易成功！獲得 $" + val + " 元！";
+        }
+        if (clean.startsWith("Transaction successful! Sold ")) {
+            String val = clean.replace("Transaction successful! Sold ", "").trim();
+            return "§a交易成功！已售出 " + val;
+        }
+        if (clean.startsWith("Quantity must be a multiple of ")) {
+            String val = clean.replace("Quantity must be a multiple of ", "").replace(".", "").trim();
+            return "§c數量必須是 " + val + " 的倍數。";
+        }
+        if (clean.startsWith("Cannot resolve 'all' quantity")) {
+            return "§c無法解析 'all' 數量（餘額不足、庫存不足或空間不足）。";
+        }
+
+        // Return original if no translation matched
+        return msg;
     }
 
     private static boolean isContainer(BlockState state) {
