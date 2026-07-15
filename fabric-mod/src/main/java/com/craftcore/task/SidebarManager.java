@@ -54,6 +54,11 @@ public class SidebarManager {
     }
  
     private static void updatePlayerSidebar(ServerPlayer player, Scoreboard scoreboard, double tps) {
+        // Skip updating if player has just joined and is still loading (first 2 seconds / 40 ticks)
+        if (player.tickCount < 40) {
+            return;
+        }
+
         String username = player.getName().getString();
         UUID uuid = player.getUUID();
         String objectiveName = "sb_" + username.toLowerCase();
@@ -69,6 +74,14 @@ public class SidebarManager {
                 true,
                 BlankFormat.INSTANCE
             );
+        }
+
+        // Send initialization packets only once per player session to prevent client crash
+        if (!previousLines.containsKey(uuid)) {
+            // Force client to clean old objective and register it fresh
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetObjectivePacket(objective, 1)); // REMOVE (ignored by client if not exists)
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetObjectivePacket(objective, 0)); // ADD (creates on client)
+            player.connection.send(new ClientboundSetDisplayObjectivePacket(DisplaySlot.SIDEBAR, objective)); // DISPLAY
         }
  
         // 2. Clear old lines to prevent leaks
@@ -99,8 +112,7 @@ public class SidebarManager {
         // 5. Save previous lines
         previousLines.put(uuid, newLines);
  
-        // 6. Force client display slot update to sidebar and ensure objective exists on client
-        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetObjectivePacket(objective, 0));
+        // 6. Force client display slot update to sidebar
         player.connection.send(new ClientboundSetDisplayObjectivePacket(DisplaySlot.SIDEBAR, objective));
     }
  
