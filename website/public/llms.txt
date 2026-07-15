@@ -1,0 +1,18 @@
+# Craft-Core Minecraft Server
+
+Welcome to the Craft-Core official portal. Craft-Core is a pure Fabric Minecraft survival server supporting both Java and Bedrock clients.
+
+## Key Pages & Services
+- Portal Website: https://craft-core.xyz/ (Main landing page, copy connection IPs)
+- Wiki Docs: https://docs.craft-core.xyz/ (Rules, tutorials, claiming guides, commands)
+- Player Dashboard: https://dash.craft-core.xyz/ (Player stats, economy, claim controls, mail)
+- Discord Community: https://discord.gg/XJZZwG7jR4
+
+## Server Specs & Connection Info
+- **Java Edition (PC)**:
+  - IP: `mc.craft-core.xyz`
+  - Required Version: `26.2` (Strictly enforced)
+- **Bedrock Edition (Mobile/Console/Win10)**:
+  - IP: `mc.craft-core.xyz`
+  - Port: `19132`
+  - Version: Latest active Bedrock version
