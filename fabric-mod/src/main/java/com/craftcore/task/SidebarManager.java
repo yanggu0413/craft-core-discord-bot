@@ -89,6 +89,7 @@ public class SidebarManager {
         if (oldLines != null) {
             for (String oldLine : oldLines) {
                 scoreboard.resetSinglePlayerScore(() -> oldLine, objective);
+                player.connection.send(new net.minecraft.network.protocol.game.ClientboundResetScorePacket(oldLine, objectiveName));
             }
         }
  
@@ -107,6 +108,15 @@ public class SidebarManager {
             String lineText = newLines.get(i);
             int scoreValue = newLines.size() - i;
             scoreboard.getOrCreatePlayerScore(() -> lineText, objective).set(scoreValue);
+            
+            // Send set score packet directly to the player client
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetScorePacket(
+                lineText,
+                objectiveName,
+                scoreValue,
+                null,
+                null
+            ));
         }
  
         // 5. Save previous lines
