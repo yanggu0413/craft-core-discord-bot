@@ -1,6 +1,7 @@
 @echo off
+title Craft-Core Services Manager
 echo ===================================================
-echo   Craft-Core Shop & Dashboard Production Startup Script
+echo   Craft-Core Production Services Startup Script
 echo ===================================================
 echo.
 
@@ -15,14 +16,15 @@ if %ERRORLEVEL% neq 0 (
 echo PM2 is available.
 echo.
 
-echo [1/8] Stopping existing PM2 processes...
+echo [1/4] Stopping existing PM2 processes...
 call pm2 delete craft-core-bot >nul 2>nul
 call pm2 delete craft-core-backend >nul 2>nul
+:: Clean up old deprecated PM2 processes if they exist
 call pm2 delete craft-core-frontend >nul 2>nul
 call pm2 delete craft-core-docs >nul 2>nul
 echo.
 
-echo [2/8] Building Backend...
+echo [2/4] Building Backend (TypeScript Compilation)...
 cd web-dashboard\backend
 call npm run build
 if %ERRORLEVEL% neq 0 (
@@ -34,7 +36,7 @@ if %ERRORLEVEL% neq 0 (
 cd ..\..
 echo.
 
-echo [3/8] Building Frontend...
+echo [3/4] Building Dashboard Frontend (Vite Production Build)...
 cd web-dashboard\frontend
 call npm run build
 if %ERRORLEVEL% neq 0 (
@@ -46,49 +48,26 @@ if %ERRORLEVEL% neq 0 (
 cd ..\..
 echo.
 
-echo [4/8] Building Wiki Documentation (VitePress)...
-cd docs
-call npm run docs:build
-if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Wiki Documentation build failed!
-    cd ..
-    pause
-    exit /b %ERRORLEVEL%
-)
-cd ..
-echo.
-
-echo [5/8] Building Portal Website (Next.js)...
-cd website
-call npm run build
-if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Portal Website build failed!
-    cd ..
-    pause
-    exit /b %ERRORLEVEL%
-)
-cd ..
-echo.
-
-echo [6/8] Starting Discord Bot...
+echo [4/4] Starting PM2 Daemons...
+echo Starting Discord Bot...
 call pm2 start src/index.js --name craft-core-bot --cwd discord-bot
-echo.
 
-echo [7/8] Starting Web Dashboard Backend (Prod)...
+echo Starting Web Dashboard Backend...
 call pm2 start dist/server.js --name craft-core-backend --cwd web-dashboard/backend
-echo.
-
-echo [8/8] Serving Web Dashboard Frontend (Prod)...
-call pm2 serve web-dashboard/frontend/dist 5173 --spa --name craft-core-frontend
 echo.
 
 echo ===================================================
 echo   All production services are running under PM2!
-echo   * Dashboard Frontend is served on port 5173
-echo   * Portal Website and Wiki Docs can be served directly by Caddy
 echo.
-echo   Use "pm2 status" to monitor process states.
-echo   Use "pm2 logs" to view real-time logs.
+echo   * Portal Website: Hosted on Cloudflare Pages
+echo   * Wiki Docs: Hosted on Cloudflare Pages
+echo   * Dashboard Frontend: Served statically by Caddy
+echo   * Dashboard Backend & WebSocket: Managed by PM2
+echo.
+echo   Useful Commands:
+echo   - Monitor: pm2 status
+echo   - Logs:    pm2 logs
+echo   - Restart: pm2 restart all
 echo ===================================================
 echo.
 pause
