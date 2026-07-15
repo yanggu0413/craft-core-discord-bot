@@ -29,12 +29,14 @@ export default function Home() {
         <title>Craft-Core 原味生存伺服器 | 官方網站</title>
         <meta name="description" content="歡迎加入 Craft-Core 原味生存伺服器。支援 Java 26.2 (Fabric) 與基岩版最新版雙端連入。" />
         <link rel="icon" href="/favicon.png" />
+        <link rel="preload" href="/favicon.png" as="image" />
       </Head>
 
       {/* Navigation Header */}
       <header className="sticky top-0 z-40 w-full border-b border-zinc-200 bg-white/95 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
+            <img src="/favicon.png" alt="CRAFT-CORE Logo" className="w-8 h-8 object-contain" />
             <span className="font-black text-xl tracking-wider text-blue-600">CRAFT-CORE</span>
             <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded">原味生存</span>
           </div>
@@ -221,6 +223,8 @@ export default function Home() {
               alt="CRAFT-CORE Minecraft Server MOTD Status Banner" 
               width={700}
               height={120}
+              loading="lazy"
+              decoding="async"
               className="w-full h-auto max-w-[1836px] object-contain rounded"
             />
           </div>
