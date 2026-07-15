@@ -114,8 +114,8 @@ public class SidebarManager {
                 lineText,
                 objectiveName,
                 scoreValue,
-                null,
-                null
+                Optional.empty(),
+                Optional.empty()
             ));
         }
  
