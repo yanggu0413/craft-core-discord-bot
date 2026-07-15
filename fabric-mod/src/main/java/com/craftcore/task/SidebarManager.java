@@ -99,7 +99,8 @@ public class SidebarManager {
         // 5. Save previous lines
         previousLines.put(uuid, newLines);
  
-        // 6. Force client display slot update to sidebar
+        // 6. Force client display slot update to sidebar and ensure objective exists on client
+        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetObjectivePacket(objective, 0));
         player.connection.send(new ClientboundSetDisplayObjectivePacket(DisplaySlot.SIDEBAR, objective));
     }
  
