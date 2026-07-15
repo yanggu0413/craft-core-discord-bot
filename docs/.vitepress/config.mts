@@ -12,36 +12,37 @@ export default defineConfig({
       {
         text: '📖 系統介紹',
         items: [
-          { text: 'CraftCoreShop 介紹', link: '/README' }
+          { text: '關於 CraftCore', link: '/README' }
         ]
       },
       {
-        text: '📦 箱子商店系統',
+        text: '🖥️ 網頁端儀表板',
         items: [
-          { text: '第一篇：商店建立與設定', link: '/Shop-Creation' },
-          { text: '第二篇：買家交易與預約', link: '/Shop-Transaction' },
-          { text: '第三篇：賣家管理與更名', link: '/Shop-Management' }
+          { text: '網頁版首頁簡介', link: '/Web-Dashboard' },
+          { text: '商店瀏覽與導航', link: '/Web-Shop-Navigation' },
+          { text: '全服市場行情', link: '/Web-Market-Analytics' },
+          { text: '店主遠端遙控', link: '/Web-Owner-Remote' },
+          { text: '領地保護設定', link: '/Web-Claims-Management' },
+          { text: '密碼箱白名單管理', link: '/Web-Password-Lock' },
+          { text: '每日簽到與抽獎', link: '/Web-Welfare' },
+          { text: '郵局快遞與個人背包', link: '/Web-Postal-Inventory' }
         ]
       },
       {
-        text: '🛡️ 領地防護與密碼箱',
+        text: '🎮 Minecraft 遊戲指南',
         items: [
-          { text: '安全系統：領地與密碼鎖', link: '/Claims-Lockboxes' }
+          { text: '每日任務系統', link: '/Mc-Task-System' },
+          { text: '商店系統概覽', link: '/Mc-Shop-System' },
+          { text: '如何新增商店', link: '/Mc-Create-Shop' },
+          { text: '如何刪除商店', link: '/Mc-Delete-Shop' },
+          { text: '遊戲內傳送與 TP 指令', link: '/Mc-Teleport-Commands' },
+          { text: '管理員指令與權限', link: '/Mc-Admin-Management' }
         ]
       },
       {
-        text: '⚖️ 自由市場與回收機制',
+        text: '🤖 Discord 機器人',
         items: [
-          { text: '第四篇：回收與限額機制', link: '/Economy-Recycle' },
-          { text: '第五篇：市場均價與趨勢', link: '/Market-Analytics' },
-          { text: '網頁版：網頁儀表板使用與管理', link: '/Web-Dashboard' }
-        ]
-      },
-      {
-        text: '🛠️ 管理員與連動指南',
-        items: [
-          { text: '第六篇：管理員與指令手冊', link: '/Admin-Manual' },
-          { text: '機器人：Discord 機器人連動', link: '/Discord-Integration' }
+          { text: 'Discord 連動綁定', link: '/Discord-Integration' }
         ]
       }
     ],
