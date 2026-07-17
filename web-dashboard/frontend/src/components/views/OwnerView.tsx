@@ -46,7 +46,7 @@ export default function OwnerView({
           </div>
           <CardTitle className="text-base font-bold">請先綁定您的帳號</CardTitle>
           <CardDescription className="max-w-md">
-            店主遙控中心需要您登入帳號後，才能讀取並遠端遙控您在伺服器中建立的胸口商店。
+            店主遙控中心需要您登入帳號後，才能讀取並遠端遙控您在伺服器中建立的箱子商店。
           </CardDescription>
         </CardContent>
       </Card>
@@ -111,7 +111,7 @@ export default function OwnerView({
                     <span className="text-[10px] text-muted-foreground">庫存：{shop.stock} 個</span>
                   </div>
                   <CardTitle className="text-sm font-bold mt-2">
-                    {shop.custom_name || `${shop.owner} 的胸口商店`}
+                    {shop.custom_name || `${shop.owner} 的箱子商店`}
                   </CardTitle>
                   <CardDescription className="text-[11px] font-mono mt-1">
                     商品：<span className="text-amber-500 font-bold">{cleanItem}</span>

@@ -79,13 +79,13 @@ export default function HomeView({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-[11px] text-muted-foreground">胸口商店交易累計徵收的系統稅金</p>
+            <p className="text-[11px] text-muted-foreground">箱子商店交易累計徵收的系統稅金</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription className="uppercase tracking-wider font-bold text-[10px]">營運中胸口商店</CardDescription>
+            <CardDescription className="uppercase tracking-wider font-bold text-[10px]">營運中箱子商店</CardDescription>
             <CardTitle className="text-2xl font-black mt-1">
               {stats.totalShopsCount} 間
             </CardTitle>
