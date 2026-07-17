@@ -6,7 +6,7 @@ craft-core.xyz, www.craft-core.xyz {
     encode zstd gzip
 
     handle {
-        root * ./website/out
+        root * /var/www/craft-core/website
         file_server
         try_files {path} {path}.html {path}/ /index.html
     }
@@ -31,7 +31,7 @@ dash.craft-core.xyz {
 
     # 3. 後備處理：其他所有請求（包含 React 路由）交給前端靜態檔案伺服器
     handle {
-        root * ./web-dashboard/frontend/dist
+        root * /var/www/craft-core/dashboard
         file_server
         try_files {path} /index.html
     }
@@ -45,7 +45,7 @@ docs.craft-core.xyz {
     encode zstd gzip
 
     handle {
-        root * ./docs/.vitepress/dist
+        root * /var/www/craft-core/docs
         file_server
         try_files {path} {path}.html /index.html
     }

@@ -56,6 +56,30 @@ fi
 cd ../..
 echo
 
+# 4.5. Deploy Static Files to /var/www/craft-core (for Caddy)
+echo -e "${YELLOW}[3.5/4] Deploying static assets for Caddy...${NC}"
+mkdir -p /var/www/craft-core/dashboard
+rm -rf /var/www/craft-core/dashboard/*
+cp -r web-dashboard/frontend/dist/* /var/www/craft-core/dashboard/
+
+if [ -d "website/out" ]; then
+    mkdir -p /var/www/craft-core/website
+    rm -rf /var/www/craft-core/website/*
+    cp -r website/out/* /var/www/craft-core/website/
+fi
+
+if [ -d "docs/.vitepress/dist" ]; then
+    mkdir -p /var/www/craft-core/docs
+    rm -rf /var/www/craft-core/docs/*
+    cp -r docs/.vitepress/dist/* /var/www/craft-core/docs/
+fi
+
+# Adjust permissions so caddy user can read them
+chown -R caddy:caddy /var/www/craft-core 2>/dev/null || true
+chmod -R 755 /var/www/craft-core 2>/dev/null || true
+echo -e "${GREEN}Deployment to /var/www/craft-core completed.${NC}"
+echo
+
 # 5. Start PM2 services
 echo -e "${YELLOW}[4/4] Starting PM2 Daemons...${NC}"
 echo "Starting Discord Bot..."
