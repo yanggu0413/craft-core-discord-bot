@@ -1,9 +1,10 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: "CraftCoreShop",
-  description: "CraftCoreShop 官方說明文件",
+  title: "Craft-Core 原味生存伺服器",
+  description: "Craft-Core 原味生存伺服器 官方說明文件",
   themeConfig: {
+    logo: '/favicon.png',
     nav: [
       { text: '首頁', link: '/' },
       { text: '指南', link: '/README' }
@@ -47,7 +48,7 @@ export default defineConfig({
       }
     ],
     socialLinks: [
-      { icon: 'discord', link: 'https://discord.gg/' }
+      { icon: 'discord', link: 'https://discord.gg/XJZZwG7jR4' }
     ]
   }
 })
