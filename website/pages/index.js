@@ -27,7 +27,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-white text-zinc-800">
       <Head>
         <title>Craft-Core 原味生存伺服器 | 官方網站</title>
-        <meta name="description" content="歡迎加入 Craft-Core 原味生存伺服器。支援 Java 26.2 (Fabric) 與基岩版最新版雙端連入。" />
+        <meta name="description" content="歡迎加入 Craft-Core 原味生存伺服器。支援 Java 1.20 至 26.2 與基岩版最新版雙端連入。" />
         <link rel="icon" href="/favicon.png" />
         <link rel="preload" href="/favicon.png" as="image" />
       </Head>
@@ -243,7 +243,7 @@ export default function Home() {
                   <span className="text-xs font-extrabold bg-blue-100 px-2.5 py-1 rounded">Java 版 (PC)</span>
                 </div>
                 <p className="text-sm text-zinc-600 mb-8 leading-relaxed">
-                  支援原版 Java 客戶端。採用 Fabric 框架架設，效能出眾。<strong className="text-blue-600 font-bold block mt-2">注意：必須使用 26.2 版本連入，其餘版本皆無法加入！</strong>
+                  支援原版 Java 客戶端。採用 Fabric 框架架設，效能出眾。<strong className="text-blue-600 font-bold block mt-2">注意：支援 1.20 至 26.2 版本連入，其餘版本皆無法加入！</strong>
                 </p>
               </div>
               <div className="space-y-4">
@@ -258,7 +258,7 @@ export default function Home() {
                   </button>
                 </div>
                 <div className="flex justify-between items-center text-xs text-zinc-500">
-                  <span>支援版本: 26.2 (必須使用此版本)</span>
+                  <span>支援版本: 1.20 至 26.2</span>
                   {copiedJava && <span className="text-blue-600 font-bold">IP 已複製！</span>}
                 </div>
               </div>
