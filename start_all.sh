@@ -62,18 +62,6 @@ mkdir -p /var/www/craft-core/dashboard
 rm -rf /var/www/craft-core/dashboard/*
 cp -r web-dashboard/frontend/dist/* /var/www/craft-core/dashboard/
 
-if [ -d "website/out" ]; then
-    mkdir -p /var/www/craft-core/website
-    rm -rf /var/www/craft-core/website/*
-    cp -r website/out/* /var/www/craft-core/website/
-fi
-
-if [ -d "docs/.vitepress/dist" ]; then
-    mkdir -p /var/www/craft-core/docs
-    rm -rf /var/www/craft-core/docs/*
-    cp -r docs/.vitepress/dist/* /var/www/craft-core/docs/
-fi
-
 # Adjust permissions so caddy user can read them
 chown -R caddy:caddy /var/www/craft-core 2>/dev/null || true
 chmod -R 755 /var/www/craft-core 2>/dev/null || true

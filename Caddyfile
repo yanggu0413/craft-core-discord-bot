@@ -1,52 +1,24 @@
 # ===================================================
-# 1. 官方入口網站 (Portal Website)
-# 域名：craft-core.xyz, www.craft-core.xyz
-# ===================================================
-craft-core.xyz, www.craft-core.xyz {
-    encode zstd gzip
-
-    handle {
-        root * /var/www/craft-core/website
-        file_server
-        try_files {path} {path}.html {path}/ /index.html
-    }
-}
-
-# ===================================================
-# 2. 網頁主儀表板 (Web Dashboard)
+# 網頁主儀表板 (Web Dashboard)
 # 域名：dash.craft-core.xyz
 # ===================================================
 dash.craft-core.xyz {
     encode zstd gzip
 
-    # 1. 優先處理：所有 API 請求轉發至後端 API 服務 (Port 3000)
+    # 1. 所有 API 請求轉發至後端 API 服務 (Port 3000)
     handle /api/* {
         reverse_proxy localhost:3000
     }
 
-    # 2. 優先處理：將即時同步的 WebSocket 連線轉發至後端 (Port 3000)
+    # 2. 將即時同步的 WebSocket 連線轉發至後端 (Port 3000)
     handle /ws {
         reverse_proxy localhost:3000
     }
 
-    # 3. 後備處理：其他所有請求（包含 React 路由）交給前端靜態檔案伺服器
+    # 3. 其他所有請求（包含 React/Vite 路由）交給靜態檔案伺服器直接服務
     handle {
         root * /var/www/craft-core/dashboard
         file_server
         try_files {path} /index.html
-    }
-}
-
-# ===================================================
-# 3. 官方維基文件 (VitePress Wiki Docs)
-# 域名：docs.craft-core.xyz
-# ===================================================
-docs.craft-core.xyz {
-    encode zstd gzip
-
-    handle {
-        root * /var/www/craft-core/docs
-        file_server
-        try_files {path} {path}.html /index.html
     }
 }
