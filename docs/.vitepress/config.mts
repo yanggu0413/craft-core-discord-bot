@@ -1,8 +1,11 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: "Craft-Core 原味生存伺服器",
-  description: "Craft-Core 原味生存伺服器 官方說明文件",
+  title: "Craft-Core",
+  description: "Craft-Core 官方說明文件",
+  head: [
+    ['link', { rel: 'icon', href: '/favicon.png' }]
+  ],
   themeConfig: {
     logo: '/favicon.png',
     nav: [
