@@ -6,7 +6,7 @@ craft-core.xyz, www.craft-core.xyz {
     encode zstd gzip
 
     handle {
-        root * C:\Users\Yanggu\Documents\discord-bot\website\out
+        root * ./website/out
         file_server
         try_files {path} {path}.html {path}/ /index.html
     }
@@ -31,7 +31,7 @@ dash.craft-core.xyz {
 
     # 3. 後備處理：其他所有請求（包含 React 路由）交給前端靜態檔案伺服器
     handle {
-        root * C:\Users\Yanggu\Documents\discord-bot\web-dashboard\frontend\dist
+        root * ./web-dashboard/frontend/dist
         file_server
         try_files {path} /index.html
     }
@@ -45,7 +45,7 @@ docs.craft-core.xyz {
     encode zstd gzip
 
     handle {
-        root * C:\Users\Yanggu\Documents\discord-bot\docs\.vitepress\dist
+        root * ./docs/.vitepress/dist
         file_server
         try_files {path} {path}.html /index.html
     }
