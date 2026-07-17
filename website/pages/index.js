@@ -125,7 +125,7 @@ export default function Home() {
 
         <div className="relative z-10 max-w-3xl text-white">
           <div className="text-sm font-extrabold tracking-widest text-blue-400 uppercase mb-3">
-            JAVA 26.2 / 基岩最新 / 雙端互通
+            JAVA 1.20 - 26.2 / 基岩最新 / 雙端互通
           </div>
           <h1 className="text-6xl md:text-8xl font-black tracking-tight leading-none mb-6 drop-shadow-md">
             CRAFT-CORE
