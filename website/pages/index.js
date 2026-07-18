@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useState } from 'react';
-import { BookOpen, BarChart3, Copy, Check, ExternalLink, ShieldCheck, Mail, Sparkles, Server, MessageSquare, Play, HelpCircle, ClipboardList, Menu, X } from 'lucide-react';
+import { BookOpen, BarChart3, Copy, Check, ExternalLink, ShieldCheck, Mail, Sparkles, Server, MessageSquare, Play, HelpCircle, ClipboardList, Menu, X, Cpu } from 'lucide-react';
 
 export default function Home() {
   const [copiedJava, setCopiedJava] = useState(false);
@@ -26,8 +26,9 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-white text-zinc-800">
       <Head>
-        <title>Craft-Core 原味生存伺服器 | 官方網站</title>
-        <meta name="description" content="歡迎加入 Craft-Core 原味生存伺服器。支援 Java 1.20 至 26.2 與基岩版最新版雙端連入。" />
+        <title>Craft-Core 原味生存｜Minecraft 伺服器 | 高效能主機穩定營運</title>
+        <meta name="description" content="歡迎加入 Craft-Core Minecraft 原味生存伺服器！本伺服器支援 Java 版 (1.20 至 26.2) 與基岩最新版雙端互通連入。內含自主研發的箱子商店經濟系統、安全密碼箱、領地保護、每日任務與富豪排行榜，快來體驗最純粹的麥塊生存冒險！" />
+        <meta name="keywords" content="Minecraft 伺服器, Minecraft 生存伺服器, 麥塊伺服器, 原味生存伺服器, 雙端互通伺服器, Java 基岩互通, Craft-Core, 麥塊生存, i7-13700" />
         <link rel="icon" href="/favicon.png" />
         <link rel="preload" href="/favicon.png" as="image" />
       </Head>
@@ -131,7 +132,7 @@ export default function Home() {
             CRAFT-CORE
           </h1>
           <p className="text-base md:text-lg font-medium opacity-90 mb-8 max-w-xl mx-auto leading-relaxed">
-            一個很單純又簡單（？）的生存伺服器
+            一個很單純又簡單（？）的 MC 生存伺服器
           </p>
 
           {/* Action Buttons */}
@@ -209,6 +210,16 @@ export default function Home() {
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">財產領地防爆保護</h2>
             <p className="text-sm md:text-base text-zinc-600 max-w-lg mx-auto leading-relaxed">
               自訂防爆、防噴、防破壞領地，密碼鎖直接與個人帳號綁定，並支持網頁後端即時配置管理。
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex justify-center text-blue-600">
+              <Cpu className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">高效能自架伺服器主機</h2>
+            <p className="text-sm md:text-base text-zinc-600 max-w-lg mx-auto leading-relaxed">
+              採用高效能 **Intel Core i7-13700** 處理器自架開服，極致單核效能與充足記憶體，保障多人連線流暢穩定！
             </p>
           </div>
  
