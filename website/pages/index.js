@@ -219,7 +219,7 @@ export default function Home() {
             </div>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">高效能自架伺服器主機</h2>
             <p className="text-sm md:text-base text-zinc-600 max-w-lg mx-auto leading-relaxed">
-              採用高效能 **Intel Core i7-13700** 處理器自架開服，極致單核效能與充足記憶體，保障多人連線流暢穩定！
+              採用高效能 <strong className="font-bold text-zinc-800">Intel Core i7-13700</strong> 處理器自架開服，極致單核效能與充足記憶體，保障多人連線流暢穩定！
             </p>
           </div>
  
