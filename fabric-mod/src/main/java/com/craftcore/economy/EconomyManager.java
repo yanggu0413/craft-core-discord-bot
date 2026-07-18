@@ -27,6 +27,9 @@ public class EconomyManager {
         public boolean dailyTaskGatherClaimed = false;
         public int lotteryKeys = 0;
         public String dailyTaskDate = "";
+        public String uuid = "";
+        public double dailyPaidAmount = 0.0;
+        public java.util.List<String> offlineNotifications = new java.util.ArrayList<>();
     }
 
     private static Map<String, PlayerData> dataMap = new ConcurrentHashMap<>();
@@ -108,10 +111,17 @@ public class EconomyManager {
 
     private static PlayerData getOrCreate(String username) {
         PlayerData data = dataMap.computeIfAbsent(username, k -> new PlayerData());
+        if (data.offlineNotifications == null) {
+            data.offlineNotifications = new java.util.ArrayList<>();
+        }
+        if (data.uuid == null) {
+            data.uuid = "";
+        }
         String today = getCurrentDate();
         if (!today.equals(data.lastResetDate)) {
             data.stonesSoldToday = 0;
             data.trashSoldToday = 0;
+            data.dailyPaidAmount = 0.0;
             data.lastResetDate = today;
         }
         String todayTaipei = getTaipeiDate();
@@ -360,5 +370,125 @@ public class EconomyManager {
         }
         
         return new SellResult(toSell, earned, rejected);
+    }
+
+    public static double DAILY_TRANSFER_LIMIT = 50000.0;
+
+    public static class TransferResult {
+        public final boolean success;
+        public final String message;
+        public TransferResult(boolean success, String message) {
+            this.success = success;
+            this.message = message;
+        }
+    }
+
+    public static synchronized String getActualUsernameCaseInsensitive(String username) {
+        if (username == null) return null;
+        for (String key : dataMap.keySet()) {
+            if (key.equalsIgnoreCase(username)) {
+                return key;
+            }
+        }
+        return null;
+    }
+
+    public static synchronized void handlePlayerLogin(String username, String uuid) {
+        if (username == null || uuid == null) return;
+        String oldUsername = null;
+        PlayerData dataToMigrate = null;
+        for (Map.Entry<String, PlayerData> entry : dataMap.entrySet()) {
+            PlayerData pd = entry.getValue();
+            if (pd.uuid != null && pd.uuid.equalsIgnoreCase(uuid)) {
+                if (!entry.getKey().equalsIgnoreCase(username)) {
+                    oldUsername = entry.getKey();
+                    dataToMigrate = pd;
+                    break;
+                }
+            }
+        }
+        if (dataToMigrate != null) {
+            dataMap.remove(oldUsername);
+            dataMap.put(username, dataToMigrate);
+            dataToMigrate.uuid = uuid;
+            save();
+            System.out.println("[CraftCore] Migrated data for UUID " + uuid + " from " + oldUsername + " to " + username);
+        } else {
+            PlayerData pd = getOrCreate(username);
+            pd.uuid = uuid;
+            save();
+        }
+    }
+
+    public static synchronized void checkAndDeliverOfflineNotifications(net.minecraft.server.level.ServerPlayer player) {
+        if (player == null) return;
+        String username = player.getName().getString();
+        PlayerData data = dataMap.get(username);
+        if (data != null && data.offlineNotifications != null && !data.offlineNotifications.isEmpty()) {
+            for (String msg : data.offlineNotifications) {
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal(msg));
+            }
+            data.offlineNotifications.clear();
+            save();
+        }
+    }
+
+    public static synchronized TransferResult transferMoney(String sender, String recipient, double amount, boolean recipientOnline) {
+        if (sender == null || recipient == null) {
+            return new TransferResult(false, "轉帳失敗：付款者或收款者無效。");
+        }
+        if (amount < 0.01) {
+            return new TransferResult(false, "轉帳金額不可小於 0.01。");
+        }
+        if (Double.isNaN(amount) || Double.isInfinite(amount)) {
+            return new TransferResult(false, "轉帳金額無效。");
+        }
+        if (sender.equalsIgnoreCase(recipient)) {
+            return new TransferResult(false, "不能轉帳給自己。");
+        }
+
+        String actualSender = getActualUsernameCaseInsensitive(sender);
+        if (actualSender == null) {
+            return new TransferResult(false, "找不到付款者帳戶。");
+        }
+        PlayerData senderData = getOrCreate(actualSender);
+
+        if (senderData.balance < amount) {
+            return new TransferResult(false, "餘額不足。");
+        }
+
+        String today = getCurrentDate();
+        if (!today.equals(senderData.lastResetDate)) {
+            senderData.stonesSoldToday = 0;
+            senderData.trashSoldToday = 0;
+            senderData.dailyPaidAmount = 0.0;
+            senderData.lastResetDate = today;
+        }
+
+        if (senderData.dailyPaidAmount + amount > DAILY_TRANSFER_LIMIT) {
+            return new TransferResult(false, "超出每日轉帳限制，今日還能轉帳 $" + String.format("%.2f", (DAILY_TRANSFER_LIMIT - senderData.dailyPaidAmount)) + "。");
+        }
+
+        String actualRecipient = getActualUsernameCaseInsensitive(recipient);
+        if (!recipientOnline && actualRecipient == null) {
+            return new TransferResult(false, "找不到收款者帳戶。");
+        }
+
+        String recipientKey = actualRecipient != null ? actualRecipient : recipient;
+        PlayerData recipientData = getOrCreate(recipientKey);
+
+        senderData.balance -= amount;
+        senderData.dailyPaidAmount += amount;
+        recipientData.balance += amount;
+
+        if (!recipientOnline) {
+            if (recipientData.offlineNotifications == null) {
+                recipientData.offlineNotifications = new java.util.ArrayList<>();
+            }
+            recipientData.offlineNotifications.add("§b[Craft-Core] §f您在離線期間收到了來自 §a" + actualSender + " §f的轉帳：§a$" + String.format("%.2f", amount) + "§f！");
+        }
+
+        save();
+        return new TransferResult(true, "已成功轉帳 $" + String.format("%.2f", amount) + " 給 " + recipientKey + "。");
     }
 }

@@ -61,6 +61,10 @@ public class ServerLifecycleHandler {
                 String username = player.getName().getString();
                 String uuid = player.getStringUUID();
 
+                // 1. 處理 UUID 改名遷移與離線轉帳通知
+                com.craftcore.economy.EconomyManager.handlePlayerLogin(username, uuid);
+                com.craftcore.economy.EconomyManager.checkAndDeliverOfflineNotifications(player);
+
                 CraftCoreWSClient client = CraftCoreMod.getWSClient();
                 if (client != null && client.isAuthenticated()) {
                     client.send(new Packet("event", new Packet.EventPayload(
