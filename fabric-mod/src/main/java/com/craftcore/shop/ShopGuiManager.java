@@ -611,21 +611,27 @@ public class ShopGuiManager {
         }
         player.sendSystemMessage(Component.literal("§f目前模式: §7" + modeStr));
         player.sendSystemMessage(Component.literal("§f目前庫存: §e" + shop.stock));
-        player.sendSystemMessage(Component.literal("§f無限模式: " + (shop.infinite ? "§a啟用" : "§c停用")));
+        if (isOp(player)) {
+            player.sendSystemMessage(Component.literal("§f無限模式: " + (shop.infinite ? "§a啟用" : "§c停用")));
+        }
         player.sendSystemMessage(Component.literal("§6--------------------------------------------------"));
         player.sendSystemMessage(Component.literal("§e★ 點選以下選項進行管理："));
         
         String escapedId = shop.id;
         
-        player.sendSystemMessage(Component.literal("  ")
-            .append(createClickableText("§d[切換無限] ", "/shop control \"" + escapedId + "\" toggle_infinite", "點擊切換商店的無限模式 (目前: " + (shop.infinite ? "無限" : "有限") + ")"))
-            .append(createClickableText("§e[切換模式] ", "/shop control \"" + escapedId + "\" toggle_mode", "點擊循環切換模式 (Buy -> Sell -> Buy & Sell)"))
-            .append(createClickableText("§b[設定價格] ", "/shop control \"" + escapedId + "\" price_config", "點擊開始設定商品的出售與收購價格")));
+        net.minecraft.network.chat.MutableComponent row1 = Component.literal("  ");
+        if (isOp(player)) {
+            row1.append(createClickableText("§d[切換無限] ", "/shop control \"" + escapedId + "\" toggle_infinite", "點擊切換商店的無限模式 (目前: " + (shop.infinite ? "無限" : "有限") + ")"));
+        }
+        row1.append(createClickableText("§e[切換模式] ", "/shop control \"" + escapedId + "\" toggle_mode", "點擊循環切換模式 (Buy -> Sell -> Buy & Sell)"))
+            .append(createClickableText("§b[設定價格] ", "/shop control \"" + escapedId + "\" price_config", "點擊開始設定商品的出售與收購價格"));
+        player.sendSystemMessage(row1);
             
         player.sendSystemMessage(Component.literal("  ")
-            .append(createClickableText("§a[遠端補貨] ", "/shop control \"" + escapedId + "\" restock", "點擊將箱子補滿商店商品"))
+            .append(createClickableText("§a[遠端補貨] ", "/shop control \"" + escapedId + "\" restock", "點擊開啟遠端補貨介面"))
             .append(createClickableText("§c[清空箱子] ", "/shop control \"" + escapedId + "\" clear", "點擊清空箱子中該商店類型的物品"))
-            .append(createClickableText("§6[切換顯示] ", "/shop control \"" + escapedId + "\" toggle_display", "點擊切換商店上方的懸浮物品顯示")));
+            .append(createClickableText("§6[切換顯示] ", "/shop control \"" + escapedId + "\" toggle_display", "點擊切換商店上方的懸浮物品顯示"))
+            .append(createClickableText("§2[測試交易] ", "/shop control \"" + escapedId + "\" test_trade", "點擊以買家身份開啟交易介面")));
             
         player.sendSystemMessage(Component.literal("  ")
             .append(createClickableText("§9[交易歷史] ", "/shop control \"" + escapedId + "\" history", "點擊查看此商店最近的交易歷史"))
@@ -703,5 +709,119 @@ public class ShopGuiManager {
         }
         player.sendSystemMessage(options);
         player.sendSystemMessage(Component.literal("§6=================================================="));
+    }
+
+    public static class RemoteRestockScreenHandler extends ChestMenu {
+        private final ShopManager.Shop shop;
+        private final ServerPlayer player;
+        private final Container remoteInv;
+        private final BlockPos physicalPos;
+
+        public RemoteRestockScreenHandler(int syncId, Inventory playerInventory, ShopManager.Shop shop, ServerPlayer player, BlockPos physicalPos) {
+            super(MenuType.GENERIC_9x3, syncId, playerInventory, new SimpleContainer(27), 3);
+            this.shop = shop;
+            this.player = player;
+            this.remoteInv = this.getContainer();
+            this.physicalPos = physicalPos;
+        }
+
+        @Override
+        public void removed(Player playerEntity) {
+            super.removed(playerEntity);
+            if (playerEntity instanceof ServerPlayer spe) {
+                ServerLevel world = (ServerLevel) spe.level();
+                BlockEntity be = world.getBlockEntity(physicalPos);
+                if (be instanceof Container chestInv) {
+                    Item shopItem = null;
+                    try {
+                        shopItem = BuiltInRegistries.ITEM.getValue(Identifier.parse(shop.item));
+                    } catch (Throwable t) {}
+
+                    if (shopItem == null) return;
+
+                    int insertedCount = 0;
+                    for (int i = 0; i < remoteInv.getContainerSize(); i++) {
+                        ItemStack stack = remoteInv.getItem(i);
+                        if (!stack.isEmpty()) {
+                            if (BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
+                                int countBefore = stack.getCount();
+                                ItemStack remaining = insertItem(chestInv, stack);
+                                int countAfter = remaining.isEmpty() ? 0 : remaining.getCount();
+                                insertedCount += (countBefore - countAfter);
+                                if (!remaining.isEmpty()) {
+                                    spe.getInventory().placeItemBackInInventory(remaining);
+                                }
+                            } else {
+                                spe.getInventory().placeItemBackInInventory(stack);
+                            }
+                        }
+                    }
+
+                    if (insertedCount > 0) {
+                        int newStock = 0;
+                        for (int i = 0; i < chestInv.getContainerSize(); i++) {
+                            ItemStack s = chestInv.getItem(i);
+                            if (!s.isEmpty() && BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                newStock += s.getCount();
+                            }
+                        }
+                        shop.stock = newStock;
+                        ShopManager.save();
+                        ShopManager.updateShopSign(world, physicalPos, shop);
+                        spe.sendSystemMessage(Component.literal("§b[Craft-Core] §a成功補貨 " + insertedCount + " 個商品至實體箱子！"));
+                        spe.playSound(SoundEvents.CHEST_CLOSE, 1.0f, 1.0f);
+                    }
+                } else {
+                    for (int i = 0; i < remoteInv.getContainerSize(); i++) {
+                        ItemStack stack = remoteInv.getItem(i);
+                        if (!stack.isEmpty()) {
+                            spe.getInventory().placeItemBackInInventory(stack);
+                        }
+                    }
+                    spe.sendSystemMessage(Component.literal("§c[Craft-Core] 補貨失敗：找不到實體箱子或未載入！"));
+                }
+            }
+        }
+
+        @Override
+        public boolean stillValid(Player player) {
+            return true;
+        }
+
+        private ItemStack insertItem(Container container, ItemStack stack) {
+            ItemStack result = stack.copy();
+            for (int i = 0; i < container.getContainerSize(); i++) {
+                ItemStack s = container.getItem(i);
+                if (!s.isEmpty() && s.getItem() == result.getItem() && ItemStack.isSameItemSameComponents(s, result)) {
+                    int max = Math.min(container.getMaxStackSize(), s.getMaxStackSize());
+                    int space = max - s.getCount();
+                    if (space > 0) {
+                        int transfer = Math.min(space, result.getCount());
+                        s.grow(transfer);
+                        result.shrink(transfer);
+                        if (result.isEmpty()) {
+                            container.setChanged();
+                            return ItemStack.EMPTY;
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < container.getContainerSize(); i++) {
+                ItemStack s = container.getItem(i);
+                if (s.isEmpty()) {
+                    int max = Math.min(container.getMaxStackSize(), result.getMaxStackSize());
+                    if (result.getCount() <= max) {
+                        container.setItem(i, result.copy());
+                        container.setChanged();
+                        return ItemStack.EMPTY;
+                    } else {
+                        ItemStack part = result.split(max);
+                        container.setItem(i, part);
+                    }
+                }
+            }
+            container.setChanged();
+            return result;
+        }
     }
 }

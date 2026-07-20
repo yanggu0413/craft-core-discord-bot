@@ -1391,85 +1391,35 @@ public class DiscordCommand {
                 
 
             case "restock":
-
-                if (!(isOp || (shop.infinite && shop.player.equals(player.getName().getString())))) {
-
-                    player.sendSystemMessage(Component.literal("§c[Craft-Core] 您無權執行此操作。 (僅限無限商店擁有者或管理員)"));
-
+                if (!isOwner) {
+                    player.sendSystemMessage(Component.literal("§c[Craft-Core] 您無權執行此操作。 (僅限商店擁有者或管理員)"));
                     return 0;
-
                 }
-
                 if (pos != null) {
-
-                    net.minecraft.world.level.block.entity.BlockEntity be = world.getBlockEntity(pos);
-
-                    if (be instanceof net.minecraft.world.Container container) {
-
-                        try {
-
-                            net.minecraft.world.item.Item shopItem = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(shop.item));
-
-                            int maxStack = shopItem.getDefaultMaxStackSize();
-
-                            for (int i = 0; i < container.getContainerSize(); i++) {
-
-                                net.minecraft.world.item.ItemStack stack = container.getItem(i);
-
-                                if (stack.isEmpty()) {
-
-                                    container.setItem(i, new net.minecraft.world.item.ItemStack(shopItem, maxStack));
-
-                                } else if (net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
-
-                                    stack.setCount(maxStack);
-
-                                }
-
-                            }
-
-                            container.setChanged();
-
-                            
-
-                            int stock = 0;
-
-                            for (int i = 0; i < container.getContainerSize(); i++) {
-
-                                net.minecraft.world.item.ItemStack stack = container.getItem(i);
-
-                                if (!stack.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
-
-                                    stock += stack.getCount();
-
-                                }
-
-                            }
-
-                            shop.stock = stock;
-
-                            com.craftcore.shop.ShopManager.save();
-
-                            com.craftcore.shop.ShopManager.updateShopSign(world, pos, shop);
-
-                            player.sendSystemMessage(Component.literal("§b[Craft-Core] §f已將商店商品遠端自動補滿！"));
-
-                            player.playSound(net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
-
-                        } catch (Throwable t) {
-
-                            player.sendSystemMessage(Component.literal("§c[Craft-Core] 補貨失敗，發生錯誤。"));
-
+                    final net.minecraft.core.BlockPos finalPos = pos;
+                    try {
+                        world.getChunk(finalPos);
+                        net.minecraft.world.level.block.entity.BlockEntity be = world.getBlockEntity(finalPos);
+                        if (be instanceof net.minecraft.world.Container) {
+                            player.openMenu(new SimpleMenuProvider(
+                                (syncId, playerInv, playerEntity) -> new com.craftcore.shop.ShopGuiManager.RemoteRestockScreenHandler(syncId, playerInv, shop, player, finalPos),
+                                Component.literal("遠端補貨: " + shop.item.replace("minecraft:", ""))
+                            ));
+                        } else {
+                            player.sendSystemMessage(Component.literal("§c[Craft-Core] 商店箱子不存在或未載入。"));
                         }
-
-                    } else {
-
-                        player.sendSystemMessage(Component.literal("§c[Craft-Core] 商店箱子不存在或無法存取。"));
-
+                    } catch (Throwable t) {
+                        player.sendSystemMessage(Component.literal("§c[Craft-Core] 開啟補貨介面失敗，發生錯誤。"));
                     }
-
                 }
+                break;
 
+            case "test_trade":
+                if (!isOwner) {
+                    player.sendSystemMessage(Component.literal("§c[Craft-Core] 您無權執行此操作。 (僅限商店擁有者或管理員)"));
+                    return 0;
+                }
+                com.craftcore.shop.ShopGuiManager.openBuyerTransactionPanel(player, shop);
                 break;
 
                 
