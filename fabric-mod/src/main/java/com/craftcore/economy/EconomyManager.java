@@ -55,7 +55,50 @@ public class EconomyManager {
             try (BufferedReader reader = Files.newBufferedReader(configPath)) {
                 Map<String, PlayerData> loaded = GSON.fromJson(reader, new TypeToken<Map<String, PlayerData>>(){}.getType());
                 if (loaded != null) {
-                    dataMap = new ConcurrentHashMap<>(loaded);
+                    ConcurrentHashMap<String, PlayerData> merged = new ConcurrentHashMap<>();
+                    for (Map.Entry<String, PlayerData> entry : loaded.entrySet()) {
+                        String key = entry.getKey();
+                        PlayerData value = entry.getValue();
+                        if (key == null || value == null) continue;
+                        
+                        String matchKey = null;
+                        for (String existingKey : merged.keySet()) {
+                            if (existingKey.equalsIgnoreCase(key)) {
+                                matchKey = existingKey;
+                                break;
+                            }
+                        }
+                        
+                        if (matchKey == null) {
+                            merged.put(key, value);
+                        } else {
+                            PlayerData existingVal = merged.get(matchKey);
+                            existingVal.balance += value.balance;
+                            existingVal.stonesSoldToday = Math.max(existingVal.stonesSoldToday, value.stonesSoldToday);
+                            existingVal.trashSoldToday = Math.max(existingVal.trashSoldToday, value.trashSoldToday);
+                            existingVal.upgradedShopSlots = Math.max(existingVal.upgradedShopSlots, value.upgradedShopSlots);
+                            existingVal.dailyTaskSlayProgress = Math.max(existingVal.dailyTaskSlayProgress, value.dailyTaskSlayProgress);
+                            existingVal.dailyTaskGatherProgress = Math.max(existingVal.dailyTaskGatherProgress, value.dailyTaskGatherProgress);
+                            existingVal.dailyTaskSlayClaimed = existingVal.dailyTaskSlayClaimed || value.dailyTaskSlayClaimed;
+                            existingVal.dailyTaskGatherClaimed = existingVal.dailyTaskGatherClaimed || value.dailyTaskGatherClaimed;
+                            existingVal.lotteryKeys += value.lotteryKeys;
+                            existingVal.dailyPaidAmount += value.dailyPaidAmount;
+                            if (existingVal.uuid == null || existingVal.uuid.isEmpty()) {
+                                existingVal.uuid = value.uuid;
+                            }
+                            if (value.offlineNotifications != null) {
+                                if (existingVal.offlineNotifications == null) {
+                                    existingVal.offlineNotifications = new java.util.ArrayList<>();
+                                }
+                                for (String notif : value.offlineNotifications) {
+                                    if (!existingVal.offlineNotifications.contains(notif)) {
+                                        existingVal.offlineNotifications.add(notif);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    dataMap = merged;
                 }
             } catch (IOException e) {
                 System.err.println("[CraftCore] Failed to load economy: " + e.getMessage());
