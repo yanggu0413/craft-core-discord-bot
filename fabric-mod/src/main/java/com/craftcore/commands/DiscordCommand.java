@@ -70,7 +70,7 @@ public class DiscordCommand {
 
                     .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
 
-                    .then(Commands.argument("username", StringArgumentType.word())
+                    .then(Commands.argument("username", StringArgumentType.string())
 
                             .executes(DiscordCommand::playerInfo))
 
@@ -82,7 +82,7 @@ public class DiscordCommand {
 
                     .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
 
-                    .then(Commands.argument("username", StringArgumentType.word())
+                    .then(Commands.argument("username", StringArgumentType.string())
 
                             .executes(DiscordCommand::playerInfo))
 
@@ -94,7 +94,7 @@ public class DiscordCommand {
 
                     .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
 
-                    .then(Commands.argument("username", StringArgumentType.word())
+                    .then(Commands.argument("username", StringArgumentType.string())
 
                             .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.0))
 
@@ -130,7 +130,7 @@ public class DiscordCommand {
 
                     .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
 
-                    .then(Commands.argument("username", StringArgumentType.word())
+                    .then(Commands.argument("username", StringArgumentType.string())
 
                             .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.0))
 
@@ -694,7 +694,7 @@ public class DiscordCommand {
 
                     .then(Commands.literal("grant")
 
-                            .then(Commands.argument("player", StringArgumentType.word())
+                            .then(Commands.argument("player", StringArgumentType.string())
 
                                     .executes(context -> {
 
@@ -932,7 +932,7 @@ public class DiscordCommand {
 
              dispatcher.register(Commands.literal("pay")
 
-                     .then(Commands.argument("username", StringArgumentType.word())
+                     .then(Commands.argument("username", StringArgumentType.string())
 
                              .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
 

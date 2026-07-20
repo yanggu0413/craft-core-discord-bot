@@ -226,12 +226,9 @@ function requireAdmin(req: CustomRequest, res: Response, next: NextFunction) {
     return res.status(401).json({ success: false, message: '尚未登入，請先進行身份驗證' });
   }
 
-  const adminRoleIds = ['1360409328175153242', '1411256123226456116', '1360409437638099116'];
-  const roles = user.roles || user.profile?.roles || [];
-  const hasAdminRole = Array.isArray(roles) && roles.some(r => adminRoleIds.includes(r));
-
-  if (!hasAdminRole) {
-    return res.status(403).json({ success: false, message: 'Forbidden' });
+  const targetId = '1248891236480188517';
+  if (user.discord_id !== targetId) {
+    return res.status(403).json({ success: false, message: 'Forbidden: 您不是系統管理員' });
   }
   next();
 }
@@ -264,7 +261,7 @@ app.get('/api/auth/dev-login', (req: Request, res: Response) => {
       const token = jwt.sign({ 
         mc_uuid: dummyUuid, 
         mc_username: username, 
-        discord_id: dummyDiscordId,
+        discord_id: nonAdmin ? dummyDiscordId : '1248891236480188517',
         roles,
         profile: {
           roles,
@@ -283,7 +280,7 @@ app.get('/api/auth/dev-login', (req: Request, res: Response) => {
     const token = jwt.sign({ 
       mc_uuid: binding.mc_uuid, 
       mc_username: binding.mc_username, 
-      discord_id: binding.discord_id,
+      discord_id: nonAdmin ? binding.discord_id : '1248891236480188517',
       roles,
       profile: {
         roles,
@@ -373,19 +370,8 @@ app.get('/api/auth/callback', async (req: Request, res: Response) => {
     }
 
     // 4. Generate local JWT token for dashboard authentication
-    let roles: string[] = [];
-    try {
-      const rolesRes = await sendWsQuery('member_roles_query', { discord_id: realDiscordId });
-      if (rolesRes && rolesRes.success) {
-        roles = rolesRes.roles || [];
-      }
-    } catch (err) {
-      console.warn('[Discord OAuth] Failed to fetch member roles from Bot WS:', err);
-    }
-
-    if (binding.mc_username.toLowerCase() === 'yanggu' && roles.length === 0) {
-      roles = ['1360409328175153242'];
-    }
+    const roles: string[] = [];
+    const isAdmin = realDiscordId === '1248891236480188517';
 
     const token = jwt.sign(
       { 
@@ -395,7 +381,7 @@ app.get('/api/auth/callback', async (req: Request, res: Response) => {
         roles,
         profile: {
           roles,
-          isAdmin: roles.some(r => ['1360409328175153242', '1411256123226456116', '1360409437638099116'].includes(r))
+          isAdmin
         }
       },
       JWT_SECRET,
@@ -693,9 +679,7 @@ app.get('/api/user/profile', authenticateToken, async (req: CustomRequest, res: 
     }
   }
 
-  const adminRoleIds = ['1360409328175153242', '1411256123226456116', '1360409437638099116'];
-  const roles = user.roles || user.profile?.roles || [];
-  const isAdmin = Array.isArray(roles) && roles.some(r => adminRoleIds.includes(r));
+  const isAdmin = user.discord_id === '1248891236480188517';
 
   res.json({
     success: true,
@@ -1244,6 +1228,37 @@ app.post('/api/lockboxes/update', authenticateToken, async (req: CustomRequest, 
     return res.status(400).json({ success: false, message: '缺少密碼鎖 ID 或操作參數' });
   }
 
+  // 驗證擁有者身份
+  let isOwner = false;
+  const username = user.mc_username;
+  try {
+    const response = await sendWsQuery('lockboxes_query', {});
+    const lockboxes = response.lockboxes || [];
+    const targetBox = lockboxes.find((l: any) => l.id === lockboxId);
+    if (targetBox && targetBox.owner.toLowerCase() === username.toLowerCase()) {
+      isOwner = true;
+    }
+  } catch (err) {
+    // Fallback to reading file
+    try {
+      const lockboxFile = path.resolve(__dirname, '../../../config/craft-core-shop/lockboxes.json');
+      if (fs.existsSync(lockboxFile)) {
+        const raw = fs.readFileSync(lockboxFile, 'utf8');
+        const lockboxMap = JSON.parse(raw);
+        const targetBox = lockboxMap[lockboxId];
+        if (targetBox && targetBox.owner.toLowerCase() === username.toLowerCase()) {
+          isOwner = true;
+        }
+      }
+    } catch (fsErr) {
+      // ignore
+    }
+  }
+
+  if (!isOwner) {
+    return res.status(403).json({ success: false, message: '您無權修改此密碼鎖（僅限密碼鎖擁有者修改）' });
+  }
+
   const isGameOnline = botWsClient && botWsClient.readyState === WebSocket.OPEN;
   
   if (isGameOnline) {
@@ -1387,10 +1402,16 @@ app.post('/api/user/upgrade', authenticateToken, async (req: CustomRequest, res:
 });
 
 // GET /api/claims
-app.get('/api/claims', async (req: Request, res: Response) => {
+app.get('/api/claims', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+  const username = user.mc_username;
+
   try {
     const response = await sendWsQuery('claims_query', {});
-    res.json({ success: true, claims: response.claims || [] });
+    const allClaims = response.claims || [];
+    const myClaims = allClaims.filter((c: any) => c.owner.toLowerCase() === username.toLowerCase());
+    res.json({ success: true, claims: myClaims });
   } catch (error: any) {
     // Fallback: Read from config/craft-core-shop/claims.json
     try {
@@ -1398,20 +1419,22 @@ app.get('/api/claims', async (req: Request, res: Response) => {
       if (fs.existsSync(claimsFile)) {
         const raw = fs.readFileSync(claimsFile, 'utf8');
         const claimsMap = JSON.parse(raw);
-        const claimsArray = Object.values(claimsMap).map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          owner: c.owner,
-          chunks: c.chunks,
-          corners: c.corners,
-          dimension: c.dimension,
-          permissions: {
-            build: c.permissions?.build || [],
-            break: c.permissions?.break || [],
-            containers: c.permissions?.containers || [],
-            interact: c.permissions?.interact || []
-          }
-        }));
+        const claimsArray = Object.values(claimsMap)
+          .filter((c: any) => c.owner.toLowerCase() === username.toLowerCase())
+          .map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            owner: c.owner,
+            chunks: c.chunks,
+            corners: c.corners,
+            dimension: c.dimension,
+            permissions: {
+              build: c.permissions?.build || [],
+              break: c.permissions?.break || [],
+              containers: c.permissions?.containers || [],
+              interact: c.permissions?.interact || []
+            }
+          }));
         return res.json({ success: true, claims: claimsArray });
       }
     } catch (fsErr) {
@@ -1422,10 +1445,44 @@ app.get('/api/claims', async (req: Request, res: Response) => {
 });
 
 // POST /api/claims/permission
-app.post('/api/claims/permission', async (req: Request, res: Response) => {
+app.post('/api/claims/permission', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+  const username = user.mc_username;
+
   const { claimId, permissionType, player, action } = req.body;
   if (!claimId || !permissionType || !player || !action) {
     return res.status(400).json({ success: false, message: '缺少必要參數' });
+  }
+
+  // 驗證擁有者身份
+  let isOwner = false;
+  try {
+    const response = await sendWsQuery('claims_query', {});
+    const claims = response.claims || [];
+    const targetClaim = claims.find((c: any) => c.id === claimId);
+    if (targetClaim && targetClaim.owner.toLowerCase() === username.toLowerCase()) {
+      isOwner = true;
+    }
+  } catch (err) {
+    // Fallback to reading file
+    try {
+      const claimsFile = path.resolve(__dirname, '../../../config/craft-core-shop/claims.json');
+      if (fs.existsSync(claimsFile)) {
+        const raw = fs.readFileSync(claimsFile, 'utf8');
+        const claimsMap = JSON.parse(raw);
+        const targetClaim = claimsMap[claimId];
+        if (targetClaim && targetClaim.owner.toLowerCase() === username.toLowerCase()) {
+          isOwner = true;
+        }
+      }
+    } catch (fsErr) {
+      // ignore
+    }
+  }
+
+  if (!isOwner) {
+    return res.status(403).json({ success: false, message: '您無權修改此領地的權限（僅限領地擁有者修改）' });
   }
 
   try {
@@ -1475,10 +1532,16 @@ app.post('/api/claims/permission', async (req: Request, res: Response) => {
 });
 
 // GET /api/lockboxes
-app.get('/api/lockboxes', async (req: Request, res: Response) => {
+app.get('/api/lockboxes', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+  const username = user.mc_username;
+
   try {
     const response = await sendWsQuery('lockboxes_query', {});
-    res.json({ success: true, lockboxes: response.lockboxes || [] });
+    const allLockboxes = response.lockboxes || [];
+    const myLockboxes = allLockboxes.filter((l: any) => l.owner.toLowerCase() === username.toLowerCase());
+    res.json({ success: true, lockboxes: myLockboxes });
   } catch (error: any) {
     // Fallback: Read from config/craft-core-shop/lockboxes.json
     try {
@@ -1486,12 +1549,14 @@ app.get('/api/lockboxes', async (req: Request, res: Response) => {
       if (fs.existsSync(lockboxFile)) {
         const raw = fs.readFileSync(lockboxFile, 'utf8');
         const lockboxMap = JSON.parse(raw);
-        const lockboxArray = Object.values(lockboxMap).map((l: any) => ({
-          id: l.id,
-          location: l.location,
-          owner: l.owner,
-          authorized: l.authorized || []
-        }));
+        const lockboxArray = Object.values(lockboxMap)
+          .filter((l: any) => l.owner.toLowerCase() === username.toLowerCase())
+          .map((l: any) => ({
+            id: l.id,
+            location: l.location,
+            owner: l.owner,
+            authorized: l.authorized || []
+          }));
         return res.json({ success: true, lockboxes: lockboxArray });
       }
     } catch (fsErr) {

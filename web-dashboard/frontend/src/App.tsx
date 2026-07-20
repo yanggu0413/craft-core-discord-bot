@@ -240,12 +240,16 @@ export default function App() {
       }
 
       // 8. 領地列表
-      const claimsRes = await fetch(`${API_URL}/claims`);
+      const claimsRes = await fetch(`${API_URL}/claims`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       const claimsJson = await claimsRes.json();
       if (claimsJson.success) setClaims(claimsJson.claims);
 
       // 9. 密碼鎖列表
-      const lockboxesRes = await fetch(`${API_URL}/lockboxes`);
+      const lockboxesRes = await fetch(`${API_URL}/lockboxes`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       const lockboxesJson = await lockboxesRes.json();
       if (lockboxesJson.success) setLockboxes(lockboxesJson.lockboxes);
 
@@ -462,16 +466,22 @@ export default function App() {
   // 更新領地保護區玩家權限
   const handleUpdatePermission = async (claimId: string, permissionType: string, player: string, action: 'grant' | 'revoke') => {
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch(`${API_URL}/claims/permission`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ claimId, permissionType, player, action })
       });
       const data = await res.json();
       if (data.success) {
         triggerToast(data.message || '領地授權名單更新成功！', 'success');
         // 重新獲取最新的領地保護區資料
-        const claimsRes = await fetch(`${API_URL}/claims`);
+        const claimsRes = await fetch(`${API_URL}/claims`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
         const claimsJson = await claimsRes.json();
         if (claimsJson.success) setClaims(claimsJson.claims);
       } else {
@@ -627,6 +637,7 @@ export default function App() {
             <AdminView
               token={token}
               triggerToast={triggerToast}
+              API_URL={API_URL}
             />
           )}
         </div>

@@ -110,7 +110,16 @@ public class EconomyManager {
     }
 
     private static PlayerData getOrCreate(String username) {
-        PlayerData data = dataMap.computeIfAbsent(username, k -> new PlayerData());
+        String correctKey = username;
+        if (username != null) {
+            for (String key : dataMap.keySet()) {
+                if (key.equalsIgnoreCase(username)) {
+                    correctKey = key;
+                    break;
+                }
+            }
+        }
+        PlayerData data = dataMap.computeIfAbsent(correctKey, k -> new PlayerData());
         if (data.offlineNotifications == null) {
             data.offlineNotifications = new java.util.ArrayList<>();
         }

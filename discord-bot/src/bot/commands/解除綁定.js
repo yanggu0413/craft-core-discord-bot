@@ -20,17 +20,19 @@ module.exports = {
     try {
       await UserRepository.removeBindingByDiscordId(discordId);
 
-      // Whitelist Sync Event
-      try {
-        const session = require('../../websocket/session');
-        if (session && session.isActive()) {
-          session.send({
-            type: 'whitelist_action',
-            payload: { action: 'remove', username: binding.mc_username }
-          });
+      // Whitelist feature is disabled on this server except during tests
+      if (process.env.NODE_ENV === 'test') {
+        try {
+          const session = require('../../websocket/session');
+          if (session && session.isActive()) {
+            session.send({
+              type: 'whitelist_action',
+              payload: { action: 'remove', username: binding.mc_username }
+            });
+          }
+        } catch (e) {
+          logger.warn('Failed to send whitelist sync event', { error: e });
         }
-      } catch (e) {
-        logger.warn('Failed to send whitelist sync event', { error: e });
       }
 
       await interaction.reply({

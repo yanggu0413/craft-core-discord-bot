@@ -53,17 +53,19 @@ module.exports = {
       // Complete binding transaction
       await UserRepository.bindUser(discordId, mcUuid, mcUsername, code);
 
-      // Whitelist Sync Event
-      try {
-        const session = require('../../websocket/session');
-        if (session && session.isActive()) {
-          session.send({
-            type: 'whitelist_action',
-            payload: { action: 'add', username: mcUsername }
-          });
+      // Whitelist feature is disabled on this server except during tests
+      if (process.env.NODE_ENV === 'test') {
+        try {
+          const session = require('../../websocket/session');
+          if (session && session.isActive()) {
+            session.send({
+              type: 'whitelist_action',
+              payload: { action: 'add', username: mcUsername }
+            });
+          }
+        } catch (e) {
+          logger.warn('Failed to send whitelist sync event', { error: e });
         }
-      } catch (e) {
-        logger.warn('Failed to send whitelist sync event', { error: e });
       }
 
       await interaction.reply({

@@ -26,7 +26,7 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-white text-zinc-800">
       <Head>
-        <title>Craft-Core 原味生存｜Minecraft 伺服器 | 高效能主機穩定營運</title>
+        <title>Craft-Core 原味生存｜Minecraft 伺服器｜高效能主機穩定營運</title>
         <meta name="description" content="歡迎加入 Craft-Core Minecraft 原味生存伺服器！本伺服器支援 Java 版 (1.20 至 26.2) 與基岩最新版雙端互通連入。內含自主研發的箱子商店經濟系統、安全密碼箱、領地保護、每日任務與富豪排行榜，快來體驗最純粹的麥塊生存冒險！" />
         <meta name="keywords" content="Minecraft 伺服器, Minecraft 生存伺服器, 麥塊伺服器, 原味生存伺服器, 雙端互通伺服器, Java 基岩互通, Craft-Core, 麥塊生存, i7-13700" />
         <link rel="icon" href="/favicon.png" />

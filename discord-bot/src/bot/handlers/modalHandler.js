@@ -25,6 +25,13 @@ async function modalHandler(interaction) {
       await economyService.handleSendMoneyModalSubmit(interaction);
     } else if (customId === 'admin_announcement_modal') {
       await announcementService.handleAnnouncementModalSubmit(interaction);
+    } else if (customId === 'announcement_modal') {
+      const command = interaction.client.commands.get('公告');
+      if (command && typeof command.handleModalSubmit === 'function') {
+        await command.handleModalSubmit(interaction);
+      } else {
+        throw new Error('找不到公告指令的處理程式');
+      }
     }
   } catch (error) {
     if (error instanceof AppError && error.isOperational) {

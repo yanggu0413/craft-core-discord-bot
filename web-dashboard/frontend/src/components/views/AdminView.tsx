@@ -8,6 +8,7 @@ import MinecraftItemIcon from '../ui/MinecraftItemIcon';
 interface AdminViewProps {
   token: string | null;
   triggerToast: (msg: string, type: 'success' | 'error' | 'info') => void;
+  API_URL: string;
 }
 
 interface PlayerProfile {
@@ -32,7 +33,7 @@ interface InventoryItem {
   nbt?: string;
 }
 
-export default function AdminView({ token, triggerToast }: AdminViewProps) {
+export default function AdminView({ token, triggerToast, API_URL }: AdminViewProps) {
   // Ban & Kick States
   const [banPlayer, setBanPlayer] = useState('');
   const [banReason, setBanReason] = useState('');
@@ -71,7 +72,7 @@ export default function AdminView({ token, triggerToast }: AdminViewProps) {
 
     setIsBanning(true);
     try {
-      const res = await fetch('/api/admin/ban', {
+      const res = await fetch(`${API_URL}/admin/ban`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +101,7 @@ export default function AdminView({ token, triggerToast }: AdminViewProps) {
 
     setIsKicking(true);
     try {
-      const res = await fetch('/api/admin/kick', {
+      const res = await fetch(`${API_URL}/admin/kick`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +130,7 @@ export default function AdminView({ token, triggerToast }: AdminViewProps) {
 
     setIsRewarding(true);
     try {
-      const res = await fetch('/api/admin/co-branding', {
+      const res = await fetch(`${API_URL}/admin/co-branding`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -157,7 +158,7 @@ export default function AdminView({ token, triggerToast }: AdminViewProps) {
 
     setIsPublishing(true);
     try {
-      const res = await fetch('/api/admin/announcements', {
+      const res = await fetch(`${API_URL}/admin/announcements`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -193,7 +194,7 @@ export default function AdminView({ token, triggerToast }: AdminViewProps) {
 
     setIsSearching(true);
     try {
-      const res = await fetch(`/api/admin/player/${searchQuery.trim()}`, {
+      const res = await fetch(`${API_URL}/admin/player/${searchQuery.trim()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();

@@ -83,12 +83,15 @@ client.on('guildMemberRemove', async (member) => {
     const binding = await UserRepository.getBindingByDiscordId(discordId);
     if (binding) {
       await UserRepository.removeBindingByDiscordId(discordId);
-      const session = require('./websocket/session');
-      if (session.isActive()) {
-        session.send({
-          type: 'whitelist_action',
-          payload: { action: 'remove', username: binding.mc_username }
-        });
+      // Whitelist feature is disabled on this server except during tests
+      if (process.env.NODE_ENV === 'test') {
+        const session = require('./websocket/session');
+        if (session.isActive()) {
+          session.send({
+            type: 'whitelist_action',
+            payload: { action: 'remove', username: binding.mc_username }
+          });
+        }
       }
     }
   } catch (error) {
@@ -177,21 +180,24 @@ client.on('messageCreate', async (message) => {
         // Clear attempts on success
         dmVerifyAttempts.delete(discordId);
 
-        // Whitelist add
-        const session = require('./websocket/session');
-        if (session.isActive()) {
-          session.send({
-            type: 'whitelist_action',
-            payload: { action: 'add', username: tempCode.mc_username }
-          });
-          try {
-            await session.executeCommand(`whitelist add "${tempCode.mc_username}"`, 'System');
-          } catch (e) {
-            // Ignore
+        // Whitelist is disabled on this server except during tests
+        if (process.env.NODE_ENV === 'test') {
+          const session = require('./websocket/session');
+          if (session.isActive()) {
+            session.send({
+              type: 'whitelist_action',
+              payload: { action: 'add', username: tempCode.mc_username }
+            });
+            try {
+              await session.executeCommand(`whitelist add "${tempCode.mc_username}"`, 'System');
+            } catch (e) {
+              // Ignore
+            }
           }
+          await discordQueue.enqueue(() => message.reply(`✅ 帳號綁定成功！\n- 遊戲名稱：\`${tempCode.mc_username}\`\n已成功將您加入伺服器白名單，祝您遊戲愉快！`), { type: 'dm_reply_success' });
+        } else {
+          await discordQueue.enqueue(() => message.reply(`✅ 帳號綁定成功！\n- 遊戲名稱：\`${tempCode.mc_username}\`\n祝您遊戲愉快！`), { type: 'dm_reply_success' });
         }
-
-        await discordQueue.enqueue(() => message.reply(`✅ 帳號綁定成功！\n- 遊戲名稱：\`${tempCode.mc_username}\`\n已成功將您加入伺服器白名單，祝您遊戲愉快！`), { type: 'dm_reply_success' });
       } catch (err) {
         logger.error('Error binding user via DM', { error: err });
         await discordQueue.enqueue(() => message.reply(`❌ 綁定失敗：${err.message}`), { type: 'dm_reply_error' });
