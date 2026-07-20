@@ -108,6 +108,7 @@ public class DailyTaskManager {
                 if (oldProgress < slayTask.count) {
                     EconomyManager.incrementDailyTaskSlayProgress(username, 1);
                     int newProgress = oldProgress + 1;
+                    killer.sendSystemMessage(Component.literal("§b[Craft-Core] §f每日任務進度：擊殺 " + slayTask.target + " (" + newProgress + "/" + slayTask.count + ")"));
                     if (newProgress == slayTask.count) {
                         killer.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
                         killer.sendSystemMessage(Component.literal("§b[Craft-Core] §f您的每日任務【擊殺 " + slayTask.target + "】已達到 100% 進度！請輸入指令「§e/tasks claim§f」手動領取獎金！"));
@@ -133,6 +134,7 @@ public class DailyTaskManager {
             if (oldProgress < mineTask.count) {
                 EconomyManager.incrementDailyTaskGatherProgress(username, 1);
                 int newProgress = oldProgress + 1;
+                serverPlayer.sendSystemMessage(Component.literal("§b[Craft-Core] §f每日任務進度：挖掘 " + mineTask.target + " (" + newProgress + "/" + mineTask.count + ")"));
                 if (newProgress == mineTask.count) {
                     serverPlayer.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
                     serverPlayer.sendSystemMessage(Component.literal("§b[Craft-Core] §f您的每日任務【挖掘 " + mineTask.target + "】已達到 100% 進度！請輸入指令「§e/tasks claim§f」手動領取獎金！"));
@@ -199,7 +201,6 @@ public class DailyTaskManager {
     }
 
     public static void register() {
-        net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents.AFTER.register(DailyTaskManager::handleBlockBreak);
     }
 
     public static class DailyTaskCompletePayload {

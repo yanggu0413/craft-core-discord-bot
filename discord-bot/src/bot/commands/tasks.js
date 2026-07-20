@@ -13,7 +13,7 @@ module.exports = {
 
     if (!binding) {
       return interaction.reply({
-        content: '❌ 您尚未綁定 Minecraft 帳號，請先使用 `/綁定` 完成綁定才能查詢每日任務！',
+        content: '❌ 您尚未綁定 Minecraft 帳號，請先私訊本機器人傳送遊戲中 \`/discord link\` 獲得的驗證碼以完成綁定！',
         ephemeral: true
       });
     }

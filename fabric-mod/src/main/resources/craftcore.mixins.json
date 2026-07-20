@@ -6,7 +6,8 @@
     "ServerPlayerEntityMixin",
     "PlayerAdvancementTrackerMixin",
     "BlockBehaviourMixin",
-    "LivingEntityMixin"
+    "LivingEntityMixin",
+    "BlockMixin"
   ],
   "injectors": {
     "defaultRequire": 1

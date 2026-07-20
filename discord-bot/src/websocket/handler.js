@@ -60,7 +60,7 @@ async function handle(packet, discordClient) {
           username: payload.username,
           code: code,
           success: true,
-          message: `§b[Craft-Core] §f申請成功！請在 5 分鐘內於 Discord 輸入 §a/綁定 ${code}§f 來完成帳號綁定。`
+          message: `§b[Craft-Core] §f申請成功！請在 5 分鐘內私訊 [機器人] 開心的機器人 傳送驗證碼：§a${code}§f 以完成帳號綁定。`
         }
       });
       break;
@@ -77,7 +77,7 @@ async function handle(packet, discordClient) {
           payload: {
             username,
             success: false,
-            message: '§c[Craft-Core] 您尚未綁定 Discord 帳號！請先在遊戲內輸入 /discord 取得驗證碼，並於 Discord 完成綁定。'
+            message: '§c[Craft-Core] 您尚未綁定 Discord 帳號！請先在遊戲內輸入 /discord link 取得驗證碼，並於 Discord 完成綁定。'
           }
         });
         break;
@@ -144,7 +144,7 @@ async function handle(packet, discordClient) {
           payload: {
             username,
             success: false,
-            message: '§c[Craft-Core] 您尚未綁定 Discord 帳號！請先在遊戲內輸入 /discord 取得驗證碼，並於 Discord 完成綁定。'
+            message: '§c[Craft-Core] 您尚未綁定 Discord 帳號！請先在遊戲內輸入 /discord link 取得驗證碼，並於 Discord 完成綁定。'
           }
         });
         break;

@@ -149,7 +149,7 @@ client.on('messageCreate', async (message) => {
             await discordQueue.enqueue(() => message.reply(`❌ 嘗試次數過多，已鎖定 60 秒。請稍後再試。`), { type: 'dm_reply_lock' });
           } else {
             dmVerifyAttempts.set(discordId, limitInfo);
-            await discordQueue.enqueue(() => message.reply(`❌ 驗證碼無效或已過期！請在遊戲內輸入 \`/discord\` 重新取得 6 位數驗證碼。`), { type: 'dm_reply_invalid' });
+            await discordQueue.enqueue(() => message.reply(`❌ 驗證碼無效或已過期！請在遊戲內輸入 \`/discord link\` 重新取得 6 位數驗證碼。`), { type: 'dm_reply_invalid' });
           }
           return;
         }
@@ -169,7 +169,7 @@ client.on('messageCreate', async (message) => {
             await discordQueue.enqueue(() => message.reply(`❌ 嘗試次數過多，已鎖定 60 秒。請稍後再試。`), { type: 'dm_reply_lock' });
           } else {
             dmVerifyAttempts.set(discordId, limitInfo);
-            await discordQueue.enqueue(() => message.reply(`❌ 驗證碼已過期！請在遊戲內輸入 \`/discord\` 重新取得 6 位數驗證碼。`), { type: 'dm_reply_expired' });
+            await discordQueue.enqueue(() => message.reply(`❌ 驗證碼已過期！請在遊戲內輸入 \`/discord link\` 重新取得 6 位數驗證碼。`), { type: 'dm_reply_expired' });
           }
           return;
         }
@@ -206,7 +206,7 @@ client.on('messageCreate', async (message) => {
     } else {
       const existingBinding = await UserRepository.getBindingByDiscordId(message.author.id);
       if (!existingBinding) {
-        await discordQueue.enqueue(() => message.reply(`💡 請私訊輸入遊戲中 \`/discord\` 獲得的 6 位數驗證碼來完成帳號綁定。`), { type: 'dm_reply_help' });
+        await discordQueue.enqueue(() => message.reply(`💡 請私訊輸入遊戲中 \`/discord link\` 獲得的 6 位數驗證碼來完成帳號綁定。`), { type: 'dm_reply_help' });
         return;
       }
       // If bound, do NOT reply or intercept (let it pass)

@@ -35,7 +35,7 @@ async function handleCheckin(interaction) {
 
   if (!binding) {
     return interaction.reply({
-      content: '❌ 您尚未綁定 Minecraft 帳號！請先在遊戲內輸入 `/discord` 取得驗證碼，並私訊本機器人以完成綁定。',
+      content: '❌ 您尚未綁定 Minecraft 帳號！請先在遊戲內輸入 `/discord link` 取得驗證碼，並私訊本機器人以完成綁定。',
       ephemeral: true
     });
   }
@@ -87,7 +87,7 @@ async function handleQueryKeys(interaction) {
 
   if (!binding) {
     return interaction.reply({
-      content: '❌ 您尚未綁定 Minecraft 帳號！請先在遊戲內輸入 `/discord` 取得驗證碼，並私訊本機器人以完成綁定。',
+      content: '❌ 您尚未綁定 Minecraft 帳號！請先在遊戲內輸入 `/discord link` 取得驗證碼，並私訊本機器人以完成綁定。',
       ephemeral: true
     });
   }
@@ -142,7 +142,7 @@ async function handleSubscribeReminder(interaction) {
 
   if (!binding) {
     return interaction.reply({
-      content: '❌ 您尚未綁定 Minecraft 帳號！請先在遊戲內輸入 `/discord` 取得驗證碼，並私訊本機器人以完成綁定。',
+      content: '❌ 您尚未綁定 Minecraft 帳號！請先在遊戲內輸入 `/discord link` 取得驗證碼，並私訊本機器人以完成綁定。',
       ephemeral: true
     });
   }
@@ -167,7 +167,7 @@ async function handleLottery(interaction) {
 
   if (!binding) {
     return interaction.reply({
-      content: '❌ 您尚未綁定 Minecraft 帳號！請先在遊戲內輸入 `/discord` 取得驗證碼，並私訊本機器人以完成綁定。',
+      content: '❌ 您尚未綁定 Minecraft 帳號！請先在遊戲內輸入 `/discord link` 取得驗證碼，並私訊本機器人以完成綁定。',
       ephemeral: true
     });
   }
@@ -256,7 +256,7 @@ async function handlePlaytimeExchange(interaction) {
 
   if (!binding) {
     return interaction.reply({
-      content: '❌ 您尚未綁定 Minecraft 帳號！請先在遊戲內輸入 `/discord` 取得驗證碼，並私訊本機器人以完成綁定。',
+      content: '❌ 您尚未綁定 Minecraft 帳號！請先在遊戲內輸入 `/discord link` 取得驗證碼，並私訊本機器人以完成綁定。',
       ephemeral: true
     });
   }
