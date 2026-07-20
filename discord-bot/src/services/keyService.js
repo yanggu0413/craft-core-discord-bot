@@ -220,14 +220,14 @@ async function handleLottery(interaction) {
   // Run in-game commands
   try {
     if (prize.id === 'craftcore:money') {
-      await session.executeCommand(`addmoney "${binding.mc_username}" ${prize.amount + 150}`, 'System');
+      await session.executeCommand(`addmoney ${binding.mc_username} ${prize.amount + 150}`, 'System');
     } else {
-      await session.executeCommand(`give "${binding.mc_username}" ${prize.id} ${prize.amount}`, 'System');
-      await session.executeCommand(`addmoney "${binding.mc_username}" 150`, 'System');
+      await session.executeCommand(`give ${binding.mc_username} ${prize.id} ${prize.amount}`, 'System');
+      await session.executeCommand(`addmoney ${binding.mc_username} 150`, 'System');
     }
-    await session.executeCommand(`title "${binding.mc_username}" title {"text":"🎉 抽獎成功！","color":"yellow"}`, 'System');
-    await session.executeCommand(`title "${binding.mc_username}" subtitle {"text":"獲得了 ${prize.name} + 額外 $150 遊戲幣","color":"gold"}`, 'System');
-    await session.executeCommand(`playsound minecraft:entity.player.levelup master "${binding.mc_username}"`, 'System');
+    await session.executeCommand(`title ${binding.mc_username} title {"text":"🎉 抽獎成功！","color":"yellow"}`, 'System');
+    await session.executeCommand(`title ${binding.mc_username} subtitle {"text":"獲得了 ${prize.name} + 額外 $150 遊戲幣","color":"gold"}`, 'System');
+    await session.executeCommand(`playsound minecraft:entity.player.levelup master ${binding.mc_username}`, 'System');
   } catch (err) {
     logger.error(`Failed to execute lottery command in game: ${err.message}`, { stack: err.stack, username: binding.mc_username });
   }

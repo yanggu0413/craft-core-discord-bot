@@ -357,11 +357,11 @@ async function deliverPendingMails(username) {
       try {
         let giveResult;
         if (mail.item_id === 'craftcore:money') {
-          const addMoneyCmd = `addmoney "${username}" ${mail.quantity}`;
+          const addMoneyCmd = `addmoney ${username} ${mail.quantity}`;
           giveResult = await session.executeCommand(addMoneyCmd, 'System');
         } else {
           const itemSelector = mail.nbt ? `${mail.item_id}[${mail.nbt}]` : mail.item_id;
-          const giveCmd = `give "${username}" ${itemSelector} ${mail.quantity}`;
+          const giveCmd = `give ${username} ${itemSelector} ${mail.quantity}`;
           giveResult = await session.executeCommand(giveCmd, 'System');
         }
 
@@ -375,7 +375,7 @@ async function deliverPendingMails(username) {
             text: textMsg,
             color: 'gold'
           });
-          await session.executeCommand(`tellraw "${username}" ${msgJson}`, 'System');
+          await session.executeCommand(`tellraw ${username} ${msgJson}`, 'System');
           logger.info(`Successfully delivered mail #${mail.id} to ${username}`);
         } else {
           logger.error(`Failed to execute delivery command for mail #${mail.id}`, { output: giveResult.output });

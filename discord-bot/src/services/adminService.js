@@ -255,7 +255,7 @@ async function handleCoBrandSubmit(interaction) {
     let rconMsg = '';
     if (session.isActive()) {
       try {
-        const moneyResult = await session.executeCommand(`addmoney "${mcUsername}" 5000`, 'System');
+        const moneyResult = await session.executeCommand(`addmoney ${mcUsername} 5000`, 'System');
         rconMsg = `，並於遊戲內發送 5000 元金幣（${moneyResult.output.trim()}）`;
       } catch (e) {
         logger.error('Failed to add co-brand money in game', { error: e, mcUsername });
@@ -372,7 +372,7 @@ async function handleInspectInventory(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
   try {
-    const result = await session.executeCommand(`data get entity "${username}" Inventory`, interaction.user.tag);
+    const result = await session.executeCommand(`data get entity ${username} Inventory`, interaction.user.tag);
     if (!result.success) {
       return interaction.editReply({
         content: `❌ 查詢背包失敗！伺服器回應：\`${result.output}\``

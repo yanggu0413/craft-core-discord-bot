@@ -190,7 +190,7 @@ describe('Phase 3: Economy & Shops Integration Tests', () => {
 
     // Wait for the WS command to be received by mod
     const cmd = await wsCmdPromise;
-    expect(cmd.command).toBe('addmoney "EconPlayer" 5000');
+    expect(cmd.command).toBe('addmoney EconPlayer 5000');
 
     // Respond back to WS
     mcClient.command_response(cmd.command_id, true, 'Successfully added 5000 money');
@@ -218,7 +218,7 @@ describe('Phase 3: Economy & Shops Integration Tests', () => {
 
       // 2. Verify addmoney command
       const moneyCmd = await wsCmdPromiseMoney;
-      expect(moneyCmd.command).toBe('addmoney "EconPlayer" 250');
+      expect(moneyCmd.command).toBe('addmoney EconPlayer 250');
       mcClient.command_response(moneyCmd.command_id, true, 'Added 250');
 
       // 3. Verify title command
@@ -318,7 +318,7 @@ describe('Phase 3: Economy & Shops Integration Tests', () => {
     mcClient.event('join', 'ReceiverEconPlayer', 'uuid-receiver-econ', 'joined');
 
     const addMoneyCmd = await wsAddMoneyPromise;
-    expect(addMoneyCmd.command).toBe('addmoney "ReceiverEconPlayer" 250');
+    expect(addMoneyCmd.command).toBe('addmoney ReceiverEconPlayer 250');
     mcClient.command_response(addMoneyCmd.command_id, true, 'Successfully added');
 
     const tellrawCmd = await wsTellrawPromise;
