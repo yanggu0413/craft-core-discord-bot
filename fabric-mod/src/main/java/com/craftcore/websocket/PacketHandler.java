@@ -78,8 +78,14 @@ public class PacketHandler {
                             commandOutput.sendSystemMessage(Component.literal("Error: " + e.getMessage()));
                         }
                         String output = commandOutput.getCapturedOutput();
-                        if (output != null && (output.startsWith("Unknown or incomplete command") || output.trim().startsWith("Unknown or incomplete command"))) {
-                            success = false;
+                        if (output != null) {
+                            String lower = output.toLowerCase();
+                            if (lower.contains("unknown or incomplete command") || 
+                                    lower.contains("do not have permission") || 
+                                    lower.contains("incorrect argument") || 
+                                    lower.contains("失敗")) {
+                                success = false;
+                            }
                         }
                         CommandResponsePayload responsePayload = new CommandResponsePayload(payload.command_id, success, output);
                         client.send(new Packet("command_response", responsePayload));

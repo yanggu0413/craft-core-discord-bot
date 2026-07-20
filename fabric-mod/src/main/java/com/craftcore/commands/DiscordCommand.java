@@ -68,7 +68,7 @@ public class DiscordCommand {
 
             dispatcher.register(Commands.literal("playerinfo")
 
-                    .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
+                    .requires(source -> !source.isPlayer() || source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
 
                     .then(Commands.argument("username", StringArgumentType.string())
 
@@ -80,7 +80,7 @@ public class DiscordCommand {
 
             dispatcher.register(Commands.literal("ccplayerinfo")
 
-                    .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
+                    .requires(source -> !source.isPlayer() || source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
 
                     .then(Commands.argument("username", StringArgumentType.string())
 
@@ -92,7 +92,7 @@ public class DiscordCommand {
 
             dispatcher.register(Commands.literal("addmoney")
 
-                    .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
+                    .requires(source -> !source.isPlayer() || source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
 
                     .then(Commands.argument("username", StringArgumentType.string())
 
@@ -128,7 +128,7 @@ public class DiscordCommand {
 
             dispatcher.register(Commands.literal("removemoney")
 
-                    .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
+                    .requires(source -> !source.isPlayer() || source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
 
                     .then(Commands.argument("username", StringArgumentType.string())
 
