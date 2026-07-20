@@ -104,7 +104,7 @@ function connectToBotWS() {
 
       // Handle query resolve
       if (type.endsWith('_response') || type === 'error_response') {
-        const queryId = payload?.query_id;
+        const queryId = payload?.query_id || payload?.command_id;
         if (queryId && pendingQueries.has(queryId)) {
           const pending = pendingQueries.get(queryId);
           if (pending) {
@@ -165,6 +165,9 @@ function sendWsQuery(type: string, payload: any): Promise<any> {
 
     const queryId = payload.query_id || Math.random().toString(36).substring(2, 15);
     payload.query_id = queryId;
+    if (type === 'command_request') {
+      payload.command_id = queryId;
+    }
 
     const timeout = setTimeout(() => {
       pendingQueries.delete(queryId);
