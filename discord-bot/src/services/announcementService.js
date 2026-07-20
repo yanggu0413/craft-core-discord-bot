@@ -69,7 +69,7 @@ async function handleAnnouncementModalSubmit(interaction) {
   const details = formatChannelIds((interaction.fields.getTextInputValue('details') || '').trim());
 
   const clock = require('../utils/clock');
-  const offset = clock.getOffset();
+  const offset = clock.getClockOffset();
   const adjustedDate = new Date(Date.now() - offset);
   const year = adjustedDate.getFullYear();
   const month = String(adjustedDate.getMonth() + 1).padStart(2, '0');
@@ -300,7 +300,7 @@ async function broadcastDailyTasks(client, dateStr) {
 
 async function publishAnnouncementDirectly(client, title, content, scope, impact) {
   const clock = require('../utils/clock');
-  const offset = clock.getOffset();
+  const offset = clock.getClockOffset();
   const adjustedDate = new Date(Date.now() - offset);
   const year = adjustedDate.getFullYear();
   const month = String(adjustedDate.getMonth() + 1).padStart(2, '0');
