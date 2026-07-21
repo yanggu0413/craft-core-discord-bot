@@ -57,7 +57,6 @@ try {
         net_profit REAL
       )
     `);
-  if (db) {
     db.exec(`
       CREATE TABLE IF NOT EXISTS server_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,8 +84,6 @@ try {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
-  }
-  if (db) {
     try {
       db.exec('ALTER TABLE bindings ADD COLUMN discord_tag TEXT');
     } catch (e) {}
