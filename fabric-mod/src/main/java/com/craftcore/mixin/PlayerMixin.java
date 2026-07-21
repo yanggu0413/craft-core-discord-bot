@@ -32,13 +32,24 @@ public abstract class PlayerMixin {
     @Inject(method = "getDisplayName", at = @At("RETURN"), cancellable = true)
     private void onGetDisplayName(CallbackInfoReturnable<Component> cir) {
         Player player = (Player) (Object) this;
-        if (AfkManager.isAfk(player)) {
+        String username = player.getName().getString();
+        boolean isOwner = "im_little_rory".equalsIgnoreCase(username);
+        boolean isAfk = AfkManager.isAfk(player);
+
+        if (isOwner || isAfk) {
             Component original = cir.getReturnValue();
-            MutableComponent afkPrefix = Component.literal("§7[AFK] ");
+            MutableComponent prefix = Component.empty();
+            if (isAfk) {
+                prefix.append(Component.literal("§7[AFK] "));
+            }
+            if (isOwner) {
+                prefix.append(Component.literal("§c[服主] "));
+            }
+
             if (original != null) {
-                cir.setReturnValue(afkPrefix.append(original));
+                cir.setReturnValue(prefix.append(original));
             } else {
-                cir.setReturnValue(afkPrefix.append(player.getName()));
+                cir.setReturnValue(prefix.append(player.getName()));
             }
         }
     }

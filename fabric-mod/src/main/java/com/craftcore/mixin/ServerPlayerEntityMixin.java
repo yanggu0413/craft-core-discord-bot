@@ -2,6 +2,7 @@ package com.craftcore.mixin;
 
 import com.craftcore.CraftCoreMod;
 import com.craftcore.afk.AfkManager;
+import com.craftcore.teleport.BackManager;
 import com.craftcore.websocket.Packet;
 import com.craftcore.websocket.CraftCoreWSClient;
 import net.minecraft.network.chat.Component;
@@ -23,6 +24,9 @@ public class ServerPlayerEntityMixin {
         String uuid = player.getStringUUID();
         String deathMessage = player.getCombatTracker().getDeathMessage().getString();
 
+        // 紀錄死亡位置為返回點
+        BackManager.recordLocation(player);
+
         CraftCoreWSClient client = CraftCoreMod.getWSClient();
         if (client != null && client.isAuthenticated()) {
             client.send(new Packet("event", new Packet.EventPayload(
@@ -34,13 +38,24 @@ public class ServerPlayerEntityMixin {
     @Inject(method = "getTabListDisplayName", at = @At("RETURN"), cancellable = true)
     private void onGetTabListDisplayName(CallbackInfoReturnable<Component> cir) {
         ServerPlayer player = (ServerPlayer) (Object) this;
-        if (AfkManager.isAfk(player)) {
+        String username = player.getName().getString();
+        boolean isOwner = "im_little_rory".equalsIgnoreCase(username);
+        boolean isAfk = AfkManager.isAfk(player);
+
+        if (isOwner || isAfk) {
             Component original = cir.getReturnValue();
-            MutableComponent afkPrefix = Component.literal("§7[AFK] ");
+            MutableComponent prefix = Component.empty();
+            if (isAfk) {
+                prefix.append(Component.literal("§7[AFK] "));
+            }
+            if (isOwner) {
+                prefix.append(Component.literal("§c[服主] "));
+            }
+
             if (original != null) {
-                cir.setReturnValue(afkPrefix.append(original));
+                cir.setReturnValue(prefix.append(original));
             } else {
-                cir.setReturnValue(afkPrefix.append(player.getDisplayName()));
+                cir.setReturnValue(prefix.append(player.getDisplayName()));
             }
         }
     }

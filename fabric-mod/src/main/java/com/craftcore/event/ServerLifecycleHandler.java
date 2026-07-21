@@ -65,6 +65,15 @@ public class ServerLifecycleHandler {
                 com.craftcore.economy.EconomyManager.handlePlayerLogin(username, uuid);
                 com.craftcore.economy.EconomyManager.checkAndDeliverOfflineNotifications(player);
 
+                // 2. 發送隨機迎賓小提示 (Welcome Tip)
+                getGreetingScheduler().schedule(() -> {
+                    try {
+                        server.execute(() -> WelcomeTipManager.sendRandomTip(player));
+                    } catch (Exception e) {
+                        System.err.println("[CraftCore] Failed to send welcome tip: " + e.getMessage());
+                    }
+                }, 1000, TimeUnit.MILLISECONDS);
+
                 CraftCoreWSClient client = CraftCoreMod.getWSClient();
                 if (client != null && client.isAuthenticated()) {
                     client.send(new Packet("event", new Packet.EventPayload(

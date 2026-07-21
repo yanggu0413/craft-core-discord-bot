@@ -45,23 +45,32 @@ public class DiscordCommand {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 
             dispatcher.register(Commands.literal("discord")
-
                     .executes(context -> {
-
-                        context.getSource().sendSystemMessage(Component.literal("§b[Craft-Core] §fDiscord 邀請連結：§a" + ConfigManager.getConfig().discordInvite));
-
+                        String inviteUrl = ConfigManager.getConfig().discordInvite;
+                        Component linkComponent = Component.literal("§b[Craft-Core] §fDiscord 邀請連結：§a§n" + inviteUrl)
+                                .withStyle(style -> style
+                                        .withClickEvent(new net.minecraft.network.chat.ClickEvent.OpenUrl(java.net.URI.create(inviteUrl)))
+                                        .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal("點擊在此瀏覽器開啟 Discord 邀請")))
+                                );
+                        context.getSource().sendSystemMessage(linkComponent);
                         return 1;
-
                     })
-
                     .then(Commands.literal("link")
-
                             .executes(DiscordCommand::initiateBind))
-
                     .then(Commands.literal("bind")
-
                             .executes(DiscordCommand::initiateBind))
+            );
 
+            dispatcher.register(Commands.literal("back")
+                    .executes(context -> {
+                        ServerPlayer player = context.getSource().getPlayer();
+                        if (player == null) {
+                            context.getSource().sendSystemMessage(Component.literal("此指令只能由遊戲內玩家執行。"));
+                            return 0;
+                        }
+                        com.craftcore.teleport.BackManager.executeBack(player);
+                        return 1;
+                    })
             );
 
 
@@ -1961,6 +1970,7 @@ public class DiscordCommand {
             return 0;
         }
 
+        com.craftcore.teleport.BackManager.recordLocation(player);
         player.teleportTo(destLevel, w.x, w.y, w.z, java.util.Collections.emptySet(), w.yaw, w.pitch, true);
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), net.minecraft.sounds.SoundEvents.ENDERMAN_TELEPORT, net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 1.0f);
         player.sendSystemMessage(Component.literal("§b[Craft-Core] §a成功傳送至地標：" + w.name));
@@ -2051,6 +2061,7 @@ public class DiscordCommand {
             return 0;
         }
 
+        com.craftcore.teleport.BackManager.recordLocation(player);
         player.teleportTo(destLevel, h.x, h.y, h.z, java.util.Collections.emptySet(), h.yaw, h.pitch, true);
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), net.minecraft.sounds.SoundEvents.ENDERMAN_TELEPORT, net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 1.0f);
         player.sendSystemMessage(Component.literal("§b[Craft-Core] §a成功傳送回家：" + h.name));
@@ -2142,6 +2153,7 @@ public class DiscordCommand {
             }
 
             if (safeY != -999) {
+                com.craftcore.teleport.BackManager.recordLocation(player);
                 player.teleportTo(world, blockX + 0.5, (double) safeY, blockZ + 0.5, java.util.Collections.emptySet(), player.getYRot(), player.getXRot(), true);
                 player.level().playSound(null, player.getX(), player.getY(), player.getZ(), net.minecraft.sounds.SoundEvents.ENDERMAN_TELEPORT, net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 1.0f);
                 player.sendSystemMessage(Component.literal("§b[Craft-Core] §a已隨機傳送至：X:" + blockX + ", Y:" + safeY + ", Z:" + blockZ));
