@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Bot, Plus, Swords, Hand, ArrowDown, UserMinus, RefreshCw, Power, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 
 interface FakePlayer {
   name: string;
@@ -79,109 +83,173 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800/60 p-6 rounded-2xl border border-slate-700/50 backdrop-blur-xl">
-        <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <span>🤖</span> 假人控制與掛機面板 (Carpet Bot)
-          </h2>
-          <p className="text-slate-400 text-sm mt-1">
-            您可以召喚與控制專屬於您的假人在遊戲內掛機（每位玩家上限為 3 隻）
-          </p>
-        </div>
+      {/* 頁面標頭與召喚卡片 */}
+      <Card>
+        <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Bot className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base font-bold uppercase tracking-wider">假人控制與掛機面板 (Carpet Bot)</CardTitle>
+            </div>
+            <CardDescription className="mt-1">
+              您可以召喚與控制專屬於您的假人在遊戲內掛機（每位玩家上限為 3 隻）
+            </CardDescription>
+          </div>
 
-        <form onSubmit={handleSpawnNew} className="flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="輸入假人名稱 (如 mybot)"
-            value={newBotName}
-            onChange={(e) => setNewBotName(e.target.value)}
-            disabled={submitting}
-            className="bg-slate-900/80 text-white px-4 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-indigo-500 text-sm"
-          />
-          <button
-            type="submit"
-            disabled={submitting || !newBotName.trim()}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-xl text-sm transition-all disabled:opacity-50"
-          >
-            {submitting ? '處理中...' : '召喚假人'}
-          </button>
-        </form>
-      </div>
+          <form onSubmit={handleSpawnNew} className="flex items-center gap-2">
+            <Input
+              type="text"
+              placeholder="輸入假人名稱 (如 mybot)"
+              value={newBotName}
+              onChange={(e) => setNewBotName(e.target.value)}
+              disabled={submitting}
+              className="w-48"
+            />
+            <Button type="submit" disabled={submitting || !newBotName.trim()} variant="default" size="default">
+              <Plus className="h-4 w-4 mr-1" /> 召喚假人
+            </Button>
+          </form>
+        </CardHeader>
+      </Card>
 
+      {/* 提示訊息 */}
       {msg && (
-        <div className={`p-4 rounded-xl text-sm font-medium ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-          {msg.text}
+        <div className={`p-3 rounded-[4px] text-xs font-semibold flex items-center gap-2 ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
+          {msg.type === 'success' ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
+          <span>{msg.text}</span>
         </div>
       )}
 
+      {/* 假人清單 */}
       {loading ? (
-        <div className="text-center py-12 text-slate-400">正在讀取假人狀態...</div>
+        <Card>
+          <CardContent className="py-12 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            <span>正在讀取假人狀態...</span>
+          </CardContent>
+        </Card>
       ) : error ? (
-        <div className="text-center py-12 text-rose-400">{error}</div>
+        <Card>
+          <CardContent className="py-12 text-center text-xs text-destructive flex items-center justify-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            <span>{error}</span>
+          </CardContent>
+        </Card>
       ) : fakeplayers.length === 0 ? (
-        <div className="text-center py-12 bg-slate-800/30 rounded-2xl border border-slate-700/30 text-slate-400">
-          目前尚未召喚任何假人，請於上方輸入名稱並點擊「召喚假人」。
-        </div>
+        <Card>
+          <CardContent className="py-12 text-center text-xs text-muted-foreground">
+            您目前沒有在遊戲中建立或召喚任何假人。可以在右上角輸入名稱進行召喚。
+          </CardContent>
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {fakeplayers.map((bot) => (
-            <div key={bot.name} className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-700/40 pb-3">
-                <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <span>👤</span> {bot.name}
-                  </h3>
-                  <p className="text-xs text-slate-400">擁有者：{bot.owner}</p>
+            <Card key={bot.name} className="flex flex-col justify-between">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bot className="h-5 w-5 text-primary" />
+                    <CardTitle className="normal-case text-base font-bold">{bot.name}</CardTitle>
+                  </div>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${bot.online ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                    {bot.online ? '● 在線中' : '○ 離線'}
+                  </span>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${bot.online ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700 text-slate-400'}`}>
-                  {bot.online ? '在線中 (Online)' : '離線 (Offline)'}
-                </span>
-              </div>
+                <CardDescription className="text-[11px] mt-1">
+                  創建者: <span className="font-semibold text-foreground">{bot.owner}</span>
+                </CardDescription>
+              </CardHeader>
 
-              {bot.online ? (
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">基礎動作</span>
-                    <div className="flex flex-wrap gap-2 mt-1.5">
-                      <button onClick={() => handleAction(bot.name, 'attack continuous')} disabled={submitting} className="bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 px-3 py-1.5 rounded-lg text-xs transition-all">連續攻擊 (Attack)</button>
-                      <button onClick={() => handleAction(bot.name, 'use continuous')} disabled={submitting} className="bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 px-3 py-1.5 rounded-lg text-xs transition-all">連續使用 (Use)</button>
-                      <button onClick={() => handleAction(bot.name, 'stop')} disabled={submitting} className="bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-lg text-xs transition-all">停止所有動作 (Stop)</button>
-                      <button onClick={() => handleAction(bot.name, 'kill')} disabled={submitting} className="bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 border border-rose-500/30 px-3 py-1.5 rounded-lg text-xs transition-all">下線/清理 (Kill)</button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">移動與狀態</span>
-                    <div className="flex flex-wrap gap-2 mt-1.5">
-                      <button onClick={() => handleAction(bot.name, 'jump')} disabled={submitting} className="bg-slate-700/50 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-all">跳躍 (Jump)</button>
-                      <button onClick={() => handleAction(bot.name, 'sneak')} disabled={submitting} className="bg-slate-700/50 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-all">蹲下 (Sneak)</button>
-                      <button onClick={() => handleAction(bot.name, 'unsneak')} disabled={submitting} className="bg-slate-700/50 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-all">取消蹲下 (Unsneak)</button>
-                      <button onClick={() => handleAction(bot.name, 'sprint')} disabled={submitting} className="bg-slate-700/50 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-all">疾跑 (Sprint)</button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">物品與裝備</span>
-                    <div className="flex flex-wrap gap-2 mt-1.5">
-                      <button onClick={() => handleAction(bot.name, 'drop')} disabled={submitting} className="bg-slate-700/50 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-all">丟棄單個 (Drop)</button>
-                      <button onClick={() => handleAction(bot.name, 'dropStack')} disabled={submitting} className="bg-slate-700/50 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-all">丟棄整疊 (DropStack)</button>
-                      <button onClick={() => handleAction(bot.name, 'swapHands')} disabled={submitting} className="bg-slate-700/50 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition-all">副手交換 (SwapHands)</button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-xs text-slate-400">若要在遊戲中喚醒，請點擊右側按鈕：</span>
-                  <button
-                    onClick={() => handleAction(bot.name, 'spawn')}
-                    disabled={submitting}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-xl text-xs font-medium transition-all"
+              <CardContent className="space-y-3 pt-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAction(bot.name, 'attack continuous')}
+                    disabled={submitting || !bot.online}
+                    className="justify-start text-[11px]"
                   >
-                    召喚上線 (Spawn)
-                  </button>
+                    <Swords className="h-3.5 w-3.5 mr-1 text-red-500" />
+                    持續攻擊
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAction(bot.name, 'use continuous')}
+                    disabled={submitting || !bot.online}
+                    className="justify-start text-[11px]"
+                  >
+                    <Hand className="h-3.5 w-3.5 mr-1 text-blue-500" />
+                    持續使用
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAction(bot.name, 'mount')}
+                    disabled={submitting || !bot.online}
+                    className="justify-start text-[11px]"
+                  >
+                    <UserMinus className="h-3.5 w-3.5 mr-1 text-amber-500" />
+                    騎乘實體
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAction(bot.name, 'dismount')}
+                    disabled={submitting || !bot.online}
+                    className="justify-start text-[11px]"
+                  >
+                    <UserMinus className="h-3.5 w-3.5 mr-1 text-slate-500" />
+                    解除騎乘
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAction(bot.name, 'drop')}
+                    disabled={submitting || !bot.online}
+                    className="justify-start text-[11px]"
+                  >
+                    <ArrowDown className="h-3.5 w-3.5 mr-1 text-emerald-500" />
+                    丟棄物品
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAction(bot.name, 'stop')}
+                    disabled={submitting || !bot.online}
+                    className="justify-start text-[11px]"
+                  >
+                    <Power className="h-3.5 w-3.5 mr-1 text-slate-500" />
+                    停止動作
+                  </Button>
                 </div>
-              )}
-            </div>
+
+                <div className="pt-2 border-t border-border flex justify-end">
+                  <Button
+                    variant={bot.online ? 'destructive' : 'default'}
+                    size="sm"
+                    onClick={() => handleAction(bot.name, bot.online ? 'kill' : 'spawn')}
+                    disabled={submitting}
+                    className="w-full text-[11px]"
+                  >
+                    {bot.online ? (
+                      <>
+                        <Power className="h-3.5 w-3.5 mr-1" /> 清除 / 下線假人
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-3.5 w-3.5 mr-1" /> 上線召喚假人
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

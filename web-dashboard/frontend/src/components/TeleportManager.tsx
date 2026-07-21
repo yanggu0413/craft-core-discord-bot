@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { Compass, Home, Flag, MapPin, Trash2, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 
-interface Home {
+interface HomeItem {
   name: string;
   coords: string;
   dimension: string;
 }
 
-interface Warp {
+interface WarpItem {
   name: string;
   coords: string;
   dimension: string;
@@ -18,8 +22,8 @@ interface TeleportManagerProps {
 }
 
 export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin }) => {
-  const [homes, setHomes] = useState<Home[]>([]);
-  const [warps, setWarps] = useState<Warp[]>([]);
+  const [homes, setHomes] = useState<HomeItem[]>([]);
+  const [warps, setWarps] = useState<WarpItem[]>([]);
   const [activeTab, setActiveTab] = useState<'homes' | 'warps'>('homes');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,156 +107,188 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
   };
 
   const formatDimension = (dim: string) => {
-    const clean = dim.replace('minecraft:', '');
-    if (clean === 'overworld') return '主世界 (Overworld)';
-    if (clean === 'the_nether') return '地獄 (Nether)';
-    if (clean === 'the_end') return '終界 (End)';
-    return clean;
+    if (!dim) return '主世界';
+    if (dim.includes('the_nether') || dim.includes('nether')) return '地獄 (Nether)';
+    if (dim.includes('the_end') || dim.includes('end')) return '終界 (End)';
+    return '主世界 (Overworld)';
   };
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-800/60 p-6 rounded-2xl border border-slate-700/50 backdrop-blur-xl">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <span>🧭</span> 傳送地標與家園管理
-        </h2>
-        <p className="text-slate-400 text-sm mt-1">
-          在此檢視全服公共地標，或遠端管理您設定的個人家園儲存點
-        </p>
+      {/* 標頭與頁籤切換卡片 */}
+      <Card>
+        <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Compass className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base font-bold uppercase tracking-wider">傳送地標與家園管理</CardTitle>
+            </div>
+            <CardDescription className="mt-1">
+              在此檢視全服公共地標，或遠端管理您設定的個人家園儲存點
+            </CardDescription>
+          </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-slate-700/60 mt-6 gap-6">
-          <button
-            onClick={() => setActiveTab('homes')}
-            className={`pb-3 font-semibold text-sm transition-all border-b-2 ${activeTab === 'homes' ? 'text-indigo-400 border-indigo-400' : 'text-slate-400 border-transparent hover:text-slate-200'}`}
-          >
-            🏠 我的家園 (Homes)
-          </button>
-          <button
-            onClick={() => setActiveTab('warps')}
-            className={`pb-3 font-semibold text-sm transition-all border-b-2 ${activeTab === 'warps' ? 'text-indigo-400 border-indigo-400' : 'text-slate-400 border-transparent hover:text-slate-200'}`}
-          >
-            🏁 公共地標 (Warps)
-          </button>
-        </div>
-      </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={activeTab === 'homes' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTab('homes')}
+            >
+              <Home className="h-4 w-4 mr-1.5" />
+              我的家園 (Homes)
+            </Button>
+            <Button
+              variant={activeTab === 'warps' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTab('warps')}
+            >
+              <Flag className="h-4 w-4 mr-1.5" />
+              公共地標 (Warps)
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
 
+      {/* 提示訊息 */}
       {msg && (
-        <div className={`p-4 rounded-xl text-sm font-medium ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-          {msg.text}
+        <div className={`p-3 rounded-[4px] text-xs font-semibold flex items-center gap-2 ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
+          {msg.type === 'success' ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
+          <span>{msg.text}</span>
         </div>
       )}
 
+      {/* 列表內容 */}
       {loading ? (
-        <div className="text-center py-12 text-slate-400">讀取中...</div>
+        <Card>
+          <CardContent className="py-12 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            <span>讀取中...</span>
+          </CardContent>
+        </Card>
       ) : error ? (
-        <div className="text-center py-12 text-rose-400">{error}</div>
+        <Card>
+          <CardContent className="py-12 text-center text-xs text-destructive flex items-center justify-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            <span>{error}</span>
+          </CardContent>
+        </Card>
       ) : activeTab === 'homes' ? (
         homes.length === 0 ? (
-          <div className="text-center py-12 bg-slate-800/30 rounded-2xl border border-slate-700/30 text-slate-400">
-            您目前沒有在遊戲中設定任何家園儲存點。請使用 /sethome 指令來建立。
-          </div>
+          <Card>
+            <CardContent className="py-12 text-center text-xs text-muted-foreground">
+              您目前沒有在遊戲中設定任何家園儲存點。請使用 /sethome 指令來建立。
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {homes.map((home) => (
-              <div key={home.name} className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex flex-col justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <span>🏠</span> {home.name}
-                  </h3>
-                  <div className="mt-2 space-y-1 text-sm text-slate-300">
-                    <p className="flex justify-between">
-                      <span className="text-slate-500">座標:</span>
-                      <span className="font-mono">{home.coords}</span>
-                    </p>
-                    <p className="flex justify-between">
-                      <span className="text-slate-500">維度:</span>
-                      <span>{formatDimension(home.dimension)}</span>
-                    </p>
+              <Card key={home.name} className="flex flex-col justify-between">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Home className="h-5 w-5 text-primary" />
+                      <CardTitle className="normal-case text-base font-bold">{home.name}</CardTitle>
+                    </div>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                      {formatDimension(home.dimension)}
+                    </span>
                   </div>
-                </div>
+                </CardHeader>
 
-                <div className="border-t border-slate-700/30 pt-3 flex justify-end">
-                  <button
-                    onClick={() => initiateDelete('home', home.name)}
-                    className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-500/20 transition-all"
-                  >
-                    刪除家園
-                  </button>
-                </div>
-              </div>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-slate-50 p-2.5 rounded border border-slate-200 font-mono">
+                    <MapPin className="h-4 w-4 text-primary shrink-0" />
+                    <span>座標: {home.coords}</span>
+                  </div>
+
+                  <div className="pt-2 border-t border-border flex justify-end">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => initiateDelete('home', home.name)}
+                      className="w-full text-[11px]"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" /> 刪除此家園
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )
+      ) : warps.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-xs text-muted-foreground">
+            目前伺服器尚未設定任何公共地標。管理員可以使用 /setwarp 指令新增。
+          </CardContent>
+        </Card>
       ) : (
-        warps.length === 0 ? (
-          <div className="text-center py-12 bg-slate-800/30 rounded-2xl border border-slate-700/30 text-slate-400">
-            目前全服沒有設定任何公共地標。
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {warps.map((warp) => (
-              <div key={warp.name} className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex flex-col justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <span>🏁</span> {warp.name}
-                  </h3>
-                  <div className="mt-2 space-y-1 text-sm text-slate-300">
-                    <p className="flex justify-between">
-                      <span className="text-slate-500">座標:</span>
-                      <span className="font-mono">{warp.coords}</span>
-                    </p>
-                    <p className="flex justify-between">
-                      <span className="text-slate-500">維度:</span>
-                      <span>{formatDimension(warp.dimension)}</span>
-                    </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {warps.map((warp) => (
+            <Card key={warp.name} className="flex flex-col justify-between">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Flag className="h-5 w-5 text-indigo-600" />
+                    <CardTitle className="normal-case text-base font-bold">{warp.name}</CardTitle>
                   </div>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    {formatDimension(warp.dimension)}
+                  </span>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-slate-50 p-2.5 rounded border border-slate-200 font-mono">
+                  <MapPin className="h-4 w-4 text-indigo-600 shrink-0" />
+                  <span>座標: {warp.coords}</span>
                 </div>
 
                 {isAdmin && (
-                  <div className="border-t border-slate-700/30 pt-3 flex justify-end">
-                    <button
+                  <div className="pt-2 border-t border-border flex justify-end">
+                    <Button
+                      variant="destructive"
+                      size="sm"
                       onClick={() => initiateDelete('warp', warp.name)}
-                      className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-500/20 transition-all"
+                      className="w-full text-[11px]"
                     >
-                      刪除地標
-                    </button>
+                      <Trash2 className="h-3.5 w-3.5 mr-1" /> 刪除地標 (管理員權限)
+                    </Button>
                   </div>
                 )}
-              </div>
-            ))}
-          </div>
-        )
-      )}
-
-      {/* Confirmation Modal */}
-      {confirmModal.show && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 max-w-sm w-full space-y-4">
-            <h3 className="text-xl font-bold text-white">⚠️ 確定要刪除嗎？</h3>
-            <p className="text-slate-300 text-sm">
-              您正在嘗試刪除{confirmModal.type === 'home' ? '個人家園' : '公共地標'}：「<span className="font-bold text-indigo-400">{confirmModal.name}</span>」。
-              此動作將永久移除該儲存點，且無法還原！
-            </p>
-            <div className="flex gap-3 justify-end pt-2">
-              <button
-                onClick={() => setConfirmModal({ show: false, type: 'home', name: '' })}
-                disabled={deleting}
-                className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                disabled={deleting}
-                className="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
-              >
-                {deleting ? '刪除中...' : '確定刪除'}
-              </button>
-            </div>
-          </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
+
+      {/* 刪除確認 Modal */}
+      <Dialog open={confirmModal.show} onOpenChange={(open) => !open && setConfirmModal({ show: false, type: 'home', name: '' })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>確認刪除{confirmModal.type === 'home' ? '家園' : '地標'}</DialogTitle>
+            <DialogDescription>
+              您確定要刪除{confirmModal.type === 'home' ? '家園' : '公共地標'} 「<span className="font-bold text-foreground">{confirmModal.name}</span>」嗎？此操作將無法撤銷。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmModal({ show: false, type: 'home', name: '' })}
+              disabled={deleting}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? '刪除中...' : '確認刪除'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
