@@ -58,6 +58,11 @@ try {
       )
     `);
   }
+  if (db) {
+    try {
+      db.exec('ALTER TABLE bindings ADD COLUMN discord_tag TEXT');
+    } catch (e) {}
+  }
 } catch (error) {
   console.error('Failed to initialize database connection', error);
 }
@@ -1680,12 +1685,13 @@ app.get('/api/admin/player/:username', async (req: CustomRequest, res: Response)
     total_checkins: 0,
     last_checkin: null,
     discord_id: null,
+    discord_tag: null,
     mc_uuid: null
   };
 
   if (db) {
     try {
-      const getBinding = db.prepare('SELECT discord_id, mc_uuid, keys_count, checkin_streak, total_checkins, last_checkin FROM bindings WHERE mc_username = ? COLLATE NOCASE');
+      const getBinding = db.prepare('SELECT discord_id, discord_tag, mc_uuid, keys_count, checkin_streak, total_checkins, last_checkin FROM bindings WHERE mc_username = ? COLLATE NOCASE');
       const binding = getBinding.get(username) as any;
       if (binding) {
         dbStats = {
@@ -1694,6 +1700,7 @@ app.get('/api/admin/player/:username', async (req: CustomRequest, res: Response)
           total_checkins: binding.total_checkins || 0,
           last_checkin: binding.last_checkin || null,
           discord_id: binding.discord_id || null,
+          discord_tag: binding.discord_tag || null,
           mc_uuid: binding.mc_uuid || null
         };
       }

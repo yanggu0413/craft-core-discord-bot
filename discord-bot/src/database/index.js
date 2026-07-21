@@ -56,6 +56,11 @@ async function init(dbPath) {
     } catch (e) {
       // Ignore if column already exists
     }
+    try {
+      db.exec('ALTER TABLE bindings ADD COLUMN discord_tag TEXT');
+    } catch (e) {
+      // Ignore if column already exists
+    }
   } else {
     throw new Error(`Database initialization failed: schema.sql not found at ${schemaPath}`);
   }

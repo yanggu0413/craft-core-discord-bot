@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle } from 'lucide-react';
+import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle, Eye } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import MinecraftItemIcon from '../ui/MinecraftItemIcon';
 
 interface AdminViewProps {
@@ -22,6 +23,7 @@ interface PlayerProfile {
   total_checkins: number;
   last_checkin: string | null;
   discord_id: string | null;
+  discord_tag?: string | null;
   mc_uuid: string | null;
 }
 
@@ -58,6 +60,7 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
   const [isSearching, setIsSearching] = useState(false);
   const [searchedProfile, setSearchedProfile] = useState<PlayerProfile | null>(null);
   const [searchedInventory, setSearchedInventory] = useState<InventoryItem[]>([]);
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
 
   // Helpers to get today's date parts
   const today = new Date();
@@ -514,7 +517,7 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
               </form>
 
               {searchedProfile ? (
-                <div className="space-y-6 flex-1 flex flex-col justify-between">
+                <div className="space-y-4 flex-1 flex flex-col justify-between">
                   {/* Profile Info */}
                   <div className="grid grid-cols-2 gap-2 text-left bg-muted/40 p-3 border border-border rounded-[4px]">
                     <div className="col-span-2 border-b border-border pb-1 mb-1 flex items-center justify-between">
@@ -522,6 +525,10 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-[2px] ${searchedProfile.online ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-muted border border-border text-muted-foreground'}`}>
                         {searchedProfile.online ? '🟢 線上' : '🔴 離線'}
                       </span>
+                    </div>
+                    <div className="col-span-2 text-[10px] bg-indigo-500/10 border border-indigo-500/20 p-1.5 rounded-[3px] text-indigo-400 font-bold mb-1">
+                      <span>Discord 綁定：</span>
+                      <span>{searchedProfile.discord_tag ? `@${searchedProfile.discord_tag}` : (searchedProfile.discord_id ? `ID: ${searchedProfile.discord_id}` : '未綁定')}</span>
                     </div>
                     <div className="text-[10px]"><span className="text-muted-foreground">帳戶餘額：</span><span className="font-bold text-foreground">${searchedProfile.balance.toLocaleString()} 元</span></div>
                     <div className="text-[10px]"><span className="text-muted-foreground">當前座標：</span><span className="font-bold text-foreground">{searchedProfile.coords}</span></div>
@@ -531,51 +538,76 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                     <div className="text-[10px]"><span className="text-muted-foreground">最後簽到：</span><span className="font-bold text-foreground">{searchedProfile.last_checkin || '無紀錄'}</span></div>
                   </div>
 
-                  {/* Minecraft Inventory GUI */}
-                  <div className="flex flex-col items-center bg-[#c6c6c6] border-4 border-t-[#ffffff] border-l-[#ffffff] border-b-[#555555] border-r-[#555555] p-4 space-y-4 rounded-[2px] shadow-lg max-w-sm mx-auto">
-                    
-                    {/* Top Section: Armor, Body Render & Offhand */}
-                    <div className="w-full flex items-center justify-between">
-                      {/* Left: Armor Slots */}
-                      <div className="flex flex-col space-y-1">
-                        {renderSlot(39, 'https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/empty_armor_slot_helmet.png')}
-                        {renderSlot(38, 'https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/empty_armor_slot_chestplate.png')}
-                        {renderSlot(37, 'https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/empty_armor_slot_leggings.png')}
-                        {renderSlot(36, 'https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/empty_armor_slot_boots.png')}
+                  {/* Pop-up Inventory Trigger Button */}
+                  <Button 
+                    onClick={() => setIsInventoryOpen(true)} 
+                    variant="default" 
+                    size="sm" 
+                    className="w-full font-bold h-10 text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center justify-center space-x-2"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>查看玩家背包與裝備 (1:1 彈出視窗)</span>
+                  </Button>
+
+                  {/* Pop-up Inventory Dialog */}
+                  <Dialog open={isInventoryOpen} onOpenChange={setIsInventoryOpen}>
+                    <DialogContent className="max-w-xl p-6 bg-slate-900 border-slate-800 text-white rounded-xl shadow-2xl">
+                      <DialogHeader className="text-center pb-2 border-b border-slate-800">
+                        <DialogTitle className="text-base font-bold flex items-center justify-center space-x-2 text-emerald-400">
+                          <span>🎒</span>
+                          <span>{searchedProfile.mc_username} 的背包與裝備即時審查</span>
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-slate-400">
+                          1:1 遊戲 UI 樣式展示盔甲、主角 Skin 3D 渲染圖與 9x3 物品欄插槽。
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      <div className="py-4 flex justify-center">
+                        <div className="flex flex-col items-center bg-[#c6c6c6] border-4 border-t-[#ffffff] border-l-[#ffffff] border-b-[#555555] border-r-[#555555] p-5 space-y-4 rounded-[4px] shadow-2xl scale-105">
+                          {/* Top Section: Armor, Body Render & Offhand */}
+                          <div className="w-full flex items-center justify-between">
+                            {/* Left: Armor Slots */}
+                            <div className="flex flex-col space-y-1">
+                              {renderSlot(39, 'https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/empty_armor_slot_helmet.png')}
+                              {renderSlot(38, 'https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/empty_armor_slot_chestplate.png')}
+                              {renderSlot(37, 'https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/empty_armor_slot_leggings.png')}
+                              {renderSlot(36, 'https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/empty_armor_slot_boots.png')}
+                            </div>
+
+                            {/* Center: Character Body Render */}
+                            <div className="flex-1 h-44 flex items-center justify-center relative bg-[#8b8b8b] border-2 border-t-[#555555] border-l-[#555555] border-b-[#ffffff] border-r-[#ffffff] mx-4 rounded-[2px] overflow-hidden p-2">
+                              <img 
+                                src={`https://mc-heads.net/body/${searchedProfile.mc_username}`} 
+                                alt={`${searchedProfile.mc_username} body`}
+                                className="h-full object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,0.4)]"
+                              />
+                            </div>
+
+                            {/* Right: Offhand Slot */}
+                            <div className="flex flex-col justify-end h-full">
+                              {renderSlot(40, 'https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/empty_armor_slot_shield.png')}
+                            </div>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="w-full h-1 bg-[#555555] border-b border-[#ffffff]" />
+
+                          {/* Middle Section: Main Inventory Grid (9x3, slots 9-35) */}
+                          <div className="grid grid-cols-9 gap-1">
+                            {Array.from({ length: 27 }, (_, idx) => renderSlot(idx + 9))}
+                          </div>
+
+                          {/* Divider */}
+                          <div className="w-full h-1 bg-[#555555] border-b border-[#ffffff]" />
+
+                          {/* Bottom Section: Hotbar (9x1, slots 0-8) */}
+                          <div className="grid grid-cols-9 gap-1">
+                            {Array.from({ length: 9 }, (_, idx) => renderSlot(idx))}
+                          </div>
+                        </div>
                       </div>
-
-                      {/* Center: Character Body Render */}
-                      <div className="flex-1 h-44 flex items-center justify-center relative bg-[#8b8b8b] border-2 border-t-[#555555] border-l-[#555555] border-b-[#ffffff] border-r-[#ffffff] mx-4 rounded-[2px] overflow-hidden p-2">
-                        <img 
-                          src={`https://mc-heads.net/body/${searchedProfile.mc_username}`} 
-                          alt={`${searchedProfile.mc_username} body`}
-                          className="h-full object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,0.4)]"
-                        />
-                      </div>
-
-                      {/* Right: Offhand Slot */}
-                      <div className="flex flex-col justify-end h-full">
-                        {renderSlot(40, 'https://assets.mcasset.cloud/1.21.1/assets/minecraft/textures/item/empty_armor_slot_shield.png')}
-                      </div>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="w-full h-1 bg-[#555555] border-b border-[#ffffff]" />
-
-                    {/* Middle Section: Main Inventory Grid (9x3, slots 9-35) */}
-                    <div className="grid grid-cols-9 gap-1">
-                      {Array.from({ length: 27 }, (_, idx) => renderSlot(idx + 9))}
-                    </div>
-
-                    {/* Divider */}
-                    <div className="w-full h-1 bg-[#555555] border-b border-[#ffffff]" />
-
-                    {/* Bottom Section: Hotbar (9x1, slots 0-8) */}
-                    <div className="grid grid-cols-9 gap-1">
-                      {Array.from({ length: 9 }, (_, idx) => renderSlot(idx))}
-                    </div>
-
-                  </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center py-20 border border-dashed border-border rounded-[4px]">
