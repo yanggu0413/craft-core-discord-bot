@@ -198,11 +198,11 @@ public class ServerLifecycleHandler {
         int online = server.getPlayerCount();
         int max = server.getMaxPlayers();
         Component header = Component.literal(
-                "\n§b§l  ❖  Craft-Core 官方伺服器  ❖  \n§7官方教學網頁: §fhttps://docs.craft-core.xyz\n"
+                "\n§b§l  ❖  Craft-Core 原味生存伺服器  ❖  \n§7官網: §fhttps://craft-core.xyz\n"
         );
         Component footer = Component.literal(
-                "\n§f在線人數: §a" + online + " §f/ §7" + max + "    §7|    §f伺服器狀態: §a§l順暢\n" +
-                "§e輸入 §f/discord §e綁定帳號  §7|  §e輸入 §f/events §e查看熱門活動\n"
+                "\n§f在線人數: §a" + online + " §f/ §7" + max + "\n" +
+                "§e輸入 §f/shop §e開啟商店  §7|  §e輸入 §f/events §e查看熱門活動\n"
         );
         net.minecraft.network.protocol.game.ClientboundTabListPacket packet = new net.minecraft.network.protocol.game.ClientboundTabListPacket(header, footer);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {

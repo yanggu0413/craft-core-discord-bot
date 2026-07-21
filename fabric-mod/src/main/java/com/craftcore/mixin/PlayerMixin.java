@@ -29,8 +29,9 @@ public abstract class PlayerMixin {
         String username = player.getName().getString();
         boolean isOwner = "im_little_rory".equalsIgnoreCase(username);
         boolean isAfk = AfkManager.isAfk(player);
+        boolean isFakePlayer = username.toLowerCase().startsWith("fp_");
 
-        if (isOwner || isAfk) {
+        if (isOwner || isAfk || isFakePlayer) {
             Component original = cir.getReturnValue();
             MutableComponent prefix = Component.empty();
             if (isAfk) {
@@ -38,6 +39,9 @@ public abstract class PlayerMixin {
             }
             if (isOwner) {
                 prefix.append(Component.literal("§c[服主] "));
+            }
+            if (isFakePlayer) {
+                prefix.append(Component.literal("§8[假人] "));
             }
 
             if (original != null) {

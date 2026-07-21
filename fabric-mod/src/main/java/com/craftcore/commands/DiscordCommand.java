@@ -951,7 +951,15 @@ public class DiscordCommand {
                             .suggests((context, builder) -> SharedSuggestionProvider.suggest(com.craftcore.fakeplayer.FakePlayerManager.getAllFakePlayers().keySet(), builder))
                             .executes(context -> handleFpCommand(context, ""))
                             .then(Commands.argument("action", StringArgumentType.greedyString())
-                                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(java.util.List.of("use", "attack", "kill", "stop", "drop", "jump", "look"), builder))
+                                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(java.util.List.of(
+                                            "attack continuous", "attack interval 20", "attack once",
+                                            "use continuous", "use interval 20", "use once",
+                                            "mount", "dismount", "drop", "dropStack", "drop all",
+                                            "jump", "kill", "shadow", "sneak", "unsneak", "sprint", "unsprint", "stop", "swapHands",
+                                            "move forward", "move backward", "move left", "move right",
+                                            "look up", "look down", "look north", "look south", "look east", "look west", "look at",
+                                            "turn left", "turn right", "turn back", "spawn"
+                                    ), builder))
                                     .executes(context -> handleFpCommand(context, StringArgumentType.getString(context, "action")))
                             )
                     )
