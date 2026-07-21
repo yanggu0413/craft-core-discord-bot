@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Plus, Swords, Hand, ArrowDown, UserMinus, RefreshCw, Power, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Bot, Swords, Hand, ArrowDown, UserMinus, RefreshCw, Power, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 
 interface FakePlayer {
   name: string;
@@ -18,7 +17,6 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
   const [fakeplayers, setFakeplayers] = useState<FakePlayer[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [newBotName, setNewBotName] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -74,16 +72,9 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
     }
   };
 
-  const handleSpawnNew = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newBotName.trim()) return;
-    handleAction(newBotName.trim(), 'spawn');
-    setNewBotName('');
-  };
-
   return (
     <div className="space-y-6">
-      {/* 頁面標頭與召喚卡片 */}
+      {/* 頁面標頭與說明卡片 */}
       <Card>
         <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -92,23 +83,14 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
               <CardTitle className="text-base font-bold uppercase tracking-wider">假人控制與掛機面板 (Carpet Bot)</CardTitle>
             </div>
             <CardDescription className="mt-1">
-              您可以召喚與控制專屬於您的假人在遊戲內掛機（每位玩家上限為 3 隻）
+              假人須先於遊戲內站在指定位置輸入 <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-xs font-mono">/fp &lt;名稱&gt;</code> 進行召喚。您可在本頁面遠端控制其掛機動作或強制下線（每位玩家上限為 3 隻）。
             </CardDescription>
           </div>
 
-          <form onSubmit={handleSpawnNew} className="flex items-center gap-2">
-            <Input
-              type="text"
-              placeholder="輸入假人名稱 (如 mybot)"
-              value={newBotName}
-              onChange={(e) => setNewBotName(e.target.value)}
-              disabled={submitting}
-              className="w-48"
-            />
-            <Button type="submit" disabled={submitting || !newBotName.trim()} variant="default" size="default">
-              <Plus className="h-4 w-4 mr-1" /> 召喚假人
-            </Button>
-          </form>
+          <Button variant="outline" size="sm" onClick={fetchFakePlayers} disabled={loading}>
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+            重新整理
+          </Button>
         </CardHeader>
       </Card>
 
@@ -138,7 +120,7 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
       ) : fakeplayers.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-xs text-muted-foreground">
-            您目前沒有在遊戲中建立或召喚任何假人。可以在右上角輸入名稱進行召喚。
+            您目前沒有在伺服器中召喚任何假人。請先至遊戲內站在您欲放置假人的位置輸入 <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-xs font-mono">/fp &lt;名稱&gt;</code> 召喚。
           </CardContent>
         </Card>
       ) : (
@@ -231,21 +213,13 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
 
                 <div className="pt-2 border-t border-border flex justify-end">
                   <Button
-                    variant={bot.online ? 'destructive' : 'default'}
+                    variant="destructive"
                     size="sm"
-                    onClick={() => handleAction(bot.name, bot.online ? 'kill' : 'spawn')}
+                    onClick={() => handleAction(bot.name, 'kill')}
                     disabled={submitting}
                     className="w-full text-[11px]"
                   >
-                    {bot.online ? (
-                      <>
-                        <Power className="h-3.5 w-3.5 mr-1" /> 清除 / 下線假人
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-3.5 w-3.5 mr-1" /> 上線召喚假人
-                      </>
-                    )}
+                    <Power className="h-3.5 w-3.5 mr-1" /> 清除 / 強制下線假人
                   </Button>
                 </div>
               </CardContent>
