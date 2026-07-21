@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import com.craftcore.task.DailyTaskManager;
 
 @Mixin(Block.class)
@@ -21,7 +22,7 @@ public class BlockMixin {
     }
 
     @Inject(method = "playerWillDestroy", at = @At("HEAD"))
-    private void onPlayerWillDestroy(Level level, BlockPos pos, BlockState state, Player player, CallbackInfo ci) {
+    private void onPlayerWillDestroy(Level level, BlockPos pos, BlockState state, Player player, CallbackInfoReturnable<BlockState> cir) {
         DailyTaskManager.handleBlockBreak(level, player, pos, state, level.getBlockEntity(pos));
     }
 }
