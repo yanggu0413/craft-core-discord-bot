@@ -71,6 +71,20 @@ try {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS warp_submissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        applicant_username TEXT NOT NULL,
+        applicant_discord_id TEXT,
+        facility_name TEXT NOT NULL,
+        function_desc TEXT NOT NULL,
+        coords TEXT NOT NULL,
+        dimension TEXT DEFAULT 'minecraft:overworld',
+        status TEXT DEFAULT 'pending',
+        admin_reviewer TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
   }
   if (db) {
     try {
@@ -1858,7 +1872,25 @@ app.get('/api/user/fakeplayers', authenticateToken, async (req: CustomRequest, r
     }
     return res.json({ success: true, fakeplayers: [] });
   } catch (error: any) {
-    return res.status(500).json({ success: false, message: error.message });
+    // Fallback: Read local config/craft-core-shop/fake_players.json to prevent timeouts
+    try {
+      const possiblePaths = [
+        path.resolve(__dirname, '../../../config/craft-core-shop/fake_players.json'),
+        path.resolve(__dirname, '../../../../fabric-mod/config/craft-core-shop/fake_players.json'),
+        path.resolve('config/craft-core-shop/fake_players.json')
+      ];
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+          const raw = fs.readFileSync(p, 'utf8');
+          const map = JSON.parse(raw);
+          const myBots = Object.entries(map)
+            .filter(([_, owner]) => String(owner).toLowerCase() === user.mc_username.toLowerCase())
+            .map(([name, owner]) => ({ name, owner, online: false }));
+          return res.json({ success: true, fakeplayers: myBots });
+        }
+      }
+    } catch (fsErr) {}
+    return res.json({ success: true, fakeplayers: [] });
   }
 });
 
@@ -1934,9 +1966,121 @@ app.get('/api/warps', async (req: Request, res: Response) => {
     if (response && response.success) {
       return res.json({ success: true, warps: response.warps || [] });
     }
+    // Fallback: Read warps.json
+    try {
+      const possiblePaths = [
+        path.resolve(__dirname, '../../../config/craft-core-shop/warps.json'),
+        path.resolve(__dirname, '../../../../fabric-mod/config/craft-core-shop/warps.json'),
+        path.resolve('config/craft-core-shop/warps.json')
+      ];
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+          const raw = fs.readFileSync(p, 'utf8');
+          const map = JSON.parse(raw);
+          return res.json({ success: true, warps: Object.values(map) });
+        }
+      }
+    } catch (fsErr) {}
     return res.json({ success: true, warps: [] });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/warp-submissions
+app.get('/api/warp-submissions', async (req: Request, res: Response) => {
+  if (!db) return res.json({ success: true, submissions: [] });
+  try {
+    const submissions = db.prepare('SELECT * FROM warp_submissions ORDER BY id DESC').all();
+    return res.json({ success: true, submissions });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/warp-submissions
+app.post('/api/warp-submissions', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+  const { facility_name, function_desc, coords, dimension } = req.body;
+  if (!facility_name || !function_desc || !coords) {
+    return res.status(400).json({ success: false, message: '請提供完整的設施名稱、功能說明與座標！' });
+  }
+  if (!db) return res.status(500).json({ success: false, message: '資料庫未連結' });
+
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO warp_submissions (applicant_username, applicant_discord_id, facility_name, function_desc, coords, dimension, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending')
+    `);
+    stmt.run(user.mc_username, user.discord_id || '', facility_name.trim(), function_desc.trim(), coords.trim(), dimension || 'minecraft:overworld');
+    return res.json({ success: true, message: '設施審核申請已成功提交！管理員將會進行審查。' });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/admin/warp-submissions/:id/approve
+app.post('/api/admin/warp-submissions/:id/approve', async (req: CustomRequest, res: Response) => {
+  const { id } = req.params;
+  if (!db) return res.status(500).json({ success: false, message: '資料庫未連結' });
+
+  try {
+    const sub: any = db.prepare('SELECT * FROM warp_submissions WHERE id = ?').get(id);
+    if (!sub) return res.status(404).json({ success: false, message: '找不到該審核紀錄' });
+
+    db.prepare("UPDATE warp_submissions SET status = 'approved', admin_reviewer = ? WHERE id = ?").run(req.user?.mc_username || '管理員', id);
+
+    // Save warp directly to file
+    const possiblePaths = [
+      path.resolve(__dirname, '../../../config/craft-core-shop/warps.json'),
+      path.resolve(__dirname, '../../../../fabric-mod/config/craft-core-shop/warps.json'),
+      path.resolve('config/craft-core-shop/warps.json')
+    ];
+    let warpPath = possiblePaths[0];
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) { warpPath = p; break; }
+    }
+
+    const parts = sub.coords.replace(/,/g, ' ').trim().split(/\s+/);
+    const x = parseFloat(parts[0]) || 0;
+    const y = parseFloat(parts[1]) || 64;
+    const z = parseFloat(parts[2]) || 0;
+
+    let warpsMap: any = {};
+    if (fs.existsSync(warpPath)) {
+      try { warpsMap = JSON.parse(fs.readFileSync(warpPath, 'utf8')) || {}; } catch (e) {}
+    }
+    warpsMap[sub.facility_name.toLowerCase()] = {
+      name: sub.facility_name,
+      x, y, z,
+      yaw: 0, pitch: 0,
+      dimension: sub.dimension || 'minecraft:overworld'
+    };
+    fs.mkdirSync(path.dirname(warpPath), { recursive: true });
+    fs.writeFileSync(warpPath, JSON.stringify(warpsMap, null, 2), 'utf8');
+
+    // Notify gameserver over WS if active
+    try {
+      await sendWsQuery('command_request', { command: `/setwarp ${sub.facility_name}` });
+    } catch (wsErr) {}
+
+    return res.json({ success: true, message: `已成功核准設施「${sub.facility_name}」並建立公共 Warp 點！` });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/admin/warp-submissions/:id/reject
+app.post('/api/admin/warp-submissions/:id/reject', async (req: CustomRequest, res: Response) => {
+  const { id } = req.params;
+  if (!db) return res.status(500).json({ success: false, message: '資料庫未連結' });
+
+  try {
+    db.prepare("UPDATE warp_submissions SET status = 'rejected', admin_reviewer = ? WHERE id = ?").run(req.user?.mc_username || '管理員', id);
+    return res.json({ success: true, message: '已駁回該設施審核申請。' });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 

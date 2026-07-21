@@ -77,6 +77,20 @@ async function buttonHandler(interaction) {
     } else if (customId === 'announce_discard') {
       await announcementService.handleDiscardDraft(interaction);
     }
+
+    // 8. Warp Audit Buttons
+    else if (customId === 'btn_submit_warp_audit') {
+      const warpAuditService = require('../../services/warpAuditService');
+      await warpAuditService.showSubmitWarpModal(interaction);
+    } else if (customId.startsWith('btn_warp_approve:')) {
+      const warpAuditService = require('../../services/warpAuditService');
+      const submissionId = customId.split(':')[1];
+      await warpAuditService.handleWarpApproveButton(interaction, submissionId);
+    } else if (customId.startsWith('btn_warp_reject:')) {
+      const warpAuditService = require('../../services/warpAuditService');
+      const submissionId = customId.split(':')[1];
+      await warpAuditService.handleWarpRejectButton(interaction, submissionId);
+    }
   } catch (error) {
     if (error instanceof AppError && error.isOperational) {
       if (interaction.deferred || interaction.replied) {

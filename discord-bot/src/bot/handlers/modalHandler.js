@@ -25,6 +25,9 @@ async function modalHandler(interaction) {
       await economyService.handleSendMoneyModalSubmit(interaction);
     } else if (customId === 'admin_announcement_modal') {
       await announcementService.handleAnnouncementModalSubmit(interaction);
+    } else if (customId === 'modal_submit_warp_audit') {
+      const warpAuditService = require('../../services/warpAuditService');
+      await warpAuditService.handleWarpModalSubmit(interaction);
     } else if (customId === 'announcement_modal') {
       const command = interaction.client.commands.get('公告');
       if (command && typeof command.handleModalSubmit === 'function') {

@@ -1,4 +1,4 @@
-import { Award, Calendar, Key, Mail, RefreshCw, TrendingUp, Activity, MapPin } from 'lucide-react';
+import { Award, Calendar, Key, Mail, RefreshCw, TrendingUp, Activity, MapPin, Sparkles, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Button } from '../ui/button';
@@ -16,6 +16,8 @@ interface HomeViewProps {
   };
   dailyTasks: any[];
   dailyTasksDate: string;
+  activeEvents?: any[];
+  onNavigateToEvents?: () => void;
   token: string | null;
   username: string | null;
   userBalance: number;
@@ -38,6 +40,8 @@ export default function HomeView({
   stats,
   dailyTasks,
   dailyTasksDate,
+  activeEvents = [],
+  onNavigateToEvents,
   token,
   username,
   userBalance,
@@ -57,6 +61,37 @@ export default function HomeView({
 }: HomeViewProps) {
   return (
     <div className="space-y-6">
+      {/* 🎪 熱門伺服器活動 Banner */}
+      {activeEvents && activeEvents.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-amber-500/10 border border-amber-500/30 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left shadow-sm">
+          <div className="flex items-start space-x-3">
+            <div className="p-2 bg-amber-500/20 text-amber-500 rounded-lg shrink-0 mt-0.5">
+              <Sparkles className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">🎪 熱門限時活動進行中</span>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 px-1.5 py-0.2 rounded font-bold">
+                  {activeEvents.length} 個活動開放中
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-foreground mt-0.5">{activeEvents[0].title}</h3>
+              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{activeEvents[0].description}</p>
+            </div>
+          </div>
+          {onNavigateToEvents && (
+            <Button
+              onClick={onNavigateToEvents}
+              size="sm"
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center space-x-1 shrink-0 self-end sm:self-center"
+            >
+              <span>檢視所有活動</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-1" />
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* 數據統計欄 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>

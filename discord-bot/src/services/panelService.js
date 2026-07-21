@@ -186,6 +186,14 @@ async function initializePanels(client) {
   } catch (error) {
     logger.error('Failed to initialize Economy Panel', { error });
   }
+
+  // 5. Warp Audit Panel Channel
+  try {
+    const warpAuditService = require('./warpAuditService');
+    await warpAuditService.updateWarpPanel(client);
+  } catch (error) {
+    logger.error('Failed to initialize Warp Panel', { error });
+  }
 }
 
 module.exports = {

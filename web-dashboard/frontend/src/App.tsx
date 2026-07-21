@@ -103,6 +103,7 @@ export default function App() {
   const [selectedMineral, setSelectedMineral] = useState('minecraft:diamond');
   const [dailyTasks, setDailyTasks] = useState<any[]>([]);
   const [dailyTasksDate, setDailyTasksDate] = useState<string>('');
+  const [events, setEvents] = useState<any[]>([]);
 
   // 搜尋與篩選狀態 (商店導航使用)
   const [searchQuery, setSearchQuery] = useState('');
@@ -255,6 +256,13 @@ export default function App() {
       });
       const lockboxesJson = await lockboxesRes.json();
       if (lockboxesJson.success) setLockboxes(lockboxesJson.lockboxes);
+
+      // 10. 伺服器活動列表
+      try {
+        const eventsRes = await fetch(`${API_URL}/events/active`);
+        const eventsJson = await eventsRes.json();
+        if (eventsJson.success) setEvents(eventsJson.events || []);
+      } catch (e) {}
 
     } catch (err) {
       console.error('Failed to fetch data', err);
@@ -540,6 +548,8 @@ export default function App() {
               stats={stats}
               dailyTasks={dailyTasks}
               dailyTasksDate={dailyTasksDate}
+              activeEvents={events}
+              onNavigateToEvents={() => setActiveTab('events')}
               token={token}
               username={username}
               userBalance={userBalance}
