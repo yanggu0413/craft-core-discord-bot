@@ -10,6 +10,7 @@ import LockboxesView from './components/views/LockboxesView';
 import InventoryView from './components/views/InventoryView';
 import AdminView from './components/views/AdminView';
 import WelfareView from './components/views/WelfareView';
+import EventsView from './components/views/EventsView';
 import { Card, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { cn } from './lib/utils';
 import { FakePlayers } from './components/FakePlayers';
@@ -89,7 +90,7 @@ export default function App() {
   const [liveTrades, setLiveTrades] = useState<any[]>([]);
 
   // 當前選單分頁
-  const [activeTab, setActiveTab] = useState<'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports' | 'events'>('home');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   // 全域數據狀態
@@ -645,6 +646,15 @@ export default function App() {
 
           {activeTab === 'fakeplayers' && (
             <FakePlayers token={token} />
+          )}
+
+          {activeTab === 'events' && (
+            <EventsView
+              token={token}
+              isAdmin={isAdmin}
+              triggerToast={triggerToast}
+              API_URL={API_URL}
+            />
           )}
 
           {activeTab === 'teleports' && (

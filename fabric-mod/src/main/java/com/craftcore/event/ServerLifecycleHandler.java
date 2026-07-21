@@ -66,14 +66,17 @@ public class ServerLifecycleHandler {
                 com.craftcore.economy.EconomyManager.checkAndDeliverOfflineNotifications(player);
                 FirstJoinManager.checkAndHandleFirstJoin(player);
 
-                // 2. 發送隨機迎賓小提示 (Welcome Tip)
+                // 2. 發送隨機迎賓小提示 (Welcome Tip) 與限時活動通知
                 getGreetingScheduler().schedule(() -> {
                     try {
-                        server.execute(() -> WelcomeTipManager.sendRandomTip(player));
+                        server.execute(() -> {
+                            WelcomeTipManager.sendRandomTip(player);
+                            EventManager.checkAndNotifyEvents(player);
+                        });
                     } catch (Exception e) {
-                        System.err.println("[CraftCore] Failed to send welcome tip: " + e.getMessage());
+                        System.err.println("[CraftCore] Failed to send welcome tip/events: " + e.getMessage());
                     }
-                }, 1000, TimeUnit.MILLISECONDS);
+                }, 1500, TimeUnit.MILLISECONDS);
 
                 CraftCoreWSClient client = CraftCoreMod.getWSClient();
                 if (client != null && client.isAuthenticated()) {

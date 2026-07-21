@@ -63,12 +63,18 @@ public class DiscordCommand {
 
             dispatcher.register(Commands.literal("back")
                     .executes(context -> {
-                        ServerPlayer player = context.getSource().getPlayer();
-                        if (player == null) {
-                            context.getSource().sendSystemMessage(Component.literal("此指令只能由遊戲內玩家執行。"));
-                            return 0;
+                        if (context.getSource().getEntity() instanceof ServerPlayer player) {
+                            com.craftcore.teleport.BackManager.executeBack(player);
                         }
-                        com.craftcore.teleport.BackManager.executeBack(player);
+                        return 1;
+                    })
+            );
+
+            dispatcher.register(Commands.literal("events")
+                    .executes(context -> {
+                        if (context.getSource().getEntity() instanceof ServerPlayer player) {
+                            com.craftcore.event.EventManager.checkAndNotifyEvents(player);
+                        }
                         return 1;
                     })
             );

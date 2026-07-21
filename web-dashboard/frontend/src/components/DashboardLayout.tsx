@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   BarChart3, ShoppingBag, TrendingUp, User, Shield, 
   Settings, LogOut, Sun, Moon, Menu, X, Compass, Mail, ShieldAlert, Gift,
-  Cpu, MapPin
+  Cpu, MapPin, Sparkles
 } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface DashboardLayoutProps {
-  activeTab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports';
-  setActiveTab: (tab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports') => void;
+  activeTab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports' | 'events';
+  setActiveTab: (tab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports' | 'events') => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
   token: string | null;
@@ -37,6 +37,7 @@ export default function DashboardLayout({
 
   const navigationItems = [
     { id: 'home', label: '數據總覽', icon: BarChart3 },
+    { id: 'events', label: '伺服器活動', icon: Sparkles },
     { id: 'explorer', label: '商店導航', icon: ShoppingBag },
     { id: 'market', label: '市場行情', icon: TrendingUp },
     { id: 'owner', label: '店主遙控', icon: User },

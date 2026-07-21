@@ -57,6 +57,20 @@ try {
         net_profit REAL
       )
     `);
+  if (db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS server_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        start_time TEXT,
+        end_time TEXT,
+        reward_info TEXT,
+        status TEXT DEFAULT 'active',
+        creator_name TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
   }
   if (db) {
     try {
@@ -1757,22 +1771,75 @@ app.get('/api/admin/player/:username', async (req: CustomRequest, res: Response)
   });
 });
 
-// POST /api/admin/announcements
-app.post('/api/admin/announcements', async (req: CustomRequest, res: Response) => {
-  const { title, content, scope, impact } = req.body;
-  if (!title) {
-    return res.status(400).json({ success: false, message: '缺少公告標題' });
-  }
-
+// GET /api/events
+app.get('/api/events', (req: Request, res: Response) => {
+  if (!db) return res.json({ success: true, events: [] });
   try {
-    const response = await sendWsQuery('publish_announcement', { title, content, scope, impact });
-    if (response && response.success) {
-      return res.json({ success: true, message: '公告已成功發布！' });
-    } else {
-      return res.status(400).json({ success: false, message: response?.message || '發布失敗' });
-    }
-  } catch (err: any) {
-    return res.status(500).json({ success: false, message: err.message });
+    const events = db.prepare('SELECT * FROM server_events ORDER BY id DESC').all();
+    res.json({ success: true, events });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// GET /api/events/active
+app.get('/api/events/active', (req: Request, res: Response) => {
+  if (!db) return res.json({ success: true, events: [] });
+  try {
+    const events = db.prepare("SELECT * FROM server_events WHERE status = 'active' ORDER BY id DESC").all();
+    res.json({ success: true, events });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// POST /api/admin/events
+app.post('/api/admin/events', async (req: CustomRequest, res: Response) => {
+  const { title, description, start_time, end_time, reward_info, status } = req.body;
+  if (!title || !description) {
+    return res.status(400).json({ success: false, message: '請提供活動標題與詳細說明' });
+  }
+  if (!db) return res.status(500).json({ success: false, message: 'Database connection offline' });
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO server_events (title, description, start_time, end_time, reward_info, status, creator_name)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    const creatorName = req.user?.mc_username || '管理員';
+    stmt.run(title, description, start_time || '', end_time || '', reward_info || '', status || 'active', creatorName);
+    res.json({ success: true, message: '成功建立新活動！' });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// PUT /api/admin/events/:id
+app.put('/api/admin/events/:id', async (req: CustomRequest, res: Response) => {
+  const { id } = req.params;
+  const { title, description, start_time, end_time, reward_info, status } = req.body;
+  if (!db) return res.status(500).json({ success: false, message: 'Database connection offline' });
+  try {
+    const stmt = db.prepare(`
+      UPDATE server_events
+      SET title = ?, description = ?, start_time = ?, end_time = ?, reward_info = ?, status = ?
+      WHERE id = ?
+    `);
+    stmt.run(title, description, start_time, end_time, reward_info, status, id);
+    res.json({ success: true, message: '活動更新成功！' });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// DELETE /api/admin/events/:id
+app.delete('/api/admin/events/:id', async (req: CustomRequest, res: Response) => {
+  const { id } = req.params;
+  if (!db) return res.status(500).json({ success: false, message: 'Database connection offline' });
+  try {
+    db.prepare('DELETE FROM server_events WHERE id = ?').run(id);
+    res.json({ success: true, message: '活動已刪除！' });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
   }
 });
 
