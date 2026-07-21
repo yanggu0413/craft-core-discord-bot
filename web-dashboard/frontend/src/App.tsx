@@ -12,6 +12,8 @@ import AdminView from './components/views/AdminView';
 import WelfareView from './components/views/WelfareView';
 import { Card, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { cn } from './lib/utils';
+import { FakePlayers } from './components/FakePlayers';
+import { TeleportManager } from './components/TeleportManager';
 
 // 後端介面設定
 const API_URL = window.location.port === '5173'
@@ -87,7 +89,7 @@ export default function App() {
   const [liveTrades, setLiveTrades] = useState<any[]>([]);
 
   // 當前選單分頁
-  const [activeTab, setActiveTab] = useState<'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports'>('home');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   // 全域數據狀態
@@ -639,6 +641,14 @@ export default function App() {
               triggerToast={triggerToast}
               API_URL={API_URL}
             />
+          )}
+
+          {activeTab === 'fakeplayers' && (
+            <FakePlayers token={token} />
+          )}
+
+          {activeTab === 'teleports' && (
+            <TeleportManager token={token} isAdmin={isAdmin} />
           )}
         </div>
       )}

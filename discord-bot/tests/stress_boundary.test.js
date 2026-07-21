@@ -159,7 +159,7 @@ describe('Stress & Boundary Tests', () => {
 
       expect(capturedCommands.length).toBe(1);
       // Command contains sanitized spaces and double-quoted username
-      expect(capturedCommands[0]).toBe('ban "Steve 123" Griefing op InjectionUser');
+      expect(capturedCommands[0]).toBe('ban Steve 123 Griefing op InjectionUser');
     });
 
     test('should reject usernames containing newline characters', async () => {

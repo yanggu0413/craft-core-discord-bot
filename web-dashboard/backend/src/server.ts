@@ -223,14 +223,20 @@ function authenticateToken(req: CustomRequest, res: Response, next: NextFunction
   });
 }
 
+const ADMIN_DISCORD_IDS = new Set([
+  '1248891236480188517',
+  '1286603217056174080',
+  '988642621834547260',
+  '987308805719207966'
+]);
+
 function requireAdmin(req: CustomRequest, res: Response, next: NextFunction) {
   const user = req.user;
   if (!user) {
     return res.status(401).json({ success: false, message: '尚未登入，請先進行身份驗證' });
   }
 
-  const targetId = '1248891236480188517';
-  if (user.discord_id !== targetId) {
+  if (!ADMIN_DISCORD_IDS.has(user.discord_id || '')) {
     return res.status(403).json({ success: false, message: 'Forbidden: 您不是系統管理員' });
   }
   next();
@@ -374,7 +380,7 @@ app.get('/api/auth/callback', async (req: Request, res: Response) => {
 
     // 4. Generate local JWT token for dashboard authentication
     const roles: string[] = [];
-    const isAdmin = realDiscordId === '1248891236480188517';
+    const isAdmin = ADMIN_DISCORD_IDS.has(realDiscordId);
 
     const token = jwt.sign(
       { 
@@ -682,7 +688,7 @@ app.get('/api/user/profile', authenticateToken, async (req: CustomRequest, res: 
     }
   }
 
-  const isAdmin = user.discord_id === '1248891236480188517';
+  const isAdmin = ADMIN_DISCORD_IDS.has(user.discord_id || '');
 
   res.json({
     success: true,
@@ -1760,6 +1766,123 @@ app.post('/api/admin/announcements', async (req: CustomRequest, res: Response) =
     }
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/user/fakeplayers
+app.get('/api/user/fakeplayers', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+
+  try {
+    const response = await sendWsQuery('fake_players_query', { username: user.mc_username });
+    if (response && response.success) {
+      const myBots = (response.fakeplayers || []).filter((b: any) =>
+        b.owner && b.owner.toLowerCase() === user.mc_username.toLowerCase()
+      );
+      return res.json({ success: true, fakeplayers: myBots });
+    }
+    return res.json({ success: true, fakeplayers: [] });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/user/fakeplayers/action
+app.post('/api/user/fakeplayers/action', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+
+  const { botName, action } = req.body;
+  if (!botName || typeof action !== 'string') {
+    return res.status(400).json({ success: false, message: '參數不完整' });
+  }
+
+  if (action === 'spawn' || action === '') {
+    try {
+      const statusRes = await sendWsQuery('player_status_query', { username: user.mc_username });
+      if (!statusRes || !statusRes.online) {
+        return res.status(400).json({ success: false, message: '您必須在遊戲內線上才能召喚假人！' });
+      }
+    } catch (e: any) {
+      return res.status(500).json({ success: false, message: '無法確認您的線上狀態' });
+    }
+  }
+
+  try {
+    const fullCmd = action.trim() ? `/fp ${botName} ${action}` : `/fp ${botName}`;
+    const response = await sendWsQuery('command_request', { command: fullCmd });
+    return res.json({ success: response.success, message: response.output || '指令已送出' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/user/homes
+app.get('/api/user/homes', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+
+  try {
+    const response = await sendWsQuery('homes_query', { username: user.mc_username });
+    if (response && response.success) {
+      return res.json({ success: true, homes: response.homes || [] });
+    }
+    return res.json({ success: true, homes: [] });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /api/user/homes/:name
+app.delete('/api/user/homes/:name', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+
+  const name = req.params.name;
+  try {
+    const response = await sendWsQuery('teleport_update', {
+      type: 'home',
+      username: user.mc_username,
+      name: name,
+      action: 'delete'
+    });
+    return res.json({ success: response.success, message: response.message });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/warps
+app.get('/api/warps', async (req: Request, res: Response) => {
+  try {
+    const response = await sendWsQuery('warps_query', {});
+    if (response && response.success) {
+      return res.json({ success: true, warps: response.warps || [] });
+    }
+    return res.json({ success: true, warps: [] });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /api/warps/:name
+app.delete('/api/warps/:name', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+  const isAdmin = (user.profile && user.profile.isAdmin) || ADMIN_DISCORD_IDS.has(user.discord_id || '');
+  if (!isAdmin) return res.status(403).json({ success: false, message: '只有管理員可以刪除地標' });
+
+  const name = req.params.name;
+  try {
+    const response = await sendWsQuery('teleport_update', {
+      type: 'warp',
+      name: name,
+      action: 'delete'
+    });
+    return res.json({ success: response.success, message: response.message });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 

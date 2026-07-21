@@ -561,6 +561,50 @@ public class PacketHandler {
                     });
                     break;
                 }
+                case "warps_query": {
+                    Packet.WarpsQueryPayload payload = GSON.fromJson(payloadObj, Packet.WarpsQueryPayload.class);
+                    server.execute(() -> {
+                        java.util.List<Packet.WarpEntry> list = new java.util.ArrayList<>();
+                        java.util.List<com.craftcore.teleport.WarpManager.Warp> warps = com.craftcore.teleport.WarpManager.getWarps();
+                        for (com.craftcore.teleport.WarpManager.Warp w : warps) {
+                            String coordsStr = (int)w.x + ", " + (int)w.y + ", " + (int)w.z;
+                            list.add(new Packet.WarpEntry(w.name, coordsStr, w.dimension));
+                        }
+                        client.send(new Packet("warps_response", new Packet.WarpsResponsePayload(payload.query_id, list, true)));
+                    });
+                    break;
+                }
+                case "homes_query": {
+                    Packet.HomesQueryPayload payload = GSON.fromJson(payloadObj, Packet.HomesQueryPayload.class);
+                    server.execute(() -> {
+                        java.util.List<Packet.HomeEntry> list = new java.util.ArrayList<>();
+                        java.util.Map<String, com.craftcore.teleport.HomeManager.Home> homes = com.craftcore.teleport.HomeManager.getPlayerHomes(payload.username);
+                        for (com.craftcore.teleport.HomeManager.Home h : homes.values()) {
+                            String coordsStr = (int)h.x + ", " + (int)h.y + ", " + (int)h.z;
+                            list.add(new Packet.HomeEntry(h.name, coordsStr, h.dimension));
+                        }
+                        client.send(new Packet("homes_response", new Packet.HomesResponsePayload(payload.query_id, list, true)));
+                    });
+                    break;
+                }
+                case "teleport_update": {
+                    Packet.TeleportUpdatePayload payload = GSON.fromJson(payloadObj, Packet.TeleportUpdatePayload.class);
+                    server.execute(() -> {
+                        boolean ok = false;
+                        String msg = "";
+                        if ("home".equalsIgnoreCase(payload.type)) {
+                            ok = com.craftcore.teleport.HomeManager.deleteHome(payload.username, payload.name);
+                            msg = ok ? "Home deleted" : "Failed to delete home";
+                        } else if ("warp".equalsIgnoreCase(payload.type)) {
+                            ok = com.craftcore.teleport.WarpManager.removeWarp(payload.name);
+                            msg = ok ? "Warp deleted" : "Failed to delete warp";
+                        } else {
+                            msg = "Invalid type";
+                        }
+                        client.send(new Packet("teleport_update_response", new GenericActionResponsePayload(payload.query_id, ok, msg, 0.0)));
+                    });
+                    break;
+                }
                 case "take_item_request": {
                     TakeItemRequestPayload payload = GSON.fromJson(payloadObj, TakeItemRequestPayload.class);
                     server.execute(() -> {

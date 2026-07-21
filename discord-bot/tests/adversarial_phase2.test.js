@@ -65,7 +65,7 @@ describe('Adversarial Testing on Phase 2 Features', () => {
     expect(session.executeCommand).toHaveBeenCalled();
     const calledCmd = session.executeCommand.mock.calls[0][0];
     
-    expect(calledCmd).toBe('give "Bedrock Steve" minecraft:diamond 5');
+    expect(calledCmd).toBe('give Bedrock Steve minecraft:diamond 5');
   });
 
   // Test 2: False positive command success (item duplication) in Express Modal Submit

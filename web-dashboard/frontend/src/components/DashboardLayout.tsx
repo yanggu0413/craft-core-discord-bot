@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { 
   BarChart3, ShoppingBag, TrendingUp, User, Shield, 
-  Settings, LogOut, Sun, Moon, Menu, X, Compass, Mail, ShieldAlert, Gift
+  Settings, LogOut, Sun, Moon, Menu, X, Compass, Mail, ShieldAlert, Gift,
+  Cpu, MapPin
 } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface DashboardLayoutProps {
-  activeTab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare';
-  setActiveTab: (tab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare') => void;
+  activeTab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports';
+  setActiveTab: (tab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports') => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
   token: string | null;
@@ -43,6 +44,10 @@ export default function DashboardLayout({
     { id: 'lockboxes', label: '密碼安全鎖', icon: Settings },
     { id: 'welfare', label: '簽到與抽獎', icon: Gift },
     { id: 'inventory', label: '郵局與背包', icon: Mail },
+    ...(token ? [
+      { id: 'fakeplayers', label: '假人控制', icon: Cpu },
+      { id: 'teleports', label: '傳送點管理', icon: MapPin }
+    ] : []),
     ...(isAdmin ? [{ id: 'admin', label: '管理主控台', icon: ShieldAlert }] : [])
   ];
 

@@ -251,7 +251,7 @@ describe('Tier 5: Phase 2 New Features', () => {
     triggerButtonClick('key_panel_lottery', 'discord-dm-user', 'DMUser');
 
     const cmd3 = await wsCmdPromise3;
-    expect(cmd3.command).toBe('playerinfo "PlayerDMBind"');
+    expect(cmd3.command).toBe('playerinfo PlayerDMBind');
     mcClient.command_response(cmd3.command_id, true, 'Online: false');
 
     const reply3 = await replyPromise3;
@@ -285,7 +285,7 @@ describe('Tier 5: Phase 2 New Features', () => {
     triggerButtonClick('interaction_panel_express', 'discord-dm-user', 'DMUser');
 
     const cmd = await wsCmdPromise;
-    expect(cmd.command).toBe('playerinfo "PlayerDMBind"');
+    expect(cmd.command).toBe('playerinfo PlayerDMBind');
     mcClient.command_response(cmd.command_id, true, 'Online: false');
 
     const reply = await replyPromise;

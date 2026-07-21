@@ -469,7 +469,7 @@ describe('Tier 1: Feature Coverage (F1-F5)', () => {
     triggerSlashCommand('封鎖', { '玩家名稱': 'GrieferF5_1', '原因': 'steal' }, 'discord-admin', 'AdminUser');
 
     const cmd = await wsCmdPromise;
-    expect(cmd.command).toBe('ban "GrieferF5_1" steal');
+    expect(cmd.command).toBe('ban GrieferF5_1 steal');
   });
 
   test('F5-2: /踢出 command forwards execution request with "kick" to MC', async () => {
@@ -477,7 +477,7 @@ describe('Tier 1: Feature Coverage (F1-F5)', () => {
     triggerSlashCommand('踢出', { '玩家名稱': 'SpammerF5_2', '原因': 'spam' }, 'discord-admin', 'AdminUser');
 
     const cmd = await wsCmdPromise;
-    expect(cmd.command).toBe('kick "SpammerF5_2" spam');
+    expect(cmd.command).toBe('kick SpammerF5_2 spam');
   });
 
   test('F5-3: /玩家資訊 command fetches the correct binding metadata from DB', async () => {
@@ -489,7 +489,7 @@ describe('Tier 1: Feature Coverage (F1-F5)', () => {
     triggerSlashCommand('玩家資訊', { '查詢內容': 'QueryF5' }, 'discord-admin', 'AdminUser');
 
     const cmd = await wsCmdPromise;
-    expect(cmd.command).toBe('playerinfo "QueryF5"');
+    expect(cmd.command).toBe('playerinfo QueryF5');
     mcClient.command_response(cmd.command_id, true, 'Online: true, LastOnline: 2026-07-08 19:00:00, Coords: X: 100, Y: 64, Z: -200, Dimension: Overworld');
 
     const reply = await replyPromise;

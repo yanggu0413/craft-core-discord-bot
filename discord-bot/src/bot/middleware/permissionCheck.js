@@ -21,10 +21,11 @@ async function permissionCheckMiddleware(interaction, command, next) {
       throw new PermissionError('此指令只能在伺服器頻道中使用。');
     }
 
-    const targetId = '1248891236480188517';
-    let isAdmin = member.id === targetId || (member.user && member.user.id === targetId);
+    const ADMIN_IDS = ['1248891236480188517', '1286603217056174080', '988642621834547260', '987308805719207966'];
+    const userId = member.id || (member.user && member.user.id);
+    let isAdmin = ADMIN_IDS.includes(userId);
 
-    if (!isAdmin && process.env.NODE_ENV === 'test') {
+    if (!isAdmin) {
       isAdmin = (member.permissions && typeof member.permissions.has === 'function' && member.permissions.has(PermissionFlagsBits.Administrator)) ||
                 (config.discord.adminRoleIds && member.roles && member.roles.cache && config.discord.adminRoleIds.some(rId => member.roles.cache.has(rId)));
     }

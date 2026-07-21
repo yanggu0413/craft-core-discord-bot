@@ -39,7 +39,7 @@ module.exports = {
     await interaction.deferReply();
 
     try {
-      const result = await session.executeCommand(`kick "${username}" ${sanitizedReason}`, interaction.user.tag);
+      const result = await session.executeCommand(`kick ${username} ${sanitizedReason}`, interaction.user.tag);
       await interaction.editReply({
         content: result.success 
           ? `成功將玩家 \`${username}\` 踢出！\`${result.output}\`` 

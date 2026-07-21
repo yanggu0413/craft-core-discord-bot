@@ -19,4 +19,9 @@ public class BlockMixin {
     private void onPlayerDestroy(Level level, Player player, BlockPos pos, BlockState state, BlockEntity blockEntity, ItemStack tool, CallbackInfo ci) {
         DailyTaskManager.handleBlockBreak(level, player, pos, state, blockEntity);
     }
+
+    @Inject(method = "playerWillDestroy", at = @At("HEAD"))
+    private void onPlayerWillDestroy(Level level, BlockPos pos, BlockState state, Player player, CallbackInfo ci) {
+        DailyTaskManager.handleBlockBreak(level, player, pos, state, level.getBlockEntity(pos));
+    }
 }

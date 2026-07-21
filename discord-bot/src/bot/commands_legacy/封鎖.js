@@ -39,7 +39,7 @@ module.exports = {
     await interaction.deferReply();
 
     try {
-      const result = await session.executeCommand(`ban "${username}" ${sanitizedReason}`, interaction.user.tag);
+      const result = await session.executeCommand(`ban ${username} ${sanitizedReason}`, interaction.user.tag);
       await interaction.editReply({
         content: result.success 
           ? `成功封鎖玩家 \`${username}\`！\`${result.output}\`` 

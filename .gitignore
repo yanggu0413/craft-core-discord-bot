@@ -85,3 +85,12 @@ fabric-mod/schemas_error.log
 
 # Local Database
 discord-bot/src/database/database.db
+web-dashboard/backend/*.db
+*.txt
+fabric-mod/*.txt
+fabric-mod/*.bat
+fabric-mod/*.bak
+fabric-mod/build-reviewer/
+scratch/
+web-dashboard/backend/test_admin_security.js
+web-dashboard/backend/verify_checkin_playtime.js

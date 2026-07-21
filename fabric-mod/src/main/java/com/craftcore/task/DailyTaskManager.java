@@ -118,9 +118,29 @@ public class DailyTaskManager {
         }
     }
 
+    private static final java.util.Set<String> processedBlocksThisTick = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
+    private static long lastClearedTick = -1;
+
+    public static void registerEvents() {
+        net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
+            handleBlockBreak(world, player, pos, state, blockEntity);
+        });
+    }
+
     public static void handleBlockBreak(Level world, Player player, BlockPos pos, BlockState state, BlockEntity blockEntity) {
-        if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+        if (world == null || world.isClientSide() || !(player instanceof ServerPlayer serverPlayer) || pos == null || state == null) {
             return;
+        }
+
+        long currentGameTime = world.getGameTime();
+        if (currentGameTime != lastClearedTick) {
+            processedBlocksThisTick.clear();
+            lastClearedTick = currentGameTime;
+        }
+
+        String key = world.dimension().identifier().toString() + ":" + pos.getX() + "," + pos.getY() + "," + pos.getZ();
+        if (!processedBlocksThisTick.add(key)) {
+            return; // Already counted this block break in this tick!
         }
 
         String username = serverPlayer.getName().getString();

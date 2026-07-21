@@ -6,18 +6,15 @@ const logger = require('../utils/logger');
 
 function isUserAdmin(member) {
   if (!member) return false;
-  const targetId = '1248891236480188517';
-  if (member.id === targetId || (member.user && member.user.id === targetId)) {
-    return true;
-  }
+  const ADMIN_IDS = ['1248891236480188517', '1286603217056174080', '988642621834547260', '987308805719207966'];
+  const userId = member.id || (member.user && member.user.id);
+  if (ADMIN_IDS.includes(userId)) return true;
   
-  if (process.env.NODE_ENV === 'test') {
-    if (member.permissions && member.permissions.has(8n)) return true;
-    const adminRoleIds = config.discord.adminRoleIds || [];
-    if (member.roles && member.roles.cache) {
-      for (const roleId of adminRoleIds) {
-        if (member.roles.cache.has(roleId)) return true;
-      }
+  if (member.permissions && typeof member.permissions.has === 'function' && member.permissions.has(8n)) return true;
+  const adminRoleIds = config.discord.adminRoleIds || [];
+  if (member.roles && member.roles.cache) {
+    for (const roleId of adminRoleIds) {
+      if (member.roles.cache.has(roleId)) return true;
     }
   }
   return false;

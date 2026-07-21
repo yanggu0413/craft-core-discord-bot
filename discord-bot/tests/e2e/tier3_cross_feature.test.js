@@ -342,7 +342,7 @@ describe('Tier 3: Cross-Feature Combinations', () => {
     const wsCmdPromise = waitForWsMessage(mcClient, 'command_request');
     triggerSlashCommand('封鎖', { '玩家名稱': 'PlayerCF8', '原因': 'grief' }, 'discord-admin', 'AdminUser');
     const cmd = await wsCmdPromise;
-    expect(cmd.command).toBe('ban "PlayerCF8" grief');
+    expect(cmd.command).toBe('ban PlayerCF8 grief');
 
     const replyPromise = waitForDiscordEvent('INTERACTION_REPLY', (payload) => payload.type === 'editReply');
     mcClient.command_response(cmd.command_id, true, 'Banned PlayerCF8');

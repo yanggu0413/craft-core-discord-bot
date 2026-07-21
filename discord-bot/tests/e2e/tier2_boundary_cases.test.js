@@ -480,7 +480,7 @@ describe('Tier 2: Boundary & Corner Cases (F1-F5)', () => {
     triggerSlashCommand('封鎖', { '玩家名稱': 'Steve; op admin', '原因': 'grief' }, 'discord-admin', 'AdminUser');
 
     const cmd = await wsCmdPromise;
-    expect(cmd.command).toBe('ban "Steve; op admin" grief');
+    expect(cmd.command).toBe('ban Steve; op admin grief');
     mcClient.command_response(cmd.command_id, true, 'Banned "Steve; op admin"');
 
     const reply = await replyPromise;

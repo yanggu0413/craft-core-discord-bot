@@ -238,7 +238,7 @@ describe('Tier 4: Real-World Scenarios', () => {
     
     // Command request sent to MC WebSocket client
     const cmd = await wsCmdPromise;
-    expect(cmd.command).toBe('ban "GrieferMC" Griefing spawn area');
+    expect(cmd.command).toBe('ban GrieferMC Griefing spawn area');
     expect(cmd.admin_username).toBe('AdminUser#1234');
 
     // Mod client replies with success

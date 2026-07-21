@@ -528,4 +528,98 @@ public class Packet {
         public String targetPlayer;
         public String newPassword;
     }
+
+    public static class FakePlayersQueryPayload {
+        public String query_id;
+        public String username;
+    }
+
+    public static class FakePlayerEntry {
+        public String name;
+        public String owner;
+        public boolean online;
+
+        public FakePlayerEntry(String name, String owner, boolean online) {
+            this.name = name;
+            this.owner = owner;
+            this.online = online;
+        }
+    }
+
+    public static class FakePlayersResponsePayload {
+        public String query_id;
+        public java.util.List<FakePlayerEntry> fakeplayers;
+        public boolean success;
+
+        public FakePlayersResponsePayload(String queryId, java.util.List<FakePlayerEntry> fakeplayers, boolean success) {
+            this.query_id = queryId;
+            this.fakeplayers = fakeplayers;
+            this.success = success;
+        }
+    }
+
+    public static class WarpsQueryPayload {
+        public String query_id;
+    }
+
+    public static class WarpEntry {
+        public String name;
+        public String coords;
+        public String dimension;
+
+        public WarpEntry(String name, String coords, String dimension) {
+            this.name = name;
+            this.coords = coords;
+            this.dimension = dimension;
+        }
+    }
+
+    public static class WarpsResponsePayload {
+        public String query_id;
+        public java.util.List<WarpEntry> warps;
+        public boolean success;
+
+        public WarpsResponsePayload(String queryId, java.util.List<WarpEntry> warps, boolean success) {
+            this.query_id = queryId;
+            this.warps = warps;
+            this.success = success;
+        }
+    }
+
+    public static class HomesQueryPayload {
+        public String query_id;
+        public String username;
+    }
+
+    public static class HomeEntry {
+        public String name;
+        public String coords;
+        public String dimension;
+
+        public HomeEntry(String name, String coords, String dimension) {
+            this.name = name;
+            this.coords = coords;
+            this.dimension = dimension;
+        }
+    }
+
+    public static class HomesResponsePayload {
+        public String query_id;
+        public java.util.List<HomeEntry> homes;
+        public boolean success;
+
+        public HomesResponsePayload(String queryId, java.util.List<HomeEntry> homes, boolean success) {
+            this.query_id = queryId;
+            this.homes = homes;
+            this.success = success;
+        }
+    }
+
+    public static class TeleportUpdatePayload {
+        public String query_id;
+        public String type; // home | warp
+        public String username; // only relevant for home
+        public String name; // name of home or warp
+        public String action; // delete
+    }
 }
