@@ -38,25 +38,7 @@ public class ServerPlayerEntityMixin {
     @Inject(method = "getTabListDisplayName", at = @At("RETURN"), cancellable = true)
     private void onGetTabListDisplayName(CallbackInfoReturnable<Component> cir) {
         ServerPlayer player = (ServerPlayer) (Object) this;
-        String username = player.getName().getString();
-        boolean isOwner = "im_little_rory".equalsIgnoreCase(username);
-        boolean isAfk = AfkManager.isAfk(player);
-
-        if (isOwner || isAfk) {
-            Component original = cir.getReturnValue();
-            MutableComponent prefix = Component.empty();
-            if (isAfk) {
-                prefix.append(Component.literal("§7[AFK] "));
-            }
-            if (isOwner) {
-                prefix.append(Component.literal("§c[服主] "));
-            }
-
-            if (original != null) {
-                cir.setReturnValue(prefix.append(original));
-            } else {
-                cir.setReturnValue(prefix.append(player.getDisplayName()));
-            }
-        }
+        // 使用 player.getDisplayName() (由 PlayerMixin 統一加上單一 [AFK] 或 [服主] 標籤)，避免重複雙重 [服主]
+        cir.setReturnValue(player.getDisplayName());
     }
 }

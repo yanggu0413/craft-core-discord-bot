@@ -7,7 +7,6 @@ import com.craftcore.websocket.CraftCoreWSClient;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.network.chat.ChatType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.Component;
@@ -94,6 +93,9 @@ public class ServerLifecycleHandler {
                         }
                     }, 1500, TimeUnit.MILLISECONDS);
                 }
+
+                // 3. 更新 Tab 清單頂部與底部排版 (消除擁擠感)
+                updateTabListHeaderFooter(server);
             }
         });
 
@@ -110,6 +112,13 @@ public class ServerLifecycleHandler {
                             "leave", username, uuid, username + " left the game"
                     )));
                 }
+
+                // 玩家離開時同步更新 Tab 清單在線人數
+                getGreetingScheduler().schedule(() -> {
+                    try {
+                        server.execute(() -> updateTabListHeaderFooter(server));
+                    } catch (Exception ignored) {}
+                }, 500, TimeUnit.MILLISECONDS);
             }
         });
 
@@ -181,6 +190,25 @@ public class ServerLifecycleHandler {
             }
             telemetryScheduler = null;
             System.out.println("[CraftCore] Stopped status telemetry loop.");
+        }
+    }
+
+    public static void updateTabListHeaderFooter(MinecraftServer server) {
+        if (server == null) return;
+        int online = server.getPlayerCount();
+        int max = server.getMaxPlayers();
+        Component header = Component.literal(
+                "\n§b§l  ❖  Craft-Core 官方伺服器  ❖  \n§7官方教學網頁: §fhttps://docs.craft-core.xyz\n"
+        );
+        Component footer = Component.literal(
+                "\n§f在線人數: §a" + online + " §f/ §7" + max + "    §7|    §f伺服器狀態: §a§l順暢\n" +
+                "§e輸入 §f/discord §e綁定帳號  §7|  §e輸入 §f/events §e查看熱門活動\n"
+        );
+        net.minecraft.network.protocol.game.ClientboundTabListPacket packet = new net.minecraft.network.protocol.game.ClientboundTabListPacket(header, footer);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (player.connection != null) {
+                player.connection.send(packet);
+            }
         }
     }
 }
