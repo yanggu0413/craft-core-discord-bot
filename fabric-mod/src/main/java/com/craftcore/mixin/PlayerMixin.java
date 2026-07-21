@@ -23,14 +23,6 @@ public abstract class PlayerMixin {
         }
     }
 
-    @Inject(method = "isPushable", at = @At("HEAD"), cancellable = true)
-    private void onIsPushable(CallbackInfoReturnable<Boolean> cir) {
-        Player player = (Player) (Object) this;
-        if (AfkManager.isAfk(player)) {
-            cir.setReturnValue(false); // Cannot be pushed when AFK
-        }
-    }
-
     @Inject(method = "getDisplayName", at = @At("RETURN"), cancellable = true)
     private void onGetDisplayName(CallbackInfoReturnable<Component> cir) {
         Player player = (Player) (Object) this;
