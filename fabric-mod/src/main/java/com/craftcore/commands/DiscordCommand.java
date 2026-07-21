@@ -25,7 +25,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
 
 import net.minecraft.network.chat.Component;
-
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.world.SimpleMenuProvider;
 
 import net.minecraft.server.level.ServerLevel;
@@ -711,6 +711,8 @@ public class DiscordCommand {
 
                             .then(Commands.argument("player", StringArgumentType.string())
 
+                                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
+
                                     .executes(context -> {
 
                                         ServerPlayer player = context.getSource().getPlayer();
@@ -946,8 +948,10 @@ public class DiscordCommand {
             // /fp
             dispatcher.register(Commands.literal("fp")
                     .then(Commands.argument("name", StringArgumentType.word())
+                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(com.craftcore.fakeplayer.FakePlayerManager.getAllFakePlayers().keySet(), builder))
                             .executes(context -> handleFpCommand(context, ""))
                             .then(Commands.argument("action", StringArgumentType.greedyString())
+                                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(java.util.List.of("use", "attack", "kill", "stop", "drop", "jump", "look"), builder))
                                     .executes(context -> handleFpCommand(context, StringArgumentType.getString(context, "action")))
                             )
                     )
@@ -958,16 +962,19 @@ public class DiscordCommand {
                     .then(Commands.literal("cancel")
                             .executes(context -> handleTpaCancelCommand(context, null))
                             .then(Commands.argument("target", StringArgumentType.string())
+                                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
                                     .executes(context -> handleTpaCancelCommand(context, StringArgumentType.getString(context, "target")))
                             )
                     )
                     .then(Commands.argument("target", StringArgumentType.string())
+                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
                             .executes(context -> handleTpaCommand(context, false))
                     )
             );
 
             dispatcher.register(Commands.literal("tpahere")
                     .then(Commands.argument("target", StringArgumentType.string())
+                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
                             .executes(context -> handleTpaCommand(context, true))
                     )
             );
@@ -975,6 +982,7 @@ public class DiscordCommand {
             dispatcher.register(Commands.literal("tpaccept")
                     .executes(context -> handleTpAcceptCommand(context, null))
                     .then(Commands.argument("target", StringArgumentType.string())
+                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
                             .executes(context -> handleTpAcceptCommand(context, StringArgumentType.getString(context, "target")))
                     )
             );
@@ -982,6 +990,7 @@ public class DiscordCommand {
             dispatcher.register(Commands.literal("tpdeny")
                     .executes(context -> handleTpDenyCommand(context, null))
                     .then(Commands.argument("target", StringArgumentType.string())
+                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
                             .executes(context -> handleTpDenyCommand(context, StringArgumentType.getString(context, "target")))
                     )
             );
@@ -990,6 +999,7 @@ public class DiscordCommand {
             dispatcher.register(Commands.literal("warp")
                     .executes(context -> handleWarpListCommand(context))
                     .then(Commands.argument("name", StringArgumentType.string())
+                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(com.craftcore.teleport.WarpManager.getWarps().stream().map(w -> w.name), builder))
                             .executes(context -> handleWarpTeleportCommand(context, StringArgumentType.getString(context, "name")))
                     )
             );
@@ -1002,6 +1012,7 @@ public class DiscordCommand {
 
             dispatcher.register(Commands.literal("delwarp")
                     .then(Commands.argument("name", StringArgumentType.string())
+                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(com.craftcore.teleport.WarpManager.getWarps().stream().map(w -> w.name), builder))
                             .executes(context -> handleDelWarpCommand(context, StringArgumentType.getString(context, "name")))
                     )
             );
@@ -1010,6 +1021,11 @@ public class DiscordCommand {
             dispatcher.register(Commands.literal("home")
                     .executes(context -> handleHomeListCommand(context))
                     .then(Commands.argument("name", StringArgumentType.string())
+                            .suggests((context, builder) -> {
+                                ServerPlayer p = context.getSource().getPlayer();
+                                if (p == null) return SharedSuggestionProvider.suggest(java.util.Collections.emptyList(), builder);
+                                return SharedSuggestionProvider.suggest(com.craftcore.teleport.HomeManager.getPlayerHomes(p.getName().getString()).values().stream().map(h -> h.name), builder);
+                            })
                             .executes(context -> handleHomeTeleportCommand(context, StringArgumentType.getString(context, "name")))
                     )
             );
@@ -1022,6 +1038,11 @@ public class DiscordCommand {
 
             dispatcher.register(Commands.literal("delhome")
                     .then(Commands.argument("name", StringArgumentType.string())
+                            .suggests((context, builder) -> {
+                                ServerPlayer p = context.getSource().getPlayer();
+                                if (p == null) return SharedSuggestionProvider.suggest(java.util.Collections.emptyList(), builder);
+                                return SharedSuggestionProvider.suggest(com.craftcore.teleport.HomeManager.getPlayerHomes(p.getName().getString()).values().stream().map(h -> h.name), builder);
+                            })
                             .executes(context -> handleDelHomeCommand(context, StringArgumentType.getString(context, "name")))
                     )
             );
@@ -1039,6 +1060,8 @@ public class DiscordCommand {
              dispatcher.register(Commands.literal("pay")
 
                      .then(Commands.argument("username", StringArgumentType.string())
+
+                             .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
 
                              .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
 
