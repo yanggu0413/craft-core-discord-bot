@@ -1804,6 +1804,45 @@ app.get('/api/events/active', (req: Request, res: Response) => {
   }
 });
 
+async function sendEventAnnouncementToDiscord(event: { title: string; description: string; start_time?: string; end_time?: string; reward_info?: string; creator_name?: string }) {
+  const channelId = '1524353292183011379';
+  const roleId = '1370660181360246784';
+  const token = process.env.DISCORD_TOKEN;
+
+  if (!token) return;
+
+  try {
+    const payload = {
+      content: `<@&${roleId}>\n🎉 **活動開跑囉！** 伺服器全新的限時活動現正熱烈舉辦中，歡迎所有玩家登入遊玩！`,
+      embeds: [
+        {
+          title: `🎪 限時活動公告：${event.title}`,
+          description: event.description,
+          color: 15965202, // #f39c12
+          fields: [
+            { name: '🎁 活動獎勵說明', value: event.reward_info || '登入遊戲查看全服特別獎勵！' },
+            { name: '📅 活動起訖時間', value: `${event.start_time || '即刻開始'} ~ ${event.end_time || '永久常駐'}` }
+          ],
+          footer: { text: `發布者: ${event.creator_name || 'Craft-Core 管理團隊'}` },
+          timestamp: new Date().toISOString()
+        }
+      ],
+      allowed_mentions: { roles: [roleId] }
+    };
+
+    await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bot ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (err: any) {
+    console.error('Failed to send event announcement to Discord channel', err);
+  }
+}
+
 // POST /api/admin/events
 app.post('/api/admin/events', async (req: CustomRequest, res: Response) => {
   const { title, description, start_time, end_time, reward_info, status } = req.body;
@@ -1817,8 +1856,21 @@ app.post('/api/admin/events', async (req: CustomRequest, res: Response) => {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     const creatorName = req.user?.mc_username || '管理員';
-    stmt.run(title, description, start_time || '', end_time || '', reward_info || '', status || 'active', creatorName);
-    res.json({ success: true, message: '成功建立新活動！' });
+    const eventStatus = status || 'active';
+    stmt.run(title, description, start_time || '', end_time || '', reward_info || '', eventStatus, creatorName);
+
+    if (eventStatus === 'active') {
+      sendEventAnnouncementToDiscord({
+        title,
+        description,
+        start_time,
+        end_time,
+        reward_info,
+        creator_name: creatorName
+      });
+    }
+
+    res.json({ success: true, message: '成功建立新活動，已同步推播公告至 Discord！' });
   } catch (e: any) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -1836,6 +1888,18 @@ app.put('/api/admin/events/:id', async (req: CustomRequest, res: Response) => {
       WHERE id = ?
     `);
     stmt.run(title, description, start_time, end_time, reward_info, status, id);
+
+    if (status === 'active') {
+      sendEventAnnouncementToDiscord({
+        title,
+        description,
+        start_time,
+        end_time,
+        reward_info,
+        creator_name: req.user?.mc_username || '管理員'
+      });
+    }
+
     res.json({ success: true, message: '活動更新成功！' });
   } catch (e: any) {
     res.status(500).json({ success: false, message: e.message });

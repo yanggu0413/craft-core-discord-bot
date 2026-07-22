@@ -364,6 +364,37 @@ async function publishAnnouncementDirectly(client, title, content, scope, impact
   return true;
 }
 
+async function broadcastEventAnnouncement(client, eventInfo) {
+  const { title, description, start_time, end_time, reward_info, creatorName } = eventInfo;
+  
+  try {
+    const channel = await client.channels.fetch(ANNOUNCEMENT_CHANNEL_ID);
+    if (!channel) return false;
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🎪 限時活動公告：${title}`)
+      .setDescription(description)
+      .setColor('#f39c12')
+      .addFields(
+        { name: '🎁 活動獎勵說明', value: reward_info || '登入遊戲查看全服特別獎勵！' },
+        { name: '📅 活動起訖時間', value: `${start_time || '即刻開始'} ~ ${end_time || '永久常駐'}` }
+      )
+      .setFooter({ text: `發布者: ${creatorName || 'Craft-Core 管理團隊'}` })
+      .setTimestamp();
+
+    await discordQueue.enqueue(() => channel.send({
+      content: `<@&${ANNOUNCEMENT_PING_ROLE_ID}>\n🎉 **活動開跑囉！** 伺服器全新的限時活動現正熱烈舉辦中，歡迎所有玩家登入遊玩！`,
+      embeds: [embed],
+      allowedMentions: { roles: [ANNOUNCEMENT_PING_ROLE_ID], parse: [] }
+    }), { type: 'event_announcement_broadcast' });
+
+    return true;
+  } catch (err) {
+    logger.error('Failed to broadcast event announcement in announcementService', { error: err });
+    return false;
+  }
+}
+
 module.exports = {
   showAnnouncementModal,
   handleAnnouncementModalSubmit,
@@ -371,5 +402,6 @@ module.exports = {
   handleDiscardDraft,
   startDailyBroadcastLoop,
   broadcastDailyTasks,
-  publishAnnouncementDirectly
+  publishAnnouncementDirectly,
+  broadcastEventAnnouncement
 };
