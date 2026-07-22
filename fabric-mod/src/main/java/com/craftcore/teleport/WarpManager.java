@@ -78,14 +78,14 @@ public class WarpManager {
 
     public static synchronized boolean addWarp(String name, double x, double y, double z, float yaw, float pitch, String dimension) {
         warps.put(name.toLowerCase(), new Warp(name, x, y, z, yaw, pitch, dimension));
-        save();
+        com.craftcore.util.AsyncSaveExecutor.submit(WarpManager::save);
         return true;
     }
 
     public static synchronized boolean removeWarp(String name) {
         if (warps.containsKey(name.toLowerCase())) {
             warps.remove(name.toLowerCase());
-            save();
+            com.craftcore.util.AsyncSaveExecutor.submit(WarpManager::save);
             return true;
         }
         return false;

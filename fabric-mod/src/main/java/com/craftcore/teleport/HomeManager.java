@@ -105,7 +105,7 @@ public class HomeManager {
         }
 
         homes.put(homeName.toLowerCase(), new Home(homeName, x, y, z, yaw, pitch, dimension));
-        save();
+        com.craftcore.util.AsyncSaveExecutor.submit(HomeManager::save);
         return "SUCCESS";
     }
 
@@ -113,7 +113,7 @@ public class HomeManager {
         Map<String, Home> homes = userHomes.get(username.toLowerCase());
         if (homes != null && homes.containsKey(homeName.toLowerCase())) {
             homes.remove(homeName.toLowerCase());
-            save();
+            com.craftcore.util.AsyncSaveExecutor.submit(HomeManager::save);
             return true;
         }
         return false;
