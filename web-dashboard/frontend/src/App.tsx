@@ -550,6 +550,7 @@ export default function App() {
               dailyTasksDate={dailyTasksDate}
               activeEvents={events}
               onNavigateToEvents={() => setActiveTab('events')}
+              onNavigateToTab={(tab) => setActiveTab(tab as any)}
               token={token}
               username={username}
               userBalance={userBalance}

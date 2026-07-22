@@ -27,7 +27,6 @@ export default function DashboardLayout({
   toggleTheme,
   token,
   username,
-  userBalance,
   handleLogout,
   handleLoginTrigger,
   children,
@@ -35,29 +34,87 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navigationItems = [
-    { id: 'home', label: '數據總覽', icon: BarChart3 },
-    { id: 'events', label: '伺服器活動', icon: Sparkles },
-    { id: 'explorer', label: '商店導航', icon: ShoppingBag },
-    { id: 'market', label: '市場行情', icon: TrendingUp },
-    { id: 'owner', label: '店主遙控', icon: User },
-    { id: 'claims', label: '領地管理', icon: Shield },
-    { id: 'lockboxes', label: '密碼安全鎖', icon: Settings },
-    { id: 'welfare', label: '簽到與抽獎', icon: Gift },
-    { id: 'inventory', label: '郵局與背包', icon: Mail },
-    ...(token ? [
-      { id: 'fakeplayers', label: '假人控制', icon: Cpu },
-      { id: 'teleports', label: '傳送點管理', icon: MapPin }
-    ] : []),
-    ...(isAdmin ? [{ id: 'admin', label: '管理主控台', icon: ShieldAlert }] : [])
+  const navigationCategories = [
+    {
+      title: '核心與活動',
+      items: [
+        { id: 'home', label: '數據總覽', icon: BarChart3 },
+        { id: 'events', label: '伺服器活動', icon: Sparkles }
+      ]
+    },
+    {
+      title: '經濟與商店',
+      items: [
+        { id: 'explorer', label: '商店導航', icon: ShoppingBag },
+        { id: 'market', label: '市場行情', icon: TrendingUp },
+        { id: 'owner', label: '店主遙控', icon: User }
+      ]
+    },
+    {
+      title: '領地與安全',
+      items: [
+        { id: 'claims', label: '領地管理', icon: Shield },
+        { id: 'lockboxes', label: '密碼安全鎖', icon: Settings }
+      ]
+    },
+    {
+      title: '福利與郵件',
+      items: [
+        { id: 'welfare', label: '簽到與抽獎', icon: Gift },
+        { id: 'inventory', label: '郵局與背包', icon: Mail }
+      ]
+    },
+    ...(token ? [{
+      title: '遊戲快捷',
+      items: [
+        { id: 'teleports', label: '傳送點管理', icon: MapPin },
+        { id: 'fakeplayers', label: '假人控制', icon: Cpu }
+      ]
+    }] : []),
+    ...(isAdmin ? [{
+      title: '系統管理',
+      items: [
+        { id: 'admin', label: '管理主控台', icon: ShieldAlert }
+      ]
+    }] : [])
   ];
 
-  const currentTabLabel = navigationItems.find(item => item.id === activeTab)?.label || '';
+  const allItems = navigationCategories.flatMap(cat => cat.items);
+  const currentTabLabel = allItems.find(item => item.id === activeTab)?.label || '';
 
   const handleTabClick = (tabId: typeof activeTab) => {
     setActiveTab(tabId);
     setMobileMenuOpen(false);
   };
+
+  const renderNavSection = () => (
+    <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
+      {navigationCategories.map((cat) => (
+        <div key={cat.title} className="space-y-1">
+          <p className="text-[10px] font-black uppercase text-muted-foreground/70 tracking-widest px-3 py-1 text-left">
+            {cat.title}
+          </p>
+          {cat.items.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleTabClick(item.id as any)}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  isActive 
+                    ? 'bg-primary text-primary-foreground shadow-sm' 
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                <item.icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
+  );
 
   return (
     <div className="min-h-screen flex bg-background text-foreground transition-colors duration-200">
@@ -67,7 +124,7 @@ export default function DashboardLayout({
         {/* 標誌區域 */}
         <div className="h-16 flex items-center px-6 border-b border-border">
           <div className="flex items-center space-x-3 text-left">
-            <div className="bg-primary text-primary-foreground p-1.5 rounded-[4px]">
+            <div className="bg-primary text-primary-foreground p-1.5 rounded-lg shadow-sm">
               <Compass className="w-5 h-5" />
             </div>
             <div>
@@ -81,26 +138,8 @@ export default function DashboardLayout({
           </div>
         </div>
 
-        {/* 導航選單 */}
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-          {navigationItems.map((item) => {
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleTabClick(item.id as any)}
-                className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-[4px] text-xs font-bold transition-colors cursor-pointer ${
-                  isActive 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-              >
-                <item.icon className="w-4 h-4 shrink-0" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
+        {/* 導航選單 (分類組) */}
+        {renderNavSection()}
 
         {/* 側邊欄底部 (切換主題) */}
         <div className="p-4 border-t border-border flex items-center justify-between">
@@ -148,7 +187,6 @@ export default function DashboardLayout({
                 />
                 <div className="text-left hidden sm:block">
                   <p className="text-[10px] font-bold leading-none text-foreground">{username}</p>
-                  <p className="text-[9px] text-emerald-500 font-bold leading-none mt-1">餘額 ${userBalance.toLocaleString()} 元</p>
                 </div>
                 <Button 
                   variant="ghost"
@@ -173,7 +211,7 @@ export default function DashboardLayout({
         </header>
 
         {/* 頁面主要內容 */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {children}
         </main>
       </div>
@@ -181,11 +219,11 @@ export default function DashboardLayout({
       {/* 3. 行動版抽屜式導航欄 */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-64 bg-card border-r border-border h-full flex flex-col justify-between py-6 px-4 animate-in slide-in-from-left duration-200">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
+          <div className="w-64 bg-card border-r border-border h-full flex flex-col justify-between py-6 px-2 animate-in slide-in-from-left duration-200">
+            <div className="space-y-4 flex-1 flex flex-col min-h-0">
+              <div className="flex items-center justify-between px-4">
                 <div className="flex items-center space-x-3">
-                  <div className="bg-primary text-primary-foreground p-1.5 rounded-[4px]">
+                  <div className="bg-primary text-primary-foreground p-1.5 rounded-lg">
                     <Compass className="w-5 h-5" />
                   </div>
                   <div>
@@ -204,28 +242,10 @@ export default function DashboardLayout({
                 </Button>
               </div>
 
-              <nav className="space-y-1">
-                {navigationItems.map((item) => {
-                  const isActive = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleTabClick(item.id as any)}
-                      className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-[4px] text-xs font-bold transition-colors cursor-pointer ${
-                        isActive 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                      }`}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </nav>
+              {renderNavSection()}
             </div>
 
-            <div className="border-t border-border pt-4 flex items-center justify-between">
+            <div className="border-t border-border pt-4 px-4 flex items-center justify-between">
               <span className="text-[10px] font-bold text-muted-foreground">主題切換</span>
               <Button
                 variant="ghost"
