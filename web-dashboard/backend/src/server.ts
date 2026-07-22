@@ -87,6 +87,15 @@ try {
     try {
       db.exec('ALTER TABLE bindings ADD COLUMN discord_tag TEXT');
     } catch (e) {}
+    try {
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_bindings_username ON bindings(mc_username);
+        CREATE INDEX IF NOT EXISTS idx_transactions_buyer ON transactions(buyer);
+        CREATE INDEX IF NOT EXISTS idx_transactions_seller ON transactions(seller);
+        CREATE INDEX IF NOT EXISTS idx_events_status ON server_events(status);
+        CREATE INDEX IF NOT EXISTS idx_warp_subs_status ON warp_submissions(status);
+      `);
+    } catch (e) {}
   }
 } catch (error) {
   console.error('Failed to initialize database connection', error);

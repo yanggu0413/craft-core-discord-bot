@@ -1006,20 +1006,20 @@ public class DiscordCommand {
             // /warp & /setwarp & /delwarp
             dispatcher.register(Commands.literal("warp")
                     .executes(context -> handleWarpListCommand(context))
-                    .then(Commands.argument("name", StringArgumentType.string())
+                    .then(Commands.argument("name", StringArgumentType.greedyString())
                             .suggests((context, builder) -> SharedSuggestionProvider.suggest(com.craftcore.teleport.WarpManager.getWarps().stream().map(w -> w.name), builder))
                             .executes(context -> handleWarpTeleportCommand(context, StringArgumentType.getString(context, "name")))
                     )
             );
 
             dispatcher.register(Commands.literal("setwarp")
-                    .then(Commands.argument("name", StringArgumentType.string())
+                    .then(Commands.argument("name", StringArgumentType.greedyString())
                             .executes(context -> handleSetWarpCommand(context, StringArgumentType.getString(context, "name")))
                     )
             );
 
             dispatcher.register(Commands.literal("delwarp")
-                    .then(Commands.argument("name", StringArgumentType.string())
+                    .then(Commands.argument("name", StringArgumentType.greedyString())
                             .suggests((context, builder) -> SharedSuggestionProvider.suggest(com.craftcore.teleport.WarpManager.getWarps().stream().map(w -> w.name), builder))
                             .executes(context -> handleDelWarpCommand(context, StringArgumentType.getString(context, "name")))
                     )

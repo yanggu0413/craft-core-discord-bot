@@ -333,21 +333,10 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
         )
       ) : activeTab === 'warps' ? (
         <div className="space-y-6">
-          <div className="flex justify-end">
-            <Button
-              onClick={() => setIsSubmitModalOpen(true)}
-              size="sm"
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span>📝 申請設立公共設施 Warp</span>
-            </Button>
-          </div>
-
           {warps.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-xs text-muted-foreground">
-                目前伺服器尚未設定任何公共地標。歡迎點擊右上角按鈕申請設立！
+                目前伺服器尚未設定任何公共地標。您可前往「設施審核」分頁申請設立設施地標！
               </CardContent>
             </Card>
           ) : (
