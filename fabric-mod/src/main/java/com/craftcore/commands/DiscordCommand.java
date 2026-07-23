@@ -487,9 +487,7 @@ public class DiscordCommand {
                     )
 
                     .then(Commands.literal("rate")
-
-                            .then(Commands.argument("coords", StringArgumentType.string())
-
+                            .then(Commands.argument("coords", StringArgumentType.greedyString())
                                     .executes(context -> {
 
                                         ServerPlayer player = context.getSource().getPlayer();
