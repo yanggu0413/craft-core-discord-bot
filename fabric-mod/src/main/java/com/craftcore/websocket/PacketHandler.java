@@ -588,6 +588,25 @@ public class PacketHandler {
                     });
                     break;
                 }
+                case "warp_upsert": {
+                    WarpUpsertPayload payload = GSON.fromJson(payloadObj, WarpUpsertPayload.class);
+                    server.execute(() -> {
+                        boolean success = payload.name != null && !payload.name.trim().isEmpty();
+                        String message = success ? "Warp updated" : "Warp name is required";
+                        if (success) {
+                            com.craftcore.teleport.WarpManager.addWarp(
+                                    payload.name.trim(), payload.x, payload.y, payload.z,
+                                    payload.yaw, payload.pitch,
+                                    payload.dimension == null || payload.dimension.isBlank()
+                                            ? "minecraft:overworld" : payload.dimension
+                            );
+                            client.send(new Packet("warps_changed", null));
+                        }
+                        client.send(new Packet("warp_upsert_response",
+                                new GenericActionResponsePayload(payload.query_id, success, message, 0.0)));
+                    });
+                    break;
+                }
                 case "homes_query": {
                     Packet.HomesQueryPayload payload = GSON.fromJson(payloadObj, Packet.HomesQueryPayload.class);
                     server.execute(() -> {
@@ -612,6 +631,9 @@ public class PacketHandler {
                         } else if ("warp".equalsIgnoreCase(payload.type)) {
                             ok = com.craftcore.teleport.WarpManager.removeWarp(payload.name);
                             msg = ok ? "Warp deleted" : "Failed to delete warp";
+                            if (ok) {
+                                client.send(new Packet("warps_changed", null));
+                            }
                         } else {
                             msg = "Invalid type";
                         }

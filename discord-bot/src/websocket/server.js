@@ -73,6 +73,8 @@ function start(discordClient) {
               }));
               logger.info('Minecraft client authenticated');
               webhookService.sendServerStart(discordClient).catch(err => logger.error('Failed to send server start webhook', { error: err }));
+              const warpAuditService = require('../services/warpAuditService');
+              warpAuditService.updateWarpPanel(discordClient).catch(err => logger.error('Failed to refresh Warp panel after Minecraft connection', { error: err }));
             } else {
               ws.send(JSON.stringify({
                 type: 'auth_response',

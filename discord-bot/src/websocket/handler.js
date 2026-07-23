@@ -213,6 +213,21 @@ async function handle(packet, discordClient) {
       session.resolveRequest(payload.query_id, payload);
       break;
 
+    case 'warps_response':
+    case 'warp_upsert_response':
+      session.resolveRequest(payload.query_id, payload);
+      break;
+
+    case 'warps_changed': {
+      try {
+        const warpAuditService = require('../services/warpAuditService');
+        await warpAuditService.updateWarpPanel(discordClient);
+      } catch (error) {
+        logger.error('Failed to refresh the Warp panel', { error });
+      }
+      break;
+    }
+
     case 'join_query': {
       const { username, uuid } = payload;
       try {

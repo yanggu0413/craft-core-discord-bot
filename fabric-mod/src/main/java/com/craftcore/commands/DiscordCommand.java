@@ -2030,6 +2030,10 @@ public class DiscordCommand {
                 player.getYRot(), player.getXRot(),
                 player.level().dimension().identifier().toString()
         );
+        CraftCoreWSClient client = CraftCoreMod.getWSClient();
+        if (client != null && client.isAuthenticated()) {
+            client.send(new Packet("warps_changed", null));
+        }
         player.sendSystemMessage(Component.literal("§b[Craft-Core] §a成功設定公共地標：" + name));
         return 1;
     }
@@ -2045,6 +2049,10 @@ public class DiscordCommand {
         }
 
         if (com.craftcore.teleport.WarpManager.removeWarp(name)) {
+            CraftCoreWSClient client = CraftCoreMod.getWSClient();
+            if (client != null && client.isAuthenticated()) {
+                client.send(new Packet("warps_changed", null));
+            }
             player.sendSystemMessage(Component.literal("§b[Craft-Core] §a成功刪除公共地標：" + name));
             return 1;
         } else {

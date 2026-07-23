@@ -252,6 +252,42 @@ function queryDailyTasks(username, serverId = 'default') {
   });
 }
 
+function queryWarps(serverId = 'default') {
+  return new Promise((resolve, reject) => {
+    const ws = getConnection(serverId);
+    if (!ws || !isWsActive(ws)) {
+      return reject(new Error('Minecraft server is not connected'));
+    }
+
+    const queryId = crypto.randomUUID();
+    const timeout = setTimeout(() => {
+      pendingRequests.delete(queryId);
+      reject(new Error('Warp query timed out'));
+    }, process.env.NODE_ENV === 'test' ? 500 : 30000);
+
+    pendingRequests.set(queryId, { resolve, reject, timeout });
+    ws.send(JSON.stringify({ type: 'warps_query', payload: { query_id: queryId } }));
+  });
+}
+
+function upsertWarp(warp, serverId = 'default') {
+  return new Promise((resolve, reject) => {
+    const ws = getConnection(serverId);
+    if (!ws || !isWsActive(ws)) {
+      return reject(new Error('Minecraft server is not connected'));
+    }
+
+    const queryId = crypto.randomUUID();
+    const timeout = setTimeout(() => {
+      pendingRequests.delete(queryId);
+      reject(new Error('Warp update timed out'));
+    }, process.env.NODE_ENV === 'test' ? 500 : 30000);
+
+    pendingRequests.set(queryId, { resolve, reject, timeout });
+    ws.send(JSON.stringify({ type: 'warp_upsert', payload: { query_id: queryId, ...warp } }));
+  });
+}
+
 let webDashboardWs = null;
 
 function setWebDashboardWs(ws) {
@@ -286,6 +322,8 @@ module.exports = {
   queryShopStats,
   queryRichList,
   queryDailyTasks,
+  queryWarps,
+  upsertWarp,
   resolveRequest,
   setWebDashboardWs,
   getWebDashboardWs

@@ -586,6 +586,14 @@ public class Packet {
         }
     }
 
+    public static class WarpUpsertPayload {
+        public String query_id;
+        public String name;
+        public double x, y, z;
+        public float yaw, pitch;
+        public String dimension;
+    }
+
     public static class HomesQueryPayload {
         public String query_id;
         public String username;

@@ -10,11 +10,16 @@ const session = require('../websocket/session');
 
 const WARP_PANEL_CHANNEL_ID = '1524354515661492344';
 const ADMIN_PANEL_CHANNEL_ID = '1524977578362933419';
+const PROJECT_ROOT = path.resolve(__dirname, '../../..');
 
 function getWarpsFilePath() {
+  if (process.env.CRAFT_CORE_WARPS_FILE) {
+    return path.resolve(process.env.CRAFT_CORE_WARPS_FILE);
+  }
+
   const possiblePaths = [
-    path.resolve(__dirname, '../../../../config/craft-core-shop/warps.json'),
-    path.resolve(__dirname, '../../../../fabric-mod/config/craft-core-shop/warps.json'),
+    path.join(PROJECT_ROOT, 'config/craft-core-shop/warps.json'),
+    path.join(PROJECT_ROOT, 'fabric-mod/config/craft-core-shop/warps.json'),
     path.resolve('config/craft-core-shop/warps.json')
   ];
   for (const p of possiblePaths) {
@@ -34,6 +39,35 @@ function loadWarpsFromFile() {
     }
   }
   return {};
+}
+
+function normalizeWarp(warp) {
+  const coords = typeof warp.coords === 'string'
+    ? warp.coords.split(',').map(value => Number(value.trim()))
+    : [warp.x, warp.y, warp.z];
+
+  return {
+    name: warp.name,
+    x: Number(coords[0]) || 0,
+    y: Number(coords[1]) || 0,
+    z: Number(coords[2]) || 0,
+    dimension: warp.dimension || 'minecraft:overworld'
+  };
+}
+
+async function getWarpsForPanel() {
+  if (session.isActive()) {
+    try {
+      const response = await session.queryWarps();
+      if (response.success && Array.isArray(response.warps)) {
+        return response.warps.map(normalizeWarp);
+      }
+    } catch (error) {
+      logger.warn('Failed to query live warps; falling back to warps.json', { error: error.message });
+    }
+  }
+
+  return Object.values(loadWarpsFromFile()).map(normalizeWarp);
 }
 
 function saveWarpToFile(name, x, y, z, yaw, pitch, dimension) {
@@ -57,8 +91,7 @@ async function updateWarpPanel(client) {
     const channel = await client.channels.fetch(WARP_PANEL_CHANNEL_ID);
     if (!channel) return;
 
-    const warpsMap = loadWarpsFromFile();
-    const warpList = Object.values(warpsMap);
+    const warpList = await getWarpsForPanel();
 
     let warpText = warpList.map(w => `📍 **${w.name}** \`(${Math.round(w.x)}, ${Math.round(w.y)}, ${Math.round(w.z)})\` — ${w.dimension.replace('minecraft:', '')}`).join('\n');
     if (!warpText) {
@@ -236,18 +269,24 @@ async function handleWarpApproveButton(interaction, submissionId) {
   const y = parseFloat(parts[1]) || 64;
   const z = parseFloat(parts[2]) || 0;
 
-  // Save to warps.json
-  saveWarpToFile(facilityName, x, y, z, 0, 0, dimension);
-
-  // Send WebSocket command if active
+  // A live Minecraft server is the authoritative source. The old /setwarp
+  // command path ran as the server console, but /setwarp requires a player.
   if (session.isActive()) {
-    session.send({
-      type: 'command_request',
-      payload: {
-        command: `/setwarp ${facilityName}`,
-        admin_username: 'Discord-Audit'
-      }
+    const result = await session.upsertWarp({
+      name: facilityName,
+      x,
+      y,
+      z,
+      yaw: 0,
+      pitch: 0,
+      dimension
     });
+    if (!result.success) {
+      throw new Error(result.message || 'Minecraft server rejected the Warp update');
+    }
+  } else {
+    // Keep the Warp for the next server startup when the game server is offline.
+    saveWarpToFile(facilityName, x, y, z, 0, 0, dimension);
   }
 
   // Update DB status
@@ -283,5 +322,6 @@ module.exports = {
   handleWarpModalSubmit,
   handleWarpApproveButton,
   handleWarpRejectButton,
-  WARP_PANEL_CHANNEL_ID
+  WARP_PANEL_CHANNEL_ID,
+  getWarpsFilePath
 };
