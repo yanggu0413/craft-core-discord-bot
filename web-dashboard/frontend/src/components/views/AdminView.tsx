@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle, Eye, Shield, Sparkles, Send } from 'lucide-react';
+import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle, Eye, Shield, Sparkles, Send, FileText } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -46,7 +46,7 @@ const COLOR_MAP: Record<string, string> = {
 };
 
 export default function AdminView({ token, triggerToast, API_URL }: AdminViewProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'audit' | 'announcement' | 'cobrand'>('audit');
+  const [activeSubTab, setActiveSubTab] = useState<'audit' | 'announcement' | 'cobrand' | 'transactions'>('audit');
 
   // Ban & Kick States
   const [banPlayer, setBanPlayer] = useState('');
@@ -83,6 +83,33 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
   const [titleColor, setTitleColor] = useState('§c');
   const [titleBold, setTitleBold] = useState(true);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+
+  // Transaction Log Inspector States
+  const [txSearch, setTxSearch] = useState('');
+  const [txList, setTxList] = useState<any[]>([]);
+  const [txTotal, setTxTotal] = useState(0);
+  const [txPage, setTxPage] = useState(1);
+  const [isLoadingTx, setIsLoadingTx] = useState(false);
+
+  const fetchAdminTransactions = async (page = 1, search = '') => {
+    if (!token) return;
+    setIsLoadingTx(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/transactions?page=${page}&limit=50&search=${encodeURIComponent(search)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTxList(data.transactions || []);
+        setTxTotal(data.total || 0);
+        setTxPage(data.page || 1);
+      }
+    } catch (e: any) {
+      triggerToast('載入交易日誌失敗：' + e.message, 'error');
+    } finally {
+      setIsLoadingTx(false);
+    }
+  };
 
   const fetchPlayerTitle = async (username: string) => {
     try {
@@ -385,6 +412,19 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
             }`}
           >
             🤝 聯名加值禮包
+          </button>
+          <button
+            onClick={() => {
+              setActiveSubTab('transactions');
+              fetchAdminTransactions(1, '');
+            }}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              activeSubTab === 'transactions' 
+                ? 'bg-card text-foreground shadow-sm' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            📜 玩家交易日誌
           </button>
         </div>
       </div>
@@ -767,6 +807,133 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
               <Sparkles className="w-4 h-4 mr-2" />
               {isRewarding ? '正在派發中...' : '確認派發聯名禮包'}
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 4. 子分頁 D: 📜 玩家交易日誌查詢器 (Transaction Log Inspector) */}
+      {activeSubTab === 'transactions' && (
+        <Card className="bg-card border-border shadow-sm animate-fade-in">
+          <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-xs font-bold flex items-center space-x-2 text-emerald-500">
+                <FileText className="w-4 h-4" />
+                <span>📜 玩家交易日誌與商業流水查詢器 (Transaction Inspector)</span>
+              </CardTitle>
+              <CardDescription className="text-[11px]">
+                即時調閱全服 ChestShop 商店交易、玩家間轉帳與市場購買日誌。
+              </CardDescription>
+            </div>
+            <span className="px-2.5 py-1 text-[11px] font-bold rounded border text-emerald-500 border-emerald-500/30 bg-emerald-500/10 font-mono">
+              共計 {txTotal} 筆交易紀錄
+            </span>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            {/* 搜尋過濾 Bar */}
+            <div className="flex items-center space-x-2">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-muted-foreground" />
+                <Input
+                  value={txSearch}
+                  onChange={(e) => setTxSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchAdminTransactions(1, txSearch)}
+                  placeholder="搜尋買家、賣家帳號、物品名稱或座標 (按 Enter 搜尋)..."
+                  className="pl-9 h-9 text-xs font-medium"
+                />
+              </div>
+              <Button 
+                onClick={() => fetchAdminTransactions(1, txSearch)}
+                disabled={isLoadingTx}
+                size="sm"
+                className="h-9 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isLoadingTx ? '搜尋中...' : '🔍 查詢交易'}
+              </Button>
+            </div>
+
+            {/* 交易列表 Table */}
+            <div className="border border-border rounded-lg overflow-hidden bg-background/50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-muted/50 border-b border-border text-[10px] uppercase font-bold text-muted-foreground">
+                    <tr>
+                      <th className="p-3">ID</th>
+                      <th className="p-3">時間 (Timestamp)</th>
+                      <th className="p-3">買家 (Buyer)</th>
+                      <th className="p-3">賣家 (Seller)</th>
+                      <th className="p-3">交易物品 (Item)</th>
+                      <th className="p-3 text-right">數量</th>
+                      <th className="p-3 text-right">單價</th>
+                      <th className="p-3 text-right">稅金扣除</th>
+                      <th className="p-3 text-right">賣家淨收</th>
+                      <th className="p-3 text-center">商店座標</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {isLoadingTx ? (
+                      <tr>
+                        <td colSpan={10} className="p-8 text-center text-muted-foreground text-xs font-medium">
+                          資料載入中...
+                        </td>
+                      </tr>
+                    ) : txList.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="p-8 text-center text-muted-foreground text-xs font-medium">
+                          尚無符合條件的交易紀錄。
+                        </td>
+                      </tr>
+                    ) : (
+                      txList.map((tx: any) => (
+                        <tr key={tx.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="p-3 font-mono text-[11px] text-muted-foreground">#{tx.id}</td>
+                          <td className="p-3 text-[11px] font-mono whitespace-nowrap">{tx.timestamp}</td>
+                          <td className="p-3 font-bold text-emerald-500">{tx.buyer || '系統/匿名'}</td>
+                          <td className="p-3 font-bold text-cyan-500">{tx.seller || '系統/收購商'}</td>
+                          <td className="p-3 font-bold">
+                            <span className="bg-muted px-2 py-0.5 rounded text-[11px] font-mono">
+                              {tx.item}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right font-mono font-bold">x{tx.quantity}</td>
+                          <td className="p-3 text-right font-mono font-bold text-emerald-500">${tx.unit_price}</td>
+                          <td className="p-3 text-right font-mono text-xs text-amber-500">${tx.tax_deducted || 0}</td>
+                          <td className="p-3 text-right font-mono font-bold text-emerald-400">${tx.net_profit || (tx.quantity * tx.unit_price)}</td>
+                          <td className="p-3 text-center font-mono text-[11px] text-muted-foreground">{tx.shop_coords || 'N/A'}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 分頁按鈕 Bar */}
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-[11px] text-muted-foreground font-mono">
+                顯示第 {(txPage - 1) * 50 + 1} ~ {Math.min(txPage * 50, txTotal)} 筆，共 {txTotal} 筆
+              </span>
+              <div className="flex items-center space-x-2">
+                <Button
+                  onClick={() => fetchAdminTransactions(txPage - 1, txSearch)}
+                  disabled={txPage <= 1 || isLoadingTx}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs font-bold"
+                >
+                  ◀ 上一頁
+                </Button>
+                <span className="text-xs font-bold px-2">第 {txPage} 頁</span>
+                <Button
+                  onClick={() => fetchAdminTransactions(txPage + 1, txSearch)}
+                  disabled={txPage * 50 >= txTotal || isLoadingTx}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs font-bold"
+                >
+                  下一頁 ▶
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}

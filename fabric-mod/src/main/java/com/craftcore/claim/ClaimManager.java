@@ -5,12 +5,16 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -32,6 +36,10 @@ public class ClaimManager {
         public int chunks;
         public String[] corners; // ["x1,y1,z1", "x2,y2,z2"]
         public String dimension;
+        public boolean public_containers = false;
+        public boolean public_interact = false;
+        public boolean public_entry = true;
+        public List<String> banned_players = new ArrayList<>();
         public Permissions permissions = new Permissions();
 
         public static class Permissions {
@@ -264,7 +272,15 @@ public class ClaimManager {
 
         String username = player.getName().getString();
         boolean isOp = player.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);
-        if (claim.owner.equals(username) || isOp) return true; // Owner or OP bypass
+        if (claim.owner.equalsIgnoreCase(username) || isOp) return true; // Owner or OP bypass
+
+        // Check public flags
+        if ("containers".equalsIgnoreCase(type) && claim.public_containers) {
+            return true;
+        }
+        if ("interact".equalsIgnoreCase(type) && claim.public_interact) {
+            return true;
+        }
 
         List<String> allowed = null;
         if ("build".equalsIgnoreCase(type)) {
@@ -277,6 +293,64 @@ public class ClaimManager {
             allowed = claim.permissions.interact;
         }
 
-        return allowed != null && allowed.contains(username);
+        return allowed != null && (allowed.contains(username) || allowed.contains("*"));
+    }
+
+    public static boolean checkEntryPermission(ServerPlayer player, BlockPos pos, Level world) {
+        Claim claim = getClaimAt(pos, world);
+        if (claim == null) return true;
+
+        String username = player.getName().getString();
+        boolean isOp = player.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);
+        if (claim.owner.equalsIgnoreCase(username) || isOp) return true;
+
+        // Check if explicitly banned
+        if (claim.banned_players != null) {
+            for (String b : claim.banned_players) {
+                if (b.equalsIgnoreCase(username)) return false;
+            }
+        }
+
+        // If public_entry is false, must be in member lists
+        if (!claim.public_entry) {
+            boolean isMember = (claim.permissions.build != null && claim.permissions.build.contains(username))
+                    || (claim.permissions.breakBlocks != null && claim.permissions.breakBlocks.contains(username))
+                    || (claim.permissions.containers != null && claim.permissions.containers.contains(username))
+                    || (claim.permissions.interact != null && claim.permissions.interact.contains(username));
+            if (!isMember) return false;
+        }
+
+        return true;
+    }
+
+    private static final Map<String, Long> lastEntryWarningTime = new ConcurrentHashMap<>();
+
+    public static void registerEvents() {
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            long now = System.currentTimeMillis();
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                BlockPos pos = player.blockPosition();
+                Level world = player.level();
+                if (!checkEntryPermission(player, pos, world)) {
+                    Claim claim = getClaimAt(pos, world);
+                    String claimName = claim != null ? (claim.name != null ? claim.name : claim.id) : "此領地";
+                    String username = player.getName().getString();
+
+                    // Push player back
+                    Vec3 motion = player.getDeltaMovement();
+                    player.setDeltaMovement(new Vec3(-motion.x * 1.5, 0.35, -motion.z * 1.5));
+                    player.hurtMarked = true;
+
+                    // Alert player once per 3 seconds
+                    Long lastAlert = lastEntryWarningTime.get(username);
+                    if (lastAlert == null || (now - lastAlert) > 3000) {
+                        lastEntryWarningTime.put(username, now);
+                        player.sendSystemMessage(Component.literal("§c[領地系統] 🚫 你已被禁止進入 [" + claimName + "]！"));
+                        player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§c§l🚫 禁止進入！")));
+                        player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("§e你已被禁止進入領地 [" + claimName + "]")));
+                    }
+                }
+            }
+        });
     }
 }

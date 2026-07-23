@@ -21,6 +21,7 @@ public class CraftCoreMod implements ModInitializer {
         com.craftcore.teleport.TeleportRequestManager.registerEvents();
         com.craftcore.afk.AfkManager.registerEvents();
         com.craftcore.task.DailyTaskManager.registerEvents();
+        com.craftcore.claim.ClaimManager.registerEvents();
     }
 
     public static synchronized void startWSClient(MinecraftServer server) {

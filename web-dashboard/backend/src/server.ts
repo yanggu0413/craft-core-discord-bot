@@ -2575,6 +2575,77 @@ app.delete('/api/warps/:name', authenticateToken, async (req: CustomRequest, res
   }
 });
 
+// GET /api/admin/transactions - Transaction log inspector
+app.get('/api/admin/transactions', authenticateToken, (req: any, res: any) => {
+  if (!db) return res.status(500).json({ success: false, message: '資料庫未連結' });
+  try {
+    const search = req.query.search ? String(req.query.search).trim() : '';
+    const type = req.query.type ? String(req.query.type).trim() : '';
+    const limit = Math.min(parseInt(String(req.query.limit || '50'), 10), 200);
+    const page = Math.max(parseInt(String(req.query.page || '1'), 10), 1);
+    const offset = (page - 1) * limit;
+
+    let query = 'SELECT * FROM transactions';
+    const params: any[] = [];
+    const conditions: string[] = [];
+
+    if (search) {
+      conditions.push('(buyer LIKE ? OR seller LIKE ? OR item LIKE ? OR shop_coords LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY id DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const rows = db.prepare(query).all(...params);
+
+    let countQuery = 'SELECT COUNT(*) as total FROM transactions';
+    const countParams: any[] = [];
+    if (search) {
+      countQuery += ' WHERE (buyer LIKE ? OR seller LIKE ? OR item LIKE ? OR shop_coords LIKE ?)';
+      countParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    const totalRow = db.prepare(countQuery).get(...countParams) as any;
+
+    return res.json({
+      success: true,
+      transactions: rows,
+      total: totalRow?.total || 0,
+      page,
+      limit
+    });
+  } catch (error: any) {
+    console.error('Error fetching admin transactions:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/claims/flags - Update claim flags & blacklist
+app.post('/api/claims/flags', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { claim_id, public_containers, public_interact, public_entry, banned_players } = req.body;
+    const username = req.user?.mc_username || req.user?.username;
+
+    // Send WS query to Minecraft server
+    const wsRes = await sendWsQuery('update_claim_flags', {
+      username,
+      claim_id,
+      public_containers,
+      public_interact,
+      public_entry,
+      banned_players
+    });
+
+    return res.json(wsRes || { success: true, message: '領地權限標籤已設定完成！' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // -------------------------------------------------------------
 // Live WebSockets Server for Web Clients (Frontend Real-Time Sync)
 // -------------------------------------------------------------
