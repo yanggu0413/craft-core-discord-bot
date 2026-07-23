@@ -1231,7 +1231,7 @@ public class ShopManager {
                         // ignore
                     }
 
-                    String receipt = String.format("Purchase successful!\nTotal Paid: $%.2f\nSales Tax (5%% Burned): $%.2f\nNet Payout to Seller: $%.2f", totalCost, tax, netRevenue);
+                    String receipt = String.format("§a[Craft-Core] 購買成功！\n§b總付金額: $%.2f\n§e營業稅 (5%% 銷毀): $%.2f\n§c賣家實收金額: $%.2f", totalCost, tax, netRevenue);
                     return new ChatInterceptionResult(true, receipt, true);
 
                 } else if (bSession.mode.equals("sell")) {
@@ -1387,7 +1387,7 @@ public class ShopManager {
                         // ignore
                     }
 
-                    String receipt = String.format("Sale successful!\nTotal Value: $%.2f\nSales Tax (5%% Burned): $%.2f\nNet Received: $%.2f", totalCost, tax, netRevenue);
+                    String receipt = String.format("§a[Craft-Core] 出售成功！\n§b總交易金額: $%.2f\n§e營業稅 (5%% 銷毀): $%.2f\n§a實收金額: $%.2f", totalCost, tax, netRevenue);
                     return new ChatInterceptionResult(true, receipt, true);
                 }
             }

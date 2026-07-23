@@ -479,13 +479,6 @@ public class ChestShopEventHandler {
                     }
                     if (result.success) {
                         sender.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-                        if (isBuySession && shopId != null) {
-                            net.minecraft.network.chat.MutableComponent prompt = Component.literal("§e[ 點選此處評分商店 ]")
-                                .withStyle(style -> style
-                                    .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/shop rate " + shopId))
-                                    .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal("點擊開始評分此商店 (1-5 星)"))));
-                            sender.sendSystemMessage(prompt);
-                        }
                     } else {
                         sender.playSound(SoundEvents.VILLAGER_NO, 1.0f, 1.0f);
                     }
