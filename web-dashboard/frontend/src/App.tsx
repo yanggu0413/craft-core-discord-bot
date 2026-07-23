@@ -243,8 +243,8 @@ export default function App() {
         console.error('Failed to fetch tasks', err);
       }
 
-      // 8. 領地列表
-      const claimsRes = await fetch(`${API_URL}/claims`, {
+      // 8. 領地列表 (管理員可帶 all=true 獲取全服所有領地)
+      const claimsRes = await fetch(`${API_URL}/claims?all=true`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       const claimsJson = await claimsRes.json();
@@ -605,6 +605,7 @@ export default function App() {
             <ClaimsView
               claims={claims}
               username={username}
+              isAdmin={isAdmin}
               handleUpdatePermission={handleUpdatePermission}
             />
           )}

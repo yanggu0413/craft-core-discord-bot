@@ -1412,11 +1412,15 @@ app.get('/api/claims', authenticateToken, async (req, res) => {
     if (!user)
         return res.status(401).json({ success: false, message: '尚未登入' });
     const username = user.mc_username;
+    const isAdmin = (user.profile && user.profile.isAdmin) || ADMIN_DISCORD_IDS.has(user.discord_id || '');
+    const viewAll = req.query.all === 'true' || req.query.viewAll === 'true';
     try {
         const response = await sendWsQuery('claims_query', {});
-        const allClaims = response.claims || [];
-        const myClaims = allClaims.filter((c) => c.owner.toLowerCase() === username.toLowerCase());
-        res.json({ success: true, claims: myClaims });
+        const rawClaims = response.claims || [];
+        const claimsToReturn = (isAdmin && viewAll)
+            ? rawClaims
+            : rawClaims.filter((c) => c.owner.toLowerCase() === username.toLowerCase());
+        res.json({ success: true, claims: claimsToReturn, isAdmin });
     }
     catch (error) {
         // Fallback: Read from config/craft-core-shop/claims.json
@@ -1425,9 +1429,11 @@ app.get('/api/claims', authenticateToken, async (req, res) => {
             if (fs_1.default.existsSync(claimsFile)) {
                 const raw = fs_1.default.readFileSync(claimsFile, 'utf8');
                 const claimsMap = JSON.parse(raw);
-                const claimsArray = Object.values(claimsMap)
-                    .filter((c) => c.owner.toLowerCase() === username.toLowerCase())
-                    .map((c) => ({
+                const rawArray = Object.values(claimsMap);
+                const filteredArray = (isAdmin && viewAll)
+                    ? rawArray
+                    : rawArray.filter((c) => c.owner.toLowerCase() === username.toLowerCase());
+                const claimsArray = filteredArray.map((c) => ({
                     id: c.id,
                     name: c.name,
                     owner: c.owner,
@@ -1441,13 +1447,13 @@ app.get('/api/claims', authenticateToken, async (req, res) => {
                         interact: c.permissions?.interact || []
                     }
                 }));
-                return res.json({ success: true, claims: claimsArray });
+                return res.json({ success: true, claims: claimsArray, isAdmin });
             }
         }
         catch (fsErr) {
             console.error('Failed to read claims fallback:', fsErr);
         }
-        res.json({ success: true, claims: [] });
+        res.json({ success: true, claims: [], isAdmin });
     }
 });
 // POST /api/claims/permission
