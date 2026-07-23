@@ -1075,11 +1075,6 @@ app.post('/api/user/luckydraw', authenticateToken, async (req: CustomRequest, re
   }
 });
 
-  } catch (error: any) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-});
-
 app.post('/api/user/exchange-playtime', authenticateToken, async (req: CustomRequest, res: Response) => {
   const user = req.user;
   if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
