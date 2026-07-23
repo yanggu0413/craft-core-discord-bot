@@ -376,6 +376,20 @@ public class PacketHandler {
                     client.send(new Packet("claims_response", response));
                     break;
                 }
+                case "fake_players_query": {
+                    FakePlayersQueryPayload payload = GSON.fromJson(payloadObj, FakePlayersQueryPayload.class);
+                    java.util.List<FakePlayerEntry> entries = new java.util.ArrayList<>();
+                    java.util.Map<String, String> allBots = com.craftcore.fakeplayer.FakePlayerManager.getAllFakePlayers();
+                    for (java.util.Map.Entry<String, String> entry : allBots.entrySet()) {
+                        String botName = entry.getKey();
+                        String owner = entry.getValue();
+                        boolean isOnline = (server.getPlayerList().getPlayerByName(botName) != null);
+                        entries.add(new FakePlayerEntry(botName, owner, isOnline));
+                    }
+                    FakePlayersResponsePayload response = new FakePlayersResponsePayload(payload.query_id, entries, true);
+                    client.send(new Packet("fake_players_response", response));
+                    break;
+                }
                 case "claims_permission_update": {
                     ClaimsPermissionUpdatePayload payload = GSON.fromJson(payloadObj, ClaimsPermissionUpdatePayload.class);
                     boolean isAuth = client.isAuthenticated();

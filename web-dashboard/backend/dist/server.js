@@ -225,7 +225,7 @@ function connectToBotWS() {
 }
 connectToBotWS();
 // Helper to send query over WS to Minecraft via Bot bridge
-function sendWsQuery(type, payload) {
+function sendWsQuery(type, payload, timeoutMs = 5000) {
     return new Promise((resolve, reject) => {
         if (!botWsClient || botWsClient.readyState !== ws_1.default.OPEN) {
             return reject(new Error('遊戲伺服器連線已中斷'));
@@ -238,7 +238,7 @@ function sendWsQuery(type, payload) {
         const timeout = setTimeout(() => {
             pendingQueries.delete(queryId);
             reject(new Error('查詢伺服器超時'));
-        }, 15000);
+        }, timeoutMs);
         pendingQueries.set(queryId, { resolve, reject, timeout });
         botWsClient.send(JSON.stringify({
             type,
@@ -1902,16 +1902,23 @@ app.get('/api/user/fakeplayers', authenticateToken, async (req, res) => {
     const user = req.user;
     if (!user)
         return res.status(401).json({ success: false, message: '尚未登入' });
+    const cacheKey = `cache:fakeplayers:${user.mc_username.toLowerCase()}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) {
+        return res.json({ success: true, fakeplayers: cached, cached: true });
+    }
     try {
-        const response = await sendWsQuery('fake_players_query', { username: user.mc_username });
+        // Set fast 1500ms timeout instead of default 5000ms
+        const response = await sendWsQuery('fake_players_query', { username: user.mc_username }, 1500);
         if (response && response.success) {
             const myBots = (response.fakeplayers || []).filter((b) => b.owner && b.owner.toLowerCase() === user.mc_username.toLowerCase());
+            setCachedData(cacheKey, myBots, 3000); // 3s TTL cache
             return res.json({ success: true, fakeplayers: myBots });
         }
         return res.json({ success: true, fakeplayers: [] });
     }
     catch (error) {
-        // Fallback: Read local config/craft-core-shop/fake_players.json to prevent timeouts
+        // Fallback: Read local config/craft-core-shop/fake_players.json
         try {
             const possiblePaths = [
                 path_1.default.resolve(__dirname, '../../../config/craft-core-shop/fake_players.json'),
@@ -1925,6 +1932,7 @@ app.get('/api/user/fakeplayers', authenticateToken, async (req, res) => {
                     const myBots = Object.entries(map)
                         .filter(([_, owner]) => String(owner).toLowerCase() === user.mc_username.toLowerCase())
                         .map(([name, owner]) => ({ name, owner, online: false }));
+                    setCachedData(cacheKey, myBots, 2000);
                     return res.json({ success: true, fakeplayers: myBots });
                 }
             }
@@ -1956,6 +1964,7 @@ app.post('/api/user/fakeplayers/action', authenticateToken, async (req, res) => 
     try {
         const fullCmd = action.trim() ? `/fp ${botName} ${action}` : `/fp ${botName}`;
         const response = await sendWsQuery('command_request', { command: fullCmd });
+        invalidateCachePattern('cache:fakeplayers');
         return res.json({ success: response.success, message: response.output || '指令已送出' });
     }
     catch (error) {
