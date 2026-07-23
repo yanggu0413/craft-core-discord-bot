@@ -50,6 +50,30 @@ public class AfkManager {
         return state != null && state.isAfk;
     }
 
+    public static boolean toggleAfk(ServerPlayer player) {
+        return toggleAfk(player, System.currentTimeMillis());
+    }
+
+    public static boolean toggleAfk(ServerPlayer player, long now) {
+        UUID uuid = player.getUUID();
+        AfkState state = playerStates.computeIfAbsent(uuid,
+                ignored -> new AfkState(player.getX(), player.getY(), player.getZ(), now));
+
+        state.lastX = player.getX();
+        state.lastY = player.getY();
+        state.lastZ = player.getZ();
+        state.lastMoveTimeMs = now;
+        state.isAfk = !state.isAfk;
+
+        if (state.isAfk) {
+            player.sendSystemMessage(Component.literal("§b[Craft-Core] §e您已進入 [AFK] 掛機防護狀態。"));
+        } else {
+            player.sendSystemMessage(Component.literal("§b[Craft-Core] §7您已手動解除 [AFK] 掛機防護狀態。"));
+        }
+        updateTabList(player);
+        return state.isAfk;
+    }
+
     public static void checkPlayerAfk(ServerPlayer player, long now) {
         UUID uuid = player.getUUID();
         double currentX = player.getX();

@@ -79,6 +79,54 @@ public class DiscordCommand {
                     })
             );
 
+            dispatcher.register(Commands.literal("workbench")
+                    .executes(context -> {
+                        ServerPlayer player = context.getSource().getPlayer();
+                        if (player == null) {
+                            context.getSource().sendSystemMessage(Component.literal("此指令只能由遊戲內玩家使用。"));
+                            return 0;
+                        }
+
+                        player.openMenu(new SimpleMenuProvider(
+                                (syncId, playerInventory, menuPlayer) ->
+                                        new net.minecraft.world.inventory.CraftingMenu(syncId, playerInventory),
+                                Component.literal("隨身工作台")
+                        ));
+                        return 1;
+                    })
+            );
+
+            dispatcher.register(Commands.literal("enderchest")
+                    .executes(context -> {
+                        ServerPlayer player = context.getSource().getPlayer();
+                        if (player == null) {
+                            context.getSource().sendSystemMessage(Component.literal("此指令只能由遊戲內玩家使用。"));
+                            return 0;
+                        }
+
+                        player.openMenu(new SimpleMenuProvider(
+                                (syncId, playerInventory, menuPlayer) ->
+                                        net.minecraft.world.inventory.ChestMenu.threeRows(
+                                                syncId, playerInventory, player.getEnderChestInventory()),
+                                Component.literal("隨身終界箱")
+                        ));
+                        return 1;
+                    })
+            );
+
+            dispatcher.register(Commands.literal("afk")
+                    .executes(context -> {
+                        ServerPlayer player = context.getSource().getPlayer();
+                        if (player == null) {
+                            context.getSource().sendSystemMessage(Component.literal("此指令只能由遊戲內玩家使用。"));
+                            return 0;
+                        }
+
+                        com.craftcore.afk.AfkManager.toggleAfk(player);
+                        return 1;
+                    })
+            );
+
 
 
             dispatcher.register(Commands.literal("playerinfo")
