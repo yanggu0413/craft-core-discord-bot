@@ -22,7 +22,7 @@ dependencies {
     // Loom compilation dependencies
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.hasProperty('fabric_api_version') ? project.fabric_api_version : project.fabric_version}"
 
     // JUnit 5 and Mockito for testing
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.2"

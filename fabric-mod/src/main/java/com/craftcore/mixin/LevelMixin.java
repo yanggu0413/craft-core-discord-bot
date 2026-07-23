@@ -16,10 +16,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class LevelMixin {
     @Inject(method = "destroyBlock", at = @At("HEAD"))
     private void onDestroyBlock(BlockPos pos, boolean drop, Entity entity, int maxUpdateDepth, CallbackInfoReturnable<Boolean> cir) {
-        if (entity instanceof Player player) {
-            Level level = (Level) (Object) this;
-            BlockState state = level.getBlockState(pos);
-            BlockEntity blockEntity = level.getBlockEntity(pos);
+        Level level = (Level) (Object) this;
+        BlockState state = level.getBlockState(pos);
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        Player player = (entity instanceof Player p) ? p : DailyTaskManager.getActiveMiningPlayer();
+        if (player != null) {
             DailyTaskManager.handleBlockBreak(level, player, pos, state, blockEntity);
         }
     }

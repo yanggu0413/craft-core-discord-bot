@@ -43,7 +43,9 @@ async function initializePanels(client) {
 
       const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('key_panel_checkin').setLabel('📅 每日簽到').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('key_panel_lottery').setLabel('🎰 幸運抽獎').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('key_panel_lottery').setLabel('🎰 1 抽').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('key_panel_lottery_10').setLabel('🎰 10 連抽').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('key_panel_lottery_all').setLabel('💥 全部抽完').setStyle(ButtonStyle.Danger),
         new ButtonBuilder().setCustomId('key_panel_query').setLabel('🔑 查詢鑰匙').setStyle(ButtonStyle.Secondary)
       );
 

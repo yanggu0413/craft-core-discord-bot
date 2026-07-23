@@ -24,7 +24,11 @@ async function buttonHandler(interaction) {
     else if (customId === 'key_panel_checkin') {
       await keyService.handleCheckin(interaction);
     } else if (customId === 'key_panel_lottery') {
-      await keyService.handleLottery(interaction);
+      await keyService.handleLottery(interaction, 1);
+    } else if (customId === 'key_panel_lottery_10') {
+      await keyService.handleLottery(interaction, 10);
+    } else if (customId === 'key_panel_lottery_all') {
+      await keyService.handleLottery(interaction, 'all');
     } else if (customId === 'key_panel_query') {
       await keyService.handleQueryKeys(interaction);
     } else if (customId === 'key_panel_leaderboard') {

@@ -161,7 +161,7 @@ async function handleSubscribeReminder(interaction) {
   });
 }
 
-async function handleLottery(interaction) {
+async function handleLottery(interaction, countParam = 1) {
   const discordId = interaction.user.id;
   const binding = await UserRepository.getBindingByDiscordId(discordId);
 
@@ -173,77 +173,105 @@ async function handleLottery(interaction) {
   }
 
   const userKeys = await UserRepository.getUserKeys(discordId);
-  if (!userKeys || (userKeys.keys_count || 0) < 1) {
+  const currentKeys = userKeys ? (userKeys.keys_count || 0) : 0;
+  if (currentKeys < 1) {
     return interaction.reply({
-      content: '❌ 您的鑰匙餘額不足！抽獎需要 1 把鑰匙。',
+      content: '❌ 您的鑰匙餘額不足！目前擁有 0 把鑰匙。',
       ephemeral: true
     });
   }
 
-  // Deduct key immediately
-  await UserRepository.updateKeys(discordId, userKeys.keys_count - 1);
+  let countToDraw = 1;
+  if (typeof countParam === 'string' && countParam.toLowerCase() === 'all') {
+    countToDraw = currentKeys;
+  } else if (typeof countParam === 'number') {
+    countToDraw = Math.min(currentKeys, Math.max(1, countParam));
+  } else {
+    const parsed = parseInt(countParam, 10);
+    countToDraw = isNaN(parsed) ? 1 : Math.min(currentKeys, Math.max(1, parsed));
+  }
 
   if (!session.isActive()) {
-    // Refund the key
-    await UserRepository.addKeysByDiscordId(discordId, 1);
     return interaction.reply({
       content: '❌ 遊戲伺服器目前未連線，無法進行抽獎。',
       ephemeral: true
     });
   }
 
-  await interaction.deferReply();
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply({ ephemeral: true });
+  }
 
   // Check if player is online
   try {
     const info = await session.executeCommand(`playerinfo "${binding.mc_username}"`, interaction.user.tag);
     if (!info.success || !info.output.includes('Online: true')) {
-      // Refund the key
-      await UserRepository.addKeysByDiscordId(discordId, 1);
       return interaction.editReply({
-        content: `❌ 開獎失敗！您必須處於遊戲線上狀態才能接收道具。`
+        content: `❌ 開獎失敗！您必須處於遊戲線上狀態才能接收道具與金幣。`
       });
     }
   } catch (err) {
-    // Refund the key
-    await UserRepository.addKeysByDiscordId(discordId, 1);
     return interaction.editReply({
       content: `❌ 開獎失敗！無法驗證您的線上狀態：${err.message}`
     });
   }
 
-  // Pick prize
-  console.log('[DEBUG LOTTERY] Math.random output:', Math.random(), 'function string:', Math.random.toString());
-  const prize = LOTTERY_REWARDS[Math.floor(Math.random() * LOTTERY_REWARDS.length)];
-  console.log('[DEBUG LOTTERY] selected prize:', prize);
+  // Deduct keys
+  const remainingKeys = currentKeys - countToDraw;
+  await UserRepository.updateKeys(discordId, remainingKeys);
 
-  // Run in-game commands
-  try {
+  // Batch draw execution
+  let totalMoney = 0;
+  const itemsWon = {};
+
+  for (let i = 0; i < countToDraw; i++) {
+    totalMoney += 150; // Guarantee $150 per draw
+    const prize = LOTTERY_REWARDS[Math.floor(Math.random() * LOTTERY_REWARDS.length)];
     if (prize.id === 'craftcore:money') {
-      await session.executeCommand(`addmoney ${binding.mc_username} ${prize.amount + 150}`, 'System');
+      const extraMoney = Math.floor(Math.random() * 150) + 50;
+      totalMoney += extraMoney;
     } else {
-      await session.executeCommand(`give ${binding.mc_username} ${prize.id} ${prize.amount}`, 'System');
-      await session.executeCommand(`addmoney ${binding.mc_username} 150`, 'System');
+      itemsWon[prize.name] = (itemsWon[prize.name] || 0) + prize.amount;
+      try {
+        await session.executeCommand(`give "${binding.mc_username}" ${prize.id} ${prize.amount}`, 'System');
+      } catch (e) {
+        logger.error(`Failed to give item ${prize.id}`, { error: e });
+      }
     }
-    await session.executeCommand(`title ${binding.mc_username} title {"text":"🎉 抽獎成功！","color":"yellow"}`, 'System');
-    await session.executeCommand(`title ${binding.mc_username} subtitle {"text":"獲得了 ${prize.name} + 額外 $150 遊戲幣","color":"gold"}`, 'System');
-    await session.executeCommand(`playsound minecraft:entity.player.levelup master ${binding.mc_username}`, 'System');
-  } catch (err) {
-    logger.error(`Failed to execute lottery command in game: ${err.message}`, { stack: err.stack, username: binding.mc_username });
   }
 
-  const prizeText = prize.id === 'craftcore:money'
-    ? `🎁 **$${prize.amount + 150}** 遊戲幣 (含額外加贈 **$150**)`
-    : `🎁 **${prize.name}** + 💰 **$150** 額外金幣`;
+  if (totalMoney > 0) {
+    try {
+      await session.executeCommand(`addmoney "${binding.mc_username}" ${totalMoney}`, 'System');
+    } catch (e) {
+      logger.error(`Failed to addmoney ${totalMoney}`, { error: e });
+    }
+  }
+
+  try {
+    await session.executeCommand(`title "${binding.mc_username}" title {"text":"🎉 批量抽獎成功！","color":"yellow"}`, 'System');
+    await session.executeCommand(`title "${binding.mc_username}" subtitle {"text":"共完成 ${countToDraw} 次抽獎！","color":"gold"}`, 'System');
+    await session.executeCommand(`playsound minecraft:entity.player.levelup master "${binding.mc_username}"`, 'System');
+  } catch (e) {}
+
+  let itemSummaryText = '';
+  const itemEntries = Object.entries(itemsWon);
+  if (itemEntries.length > 0) {
+    itemSummaryText = itemEntries.map(([name, qty]) => `• **${name}**: ${qty}`).join('\n');
+  } else {
+    itemSummaryText = '無（全數為金幣獎勵）';
+  }
 
   const embed = new EmbedBuilder()
-    .setTitle('🎉 幸運大抽獎！')
+    .setTitle('🎰 幸運批量抽獎結果！')
     .setColor('#f1c40f')
-    .setDescription(`恭喜 **${interaction.user.username}** 消耗 1 把鑰匙，成功抽中好禮！`)
+    .setDescription(`恭喜 **${interaction.user.username}** 消耗 **${countToDraw}** 把鑰匙完成抽獎！`)
     .addFields(
       { name: 'Minecraft 帳號', value: `\`${binding.mc_username}\``, inline: true },
-      { name: '獲得獎勵', value: prizeText, inline: true },
-      { name: '鑰匙餘額', value: `🔑 ${userKeys.keys_count - 1} 把`, inline: true }
+      { name: '抽獎次數', value: `🎲 **${countToDraw}** 次`, inline: true },
+      { name: '鑰匙餘額', value: `🔑 **${remainingKeys}** 把`, inline: true },
+      { name: '💰 獲得總金幣', value: `**$${totalMoney}** 元`, inline: false },
+      { name: '🎁 獲得物資匯整', value: itemSummaryText, inline: false }
     )
     .setTimestamp();
 

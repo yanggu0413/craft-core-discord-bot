@@ -24,6 +24,7 @@ public class SidebarManager {
     public static void register() {
         // Update sidebar every second (20 ticks)
         ServerTickEvents.END_SERVER_TICK.register(server -> {
+            updateSneakNametags(server);
             tickCounter++;
             if (tickCounter % 20 == 0) {
                 updateAllSidebars(server);
@@ -137,5 +138,26 @@ public class SidebarManager {
             scoreboard.removeObjective(objective);
         }
     }
-}
 
+    private static void updateSneakNametags(MinecraftServer server) {
+        Scoreboard scoreboard = server.getScoreboard();
+        net.minecraft.world.scores.PlayerTeam sneakTeam = scoreboard.getPlayerTeam("cc_sneak");
+        if (sneakTeam == null) {
+            sneakTeam = scoreboard.addPlayerTeam("cc_sneak");
+            sneakTeam.setNameTagVisibility(net.minecraft.world.scores.PlayerTeam.Visibility.NEVER);
+        }
+
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            net.minecraft.world.scores.PlayerTeam currentTeam = player.getTeam();
+            if (player.isCrouching()) {
+                if (currentTeam != sneakTeam) {
+                    scoreboard.addPlayerToTeam(player.getScoreboardName(), sneakTeam);
+                }
+            } else {
+                if (currentTeam == sneakTeam) {
+                    scoreboard.removePlayerFromTeam(player.getScoreboardName(), sneakTeam);
+                }
+            }
+        }
+    }
+}

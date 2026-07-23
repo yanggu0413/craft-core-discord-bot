@@ -960,11 +960,23 @@ app.post('/api/user/luckydraw', authenticateToken, async (req: CustomRequest, re
 
   try {
     const binding = db.prepare('SELECT keys_count FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username) as any;
-    if (!binding || (binding.keys_count || 0) < 1) {
+    const currentKeys = binding ? (binding.keys_count || 0) : 0;
+    if (!binding || currentKeys < 1) {
       return res.status(400).json({ success: false, message: '鑰匙餘額不足，無法進行抽獎！' });
     }
 
-    const newKeysCount = binding.keys_count - 1;
+    const reqCount = req.body?.count;
+    let countToDraw = 1;
+    if (reqCount === 'all') {
+      countToDraw = currentKeys;
+    } else if (typeof reqCount === 'number') {
+      countToDraw = Math.min(currentKeys, Math.max(1, reqCount));
+    } else {
+      const parsed = parseInt(reqCount, 10);
+      countToDraw = isNaN(parsed) ? 1 : Math.min(currentKeys, Math.max(1, parsed));
+    }
+
+    const newKeysCount = currentKeys - countToDraw;
     db.prepare('UPDATE bindings SET keys_count = ? WHERE mc_username = ? COLLATE NOCASE').run(newKeysCount, username);
 
     try {
@@ -990,58 +1002,78 @@ app.post('/api/user/luckydraw', authenticateToken, async (req: CustomRequest, re
       { id: 'craftcore:money', amount: 0, name: '遊戲金幣' }
     ];
 
-    const prize = pool[Math.floor(Math.random() * pool.length)];
-
-    let prizeName = prize.name;
-    let prizeId = prize.id;
-    let prizeAmount = prize.amount;
-
-    if (prize.id === 'craftcore:money') {
-      const extraMoney = Math.floor(Math.random() * 150) + 50;
-      prizeAmount = 150 + extraMoney;
-      prizeName = `$${prizeAmount} 遊戲幣`;
-    }
-
     let online = false;
     try {
       const statusRes = await sendWsQuery('player_status_query', { username });
       if (statusRes && statusRes.success) {
         online = statusRes.online;
       }
-    } catch (err) {
-      // Treat as offline
+    } catch (err) {}
+
+    let lastPrizeId = 'minecraft:diamond';
+    let lastPrizeName = '鑽石 x 5';
+    let lastPrizeAmount = 5;
+    let totalMoney = 0;
+    const itemSummary: Record<string, number> = {};
+
+    for (let i = 0; i < countToDraw; i++) {
+      totalMoney += 150; // Guarantee $150
+      const prize = pool[Math.floor(Math.random() * pool.length)];
+      lastPrizeId = prize.id;
+      lastPrizeName = prize.name;
+      lastPrizeAmount = prize.amount;
+
+      if (prize.id === 'craftcore:money') {
+        const extraMoney = Math.floor(Math.random() * 150) + 50;
+        totalMoney += extraMoney;
+        lastPrizeAmount = 150 + extraMoney;
+        lastPrizeName = `$${lastPrizeAmount} 遊戲幣`;
+      } else {
+        itemSummary[prize.name] = (itemSummary[prize.name] || 0) + prize.amount;
+        if (online) {
+          try {
+            await sendWsQuery('command_request', { command: `/give ${username} ${prize.id} ${prize.amount}`, admin_username: 'Web-Dashboard' });
+          } catch (cmdErr) {}
+        } else {
+          const insertMail = db.prepare(`
+            INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, nbt, status)
+            VALUES ('System', 'System', ?, ?, ?, ?, 'pending')
+          `);
+          insertMail.run(username, prize.id, prize.amount, null);
+        }
+      }
+    }
+
+    if (totalMoney > 0 && online) {
+      try {
+        await sendWsQuery('command_request', { command: `/addmoney ${username} ${totalMoney}`, admin_username: 'Web-Dashboard' });
+      } catch (cmdErr) {}
     }
 
     if (online) {
       try {
-        if (prizeId === 'craftcore:money') {
-          await sendWsQuery('command_request', { command: `/addmoney ${username} ${prizeAmount}`, admin_username: 'Web-Dashboard' });
-        } else {
-          await sendWsQuery('command_request', { command: `/give ${username} ${prizeId} ${prizeAmount}`, admin_username: 'Web-Dashboard' });
-        }
         await sendWsQuery('command_request', { command: `/playsound minecraft:entity.player.levelup master ${username}`, admin_username: 'Web-Dashboard' });
         await sendWsQuery('command_request', { command: `/title ${username} title {"text":"🎉 抽獎成功！","color":"yellow"}`, admin_username: 'Web-Dashboard' });
-        await sendWsQuery('command_request', { command: `/title ${username} subtitle {"text":"獲得了 ${prizeName}","color":"gold"}`, admin_username: 'Web-Dashboard' });
-      } catch (cmdErr: any) {
-        console.error('Failed to run luckydraw commands:', cmdErr.message);
-      }
-    } else {
-      const insertMail = db.prepare(`
-        INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, nbt, status)
-        VALUES ('System', 'System', ?, ?, ?, ?, 'pending')
-      `);
-      insertMail.run(username, prizeId, prizeAmount, null);
+        await sendWsQuery('command_request', { command: `/title ${username} subtitle {"text":"完成 ${countToDraw} 次抽獎！","color":"gold"}`, admin_username: 'Web-Dashboard' });
+      } catch (cmdErr) {}
     }
 
     return res.json({
       success: true,
+      count_drawn: countToDraw,
+      total_money: totalMoney,
+      item_summary: itemSummary,
       reward: {
-        id: prizeId,
-        amount: prizeAmount,
-        name: prizeName
+        id: lastPrizeId,
+        amount: lastPrizeAmount,
+        name: lastPrizeName
       },
       keys_count: newKeysCount
     });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
 
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

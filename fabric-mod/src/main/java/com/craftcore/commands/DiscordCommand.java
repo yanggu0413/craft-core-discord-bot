@@ -89,11 +89,36 @@ public class DiscordCommand {
 
                         player.openMenu(new SimpleMenuProvider(
                                 (syncId, playerInventory, menuPlayer) ->
-                                        new net.minecraft.world.inventory.CraftingMenu(syncId, playerInventory),
+                                        new PortableCraftingMenu(syncId, playerInventory),
                                 Component.literal("隨身工作台")
                         ));
                         return 1;
                     })
+            );
+
+            dispatcher.register(Commands.literal("luckydraw")
+                    .executes(context -> {
+                        ServerPlayer player = context.getSource().getPlayer();
+                        if (player == null) return 0;
+                        return executeBatchLotteryInGame(player, 1);
+                    })
+                    .then(Commands.argument("count", com.mojang.brigadier.arguments.StringArgumentType.string())
+                            .executes(context -> {
+                                ServerPlayer player = context.getSource().getPlayer();
+                                if (player == null) return 0;
+                                String arg = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "count");
+                                int count = 1;
+                                if (arg.equalsIgnoreCase("all")) {
+                                    count = -1;
+                                } else {
+                                    try {
+                                        count = Integer.parseInt(arg);
+                                    } catch (NumberFormatException e) {
+                                        count = 1;
+                                    }
+                                }
+                                return executeBatchLotteryInGame(player, count);
+                            }))
             );
 
             dispatcher.register(Commands.literal("enderchest")
@@ -1949,7 +1974,9 @@ public class DiscordCommand {
                     .withRotation(player.getRotationVector())
                     .withLevel((ServerLevel) player.level());
 
-            String cmd = "player " + botName + " spawn";
+            String dim = player.level().dimension().identifier().toString();
+            String cmd = String.format(java.util.Locale.ROOT, "player %s spawn at %.2f %.2f %.2f facing %.2f %.2f in %s",
+                    botName, player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot(), dim);
             server.getCommands().performPrefixedCommand(elevatedSource, cmd);
             player.sendSystemMessage(Component.literal("§b[Craft-Core] §a成功召喚假人：" + botName));
             return 1;
@@ -2263,6 +2290,84 @@ public class DiscordCommand {
         ServerPlayer player = context.getSource().getPlayer();
         if (player == null) return 0;
         com.craftcore.teleport.WastebinManager.openWastebin(player);
+        return 1;
+    }
+
+    public static class PortableCraftingMenu extends net.minecraft.world.inventory.CraftingMenu {
+        public PortableCraftingMenu(int syncId, net.minecraft.world.entity.player.Inventory playerInventory) {
+            super(syncId, playerInventory, net.minecraft.world.inventory.ContainerLevelAccess.create(playerInventory.player.level(), playerInventory.player.blockPosition()));
+        }
+
+        @Override
+        public boolean stillValid(net.minecraft.world.entity.player.Player player) {
+            return true;
+        }
+    }
+
+    public static int executeBatchLotteryInGame(ServerPlayer player, int requestedCount) {
+        String username = player.getName().getString();
+        int currentKeys = com.craftcore.economy.EconomyManager.getLotteryKeys(username);
+        if (currentKeys <= 0) {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您的抽獎鑰匙不足（目前擁有 0 把）！可完成每日簽到 /checkin 或於 Discord 領取。"));
+            return 0;
+        }
+
+        int countToDraw = requestedCount;
+        if (countToDraw <= 0 || countToDraw > currentKeys) {
+            countToDraw = currentKeys;
+        }
+
+        com.craftcore.economy.EconomyManager.setLotteryKeys(username, currentKeys - countToDraw);
+
+        String[] items = {
+            "minecraft:diamond:5:鑽石 x 5",
+            "minecraft:golden_carrot:5:金胡蘿蔔 x 5",
+            "minecraft:golden_apple:5:金蘋果 x 5",
+            "minecraft:experience_bottle:64:經驗瓶 x 64",
+            "minecraft:totem_of_undying:1:不死圖騰 x 1",
+            "craftcore:money:150:遊戲金幣"
+        };
+
+        java.util.Map<String, Integer> itemSummary = new java.util.LinkedHashMap<>();
+        double totalMoney = 0;
+        java.util.Random rand = new java.util.Random();
+
+        for (int i = 0; i < countToDraw; i++) {
+            totalMoney += 150.0;
+            String selected = items[rand.nextInt(items.length)];
+            String[] parts = selected.split(":");
+            String id = parts[0] + ":" + parts[1];
+            int qty = Integer.parseInt(parts[2]);
+            String name = parts[3];
+
+            if (id.equals("craftcore:money")) {
+                double extra = 50 + rand.nextInt(150);
+                totalMoney += extra;
+            } else {
+                itemSummary.put(name, itemSummary.getOrDefault(name, 0) + qty);
+                net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(id));
+                if (item != null) {
+                    net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(item, qty);
+                    if (!player.getInventory().add(stack)) {
+                        player.drop(stack, false);
+                    }
+                }
+            }
+        }
+
+        if (totalMoney > 0) {
+            com.craftcore.economy.EconomyManager.addMoney(username, totalMoney);
+        }
+
+        player.playSound(net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+        player.sendSystemMessage(Component.literal("§b[Craft-Core] §a🎉 成功消耗 §e" + countToDraw + " §a把鑰匙，完成批量抽獎！"));
+        player.sendSystemMessage(Component.literal("§e★ 共獲得金幣：§a$" + (int)totalMoney + " 元"));
+        if (!itemSummary.isEmpty()) {
+            StringBuilder sb = new StringBuilder("§e★ 獲得物資：§f");
+            itemSummary.forEach((k, v) -> sb.append(k).append(" x").append(v).append(", "));
+            String msg = sb.toString();
+            player.sendSystemMessage(Component.literal(msg.substring(0, msg.length() - 2)));
+        }
         return 1;
     }
 }

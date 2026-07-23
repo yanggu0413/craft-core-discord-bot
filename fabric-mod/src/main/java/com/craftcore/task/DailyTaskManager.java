@@ -123,15 +123,35 @@ public class DailyTaskManager {
 
     private static final java.util.Set<String> processedBlocksThisTick = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
     private static long lastClearedTick = -1;
+    private static final ThreadLocal<ServerPlayer> activeMiningPlayer = new ThreadLocal<>();
+
+    public static void setActiveMiningPlayer(ServerPlayer player) {
+        activeMiningPlayer.set(player);
+    }
+
+    public static ServerPlayer getActiveMiningPlayer() {
+        return activeMiningPlayer.get();
+    }
+
+    public static void clearActiveMiningPlayer() {
+        activeMiningPlayer.remove();
+    }
 
     public static void registerEvents() {
+        net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
+            if (player instanceof ServerPlayer sp) {
+                setActiveMiningPlayer(sp);
+            }
+            return true;
+        });
         net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
             handleBlockBreak(world, player, pos, state, blockEntity);
         });
     }
 
     public static void handleBlockBreak(Level world, Player player, BlockPos pos, BlockState state, BlockEntity blockEntity) {
-        if (world == null || world.isClientSide() || !(player instanceof ServerPlayer serverPlayer) || pos == null || state == null) {
+        ServerPlayer serverPlayer = (player instanceof ServerPlayer sp) ? sp : getActiveMiningPlayer();
+        if (world == null || world.isClientSide() || serverPlayer == null || pos == null || state == null) {
             return;
         }
 

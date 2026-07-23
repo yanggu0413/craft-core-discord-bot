@@ -271,8 +271,10 @@ export default function WelfareView({
     }
   };
 
+  const [customDrawInput, setCustomDrawInput] = useState<string>('1');
+
   // 4. Spin Lucky Draw (Roulette Animation)
-  const handleLuckyDraw = async () => {
+  const handleLuckyDraw = async (requestedCount: number | 'all' = 1) => {
     if (!token) {
       triggerToast('請先進行安全登入！', 'error');
       return;
@@ -288,7 +290,11 @@ export default function WelfareView({
     try {
       const res = await fetch(`${API_URL}/user/luckydraw`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ count: requestedCount })
       });
       const data = await res.json();
       if (!data.success) {
@@ -335,8 +341,6 @@ export default function WelfareView({
         const viewportWidth = container.parentElement?.getBoundingClientRect().width || 500;
         
         // Target: Center the winning card (index 50)
-        // Center position offset = viewportWidth / 2 - cardWidth / 2
-        // Slight random offset inside the winning card to prevent landing exactly in the mathematical center
         const insideCardOffset = Math.floor(Math.random() * 40) - 20; 
         const targetTranslateX = -(50 * cardWidth - (viewportWidth / 2 - cardWidth / 2) + insideCardOffset);
 
@@ -354,9 +358,7 @@ export default function WelfareView({
           const parentRect = container.parentElement?.getBoundingClientRect();
           if (!parentRect) return;
 
-          // How far we have scrolled inside the viewport
           const currentScroll = parentRect.left - rect.left;
-          // Calculate the card index at the center pointer line
           const centerCardIndex = Math.floor((currentScroll + centerLineX) / cardWidth);
 
           if (centerCardIndex !== lastPassedIndex && centerCardIndex >= 0 && centerCardIndex < 60) {
@@ -375,7 +377,11 @@ export default function WelfareView({
             cancelAnimationFrame(spinAnimationFrameRef.current);
           }
           playLevelUpSound();
-          triggerToast(`🎉 恭喜您獲得：${data.reward.name}！`, 'success');
+          if (data.count_drawn && data.count_drawn > 1) {
+            triggerToast(`🎉 批量抽獎完成 (${data.count_drawn} 抽)！共獲得 $${data.total_money} 金幣與物資！`, 'success');
+          } else {
+            triggerToast(`🎉 恭喜您獲得：${data.reward.name}！`, 'success');
+          }
           setIsSpinning(false);
           fetchData();
           fetchWelfareLeaderboard();
@@ -562,16 +568,55 @@ export default function WelfareView({
                 </div>
               </div>
 
-              {/* 抽獎動作按鈕 */}
-              <div className="flex flex-col items-center space-y-2">
-                <Button 
-                  onClick={handleLuckyDraw} 
-                  disabled={isSpinning || keysCount < 1 || !token}
-                  className="w-full md:w-64 h-11 text-xs font-bold bg-yellow-500 text-black hover:bg-yellow-600 disabled:bg-muted"
-                >
-                  {isSpinning ? '🎰 輪盤開箱旋轉中...' : `🔑 消耗 1 鑰匙進行抽獎`}
-                </Button>
-                <div className="text-[10px] text-muted-foreground">
+              {/* 抽獎動作按鈕與批量輸入 */}
+              <div className="flex flex-col items-center space-y-3">
+                <div className="flex flex-wrap items-center justify-center gap-2 w-full">
+                  <Button 
+                    onClick={() => handleLuckyDraw(1)} 
+                    disabled={isSpinning || keysCount < 1 || !token}
+                    className="h-10 px-4 text-xs font-bold bg-yellow-500 text-black hover:bg-yellow-600 disabled:bg-muted"
+                  >
+                    {isSpinning ? '🎰 旋轉中...' : '🔑 1 抽'}
+                  </Button>
+                  <Button 
+                    onClick={() => handleLuckyDraw(10)} 
+                    disabled={isSpinning || keysCount < 10 || !token}
+                    className="h-10 px-4 text-xs font-bold bg-amber-500 text-black hover:bg-amber-600 disabled:bg-muted"
+                  >
+                    🎰 10 連抽
+                  </Button>
+                  <Button 
+                    onClick={() => handleLuckyDraw('all')} 
+                    disabled={isSpinning || keysCount < 1 || !token}
+                    className="h-10 px-4 text-xs font-bold bg-red-500 text-white hover:bg-red-600 disabled:bg-muted"
+                  >
+                    💥 全部抽完 ({keysCount})
+                  </Button>
+                </div>
+
+                <div className="flex items-center space-x-2 w-full max-w-xs pt-1">
+                  <input
+                    type="number"
+                    min="1"
+                    max={keysCount}
+                    value={customDrawInput}
+                    onChange={(e) => setCustomDrawInput(e.target.value)}
+                    placeholder="自訂抽數"
+                    className="w-24 h-9 px-2 text-xs border border-border bg-muted/20 rounded-[4px] text-center"
+                  />
+                  <Button
+                    onClick={() => {
+                      const num = parseInt(customDrawInput, 10);
+                      if (!isNaN(num) && num > 0) handleLuckyDraw(num);
+                    }}
+                    disabled={isSpinning || keysCount < 1 || !token}
+                    className="flex-1 h-9 text-xs font-bold bg-muted hover:bg-muted/80 text-foreground"
+                  >
+                    自動輸入抽數
+                  </Button>
+                </div>
+
+                <div className="text-[10px] text-muted-foreground pt-1">
                   目前剩餘 🔑 <span className="font-bold text-foreground">{keysCount}</span> 把鑰匙
                 </div>
               </div>
