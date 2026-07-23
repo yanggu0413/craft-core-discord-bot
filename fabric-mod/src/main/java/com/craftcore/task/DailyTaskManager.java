@@ -110,8 +110,11 @@ public class DailyTaskManager {
                     int newProgress = oldProgress + 1;
                     killer.sendSystemMessage(Component.literal("§b[Craft-Core] §f每日任務進度：擊殺 " + slayTask.target + " (" + newProgress + "/" + slayTask.count + ")"));
                     if (newProgress == slayTask.count) {
-                        killer.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-                        killer.sendSystemMessage(Component.literal("§b[Craft-Core] §f您的每日任務【擊殺 " + slayTask.target + "】已達到 100% 進度！請輸入指令「§e/tasks claim§f」手動領取獎金！"));
+                        EconomyManager.addMoney(username, slayTask.reward);
+                        killer.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+                        killer.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§a🎉 每日任務完成！")));
+                        killer.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("§f已自動獲得獎金 §e$" + (int)slayTask.reward + "§f 元")));
+                        killer.sendSystemMessage(Component.literal("§b[Craft-Core] §a恭喜完成每日任務【擊殺 " + slayTask.target + "】，已自動撥款 §e$" + (int)slayTask.reward + "§a 元至您的帳戶！"));
                     }
                 }
             }
@@ -156,8 +159,11 @@ public class DailyTaskManager {
                 int newProgress = oldProgress + 1;
                 serverPlayer.sendSystemMessage(Component.literal("§b[Craft-Core] §f每日任務進度：挖掘 " + mineTask.target + " (" + newProgress + "/" + mineTask.count + ")"));
                 if (newProgress == mineTask.count) {
-                    serverPlayer.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-                    serverPlayer.sendSystemMessage(Component.literal("§b[Craft-Core] §f您的每日任務【挖掘 " + mineTask.target + "】已達到 100% 進度！請輸入指令「§e/tasks claim§f」手動領取獎金！"));
+                    EconomyManager.addMoney(username, mineTask.reward);
+                    serverPlayer.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+                    serverPlayer.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§a🎉 每日任務完成！")));
+                    serverPlayer.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("§f已自動獲得獎金 §e$" + (int)mineTask.reward + "§f 元")));
+                    serverPlayer.sendSystemMessage(Component.literal("§b[Craft-Core] §a恭喜完成每日任務【挖掘 " + mineTask.target + "】，已自動撥款 §e$" + (int)mineTask.reward + "§a 元至您的帳戶！"));
                 }
             }
         }

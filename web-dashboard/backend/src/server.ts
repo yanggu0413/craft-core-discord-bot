@@ -95,6 +95,21 @@ try {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS player_titles (
+        username TEXT PRIMARY KEY COLLATE NOCASE,
+        title_text TEXT NOT NULL,
+        color_code TEXT DEFAULT '§c',
+        is_bold INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    try {
+      db.prepare(`
+        INSERT OR IGNORE INTO player_titles (username, title_text, color_code, is_bold)
+        VALUES ('im_little_rory', '[服主]', '§c', 1)
+      `).run();
+    } catch (e) {}
     try {
       db.exec('ALTER TABLE bindings ADD COLUMN discord_tag TEXT');
     } catch (e) {}
@@ -1051,6 +1066,28 @@ app.post('/api/user/exchange-playtime', authenticateToken, async (req: CustomReq
       return res.status(400).json({ success: false, message: '找不到玩家綁定資訊。' });
     }
 
+    // 1. Try RPC playtime_exchange to Fabric Mod
+    try {
+      const exchangeRes = await sendWsQuery('playtime_exchange', { username, mode }, 4000);
+      if (exchangeRes && exchangeRes.success) {
+        const keysToAdd = exchangeRes.keys_added || 1;
+        const newKeysCount = (binding.keys_count || 0) + keysToAdd;
+        db.prepare('UPDATE bindings SET keys_count = ? WHERE mc_username = ? COLLATE NOCASE').run(newKeysCount, username);
+
+        return res.json({
+          success: true,
+          message: exchangeRes.message || `成功兌換 ${keysToAdd} 把鑰匙！`,
+          keys_count: newKeysCount,
+          exchanged_hours: keysToAdd * 5
+        });
+      } else if (exchangeRes && exchangeRes.message) {
+        return res.status(400).json({ success: false, message: exchangeRes.message });
+      }
+    } catch (rpcErr) {
+      console.warn('playtime_exchange RPC failed, falling back to scoreboard:', rpcErr);
+    }
+
+    // 2. Fallback: Command-based scoreboard exchange
     let scoreboardName = 'play_time';
     let getScoreRes = await sendWsQuery('command_request', {
       command: `/scoreboard players get ${username} play_time`,
@@ -1151,6 +1188,64 @@ app.post('/api/user/exchange-playtime', authenticateToken, async (req: CustomReq
       exchanged_hours: keysToAdd * 5
     });
 
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/user/buy-key-with-money ($10,000 in-game money -> 1 Key)
+app.post('/api/user/buy-key-with-money', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+  if (!db) return res.status(500).json({ success: false, message: '資料庫連線不可用' });
+
+  const username = user.mc_username;
+  const KEY_PRICE = 10000;
+
+  try {
+    const binding = db.prepare('SELECT keys_count FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username) as any;
+    if (!binding) {
+      return res.status(400).json({ success: false, message: '找不到玩家綁定資訊。' });
+    }
+
+    // Deduct $10,000 via WS RPC command_request
+    const deductRes = await sendWsQuery('command_request', {
+      command: `/removemoney ${username} ${KEY_PRICE}`,
+      admin_username: 'Web-Dashboard'
+    });
+
+    if (!deductRes || !deductRes.success) {
+      return res.status(400).json({ success: false, message: deductRes?.output || '扣除金幣失敗！請確認您的遊戲內餘額足夠 $10,000 元，且玩家在線上。' });
+    }
+
+    const newKeysCount = (binding.keys_count || 0) + 1;
+    db.prepare('UPDATE bindings SET keys_count = ? WHERE mc_username = ? COLLATE NOCASE').run(newKeysCount, username);
+
+    try {
+      if (botWsClient && botWsClient.readyState === WebSocket.OPEN) {
+        botWsClient.send(JSON.stringify({
+          type: 'player_keys_update',
+          payload: { username, keys: newKeysCount }
+        }));
+      }
+    } catch (e) {}
+
+    try {
+      await sendWsQuery('command_request', {
+        command: `/tellraw ${username} {"text":"§b[Craft-Core] §a成功花費 $10,000 元購買 1 把大理石抽獎鑰匙！"}`,
+        admin_username: 'Web-Dashboard'
+      });
+      await sendWsQuery('command_request', {
+        command: `/playsound minecraft:entity.player.levelup master ${username}`,
+        admin_username: 'Web-Dashboard'
+      });
+    } catch (e) {}
+
+    return res.json({
+      success: true,
+      message: '成功花費 $10,000 元購買 1 把抽獎鑰匙！',
+      keys_count: newKeysCount
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -1947,6 +2042,24 @@ app.get('/api/events/active', (req: Request, res: Response) => {
 });
 
 async function sendEventAnnouncementToDiscord(event: { title: string; description: string; start_time?: string; end_time?: string; reward_info?: string; creator_name?: string }) {
+  try {
+    // 1. Try sending via WebSocket RPC to Discord Bot
+    if (botWsClient && botWsClient.readyState === WebSocket.OPEN) {
+      await sendWsQuery('event_announcement', {
+        title: event.title,
+        description: event.description,
+        start_time: event.start_time,
+        end_time: event.end_time,
+        reward_info: event.reward_info,
+        creatorName: event.creator_name || 'Craft-Core 管理團隊'
+      }, 3000);
+      return;
+    }
+  } catch (wsErr) {
+    console.warn('Could not send event announcement via WS RPC:', wsErr);
+  }
+
+  // 2. Fallback to DISCORD_TOKEN if present
   const channelId = '1524353292183011379';
   const roleId = '1370660181360246784';
   const token = process.env.DISCORD_TOKEN;
@@ -1984,6 +2097,106 @@ async function sendEventAnnouncementToDiscord(event: { title: string; descriptio
     console.error('Failed to send event announcement to Discord channel', err);
   }
 }
+
+// GET /api/titles (Public API for fetching player titles)
+app.get('/api/titles', (req: Request, res: Response) => {
+  if (!db) return res.json({ success: true, titles: {} });
+  try {
+    const rows = db.prepare('SELECT username, title_text, color_code, is_bold FROM player_titles').all() as any[];
+    const titlesMap: Record<string, any> = {};
+    for (const r of rows) {
+      titlesMap[r.username.toLowerCase()] = {
+        title_text: r.title_text,
+        color_code: r.color_code || '§c',
+        is_bold: Boolean(r.is_bold)
+      };
+    }
+    res.json({ success: true, titles: titlesMap });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// POST /api/admin/titles (Admin set/update player title)
+app.post('/api/admin/titles', authenticateToken, requireAdmin, async (req: CustomRequest, res: Response) => {
+  const { username, title_text, color_code, is_bold } = req.body;
+  if (!username) {
+    return res.status(400).json({ success: false, message: '請指定目標玩家名稱' });
+  }
+  if (!db) return res.status(500).json({ success: false, message: '資料庫連線不可用' });
+
+  const cleanTitle = (title_text || '').trim();
+  const cleanColor = color_code || '§c';
+  const boldFlag = is_bold ? 1 : 0;
+
+  try {
+    if (!cleanTitle) {
+      db.prepare('DELETE FROM player_titles WHERE username = ? COLLATE NOCASE').run(username);
+    } else {
+      db.prepare(`
+        INSERT INTO player_titles (username, title_text, color_code, is_bold, updated_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(username) DO UPDATE SET
+          title_text = excluded.title_text,
+          color_code = excluded.color_code,
+          is_bold = excluded.is_bold,
+          updated_at = CURRENT_TIMESTAMP
+      `).run(username, cleanTitle, cleanColor, boldFlag);
+    }
+
+    // Sync to Fabric Mod via WS RPC
+    try {
+      if (botWsClient && botWsClient.readyState === WebSocket.OPEN) {
+        botWsClient.send(JSON.stringify({
+          type: 'update_player_titles',
+          payload: {
+            username,
+            title_text: cleanTitle,
+            color_code: cleanColor,
+            is_bold: Boolean(boldFlag)
+          }
+        }));
+      }
+    } catch (wsErr) {
+      console.warn('Failed to dispatch title update via WS:', wsErr);
+    }
+
+    res.json({
+      success: true,
+      message: cleanTitle ? `已成功設定玩家 ${username} 的專屬稱號！` : `已成功清除玩家 ${username} 的稱號！`
+    });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// DELETE /api/admin/titles/:username
+app.delete('/api/admin/titles/:username', authenticateToken, requireAdmin, async (req: CustomRequest, res: Response) => {
+  const { username } = req.params;
+  if (!db) return res.status(500).json({ success: false, message: '資料庫連線不可用' });
+
+  try {
+    db.prepare('DELETE FROM player_titles WHERE username = ? COLLATE NOCASE').run(username);
+
+    try {
+      if (botWsClient && botWsClient.readyState === WebSocket.OPEN) {
+        botWsClient.send(JSON.stringify({
+          type: 'update_player_titles',
+          payload: {
+            username,
+            title_text: '',
+            color_code: '§c',
+            is_bold: false
+          }
+        }));
+      }
+    } catch (e) {}
+
+    res.json({ success: true, message: `已成功清除玩家 ${username} 的稱號！` });
+  } catch (e: any) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
 
 // POST /api/admin/events
 app.post('/api/admin/events', async (req: CustomRequest, res: Response) => {

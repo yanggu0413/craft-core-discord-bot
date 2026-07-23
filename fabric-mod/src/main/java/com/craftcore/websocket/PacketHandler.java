@@ -390,6 +390,90 @@ public class PacketHandler {
                     client.send(new Packet("fake_players_response", response));
                     break;
                 }
+                case "playtime_query": {
+                    PlaytimeQueryPayload payload = GSON.fromJson(payloadObj, PlaytimeQueryPayload.class);
+                    server.execute(() -> {
+                        net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
+                        long playTimeTicks = 0;
+                        if (player != null) {
+                            playTimeTicks = player.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.PLAY_TIME));
+                        } else {
+                            try {
+                                String userUuid = com.craftcore.economy.EconomyManager.getUUID(payload.username);
+                                if (userUuid != null && !userUuid.isEmpty()) {
+                                    java.io.File statsFile = new java.io.File(server.getWorldPath(net.minecraft.world.level.storage.LevelResource.PLAYER_STATS_DIR).toFile(), userUuid + ".json");
+                                    if (statsFile.exists()) {
+                                        String rawJson = java.nio.file.Files.readString(statsFile.toPath());
+                                        com.google.gson.JsonObject obj = GSON.fromJson(rawJson, com.google.gson.JsonObject.class);
+                                        if (obj != null && obj.has("stats")) {
+                                            com.google.gson.JsonObject statsObj = obj.getAsJsonObject("stats");
+                                            if (statsObj.has("minecraft:custom")) {
+                                                com.google.gson.JsonObject customObj = statsObj.getAsJsonObject("minecraft:custom");
+                                                if (customObj.has("minecraft:play_time")) {
+                                                    playTimeTicks = customObj.get("minecraft:play_time").getAsLong();
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (Exception e) {}
+                        }
+                        client.send(new Packet("playtime_response", new PlaytimeResponsePayload(payload.query_id, playTimeTicks, true, "Success")));
+                    });
+                    break;
+                }
+                case "playtime_exchange": {
+                    PlaytimeExchangePayload payload = GSON.fromJson(payloadObj, PlaytimeExchangePayload.class);
+                    server.execute(() -> {
+                        net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
+                        long currentTicks = 0;
+                        if (player != null) {
+                            currentTicks = player.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.PLAY_TIME));
+                        }
+                        
+                        long TICK_RATE = 360000L; // 5 hours
+                        int keysToAdd = 0;
+                        long ticksToDeduct = 0;
+                        if ("single".equalsIgnoreCase(payload.mode)) {
+                            if (currentTicks >= TICK_RATE) {
+                                keysToAdd = 1;
+                                ticksToDeduct = TICK_RATE;
+                            }
+                        } else {
+                            keysToAdd = (int)(currentTicks / TICK_RATE);
+                            ticksToDeduct = keysToAdd * TICK_RATE;
+                        }
+
+                        if (keysToAdd < 1) {
+                            client.send(new Packet("playtime_exchange_response", new PlaytimeExchangeResponsePayload(payload.query_id, false, 0, 0, "可用時數不足！兌換 1 把鑰匙需要滿 5 小時時數。")));
+                            return;
+                        }
+
+                        long newTicks = currentTicks - ticksToDeduct;
+                        if (player != null) {
+                            player.getStats().setValue(player, net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.PLAY_TIME), (int)newTicks);
+                            player.playSound(net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+                            player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成功兌換 " + keysToAdd + " 把大理石抽獎鑰匙！扣除 " + (ticksToDeduct / 72000) + " 小時時數。"));
+                        }
+
+                        int currentKeys = com.craftcore.economy.EconomyManager.getLotteryKeys(payload.username);
+                        com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, currentKeys + keysToAdd);
+
+                        client.send(new Packet("playtime_exchange_response", new PlaytimeExchangeResponsePayload(payload.query_id, true, keysToAdd, ticksToDeduct, "成功兌換 " + keysToAdd + " 把鑰匙！")));
+                    });
+                    break;
+                }
+                case "update_player_titles": {
+                    PlayerTitleUpdatePayload payload = GSON.fromJson(payloadObj, PlayerTitleUpdatePayload.class);
+                    server.execute(() -> {
+                        if (payload.title_text == null || payload.title_text.trim().isEmpty()) {
+                            com.craftcore.title.TitleManager.removeTitle(payload.username);
+                        } else {
+                            com.craftcore.title.TitleManager.setTitle(payload.username, payload.title_text, payload.color_code, payload.is_bold);
+                        }
+                    });
+                    break;
+                }
                 case "claims_permission_update": {
                     ClaimsPermissionUpdatePayload payload = GSON.fromJson(payloadObj, ClaimsPermissionUpdatePayload.class);
                     boolean isAuth = client.isAuthenticated();

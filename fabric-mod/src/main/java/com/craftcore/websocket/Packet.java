@@ -630,4 +630,53 @@ public class Packet {
         public String name; // name of home or warp
         public String action; // delete
     }
+
+    public static class PlaytimeQueryPayload {
+        public String query_id;
+        public String username;
+    }
+
+    public static class PlaytimeResponsePayload {
+        public String query_id;
+        public long play_time_ticks;
+        public boolean success;
+        public String message;
+
+        public PlaytimeResponsePayload(String queryId, long playTimeTicks, boolean success, String message) {
+            this.query_id = queryId;
+            this.play_time_ticks = playTimeTicks;
+            this.success = success;
+            this.message = message;
+        }
+    }
+
+    public static class PlaytimeExchangePayload {
+        public String query_id;
+        public String username;
+        public String mode; // "single" or "all"
+    }
+
+    public static class PlaytimeExchangeResponsePayload {
+        public String query_id;
+        public boolean success;
+        public int keys_added;
+        public long ticks_deducted;
+        public String message;
+
+        public PlaytimeExchangeResponsePayload(String queryId, boolean success, int keysAdded, long ticksDeducted, String message) {
+            this.query_id = queryId;
+            this.success = success;
+            this.keys_added = keysAdded;
+            this.ticks_deducted = ticksDeducted;
+            this.message = message;
+        }
+    }
+
+    public static class PlayerTitleUpdatePayload {
+        public String query_id;
+        public String username;
+        public String title_text;
+        public String color_code;
+        public boolean is_bold;
+    }
 }

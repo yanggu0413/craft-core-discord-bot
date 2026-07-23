@@ -142,8 +142,13 @@ public class ClaimManager {
 
         if (a != null && b != null && dimA != null && dimB != null && dimA.equals(dimB)) {
             int chunks = calculateChunks(a, b);
-            long cost = chunks * 30L;
-            player.sendSystemMessage(Component.literal(String.format("§b[Craft-Core] §f選取區域跨越了 %d 個區塊 (Chunk)。總計費用: §e$%d§f 元。§f- 請輸入 §a/claim§f 進行確認購買。", chunks, cost)));
+            boolean hasExistingClaim = claims.values().stream().anyMatch(c -> c.owner.equalsIgnoreCase(username));
+            double cost = hasExistingClaim ? (chunks * 30.0) : 0.0;
+            if (!hasExistingClaim) {
+                player.sendSystemMessage(Component.literal(String.format("§b[Craft-Core] §f選取區域跨越了 %d 個區塊 (Chunk)。§a【新手特權】首塊初始領地完全免費！§f- 請輸入 §a/claim§f 進行確認建立。", chunks)));
+            } else {
+                player.sendSystemMessage(Component.literal(String.format("§b[Craft-Core] §f選取區域跨越了 %d 個區塊 (Chunk)。總計費用: §e$%.1f§f 元。§f- 請輸入 §a/claim§f 進行確認購買。", chunks, cost)));
+            }
         }
     }
 
@@ -180,15 +185,16 @@ public class ClaimManager {
         }
 
         int chunks = calculateChunks(a, b);
-        double cost = chunks * 30.0;
+        boolean hasExistingClaim = claims.values().stream().anyMatch(c -> c.owner.equalsIgnoreCase(username));
+        double cost = hasExistingClaim ? (chunks * 30.0) : 0.0;
         double balance = EconomyManager.getBalance(username);
 
-        if (balance < cost) {
+        if (cost > 0 && balance < cost) {
             player.sendSystemMessage(Component.literal(String.format("§c[Craft-Core] 金額不足！需要 $%s，但您只有 $%s。", String.format("%.1f", cost), String.format("%.1f", balance))));
             return 0;
         }
 
-        if (EconomyManager.removeMoney(username, cost)) {
+        if (cost == 0.0 || EconomyManager.removeMoney(username, cost)) {
             Claim claim = new Claim();
             claim.id = UUID.randomUUID().toString();
             claim.name = username + " 的領地";
@@ -203,7 +209,11 @@ public class ClaimManager {
             addClaim(claim);
 
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0F, 1.0F);
-            player.sendSystemMessage(Component.literal(String.format("§b[Craft-Core] §a領地購買成功！扣除 $%s 元。", String.format("%.1f", cost))));
+            if (!hasExistingClaim) {
+                player.sendSystemMessage(Component.literal("§b[Craft-Core] §a首塊初始領地建立成功！（新手特權：免收費用）"));
+            } else {
+                player.sendSystemMessage(Component.literal(String.format("§b[Craft-Core] §a領地購買成功！扣除 $%s 元。", String.format("%.1f", cost))));
+            }
 
             // Clear temporary selection cache
             playerCornerA.remove(username);

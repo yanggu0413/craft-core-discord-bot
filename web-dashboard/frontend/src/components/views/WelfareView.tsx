@@ -44,7 +44,7 @@ const PRIZE_POOL = [
 
 export default function WelfareView({
   token,
-  isOnline,
+  isOnline: _isOnline,
   triggerToast,
   fetchData,
   keysCount,
@@ -239,6 +239,35 @@ export default function WelfareView({
       triggerToast('兌換連線失敗：' + err.message, 'error');
     } finally {
       setLoadingExchange(false);
+    }
+  };
+
+  // 3.5 Buy Key with $10,000 Money
+  const [loadingBuyKey, setLoadingBuyKey] = useState(false);
+  const handleBuyKeyWithMoney = async () => {
+    if (!token) {
+      triggerToast('請先進行安全登入！', 'error');
+      return;
+    }
+    setLoadingBuyKey(true);
+    try {
+      const res = await fetch(`${API_URL}/user/buy-key-with-money`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast(data.message || '購買成功！', 'success');
+        setKeysCount(data.keys_count);
+        fetchData();
+        fetchWelfareLeaderboard();
+      } else {
+        triggerToast(data.message || '購買失敗', 'error');
+      }
+    } catch (err: any) {
+      triggerToast('購買連線失敗：' + err.message, 'error');
+    } finally {
+      setLoadingBuyKey(false);
     }
   };
 
@@ -605,14 +634,48 @@ export default function WelfareView({
 
               <Button 
                 onClick={handleExchangePlaytime}
-                disabled={loadingExchange || !token || !isOnline}
+                disabled={loadingExchange || !token}
                 className="w-full h-10 text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 disabled:bg-muted"
               >
                 {loadingExchange ? (
                   <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
-                ) : !isOnline ? (
-                  '⏳ 請先進入遊戲線上狀態以讀取時數'
                 ) : '⏳ 執行時數兌換'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* 金幣購買抽獎鑰匙 ($10,000 / 把) */}
+          <Card className="border-border bg-card">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-sm font-bold flex items-center space-x-2">
+                <Key className="w-4 h-4 text-emerald-500" />
+                <span>金幣購買抽獎鑰匙 ($10,000 / 把)</span>
+              </CardTitle>
+              <CardDescription className="text-left text-[11px]">
+                將遊戲內積攢的金幣直接向系統兌換大理石抽獎鑰匙，消耗過剩流動資金！
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between px-3 py-2 bg-muted/10 border border-border rounded-[4px]">
+                <div className="text-left">
+                  <span className="text-[9px] text-muted-foreground block leading-none font-bold">花費金幣</span>
+                  <span className="text-xs font-black text-emerald-500">$10,000 元</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                <div className="text-right">
+                  <span className="text-[9px] text-muted-foreground block leading-none font-bold">獲得</span>
+                  <span className="text-xs font-black text-yellow-500">+1 鑰匙</span>
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleBuyKeyWithMoney}
+                disabled={loadingBuyKey || !token}
+                className="w-full h-10 text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-muted"
+              >
+                {loadingBuyKey ? (
+                  <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
+                ) : '💰 花費 $10,000 購買 1 把鑰匙'}
               </Button>
             </CardContent>
           </Card>

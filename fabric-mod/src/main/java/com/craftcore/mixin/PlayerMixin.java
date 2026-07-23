@@ -27,18 +27,18 @@ public abstract class PlayerMixin {
     private void onGetDisplayName(CallbackInfoReturnable<Component> cir) {
         Player player = (Player) (Object) this;
         String username = player.getName().getString();
-        boolean isOwner = "im_little_rory".equalsIgnoreCase(username);
         boolean isAfk = AfkManager.isAfk(player);
         boolean isFakePlayer = username.toLowerCase().startsWith("fp_");
+        String customTitle = com.craftcore.title.TitleManager.getTitlePrefix(username);
 
-        if (isOwner || isAfk || isFakePlayer) {
+        if (isAfk || isFakePlayer || !customTitle.isEmpty()) {
             Component original = cir.getReturnValue();
             MutableComponent prefix = Component.empty();
             if (isAfk) {
                 prefix.append(Component.literal("§7[AFK] "));
             }
-            if (isOwner) {
-                prefix.append(Component.literal("§c[服主] "));
+            if (!customTitle.isEmpty()) {
+                prefix.append(Component.literal(customTitle));
             }
             if (isFakePlayer) {
                 prefix.append(Component.literal("§8[假人] "));

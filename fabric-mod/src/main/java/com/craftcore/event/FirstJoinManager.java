@@ -74,7 +74,8 @@ public class FirstJoinManager {
         claimedPlayers.add(username.toLowerCase());
         save();
 
-        // 1. Give Starter Kit: Stone Pickaxe x1, Stone Axe x1, Stone Sword x1, Bread x20
+        // 1. Give $1,000 Starter Money & Starter Kit: Stone Pickaxe x1, Stone Axe x1, Stone Sword x1, Bread x20
+        com.craftcore.economy.EconomyManager.addMoney(username, 1000.0);
         giveItemOrDrop(player, new ItemStack(Items.STONE_PICKAXE, 1));
         giveItemOrDrop(player, new ItemStack(Items.STONE_AXE, 1));
         giveItemOrDrop(player, new ItemStack(Items.STONE_SWORD, 1));
@@ -82,7 +83,8 @@ public class FirstJoinManager {
 
         // 2. Send Guidance Card Component (Personalized welcome card)
         player.sendSystemMessage(Component.literal("§6🎉================== 歡迎來到 Craft-Core 伺服器！ ==================🎉"));
-        player.sendSystemMessage(Component.literal("§f親愛的 §e" + username + "§f 您好！歡迎您首次加入伺服器！以下為新手探索指南："));
+        player.sendSystemMessage(Component.literal("§f親愛的 §e" + username + "§f 您好！歡迎您首次加入伺服器！已獲得新手起步金 §a$1,000 元§f！"));
+        player.sendSystemMessage(Component.literal("§f首塊保護領地劃設完全免費（手持木鋤劃設後輸入 §a/claim§f 即可建立）！"));
         player.sendSystemMessage(Component.literal(""));
 
         // Clickable docs link

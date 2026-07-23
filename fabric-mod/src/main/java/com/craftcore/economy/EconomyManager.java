@@ -230,6 +230,11 @@ public class EconomyManager {
         save();
     }
 
+    public static synchronized String getUUID(String username) {
+        PlayerData data = getOrCreate(username);
+        return data.uuid != null ? data.uuid : "";
+    }
+
     public static synchronized void incrementDailyTaskSlayProgress(String username, int amount) {
         PlayerData data = getOrCreate(username);
         data.dailyTaskSlayProgress += amount;

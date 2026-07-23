@@ -93,6 +93,25 @@ function start(discordClient) {
         }
  
         if (ws.role === 'web-dashboard') {
+          if (type === 'event_announcement') {
+            const announcementService = require('../services/announcementService');
+            announcementService.broadcastEventAnnouncement(discordClient, payload)
+              .then(() => {
+                ws.send(JSON.stringify({
+                  type: 'event_announcement_response',
+                  payload: { query_id: payload?.query_id, success: true, message: '已推播至 Discord 公告頻道' }
+                }));
+              })
+              .catch((err) => {
+                logger.error('Failed to broadcast event announcement via WS', { error: err });
+                ws.send(JSON.stringify({
+                  type: 'event_announcement_response',
+                  payload: { query_id: payload?.query_id, success: false, message: err.message }
+                }));
+              });
+            return;
+          }
+
           const mcWs = session.getConnection('default');
           if (mcWs && mcWs.readyState === 1) { // OPEN
             mcWs.send(message.toString());

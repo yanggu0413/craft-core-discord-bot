@@ -35,6 +35,16 @@ interface InventoryItem {
   nbt?: string;
 }
 
+const COLOR_MAP: Record<string, string> = {
+  '§c': 'text-red-500',
+  '§6': 'text-orange-500',
+  '§e': 'text-yellow-500',
+  '§a': 'text-emerald-500',
+  '§b': 'text-cyan-500',
+  '§d': 'text-purple-400',
+  '§f': 'text-slate-100',
+};
+
 export default function AdminView({ token, triggerToast, API_URL }: AdminViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<'audit' | 'announcement' | 'cobrand'>('audit');
 
@@ -67,6 +77,29 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
   const [searchedProfile, setSearchedProfile] = useState<PlayerProfile | null>(null);
   const [searchedInventory, setSearchedInventory] = useState<InventoryItem[]>([]);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+
+  // Title Management States
+  const [titleText, setTitleText] = useState('');
+  const [titleColor, setTitleColor] = useState('§c');
+  const [titleBold, setTitleBold] = useState(true);
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
+
+  const fetchPlayerTitle = async (username: string) => {
+    try {
+      const res = await fetch(`${API_URL}/titles`);
+      const data = await res.json();
+      if (data.success && data.titles && data.titles[username.toLowerCase()]) {
+        const t = data.titles[username.toLowerCase()];
+        setTitleText(t.title_text || '');
+        setTitleColor(t.color_code || '§c');
+        setTitleBold(t.is_bold ?? true);
+      } else {
+        setTitleText('');
+        setTitleColor('§c');
+        setTitleBold(true);
+      }
+    } catch (e) {}
+  };
 
   // Dates
   const today = new Date();
@@ -212,6 +245,7 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
       if (data.success) {
         setSearchedProfile(data.profile);
         setSearchedInventory(data.inventory || []);
+        fetchPlayerTitle(searchQuery.trim());
         triggerToast(`成功載入玩家 ${searchQuery.trim()} 的檔案！`, 'success');
       } else {
         triggerToast(data.message || '找不到該玩家或資料載入失敗', 'error');
@@ -220,6 +254,58 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
       triggerToast('查詢失敗：' + err.message, 'error');
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleSaveTitle = async () => {
+    if (!searchedProfile || !token) return;
+    setIsSavingTitle(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/titles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          username: searchedProfile.mc_username,
+          title_text: titleText.trim(),
+          color_code: titleColor,
+          is_bold: titleBold
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast(data.message || '稱號設定成功！', 'success');
+      } else {
+        triggerToast(data.message || '稱號設定失敗', 'error');
+      }
+    } catch (err: any) {
+      triggerToast('請求失敗：' + err.message, 'error');
+    } finally {
+      setIsSavingTitle(false);
+    }
+  };
+
+  const handleClearTitle = async () => {
+    if (!searchedProfile || !token) return;
+    setIsSavingTitle(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/titles/${searchedProfile.mc_username}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTitleText('');
+        triggerToast(data.message || '稱號已清除！', 'success');
+      } else {
+        triggerToast(data.message || '清除失敗', 'error');
+      }
+    } catch (err: any) {
+      triggerToast('請求失敗：' + err.message, 'error');
+    } finally {
+      setIsSavingTitle(false);
     }
   };
 
@@ -426,6 +512,107 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                   <div className="p-2.5 bg-muted/30 border border-border rounded-md">
                     <p className="text-[9px] uppercase font-bold text-muted-foreground">最後簽到</p>
                     <p className="text-xs font-bold text-muted-foreground mt-1 truncate">{searchedProfile.last_checkin || '無紀錄'}</p>
+                  </div>
+                </div>
+
+                {/* 👑 專屬頭銜與顏色管理專區 */}
+                <div className="mt-6 border-t border-border pt-4">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <h4 className="text-xs font-bold text-foreground">👑 專屬頭銜與色彩管理 (Title & Color Customizer)</h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 border border-border p-4 rounded-lg">
+                    {/* 輸入與色彩盤 */}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground block mb-1">稱號內容 (如 [服主]、[VIP]、[戰神])</label>
+                        <Input 
+                          value={titleText}
+                          onChange={(e) => setTitleText(e.target.value)}
+                          placeholder="例如: [服主]"
+                          className="h-9 text-xs font-bold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground block mb-1 font-sans">選擇顯示色彩 (Color Code)</label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            { code: '§c', label: '鮮紅', bg: 'bg-red-500' },
+                            { code: '§6', label: '橙金', bg: 'bg-orange-500' },
+                            { code: '§e', label: '亮黃', bg: 'bg-yellow-500' },
+                            { code: '§a', label: '翡翠綠', bg: 'bg-emerald-500' },
+                            { code: '§b', label: '青藍', bg: 'bg-cyan-500' },
+                            { code: '§d', label: '炫彩紫', bg: 'bg-purple-500' },
+                            { code: '§f', label: '純白', bg: 'bg-slate-200' },
+                          ].map(c => (
+                            <button
+                              key={c.code}
+                              type="button"
+                              onClick={() => setTitleColor(c.code)}
+                              className={`px-2 py-1 text-[10px] font-bold rounded-[3px] border transition-all flex items-center space-x-1 ${
+                                titleColor === c.code 
+                                  ? 'border-primary ring-2 ring-primary/40 shadow-sm bg-primary/10' 
+                                  : 'border-border opacity-70 hover:opacity-100 bg-card'
+                              }`}
+                            >
+                              <span className={`w-2.5 h-2.5 rounded-full ${c.bg}`}></span>
+                              <span>{c.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2 pt-1">
+                        <input 
+                          type="checkbox"
+                          id="titleBoldCheck"
+                          checked={titleBold}
+                          onChange={(e) => setTitleBold(e.target.checked)}
+                          className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                        />
+                        <label htmlFor="titleBoldCheck" className="text-xs font-bold cursor-pointer select-none text-foreground">
+                          開啟加粗效果 (§l Bold)
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* 即時視覺預覽與按鈕 */}
+                    <div className="flex flex-col justify-between space-y-3 border-t md:border-t-0 md:border-l border-border pt-3 md:pt-0 md:pl-4">
+                      <div>
+                        <span className="text-[10px] font-bold text-muted-foreground block mb-1">🎮 遊戲內與網頁即時渲染預覽</span>
+                        <div className="p-3 bg-slate-950 border border-slate-800 rounded-md font-mono text-sm flex items-center space-x-2">
+                          <span className={`${COLOR_MAP[titleColor] || 'text-red-500'} ${titleBold ? 'font-bold' : 'font-normal'}`}>
+                            {titleText ? (titleText.startsWith('[') ? titleText : `[${titleText}]`) : '[頭銜]'}
+                          </span>
+                          <span className="text-slate-100">{searchedProfile.mc_username}</span>
+                        </div>
+                        <p className="text-[9px] text-muted-foreground mt-1.5">
+                          儲存後即時生效於玩家頭頂 DisplayName、聊天頻道、Tab 清單及個人面板。
+                        </p>
+                      </div>
+
+                      <div className="flex items-center space-x-2 pt-2">
+                        <Button
+                          onClick={handleSaveTitle}
+                          disabled={isSavingTitle}
+                          size="sm"
+                          className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs h-9"
+                        >
+                          {isSavingTitle ? '儲存中...' : '💾 儲存並發送稱號'}
+                        </Button>
+                        <Button
+                          onClick={handleClearTitle}
+                          disabled={isSavingTitle}
+                          size="sm"
+                          variant="outline"
+                          className="border-red-500/30 text-red-500 hover:bg-red-500/10 font-bold text-xs h-9"
+                        >
+                          🗑️ 清除稱號
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
