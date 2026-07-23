@@ -1,6 +1,6 @@
 {
   "name": "craft-core-bot",
-  "version": "2.0.0",
+  "version": "2.1.1",
   "description": "Discord Bot for Craft-Core Minecraft server linkage",
   "main": "src/index.js",
   "scripts": {
