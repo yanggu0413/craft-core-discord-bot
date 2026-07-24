@@ -75,6 +75,22 @@ public class PacketHandler {
                         boolean success = true;
                         try {
                             server.getCommands().performPrefixedCommand(source, payload.command);
+                            // Intercept fake player commands to update enabled status
+                            if (payload.command != null) {
+                                String lowerCmd = payload.command.trim().toLowerCase();
+                                if (lowerCmd.startsWith("/fp ") || lowerCmd.startsWith("fp ") || lowerCmd.startsWith("/player ") || lowerCmd.startsWith("player ")) {
+                                    String[] parts = lowerCmd.split("\\s+");
+                                    if (parts.length >= 2) {
+                                        String botName = parts[1];
+                                        String action = (parts.length >= 3) ? parts[2] : "spawn";
+                                        if (action.equalsIgnoreCase("kill") || action.equalsIgnoreCase("stop") || action.equalsIgnoreCase("despawn") || action.equalsIgnoreCase("leave")) {
+                                            com.craftcore.fakeplayer.FakePlayerManager.setBotEnabled(botName, null, false);
+                                        } else {
+                                            com.craftcore.fakeplayer.FakePlayerManager.setBotEnabled(botName, null, true);
+                                        }
+                                    }
+                                }
+                            }
                         } catch (Exception e) {
                             success = false;
                             commandOutput.sendSystemMessage(Component.literal("Error: " + e.getMessage()));

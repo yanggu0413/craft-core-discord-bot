@@ -39,6 +39,7 @@ public class ServerLifecycleHandler {
             CraftCoreMod.startWSClient(server);
             ChestShopEventHandler.register();
             com.craftcore.task.DailyTaskManager.register();
+            com.craftcore.fakeplayer.FakePlayerManager.scheduleAutoReconnect(server);
         });
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
