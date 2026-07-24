@@ -142,6 +142,34 @@ public class ClaimManager {
         checkSelection(player, username);
     }
 
+    public static boolean doesIntersect(BlockPos a, BlockPos b, String dim, Claim existingClaim) {
+        if (!existingClaim.dimension.equalsIgnoreCase(dim)) return false;
+        if (existingClaim.corners == null || existingClaim.corners.length < 2) return false;
+
+        String[] c1 = existingClaim.corners[0].split(",");
+        String[] c2 = existingClaim.corners[1].split(",");
+        if (c1.length < 3 || c2.length < 3) return false;
+
+        try {
+            int newMinX = Math.min(a.getX(), b.getX());
+            int newMaxX = Math.max(a.getX(), b.getX());
+            int newMinZ = Math.min(a.getZ(), b.getZ());
+            int newMaxZ = Math.max(a.getZ(), b.getZ());
+
+            int exMinX = Math.min(Integer.parseInt(c1[0]), Integer.parseInt(c2[0]));
+            int exMaxX = Math.max(Integer.parseInt(c1[0]), Integer.parseInt(c2[0]));
+            int exMinZ = Math.min(Integer.parseInt(c1[2]), Integer.parseInt(c2[2]));
+            int exMaxZ = Math.max(Integer.parseInt(c1[2]), Integer.parseInt(c2[2]));
+
+            boolean overlapX = newMinX <= exMaxX && newMaxX >= exMinX;
+            boolean overlapZ = newMinZ <= exMaxZ && newMaxZ >= exMinZ;
+
+            return overlapX && overlapZ;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private static void checkSelection(ServerPlayer player, String username) {
         BlockPos a = playerCornerA.get(username);
         BlockPos b = playerCornerB.get(username);
@@ -153,7 +181,7 @@ public class ClaimManager {
             boolean hasExistingClaim = claims.values().stream().anyMatch(c -> c.owner.equalsIgnoreCase(username));
             double cost = hasExistingClaim ? (chunks * 30.0) : 0.0;
             if (!hasExistingClaim) {
-                player.sendSystemMessage(Component.literal(String.format("§b[Craft-Core] §f選取區域跨越了 %d 個區塊 (Chunk)。§a【新手特權】首塊初始領地完全免費！§f- 請輸入 §a/claim§f 進行確認建立。", chunks)));
+                player.sendSystemMessage(Component.literal(String.format("§b[Craft-Core] §f選取區域跨越了 %d 個區塊 (Chunk)。§a【新手特權】首塊初始領地免費 (上限16區塊)！§f- 請輸入 §a/claim§f 進行確認建立。", chunks)));
             } else {
                 player.sendSystemMessage(Component.literal(String.format("§b[Craft-Core] §f選取區域跨越了 %d 個區塊 (Chunk)。總計費用: §e$%.1f§f 元。§f- 請輸入 §a/claim§f 進行確認購買。", chunks, cost)));
             }
@@ -192,8 +220,41 @@ public class ClaimManager {
             return 0;
         }
 
+        boolean isOp = player.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);
+
+        // 1. World Spawn Protection Radius (150 blocks from 0,0 in Overworld)
+        if (dimA.equalsIgnoreCase("minecraft:overworld") && !isOp) {
+            int minX = Math.min(a.getX(), b.getX());
+            int maxX = Math.max(a.getX(), b.getX());
+            int minZ = Math.min(a.getZ(), b.getZ());
+            int maxZ = Math.max(a.getZ(), b.getZ());
+            if (minX <= 150 && maxX >= -150 && minZ <= 150 && maxZ >= -150) {
+                player.sendSystemMessage(Component.literal("§c[Craft-Core] 劃定失敗：該區域包含伺服器重生點保護範圍 (150 格)，禁止私人圈地！"));
+                return 0;
+            }
+        }
+
         int chunks = calculateChunks(a, b);
         boolean hasExistingClaim = claims.values().stream().anyMatch(c -> c.owner.equalsIgnoreCase(username));
+
+        // 2. Chunk Limit Restrictions
+        if (!hasExistingClaim && chunks > 16 && !isOp) {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 劃定失敗：首塊免費初始領地最大限制為 16 個區塊 (4x4 Chunk)！請縮小選取範圍。"));
+            return 0;
+        }
+        if (chunks > 64 && !isOp) {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 劃定失敗：單個領地最大上限為 64 個區塊 (8x8 Chunk)！"));
+            return 0;
+        }
+
+        // 3. Overlap Check against ALL existing claims
+        for (Claim existing : claims.values()) {
+            if (doesIntersect(a, b, dimA, existing)) {
+                player.sendSystemMessage(Component.literal("§c[Craft-Core] 劃定失敗：選取區域與玩家 §e" + existing.owner + " §c的領地重疊！"));
+                return 0;
+            }
+        }
+
         double cost = hasExistingClaim ? (chunks * 30.0) : 0.0;
         double balance = EconomyManager.getBalance(username);
 

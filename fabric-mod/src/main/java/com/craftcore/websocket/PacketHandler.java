@@ -7,6 +7,8 @@ import com.google.gson.JsonParser;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
 
 public class PacketHandler {
     private static final Gson GSON = new Gson();
@@ -565,6 +567,35 @@ public class PacketHandler {
                     }
                     DailyTasksResponsePayload response = new DailyTasksResponsePayload(payload.query_id, payload.username, taskList, dateStr, success);
                     client.send(new Packet("daily_tasks_response", response));
+                    break;
+                }
+                case "give_money": {
+                    com.google.gson.JsonObject obj = payloadObj.getAsJsonObject();
+                    String targetName = obj.get("username").getAsString();
+                    double amount = obj.get("amount").getAsDouble();
+                    server.execute(() -> {
+                        com.craftcore.economy.EconomyManager.addMoney(targetName, amount);
+                        ServerPlayer target = getPlayerCaseInsensitive(server, targetName);
+                        if (target != null) {
+                            target.sendSystemMessage(Component.literal(String.format("§b[Craft-Core] §a獲得管理員發放的獎勵金幣: §e+$%.2f§a 元！", amount)));
+                            target.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+                        }
+                    });
+                    break;
+                }
+                case "give_keys": {
+                    com.google.gson.JsonObject obj = payloadObj.getAsJsonObject();
+                    String targetName = obj.get("username").getAsString();
+                    int amount = obj.get("amount").getAsInt();
+                    server.execute(() -> {
+                        int current = com.craftcore.economy.EconomyManager.getLotteryKeys(targetName);
+                        com.craftcore.economy.EconomyManager.setLotteryKeys(targetName, current + amount);
+                        ServerPlayer target = getPlayerCaseInsensitive(server, targetName);
+                        if (target != null) {
+                            target.sendSystemMessage(Component.literal(String.format("§b[Craft-Core] §a獲得管理員發放的抽獎鑰匙: §e+%d 把§a！", amount)));
+                            target.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+                        }
+                    });
                     break;
                 }
                 case "lockboxes_query": {

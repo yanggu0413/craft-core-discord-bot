@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle, Eye, Shield, Sparkles, Send, FileText } from 'lucide-react';
+import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle, Eye, Shield, Sparkles, Send, FileText, DollarSign, Key, Coins } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -83,6 +83,76 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
   const [titleColor, setTitleColor] = useState('§c');
   const [titleBold, setTitleBold] = useState(true);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+
+  // Direct Top-up States
+  const [giveAmount, setGiveAmount] = useState('');
+  const [giveKeys, setGiveKeys] = useState('');
+  const [isGivingMoney, setIsGivingMoney] = useState(false);
+  const [isGivingKeys, setIsGivingKeys] = useState(false);
+
+  const handleGiveMoney = async () => {
+    if (!searchedProfile || !giveAmount || !token) return;
+    const amount = parseFloat(giveAmount);
+    if (isNaN(amount) || amount <= 0) {
+      triggerToast('請輸入有效的金幣金額！', 'error');
+      return;
+    }
+    setIsGivingMoney(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/give-money`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ username: searchedProfile.mc_username, amount })
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast(data.message || `已成功發送 $${amount} 金幣！`, 'success');
+        setSearchedProfile(prev => prev ? { ...prev, balance: prev.balance + amount } : null);
+        setGiveAmount('');
+      } else {
+        triggerToast(data.message || '金幣發放失敗', 'error');
+      }
+    } catch (err: any) {
+      triggerToast('請求失敗：' + err.message, 'error');
+    } finally {
+      setIsGivingMoney(false);
+    }
+  };
+
+  const handleGiveKeys = async () => {
+    if (!searchedProfile || !giveKeys || !token) return;
+    const amount = parseInt(giveKeys, 10);
+    if (isNaN(amount) || amount <= 0) {
+      triggerToast('請輸入有效的鑰匙數量！', 'error');
+      return;
+    }
+    setIsGivingKeys(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/give-keys`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ username: searchedProfile.mc_username, amount })
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast(data.message || `已成功發送 ${amount} 把抽獎鑰匙！`, 'success');
+        setSearchedProfile(prev => prev ? { ...prev, keys_count: prev.keys_count + amount } : null);
+        setGiveKeys('');
+      } else {
+        triggerToast(data.message || '鑰匙發放失敗', 'error');
+      }
+    } catch (err: any) {
+      triggerToast('請求失敗：' + err.message, 'error');
+    } finally {
+      setIsGivingKeys(false);
+    }
+  };
 
   // Transaction Log Inspector States
   const [txSearch, setTxSearch] = useState('');
@@ -552,6 +622,62 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                   <div className="p-2.5 bg-muted/30 border border-border rounded-md">
                     <p className="text-[9px] uppercase font-bold text-muted-foreground">最後簽到</p>
                     <p className="text-xs font-bold text-muted-foreground mt-1 truncate">{searchedProfile.last_checkin || '無紀錄'}</p>
+                  </div>
+                </div>
+
+                {/* 💵 管理員直充發放金幣與鑰匙專區 */}
+                <div className="mt-6 border-t border-border pt-4">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <DollarSign className="w-4 h-4 text-emerald-500" />
+                    <h4 className="text-xs font-bold text-foreground">💵 管理員發送金幣與抽獎鑰匙 (Direct Top-up: Money & Keys)</h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 border border-border p-4 rounded-lg">
+                    {/* 發送金幣 */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-muted-foreground block">給予金幣金額 ($)</label>
+                      <div className="flex items-center space-x-2">
+                        <Input 
+                          type="number"
+                          value={giveAmount}
+                          onChange={(e) => setGiveAmount(e.target.value)}
+                          placeholder="輸入金額 (例如: 10000)"
+                          className="h-9 text-xs font-bold font-mono"
+                        />
+                        <Button 
+                          onClick={handleGiveMoney}
+                          disabled={isGivingMoney || !giveAmount || parseFloat(giveAmount) <= 0}
+                          size="sm"
+                          className="h-9 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                        >
+                          <Coins className="w-3.5 h-3.5 mr-1" />
+                          {isGivingMoney ? '發送中...' : '💰 給予金幣'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* 發送鑰匙 */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-muted-foreground block">給予抽獎鑰匙數量 (把)</label>
+                      <div className="flex items-center space-x-2">
+                        <Input 
+                          type="number"
+                          value={giveKeys}
+                          onChange={(e) => setGiveKeys(e.target.value)}
+                          placeholder="輸入數量 (例如: 5)"
+                          className="h-9 text-xs font-bold font-mono"
+                        />
+                        <Button 
+                          onClick={handleGiveKeys}
+                          disabled={isGivingKeys || !giveKeys || parseInt(giveKeys, 10) <= 0}
+                          size="sm"
+                          className="h-9 px-4 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+                        >
+                          <Key className="w-3.5 h-3.5 mr-1" />
+                          {isGivingKeys ? '發送中...' : '🔑 給予鑰匙'}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

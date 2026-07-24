@@ -2646,6 +2646,34 @@ app.post('/api/claims/flags', authenticateToken, async (req: any, res: any) => {
   }
 });
 
+// POST /api/admin/give-money - Directly give money to a player
+app.post('/api/admin/give-money', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const { username, amount } = req.body;
+  if (!username || typeof amount !== 'number' || amount <= 0) {
+    return res.status(400).json({ success: false, message: '請提供有效的目標玩家名稱與金額' });
+  }
+  try {
+    const response = await sendWsQuery('give_money', { username, amount });
+    return res.json(response || { success: true, message: `已成功給予玩家 ${username} $${amount} 金幣！` });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/admin/give-keys - Directly give lottery keys to a player
+app.post('/api/admin/give-keys', authenticateToken, async (req: CustomRequest, res: Response) => {
+  const { username, amount } = req.body;
+  if (!username || typeof amount !== 'number' || amount <= 0) {
+    return res.status(400).json({ success: false, message: '請提供有效的目標玩家名稱與鑰匙數量' });
+  }
+  try {
+    const response = await sendWsQuery('give_keys', { username, amount });
+    return res.json(response || { success: true, message: `已成功給予玩家 ${username} ${amount} 把抽獎鑰匙！` });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // -------------------------------------------------------------
 // Live WebSockets Server for Web Clients (Frontend Real-Time Sync)
 // -------------------------------------------------------------

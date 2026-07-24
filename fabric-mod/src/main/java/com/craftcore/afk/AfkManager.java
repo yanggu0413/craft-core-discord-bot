@@ -16,13 +16,17 @@ public class AfkManager {
         public double lastX;
         public double lastY;
         public double lastZ;
+        public float lastYaw;
+        public float lastPitch;
         public long lastMoveTimeMs;
         public boolean isAfk;
 
-        public AfkState(double x, double y, double z, long time) {
+        public AfkState(double x, double y, double z, float yaw, float pitch, long time) {
             this.lastX = x;
             this.lastY = y;
             this.lastZ = z;
+            this.lastYaw = yaw;
+            this.lastPitch = pitch;
             this.lastMoveTimeMs = time;
             this.isAfk = false;
         }
@@ -57,11 +61,13 @@ public class AfkManager {
     public static boolean toggleAfk(ServerPlayer player, long now) {
         UUID uuid = player.getUUID();
         AfkState state = playerStates.computeIfAbsent(uuid,
-                ignored -> new AfkState(player.getX(), player.getY(), player.getZ(), now));
+                ignored -> new AfkState(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot(), now));
 
         state.lastX = player.getX();
         state.lastY = player.getY();
         state.lastZ = player.getZ();
+        state.lastYaw = player.getYRot();
+        state.lastPitch = player.getXRot();
         state.lastMoveTimeMs = now;
         state.isAfk = !state.isAfk;
 
@@ -79,10 +85,12 @@ public class AfkManager {
         double currentX = player.getX();
         double currentY = player.getY();
         double currentZ = player.getZ();
+        float currentYaw = player.getYRot();
+        float currentPitch = player.getXRot();
 
         AfkState state = playerStates.get(uuid);
         if (state == null) {
-            playerStates.put(uuid, new AfkState(currentX, currentY, currentZ, now));
+            playerStates.put(uuid, new AfkState(currentX, currentY, currentZ, currentYaw, currentPitch, now));
             return;
         }
 
@@ -91,16 +99,30 @@ public class AfkManager {
         double dz = currentZ - state.lastZ;
         double distSq = dx * dx + dy * dy + dz * dz;
 
-        // Position change > 0.01 blocks (distSq > 0.0001) resets AFK timer
-        if (distSq > 0.0001) {
+        boolean isHurtOrPushed = player.hurtTime > 0 || player.getLastHurtByMob() != null;
+        boolean rotationChanged = Math.abs(currentYaw - state.lastYaw) > 0.5f || Math.abs(currentPitch - state.lastPitch) > 0.5f;
+
+        // Position change > 0.01 blocks (distSq > 0.0001)
+        if (distSq > 0.0001 || rotationChanged) {
+            // If movement was caused by mob attack or pushing (hurtTime > 0 or no camera rotation change)
+            if (isHurtOrPushed || (!rotationChanged && state.isAfk)) {
+                // Update position without canceling AFK
+                state.lastX = currentX;
+                state.lastY = currentY;
+                state.lastZ = currentZ;
+                return;
+            }
+
             state.lastX = currentX;
             state.lastY = currentY;
             state.lastZ = currentZ;
+            state.lastYaw = currentYaw;
+            state.lastPitch = currentPitch;
             state.lastMoveTimeMs = now;
 
             if (state.isAfk) {
                 state.isAfk = false;
-                player.sendSystemMessage(Component.literal("§b[Craft-Core] §7您已移動，已解除 [AFK] 掛機防護狀態。"));
+                player.sendSystemMessage(Component.literal("§b[Craft-Core] §7您已手動移動，已解除 [AFK] 掛機防護狀態。"));
                 updateTabList(player);
             }
         } else {
