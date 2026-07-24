@@ -2583,6 +2583,73 @@ app.post('/api/admin/give-keys', authenticateToken, async (req, res) => {
         return res.status(500).json({ success: false, message: err.message });
     }
 });
+// GET /api/admin/tickets - List all closed support tickets
+app.get('/api/admin/tickets', authenticateToken, requireAdmin, (req, res) => {
+    if (!db)
+        return res.status(500).json({ success: false, message: '資料庫未連結' });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const search = (req.query.search || '').trim();
+    const offset = (page - 1) * limit;
+    try {
+        let query = "SELECT ticket_id, channel_id, creator_id, creator_username, channel_name, status, created_at, closed_at, closed_by FROM tickets WHERE status = 'closed'";
+        const params = [];
+        if (search) {
+            query += ' AND (ticket_id LIKE ? OR creator_username LIKE ? OR channel_name LIKE ? OR closed_by LIKE ?)';
+            params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+        }
+        query += ' ORDER BY datetime(closed_at) DESC LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+        const rows = db.prepare(query).all(...params);
+        let countQuery = "SELECT COUNT(*) as total FROM tickets WHERE status = 'closed'";
+        const countParams = [];
+        if (search) {
+            countQuery += ' AND (ticket_id LIKE ? OR creator_username LIKE ? OR channel_name LIKE ? OR closed_by LIKE ?)';
+            countParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+        }
+        const totalRow = db.prepare(countQuery).get(...countParams);
+        return res.json({
+            success: true,
+            tickets: rows,
+            total: totalRow?.total || 0,
+            page,
+            limit
+        });
+    }
+    catch (error) {
+        console.error('Error fetching admin tickets:', error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+});
+// GET /api/admin/tickets/:ticket_id - Get transcript details of a specific closed ticket
+app.get('/api/admin/tickets/:ticket_id', authenticateToken, requireAdmin, (req, res) => {
+    if (!db)
+        return res.status(500).json({ success: false, message: '資料庫未連結' });
+    const ticketId = req.params.ticket_id;
+    try {
+        const row = db.prepare('SELECT * FROM tickets WHERE ticket_id = ? OR channel_id = ?').get(ticketId, ticketId);
+        if (!row) {
+            return res.status(404).json({ success: false, message: '找不到該客服單紀錄' });
+        }
+        let parsedTranscript = [];
+        if (row.transcript_json) {
+            try {
+                parsedTranscript = JSON.parse(row.transcript_json);
+            }
+            catch (e) { }
+        }
+        return res.json({
+            success: true,
+            ticket: {
+                ...row,
+                transcript_json: parsedTranscript
+            }
+        });
+    }
+    catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+});
 // -------------------------------------------------------------
 // Live WebSockets Server for Web Clients (Frontend Real-Time Sync)
 // -------------------------------------------------------------

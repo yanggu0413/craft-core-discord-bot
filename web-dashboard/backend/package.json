@@ -1,6 +1,6 @@
 {
   "name": "craft-core-dashboard-backend",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "description": "Express backend for Craft-Core Minecraft Web Dashboard",
   "main": "dist/server.js",
   "scripts": {

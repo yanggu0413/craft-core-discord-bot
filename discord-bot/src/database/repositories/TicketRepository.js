@@ -1,8 +1,8 @@
 const db = require('../index');
 
 class TicketRepository {
-  async createTicket(ticketId, channelId, creatorId) {
-    return db.createTicket(ticketId, channelId, creatorId);
+  async createTicket(ticketId, channelId, creatorId, creatorUsername, channelName) {
+    return db.createTicket(ticketId, channelId, creatorId, creatorUsername, channelName);
   }
 
   async getTicketByChannelId(channelId) {
@@ -10,8 +10,8 @@ class TicketRepository {
     return row !== undefined ? row : null;
   }
 
-  async closeTicket(channelId) {
-    return db.closeTicket(channelId);
+  async closeTicket(channelId, closedBy, transcriptJson, transcriptText) {
+    return db.closeTicket(channelId, closedBy, transcriptJson, transcriptText);
   }
 }
 

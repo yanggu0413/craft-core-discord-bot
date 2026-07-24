@@ -49,8 +49,8 @@ async function handleCreateTicket(interaction) {
       }
     }
 
-    // Save ticket into database
-    await TicketRepository.createTicket(ticketId, channel.id, creatorId);
+    // Save ticket into database with username and channel name
+    await TicketRepository.createTicket(ticketId, channel.id, creatorId, interaction.user.tag || interaction.user.username, channel.name);
 
     // Ephemeral response to ticket creator
     await interaction.reply({
@@ -109,11 +109,13 @@ async function handleCloseTicket(interaction) {
   });
 
   try {
-    // 1. Generate Transcript
+    const closedByTag = interaction.user.tag || interaction.user.username;
+
+    // 1. Generate Transcript (both Text and Structured JSON for Web Dash)
     let transcriptText = `--- Ticket Transcript for Channel ${channel.name} (${channel.id}) ---\n`;
     transcriptText += `Ticket ID: ${ticketInfo.ticket_id}\n`;
     transcriptText += `Creator ID: ${ticketInfo.creator_id}\n`;
-    transcriptText += `Closed by: ${interaction.user.tag} (${interaction.user.id})\n`;
+    transcriptText += `Closed by: ${closedByTag} (${interaction.user.id})\n`;
     transcriptText += `Timestamp: ${new Date().toISOString()}\n\n`;
 
     let messages = [];
@@ -124,9 +126,27 @@ async function handleCloseTicket(interaction) {
       logger.warn('Failed to fetch messages for transcript');
     }
 
+    const jsonEntries = [];
     for (const msg of messages) {
-      const authorTag = msg.author ? msg.author.tag : 'Unknown';
+      const authorTag = msg.author ? (msg.author.tag || msg.author.username) : 'System';
+      const authorAvatar = msg.author ? msg.author.displayAvatarURL({ extension: 'png', size: 64 }) : null;
       const content = msg.content || '';
+      const attachments = msg.attachments ? Array.from(msg.attachments.values()).map(a => ({
+        name: a.name,
+        url: a.url,
+        contentType: a.contentType
+      })) : [];
+
+      jsonEntries.push({
+        id: msg.id,
+        author_id: msg.author ? msg.author.id : null,
+        author_name: authorTag,
+        author_avatar: authorAvatar,
+        content: content,
+        timestamp: new Date(msg.createdAt || Date.now()).toISOString(),
+        attachments: attachments
+      });
+
       transcriptText += `[${new Date(msg.createdAt || Date.now()).toISOString()}] ${authorTag}: ${content}\n`;
     }
 
@@ -152,8 +172,8 @@ async function handleCloseTicket(interaction) {
       }
     }
 
-    // 3. Update status in Database
-    await TicketRepository.closeTicket(channel.id);
+    // 3. Update status in Database (Save transcript_json and transcript_text)
+    await TicketRepository.closeTicket(channel.id, closedByTag, JSON.stringify(jsonEntries), transcriptText);
 
     // 4. Delete the channel
     await channel.delete();

@@ -61,6 +61,23 @@ async function init(dbPath) {
     } catch (e) {
       // Ignore if column already exists
     }
+
+    // Migration: add ticket backup columns
+    try {
+      db.exec('ALTER TABLE tickets ADD COLUMN creator_username TEXT');
+    } catch (e) {}
+    try {
+      db.exec('ALTER TABLE tickets ADD COLUMN channel_name TEXT');
+    } catch (e) {}
+    try {
+      db.exec('ALTER TABLE tickets ADD COLUMN closed_by TEXT');
+    } catch (e) {}
+    try {
+      db.exec('ALTER TABLE tickets ADD COLUMN transcript_json TEXT');
+    } catch (e) {}
+    try {
+      db.exec('ALTER TABLE tickets ADD COLUMN transcript_text TEXT');
+    } catch (e) {}
   } else {
     throw new Error(`Database initialization failed: schema.sql not found at ${schemaPath}`);
   }
@@ -93,13 +110,13 @@ async function init(dbPath) {
 
   // 3. Tickets Operations
   stmts.createTicket = db.prepare(`
-    INSERT OR REPLACE INTO tickets (ticket_id, channel_id, creator_id, status)
-    VALUES (?, ?, ?, 'open')
+    INSERT OR REPLACE INTO tickets (ticket_id, channel_id, creator_id, creator_username, channel_name, status)
+    VALUES (?, ?, ?, ?, ?, 'open')
   `);
   stmts.getTicketByChannelId = db.prepare('SELECT * FROM tickets WHERE channel_id = ?');
   stmts.closeTicket = db.prepare(`
     UPDATE tickets 
-    SET status = 'closed', closed_at = datetime('now') 
+    SET status = 'closed', closed_at = datetime('now'), closed_by = ?, transcript_json = ?, transcript_text = ? 
     WHERE channel_id = ?
   `);
 
@@ -216,16 +233,16 @@ async function clearExpiredTempCodes() {
   return stmts.clearExpiredTempCodes.run();
 }
 
-async function createTicket(ticketId, channelId, creatorId) {
-  return stmts.createTicket.run(ticketId, channelId, creatorId);
+async function createTicket(ticketId, channelId, creatorId, creatorUsername = null, channelName = null) {
+  return stmts.createTicket.run(ticketId, channelId, creatorId, creatorUsername, channelName);
 }
 
 async function getTicketByChannelId(channelId) {
   return stmts.getTicketByChannelId.get(channelId);
 }
 
-async function closeTicket(channelId) {
-  return stmts.closeTicket.run(channelId);
+async function closeTicket(channelId, closedBy = null, transcriptJson = null, transcriptText = null) {
+  return stmts.closeTicket.run(closedBy, transcriptJson, transcriptText, channelId);
 }
 
 async function setSetting(key, value) {
