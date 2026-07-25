@@ -21,7 +21,7 @@ public class ServerGamePacketListenerImplMixin {
         require = 0
     )
     private double modifyMaxInteractDistance36(double original) {
-        return 4096.0;
+        return 4096.0; // 64 blocks range (4096.0 sq distance)
     }
 
     @ModifyConstant(
@@ -30,7 +30,7 @@ public class ServerGamePacketListenerImplMixin {
         require = 0
     )
     private double modifyMaxInteractDistance64(double original) {
-        return 4096.0;
+        return 4096.0; // 64 blocks range (4096.0 sq distance)
     }
 
     @Redirect(
@@ -43,13 +43,10 @@ public class ServerGamePacketListenerImplMixin {
     )
     private double redirectDistanceToSqr(Vec3 instance, Vec3 vec) {
         double realDistance = instance.distanceToSqr(vec);
-        if (player != null) {
-            // Check if player is standing near the target block (within 8 blocks / 64.0 sq distance)
-            double distanceToPlayer = player.position().distanceToSqr(vec);
-            if (distanceToPlayer <= 64.0) {
-                return 0.0; // Legitimate Litematica placement near player: Bypass anchor rejection
-            }
+        // Allow up to 64 blocks (4096.0 sq distance) to fully support Litematica Easy Place schematic reference anchors
+        if (realDistance <= 4096.0) {
+            return 0.0;
         }
-        return realDistance; // Far away placement (Reach Hack): Enforce vanilla rejection!
+        return realDistance; // Rejects extreme 100+ block distant packet spam
     }
 }
