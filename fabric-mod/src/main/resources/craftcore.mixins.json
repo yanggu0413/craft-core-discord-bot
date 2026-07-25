@@ -9,8 +9,7 @@
     "LivingEntityMixin",
     "PlayerMixin",
     "LevelMixin",
-    "BlockMixin",
-    "ServerGamePacketListenerImplMixin"
+    "BlockMixin"
   ],
   "injectors": {
     "defaultRequire": 1
