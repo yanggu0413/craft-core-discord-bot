@@ -96,6 +96,12 @@ public class FakePlayerManager {
         save();
     }
 
+    public static synchronized void unregister(String botName) {
+        if (botName == null || botName.trim().isEmpty()) return;
+        fakePlayers.remove(botName.toLowerCase());
+        save();
+    }
+
     public static synchronized void setBotEnabled(String botName, String owner, boolean enabled) {
         if (botName == null || botName.trim().isEmpty()) return;
         String key = botName.toLowerCase();

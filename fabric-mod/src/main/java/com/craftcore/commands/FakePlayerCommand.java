@@ -107,20 +107,22 @@ dispatcher.register(Commands.literal("fp")
             player.sendSystemMessage(Component.literal("§b[Craft-Core] §a成功召喚假人：" + botName));
             return 1;
         } else {
-            if (server.getPlayerList().getPlayerByName(botName) == null) {
-                player.sendSystemMessage(Component.literal("§c[Craft-Core] 該假人目前不在線上！"));
-                return 0;
-            }
-
             CommandSourceStack consoleSource = server.createCommandSourceStack();
             CommandSourceStack elevatedSource = consoleSource
                     .withPosition(player.position())
                     .withRotation(player.getRotationVector())
                     .withLevel((ServerLevel) player.level());
 
-            String cmd = "player " + botName + " " + cleanAction;
+            String execAction = cleanAction.equalsIgnoreCase("remove") ? "kill" : cleanAction;
+            String cmd = "player " + botName + " " + execAction;
             server.getCommands().performPrefixedCommand(elevatedSource, cmd);
-            player.sendSystemMessage(Component.literal("§b[Craft-Core] §a已向假人 " + botName + " 發送指令：" + cleanAction));
+
+            if (cleanAction.equalsIgnoreCase("kill") || cleanAction.equalsIgnoreCase("remove")) {
+                com.craftcore.fakeplayer.FakePlayerManager.unregister(botName);
+                player.sendSystemMessage(Component.literal("§b[Craft-Core] §a假人 " + botName + " 已清除並從自動重連紀錄中移除！"));
+            } else {
+                player.sendSystemMessage(Component.literal("§b[Craft-Core] §a已向假人 " + botName + " 發送指令：" + cleanAction));
+            }
             return 1;
         }
     }
