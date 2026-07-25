@@ -73,140 +73,176 @@ function translateDeathMessage(details, username) {
   const patternRules = [
     // 1. Escaping/fighting patterns (2 targets)
     {
-      regex: /^(.*) walked into a cactus whilst trying to escape (.*)$/i,
+      regex: /^(.*?) walked into a cactus whi(?:le|lst) trying to escape (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時撞上仙人掌死了`
     },
     {
-      regex: /^(.*) drowned whilst trying to escape (.*)$/i,
+      regex: /^(.*?) drowned whi(?:le|lst) trying to escape (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時淹死了`
     },
     {
-      regex: /^(.*) experienced kinetic energy whilst trying to escape (.*)$/i,
+      regex: /^(.*?) experienced kinetic energy whi(?:le|lst) trying to escape (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時撞牆身亡`
     },
     {
-      regex: /^(.*) hit the ground too hard whilst trying to escape (.*)$/i,
+      regex: /^(.*?) hit the ground too hard whi(?:le|lst) trying to escape (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時重摔落地身亡`
     },
     {
-      regex: /^(.*) was impaled on a stalagmite whilst fighting (.*)$/i,
+      regex: /^(.*?) fell from a high place whi(?:le|lst) trying to escape (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時從高處摔下身亡`
+    },
+    {
+      regex: /^(.*?)(?: was)? impaled on a stalagmite whi(?:le|lst) fighting (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時被石筍刺穿了`
     },
     {
-      regex: /^(.*) was squashed by a falling anvil whilst fighting (.*)$/i,
+      regex: /^(.*?)(?: was)? squashed by a falling anvil whi(?:le|lst) fighting (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時被掉落的鐵砧砸扁了`
     },
     {
-      regex: /^(.*) was skewered by a falling stalactite whilst fighting (.*)$/i,
+      regex: /^(.*?)(?: was)? skewered by a falling stalactite whi(?:le|lst) fighting (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時被掉落的鐘乳石刺穿了`
     },
     {
-      regex: /^(.*) walked into fire whilst fighting (.*)$/i,
+      regex: /^(.*?) walked into fire whi(?:le|lst) fighting (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時走入火中燒死了`
     },
     {
-      regex: /^(.*) tried to swim in lava to escape (.*)$/i,
+      regex: /^(.*?)(?: was)? burned to a crisp whi(?:le|lst) fighting (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時被燒成了灰燼`
+    },
+    {
+      regex: /^(.*?) tried to swim in lava (?:to escape|whi(?:le|lst) trying to escape) (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 為了逃離 ${transName(m2)} 而試圖在岩漿中游泳`
     },
     {
-      regex: /^(.*) was struck by lightning whilst fighting (.*)$/i,
+      regex: /^(.*?)(?: was)? struck by lightning whi(?:le|lst) fighting (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時被雷劈死了`
     },
     {
-      regex: /^(.*) walked into the danger zone due to (.*)$/i,
+      regex: /^(.*?) walked into the danger zone due to (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 因為 ${transName(m2)} 而走進了危險區域`
     },
     {
-      regex: /^(.*) was killed by magic whilst trying to escape (.*)$/i,
+      regex: /^(.*?)(?: was)? killed by magic whi(?:le|lst) trying to escape (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時被魔法殺死了`
     },
     {
-      regex: /^(.*) was frozen to death by (.*)$/i,
-      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 凍死了`
+      regex: /^(.*?) froze to death whi(?:le|lst) trying to escape (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時被凍死了`
     },
     {
-      regex: /^(.*) starved to death whilst fighting (.*)$/i,
+      regex: /^(.*?) starved to death whi(?:le|lst) fighting (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時餓死了`
     },
     {
-      regex: /^(.*) suffocated in a wall whilst fighting (.*)$/i,
+      regex: /^(.*?) suffocated in a wall whi(?:le|lst) fighting (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時在牆中窒息而死`
     },
     {
-      regex: /^(.*) was squashed by (.*)$/i,
+      regex: /^(.*?)(?: was)? squashed by (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 壓扁了`
     },
     {
-      regex: /^(.*) was poked to death by a sweet berry bush whilst trying to escape (.*)$/i,
+      regex: /^(.*?)(?: was)? smashed by (.*) using (.*)$/i,
+      format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 砸死了`
+    },
+    {
+      regex: /^(.*?)(?: was)? smashed by (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 砸死了`
+    },
+    {
+      regex: /^(.*?)(?: was)? pummeled by (.*) using (.*)$/i,
+      format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 痛擊致死`
+    },
+    {
+      regex: /^(.*?)(?: was)? pummeled by (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 痛擊致死`
+    },
+    {
+      regex: /^(.*?)(?: was)? poked to death by a sweet berry bush whi(?:le|lst) trying to escape (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在試圖逃離 ${transName(m2)} 時被甜莓灌木戳死了`
     },
     {
-      regex: /^(.*) didn't want to live in the same world as (.*)$/i,
+      regex: /^(.*?) didn't want to live in the same world as (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 不想與 ${transName(m2)} 活在同一個世界`
     },
     {
-      regex: /^(.*) withered away whilst fighting (.*)$/i,
+      regex: /^(.*?) withered away whi(?:le|lst) fighting (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時凋零而死`
     },
 
-    // 2. Item-related patterns (3 targets)
+    // 2. Item-related & Target-related patterns
     {
-      regex: /^(.*) went off with a bang due to a firework fired from (.*) by (.*)$/i,
+      regex: /^(.*?) went off with a bang due to a firework fired from (.*) by (.*)$/i,
       format: (m1, item, m2) => `${transName(m1)} 因 ${transName(m2)} 使用 **${item}** 發射的煙火爆炸而身亡`
     },
     {
-      regex: /^(.*) was slain by (.*) using (.*)$/i,
+      regex: /^(.*?)(?: was)? slain by (.*) using (.*)$/i,
       format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 殺死了`
     },
     {
-      regex: /^(.*) was shot by (.*) using (.*)$/i,
+      regex: /^(.*?)(?: was)? shot by (.*) using (.*)$/i,
       format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 射殺了`
     },
     {
-      regex: /^(.*) was impaled by (.*) using (.*)$/i,
+      regex: /^(.*?)(?: was)? impaled by (.*) using (.*)$/i,
       format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 刺穿了`
     },
     {
-      regex: /^(.*) was killed by (.*) trying to hurt (.*)$/i,
-      format: (m1, item, m2) => `${transName(m1)} 在試圖傷害 ${transName(m2)} 時被 **${item}** 殺死了`
+      regex: /^(.*?)(?: was)? killed by (.*) (?:whi(?:le|lst) )?trying to hurt (.*)$/i,
+      format: (m1, m2, m3) => `${transName(m1)} 在試圖傷害 ${transName(m3)} 時被 ${transName(m2)} 殺死了`
     },
     {
-      regex: /^(.*) was killed by (.*) using magic$/i,
+      regex: /^(.*?)(?: was)? killed by (.*) using magic$/i,
       format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 用魔法殺死了`
     },
     {
-      regex: /^(.*) was killed by (.*) using (.*)$/i,
+      regex: /^(.*?)(?: was)? killed by (.*) using (.*)$/i,
       format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 殺死了`
     },
     {
-      regex: /^(.*) was blown up by (.*) using (.*)$/i,
-      format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 炸死了`
-    },
-    {
-      regex: /^(.*) was blown up by (.*)$/i,
-      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 炸死了`
-    },
-
-    // 3. Slain / fireballed / shot (2 targets)
-    {
-      regex: /^(.*) was slain by (.*)$/i,
+      regex: /^(.*?)(?: was)? killed by (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 殺死了`
     },
     {
-      regex: /^(.*) was shot by (.*)$/i,
+      regex: /^(.*?)(?: was)? blown up by (.*) using (.*)$/i,
+      format: (m1, m2, item) => `${transName(m1)} 被 ${transName(m2)} 使用 **${item}** 炸死了`
+    },
+    {
+      regex: /^(.*?)(?: was)? blown up by (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 炸死了`
+    },
+
+    // 3. Slain / fireballed / shot
+    {
+      regex: /^(.*?)(?: was)? slain by (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 殺死了`
+    },
+    {
+      regex: /^(.*?)(?: was)? shot by (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 射殺了`
     },
     {
-      regex: /^(.*) was impaled by (.*)$/i,
+      regex: /^(.*?)(?: was)? impaled by (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 刺穿了`
     },
     {
-      regex: /^(.*) was fireballed by (.*)$/i,
+      regex: /^(.*?)(?: was)? fireballed by (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 被 ${transName(m2)} 的火球燒死了`
     },
     {
-      regex: /^(.*) was killed trying to hurt (.*)$/i,
+      regex: /^(.*?)(?: was)? killed (?:whi(?:le|lst) )?trying to hurt (.*)$/i,
       format: (m1, m2) => `${transName(m1)} 在試圖傷害 ${transName(m2)} 時被殺死了`
+    },
+    {
+      regex: /^(.*?)(?: was)? killed$/i,
+      format: (m1) => `${transName(m1)} 被殺死了`
+    },
+    {
+      regex: /^(.*?)(?: was)? burned to a crisp$/i,
+      format: (m1) => `${transName(m1)} 被燒成了灰燼`
     },
 
     // 4. Environmental and standalone (1 target)
@@ -672,5 +708,6 @@ module.exports = {
   sendChat,
   sendEvent,
   sendServerStart,
-  sendServerStop
+  sendServerStop,
+  translateDeathMessage
 };
