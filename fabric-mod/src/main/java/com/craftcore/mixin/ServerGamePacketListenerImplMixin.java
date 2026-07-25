@@ -21,7 +21,7 @@ public class ServerGamePacketListenerImplMixin {
         require = 0
     )
     private double modifyMaxInteractDistance36(double original) {
-        return 4096.0; // Expand to 64 blocks reach
+        return 4096.0;
     }
 
     @ModifyConstant(
@@ -30,7 +30,7 @@ public class ServerGamePacketListenerImplMixin {
         require = 0
     )
     private double modifyMaxInteractDistance64(double original) {
-        return 4096.0; // Expand to 64 blocks reach
+        return 4096.0;
     }
 
     @Redirect(
@@ -42,6 +42,14 @@ public class ServerGamePacketListenerImplMixin {
         require = 0
     )
     private double redirectDistanceToSqr(Vec3 instance, Vec3 vec) {
-        return 0.0; // Bypass distance check completely for Litematica Easy Place Mode
+        double realDistance = instance.distanceToSqr(vec);
+        if (player != null) {
+            // Check if player is standing near the target block (within 8 blocks / 64.0 sq distance)
+            double distanceToPlayer = player.position().distanceToSqr(vec);
+            if (distanceToPlayer <= 64.0) {
+                return 0.0; // Legitimate Litematica placement near player: Bypass anchor rejection
+            }
+        }
+        return realDistance; // Far away placement (Reach Hack): Enforce vanilla rejection!
     }
 }
