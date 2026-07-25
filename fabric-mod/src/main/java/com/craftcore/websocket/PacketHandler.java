@@ -533,6 +533,39 @@ public class PacketHandler {
                     });
                     break;
                 }
+                case "update_claim_flags": {
+                    UpdateClaimFlagsPayload payload = GSON.fromJson(payloadObj, UpdateClaimFlagsPayload.class);
+                    boolean isAuth = client.isAuthenticated();
+                    if (!isAuth) {
+                        client.send(new Packet("generic_response", new GenericActionResponsePayload(payload.query_id, false, "Unauthorized", 0.0)));
+                        break;
+                    }
+                    server.execute(() -> {
+                        com.craftcore.claim.ClaimManager.Claim claim = com.craftcore.claim.ClaimManager.getClaim(payload.claim_id);
+                        if (claim == null) {
+                            client.send(new Packet("generic_response", new GenericActionResponsePayload(payload.query_id, false, "Claim not found", 0.0)));
+                            return;
+                        }
+
+                        net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
+                        boolean isOp = player != null && player.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);
+                        boolean isOwnerOrAdmin = claim.owner.equalsIgnoreCase(payload.username) || isOp || payload.is_admin;
+
+                        if (!isOwnerOrAdmin) {
+                            client.send(new Packet("generic_response", new GenericActionResponsePayload(payload.query_id, false, "您無權修改此領地標籤！", 0.0)));
+                            return;
+                        }
+
+                        if (payload.public_containers != null) claim.public_containers = payload.public_containers;
+                        if (payload.public_interact != null) claim.public_interact = payload.public_interact;
+                        if (payload.public_entry != null) claim.public_entry = payload.public_entry;
+                        if (payload.banned_players != null) claim.banned_players = payload.banned_players;
+
+                        com.craftcore.claim.ClaimManager.save();
+                        client.send(new Packet("generic_response", new GenericActionResponsePayload(payload.query_id, true, "領地標籤與權限設定成功！", 0.0)));
+                    });
+                    break;
+                }
                 case "join_response": {
                     JoinResponsePayload payload = GSON.fromJson(payloadObj, JoinResponsePayload.class);
                     server.execute(() -> {

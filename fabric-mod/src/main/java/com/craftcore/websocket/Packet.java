@@ -679,4 +679,15 @@ public class Packet {
         public String color_code;
         public boolean is_bold;
     }
+
+    public static class UpdateClaimFlagsPayload {
+        public String query_id;
+        public String username;
+        public String claim_id;
+        public Boolean public_containers;
+        public Boolean public_interact;
+        public Boolean public_entry;
+        public List<String> banned_players;
+        public boolean is_admin;
+    }
 }

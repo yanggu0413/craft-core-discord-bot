@@ -1599,35 +1599,38 @@ app.post('/api/claims/permission', authenticateToken, async (req, res) => {
     if (!claimId || !permissionType || !player || !action) {
         return res.status(400).json({ success: false, message: '缺少必要參數' });
     }
-    // 驗證擁有者身份
-    let isOwner = false;
-    try {
-        const response = await sendWsQuery('claims_query', {});
-        const claims = response.claims || [];
-        const targetClaim = claims.find((c) => c.id === claimId);
-        if (targetClaim && targetClaim.owner.toLowerCase() === username.toLowerCase()) {
-            isOwner = true;
-        }
-    }
-    catch (err) {
-        // Fallback to reading file
+    // 驗證擁有者或管理員身份
+    const isAdmin = Boolean((user.discord_id && ADMIN_DISCORD_IDS.has(user.discord_id)) || user.profile?.isAdmin);
+    let isOwnerOrAdmin = isAdmin;
+    if (!isOwnerOrAdmin) {
         try {
-            const claimsFile = path_1.default.resolve(__dirname, '../../../config/craft-core-shop/claims.json');
-            if (fs_1.default.existsSync(claimsFile)) {
-                const raw = fs_1.default.readFileSync(claimsFile, 'utf8');
-                const claimsMap = JSON.parse(raw);
-                const targetClaim = claimsMap[claimId];
-                if (targetClaim && targetClaim.owner.toLowerCase() === username.toLowerCase()) {
-                    isOwner = true;
-                }
+            const response = await sendWsQuery('claims_query', {});
+            const claims = response.claims || [];
+            const targetClaim = claims.find((c) => c.id === claimId);
+            if (targetClaim && targetClaim.owner.toLowerCase() === username.toLowerCase()) {
+                isOwnerOrAdmin = true;
             }
         }
-        catch (fsErr) {
-            // ignore
+        catch (err) {
+            // Fallback to reading file
+            try {
+                const claimsFile = path_1.default.resolve(__dirname, '../../../config/craft-core-shop/claims.json');
+                if (fs_1.default.existsSync(claimsFile)) {
+                    const raw = fs_1.default.readFileSync(claimsFile, 'utf8');
+                    const claimsMap = JSON.parse(raw);
+                    const targetClaim = claimsMap[claimId];
+                    if (targetClaim && targetClaim.owner.toLowerCase() === username.toLowerCase()) {
+                        isOwnerOrAdmin = true;
+                    }
+                }
+            }
+            catch (fsErr) {
+                // ignore
+            }
         }
     }
-    if (!isOwner) {
-        return res.status(403).json({ success: false, message: '您無權修改此領地的權限（僅限領地擁有者修改）' });
+    if (!isOwnerOrAdmin) {
+        return res.status(403).json({ success: false, message: '您無權修改此領地的權限（僅限領地擁有者或管理員修改）' });
     }
     try {
         const result = await sendWsQuery('claims_permission_update', {
@@ -2540,16 +2543,47 @@ app.post('/api/claims/flags', authenticateToken, async (req, res) => {
     try {
         const { claim_id, public_containers, public_interact, public_entry, banned_players } = req.body;
         const username = req.user?.mc_username || req.user?.username;
+        const isAdmin = Boolean((req.user?.discord_id && ADMIN_DISCORD_IDS.has(req.user.discord_id)) || req.user?.profile?.isAdmin);
         // Send WS query to Minecraft server
-        const wsRes = await sendWsQuery('update_claim_flags', {
-            username,
-            claim_id,
-            public_containers,
-            public_interact,
-            public_entry,
-            banned_players
-        });
-        return res.json(wsRes || { success: true, message: '領地權限標籤已設定完成！' });
+        try {
+            const wsRes = await sendWsQuery('update_claim_flags', {
+                username,
+                claim_id,
+                public_containers,
+                public_interact,
+                public_entry,
+                banned_players,
+                is_admin: isAdmin
+            });
+            return res.json(wsRes || { success: true, message: '領地權限標籤已設定完成！' });
+        }
+        catch (wsErr) {
+            // Fallback: Write to claims.json directly
+            const claimsFile = path_1.default.resolve(__dirname, '../../../config/craft-core-shop/claims.json');
+            if (fs_1.default.existsSync(claimsFile)) {
+                const raw = fs_1.default.readFileSync(claimsFile, 'utf8');
+                const claimsMap = JSON.parse(raw);
+                const claim = claimsMap[claim_id];
+                if (claim) {
+                    if (claim.owner.toLowerCase() === username.toLowerCase() || isAdmin) {
+                        if (typeof public_containers === 'boolean')
+                            claim.public_containers = public_containers;
+                        if (typeof public_interact === 'boolean')
+                            claim.public_interact = public_interact;
+                        if (typeof public_entry === 'boolean')
+                            claim.public_entry = public_entry;
+                        if (Array.isArray(banned_players))
+                            claim.banned_players = banned_players;
+                        fs_1.default.writeFileSync(claimsFile, JSON.stringify(claimsMap, null, 2), 'utf8');
+                        return res.json({ success: true, message: '領地權限標籤已設定完成 (檔案更新)' });
+                    }
+                    else {
+                        return res.status(403).json({ success: false, message: '您無權修改此領地的標籤 (僅限領地擁有者或管理員)' });
+                    }
+                }
+            }
+            return res.status(400).json({ success: false, message: '找不到該領地或無法通訊' });
+        }
     }
     catch (error) {
         return res.status(500).json({ success: false, message: error.message });
