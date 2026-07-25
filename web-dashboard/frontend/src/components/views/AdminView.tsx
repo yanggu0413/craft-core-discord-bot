@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle, Eye, Shield, Sparkles, Send, FileText, DollarSign, Key, Coins, LifeBuoy, MessageSquare } from 'lucide-react';
+import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle, Eye, Shield, Sparkles, Send, FileText, DollarSign, Key, Coins, LifeBuoy, MessageSquare, HardDrive, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -46,7 +46,7 @@ const COLOR_MAP: Record<string, string> = {
 };
 
 export default function AdminView({ token, triggerToast, API_URL }: AdminViewProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'audit' | 'announcement' | 'cobrand' | 'transactions' | 'tickets'>('audit');
+  const [activeSubTab, setActiveSubTab] = useState<'audit' | 'announcement' | 'cobrand' | 'transactions' | 'tickets' | 'backup'>('audit');
 
   // Ban & Kick States
   const [banPlayer, setBanPlayer] = useState('');
@@ -89,6 +89,57 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
   const [giveKeys, setGiveKeys] = useState('');
   const [isGivingMoney, setIsGivingMoney] = useState(false);
   const [isGivingKeys, setIsGivingKeys] = useState(false);
+
+  // Backup Management States
+  const [backupStats, setBackupStats] = useState<{
+    total_bytes: number;
+    max_bytes: number;
+    count: number;
+    is_backing_up: boolean;
+    files: Array<{ name: string; size_bytes: number; last_modified: number }>;
+  } | null>(null);
+  const [isLoadingBackup, setIsLoadingBackup] = useState(false);
+  const [isTriggeringBackup, setIsTriggeringBackup] = useState(false);
+
+  const fetchBackupStatus = async () => {
+    if (!token) return;
+    setIsLoadingBackup(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/backup/status`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBackupStats(data.stats);
+      }
+    } catch (e) {
+      console.error('Failed to fetch backup status:', e);
+    } finally {
+      setIsLoadingBackup(false);
+    }
+  };
+
+  const handleTriggerBackup = async () => {
+    if (!token) return;
+    setIsTriggeringBackup(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/backup/trigger`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast('地圖備份程序已成功發起！', 'success');
+        setTimeout(() => fetchBackupStatus(), 3000);
+      } else {
+        triggerToast(data.message || '備份觸發失敗', 'error');
+      }
+    } catch (e: any) {
+      triggerToast('請求失敗：' + e.message, 'error');
+    } finally {
+      setIsTriggeringBackup(false);
+    }
+  };
 
   const handleGiveMoney = async () => {
     if (!searchedProfile || !giveAmount || !token) return;
@@ -555,6 +606,19 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
             }`}
           >
             🎫 客服單歷史備份
+          </button>
+          <button
+            onClick={() => {
+              setActiveSubTab('backup');
+              fetchBackupStatus();
+            }}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              activeSubTab === 'backup' 
+                ? 'bg-card text-foreground shadow-sm' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            💾 地圖自動備份
           </button>
         </div>
       </div>
@@ -1235,6 +1299,111 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* 6. 子分頁 F: 💾 地圖自動備份與 100GB 容量防護 */}
+      {activeSubTab === 'backup' && (
+        <div className="space-y-6 animate-fade-in">
+          <Card className="bg-card border-border shadow-sm">
+            <CardHeader className="pb-3 border-b border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-sm font-bold flex items-center space-x-2">
+                  <HardDrive className="w-4 h-4 text-emerald-400" />
+                  <span>伺服器地圖 7z 高壓縮自動備份系統</span>
+                </CardTitle>
+                <CardDescription className="text-[11px] mt-0.5">
+                  系統每 3 小時自動以 7z 高壓縮打包 world/ 地圖，寫入伺服器根目錄 backups/，並實施 100GB 容量上限自動維護。
+                </CardDescription>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Button 
+                  onClick={fetchBackupStatus} 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={isLoadingBackup}
+                  className="h-8 text-xs font-bold"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 mr-1 ${isLoadingBackup ? 'animate-spin' : ''}`} />
+                  重新整理
+                </Button>
+                <Button 
+                  onClick={handleTriggerBackup} 
+                  disabled={isTriggeringBackup || backupStats?.is_backing_up}
+                  className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <HardDrive className="w-3.5 h-3.5 mr-1" />
+                  {backupStats?.is_backing_up ? '備份執行中...' : isTriggeringBackup ? '觸發中...' : '⚡ 立即手動備份'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-6">
+              {/* 容量狀態條 */}
+              {backupStats && (
+                <div className="bg-muted/30 border border-border p-4 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="flex items-center text-foreground">
+                      <span>儲存空間使用率 (容量上限 100 GB)</span>
+                    </span>
+                    <span className="font-mono text-emerald-400">
+                      {(backupStats.total_bytes / (1024 * 1024 * 1024)).toFixed(2)} GB / 100.00 GB 
+                      ({((backupStats.total_bytes / (100 * 1024 * 1024 * 1024)) * 100).toFixed(1)}%)
+                    </span>
+                  </div>
+
+                  <div className="w-full h-3 bg-muted rounded-full overflow-hidden border border-border">
+                    <div 
+                      className={`h-full transition-all duration-500 ${
+                        (backupStats.total_bytes / (100 * 1024 * 1024 * 1024)) > 0.85 
+                          ? 'bg-rose-500' 
+                          : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${Math.min(100, (backupStats.total_bytes / (100 * 1024 * 1024 * 1024)) * 100)}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
+                    <span>📦 已歸檔備份檔總數：<strong className="text-foreground font-mono">{backupStats.count}</strong> 個檔案</span>
+                    <span>⏳ 定期循環：每 3 小時 (180 分鐘)</span>
+                  </div>
+                </div>
+              )}
+
+              {/* 備份檔案列表 */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  已歸檔地圖備份清單 ({backupStats?.files?.length || 0})
+                </h4>
+
+                {backupStats?.files && backupStats.files.length > 0 ? (
+                  <div className="border border-border rounded-lg overflow-hidden divide-y divide-border bg-card">
+                    {backupStats.files.map((file, idx) => (
+                      <div key={idx} className="p-3 flex items-center justify-between hover:bg-muted/40 transition-colors">
+                        <div className="flex items-center space-x-3">
+                          <HardDrive className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <div>
+                            <p className="text-xs font-bold font-mono text-foreground">{file.name}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              時間：{new Date(file.last_modified).toLocaleString('zh-TW')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-right font-mono text-xs font-bold text-foreground">
+                          {(file.size_bytes / (1024 * 1024)).toFixed(1)} MB
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 border border-dashed border-border rounded-lg text-muted-foreground text-xs">
+                    目前尚未產生備份檔案（備份檔將於觸發後儲存至 backups/ 目錄）
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* 客服單對話歷史美化對話框 (Ticket Transcript Modal) */}

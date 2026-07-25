@@ -40,6 +40,7 @@ public class ServerLifecycleHandler {
             ChestShopEventHandler.register();
             com.craftcore.task.DailyTaskManager.register();
             com.craftcore.fakeplayer.FakePlayerManager.scheduleAutoReconnect(server);
+            com.craftcore.backup.BackupManager.startAutoBackupLoop(server);
         });
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
@@ -52,6 +53,7 @@ public class ServerLifecycleHandler {
                     greetingScheduler = null;
                 }
             }
+            com.craftcore.backup.BackupManager.stopAutoBackupLoop();
             CraftCoreMod.stopWSClient();
         });
 

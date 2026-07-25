@@ -690,4 +690,24 @@ public class Packet {
         public List<String> banned_players;
         public boolean is_admin;
     }
+
+    public static class BackupQueryPayload {
+        public String query_id;
+        public String action; // "status" or "trigger"
+        public String admin_username;
+    }
+
+    public static class BackupStatusResponsePayload {
+        public String query_id;
+        public boolean success;
+        public String message;
+        public java.util.Map<String, Object> stats;
+
+        public BackupStatusResponsePayload(String queryId, boolean success, String message, java.util.Map<String, Object> stats) {
+            this.query_id = queryId;
+            this.success = success;
+            this.message = message;
+            this.stats = stats;
+        }
+    }
 }

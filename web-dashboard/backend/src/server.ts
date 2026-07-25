@@ -2673,6 +2673,63 @@ app.post('/api/claims/flags', authenticateToken, async (req: any, res: any) => {
   }
 });
 
+// POST /api/admin/backup/trigger - Trigger immediate backup
+app.post('/api/admin/backup/trigger', authenticateToken, requireAdmin, async (req: CustomRequest, res: Response) => {
+  try {
+    const adminUsername = req.user?.mc_username || 'Admin';
+    const wsRes = await sendWsQuery('backup_query', { action: 'trigger', admin_username: adminUsername });
+    return res.json(wsRes || { success: true, message: '地圖備份作業已發起！' });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/admin/backup/status - Get backup status & statistics
+app.get('/api/admin/backup/status', authenticateToken, requireAdmin, async (req: CustomRequest, res: Response) => {
+  try {
+    const wsRes = await sendWsQuery('backup_query', { action: 'status' });
+    if (wsRes && wsRes.success) {
+      return res.json({ success: true, stats: wsRes.stats });
+    }
+    // Fallback: Read local backups folder
+    const possibleDirs = [
+      path.resolve(__dirname, '../../../backups'),
+      path.resolve(__dirname, '../../../../fabric-mod/backups'),
+      path.resolve('backups')
+    ];
+    let backupDir = possibleDirs[0];
+    for (const d of possibleDirs) {
+      if (fs.existsSync(d)) { backupDir = d; break; }
+    }
+
+    let totalBytes = 0;
+    let count = 0;
+    const files: any[] = [];
+    if (fs.existsSync(backupDir)) {
+      const list = fs.readdirSync(backupDir).filter(f => f.endsWith('.7z'));
+      count = list.length;
+      for (const f of list) {
+        const stat = fs.statSync(path.join(backupDir, f));
+        totalBytes += stat.size;
+        files.push({ name: f, size_bytes: stat.size, last_modified: stat.mtimeMs });
+      }
+      files.sort((a, b) => b.last_modified - a.last_modified);
+    }
+    return res.json({
+      success: true,
+      stats: {
+        total_bytes: totalBytes,
+        max_bytes: 100 * 1024 * 1024 * 1024,
+        count,
+        is_backing_up: false,
+        files
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // POST /api/admin/give-money - Directly give money to a player
 app.post('/api/admin/give-money', authenticateToken, async (req: CustomRequest, res: Response) => {
   const { username, amount } = req.body;

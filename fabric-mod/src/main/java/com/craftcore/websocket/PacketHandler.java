@@ -566,6 +566,28 @@ public class PacketHandler {
                     });
                     break;
                 }
+                case "backup_query": {
+                    BackupQueryPayload payload = GSON.fromJson(payloadObj, BackupQueryPayload.class);
+                    boolean isAuth = client.isAuthenticated();
+                    if (!isAuth) {
+                        client.send(new Packet("backup_response", new BackupStatusResponsePayload(payload.query_id, false, "Unauthorized", null)));
+                        break;
+                    }
+                    server.execute(() -> {
+                        if ("trigger".equalsIgnoreCase(payload.action)) {
+                            if (com.craftcore.backup.BackupManager.isBackingUp()) {
+                                client.send(new Packet("backup_response", new BackupStatusResponsePayload(payload.query_id, false, "已有備份作業正在執行中", com.craftcore.backup.BackupManager.getBackupStats())));
+                                return;
+                            }
+                            String source = (payload.admin_username != null && !payload.admin_username.isEmpty()) ? "Web-Admin (" + payload.admin_username + ")" : "Web-Dashboard";
+                            com.craftcore.backup.BackupManager.performBackupAsync(true, source);
+                            client.send(new Packet("backup_response", new BackupStatusResponsePayload(payload.query_id, true, "備份程序已啟動！", com.craftcore.backup.BackupManager.getBackupStats())));
+                        } else {
+                            client.send(new Packet("backup_response", new BackupStatusResponsePayload(payload.query_id, true, "OK", com.craftcore.backup.BackupManager.getBackupStats())));
+                        }
+                    });
+                    break;
+                }
                 case "join_response": {
                     JoinResponsePayload payload = GSON.fromJson(payloadObj, JoinResponsePayload.class);
                     server.execute(() -> {
