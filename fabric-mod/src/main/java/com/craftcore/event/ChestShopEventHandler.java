@@ -49,8 +49,16 @@ public class ChestShopEventHandler {
         return false;
     }
 
-    public static ShopManager.Shop findShopFromSign(Level world, BlockPos pos) {
-        // Textual check signature: instanceof net.minecraft.world.level.block.AbstractSignBlock
+    public static class ShopAndPos {
+        public ShopManager.Shop shop;
+        public BlockPos chestPos;
+        public ShopAndPos(ShopManager.Shop shop, BlockPos chestPos) {
+            this.shop = shop;
+            this.chestPos = chestPos;
+        }
+    }
+
+    public static ShopAndPos findShopAndPosFromSign(Level world, BlockPos pos) {
         if (!isSign(world.getBlockState(pos))) {
             return null;
         }
@@ -62,6 +70,7 @@ public class ChestShopEventHandler {
                 String adjCoords = adjacentPos.getX() + "," + adjacentPos.getY() + "," + adjacentPos.getZ();
                 String adjKey = dimension + ":" + adjCoords;
                 ShopManager.Shop shop = ShopManager.getShop(adjKey);
+                BlockPos targetPos = adjacentPos;
                 if (shop == null) {
                     net.minecraft.world.level.block.state.properties.ChestType chestType = adjacentState.getValue(ChestBlock.TYPE);
                     if (chestType == net.minecraft.world.level.block.state.properties.ChestType.LEFT || chestType == net.minecraft.world.level.block.state.properties.ChestType.RIGHT) {
@@ -72,14 +81,22 @@ public class ChestShopEventHandler {
                         BlockPos neighborPos = adjacentPos.relative(dirToAttached);
                         String neighborKey = dimension + ":" + neighborPos.getX() + "," + neighborPos.getY() + "," + neighborPos.getZ();
                         shop = ShopManager.getShop(neighborKey);
+                        if (shop != null) {
+                            targetPos = neighborPos;
+                        }
                     }
                 }
                 if (shop != null) {
-                    return shop;
+                    return new ShopAndPos(shop, targetPos);
                 }
             }
         }
         return null;
+    }
+
+    public static ShopManager.Shop findShopFromSign(Level world, BlockPos pos) {
+        ShopAndPos result = findShopAndPosFromSign(world, pos);
+        return result != null ? result.shop : null;
     }
 
     public static InteractionResult handleAttackBlock(Player player, Level world, InteractionHand hand, BlockPos pos, Direction direction) {
@@ -98,6 +115,20 @@ public class ChestShopEventHandler {
         }
 
         var state = world.getBlockState(pos);
+        if (isSign(state)) {
+            ShopAndPos sp = findShopAndPosFromSign(world, pos);
+            if (sp != null) {
+                boolean isOwner = sp.shop.player.equals(player.getName().getString()) || isOp(player);
+                if (!isOwner) {
+                    player.sendSystemMessage(Component.literal("§c[Craft-Core] 您不能破壞此商店告示牌！"));
+                    if (world instanceof ServerLevel serverWorld) {
+                        ShopManager.updateShopSign(serverWorld, sp.chestPos, sp.shop);
+                    }
+                    return InteractionResult.FAIL;
+                }
+            }
+        }
+
         if (state.getBlock() instanceof ChestBlock) {
             String coords = pos.getX() + "," + pos.getY() + "," + pos.getZ();
             String dimension = world.dimension().identifier().toString();
@@ -243,34 +274,15 @@ public class ChestShopEventHandler {
         // Add protection for AbstractSignBlock
         // Textual check signature: instanceof net.minecraft.world.level.block.AbstractSignBlock
         if (isSign(state)) {
-            String dimension = world.dimension().identifier().toString();
-            for (Direction dir : Direction.values()) {
-                BlockPos adjacentPos = pos.relative(dir);
-                var adjacentState = world.getBlockState(adjacentPos);
-                if (adjacentState.getBlock() instanceof ChestBlock) {
-                    String adjCoords = adjacentPos.getX() + "," + adjacentPos.getY() + "," + adjacentPos.getZ();
-                    String adjKey = dimension + ":" + adjCoords;
-                    ShopManager.Shop shop = ShopManager.getShop(adjKey);
-                    if (shop == null) {
-                        net.minecraft.world.level.block.state.properties.ChestType chestType = adjacentState.getValue(ChestBlock.TYPE);
-                        if (chestType == net.minecraft.world.level.block.state.properties.ChestType.LEFT || chestType == net.minecraft.world.level.block.state.properties.ChestType.RIGHT) {
-                            Direction facing = adjacentState.getValue(ChestBlock.FACING);
-                            Direction dirToAttached = (chestType == net.minecraft.world.level.block.state.properties.ChestType.LEFT) 
-                                ? facing.getClockWise() 
-                                : facing.getCounterClockWise();
-                            BlockPos neighborPos = adjacentPos.relative(dirToAttached);
-                            String neighborKey = dimension + ":" + neighborPos.getX() + "," + neighborPos.getY() + "," + neighborPos.getZ();
-                            shop = ShopManager.getShop(neighborKey);
-                        }
+            ShopAndPos sp = findShopAndPosFromSign(world, pos);
+            if (sp != null) {
+                boolean isOwner = sp.shop.player.equals(player.getName().getString()) || isOp(player);
+                if (!isOwner) {
+                    player.sendSystemMessage(Component.literal("§c[Craft-Core] 您不能破壞此商店告示牌！"));
+                    if (world instanceof ServerLevel serverWorld) {
+                        ShopManager.updateShopSign(serverWorld, sp.chestPos, sp.shop);
                     }
-
-                    if (shop != null) {
-                        boolean isOwner = shop.player.equals(player.getName().getString()) || isOp(player);
-                        if (!isOwner) {
-                            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您不能破壞此商店告示牌！"));
-                            return false;
-                        }
-                    }
+                    return false;
                 }
             }
         }
