@@ -1,6 +1,6 @@
 package com.craftcore;
 
-import com.craftcore.commands.DiscordCommand;
+import com.craftcore.commands.ModCommands;
 import com.craftcore.config.ConfigManager;
 import com.craftcore.event.ServerLifecycleHandler;
 import com.craftcore.websocket.CraftCoreWSClient;
@@ -16,7 +16,7 @@ public class CraftCoreMod implements ModInitializer {
         ConfigManager.loadConfig();
         ConfigManager.loadPlayers();
         ServerLifecycleHandler.register();
-        DiscordCommand.register();
+        ModCommands.register();
         com.craftcore.task.SidebarManager.register();
         com.craftcore.teleport.TeleportRequestManager.registerEvents();
         com.craftcore.afk.AfkManager.registerEvents();

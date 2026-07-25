@@ -1,0 +1,131 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
+const wsClient_1 = require("../websocket/wsClient");
+const router = (0, express_1.Router)();
+// GET /api/shops
+router.get('/shops', async (req, res) => {
+    const cacheKey = 'cache:shops:all';
+    const cached = (0, wsClient_1.getCachedData)(cacheKey);
+    if (cached) {
+        return res.json({ success: true, shops: cached, cached: true, totalSalesTax: wsClient_1.accumulatedSalesTax });
+    }
+    try {
+        const response = await (0, wsClient_1.sendWsQuery)('shops_query', {});
+        if (response && response.success) {
+            const shops = response.shops || [];
+            (0, wsClient_1.setCachedData)(cacheKey, shops, 3000);
+            return res.json({ success: true, shops, totalSalesTax: wsClient_1.accumulatedSalesTax });
+        }
+        const possiblePaths = [
+            path_1.default.resolve(__dirname, '../../../../config/craft-core-shop/shops.json'),
+            path_1.default.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/shops.json'),
+            path_1.default.resolve('config/craft-core-shop/shops.json')
+        ];
+        for (const p of possiblePaths) {
+            if (fs_1.default.existsSync(p)) {
+                const raw = fs_1.default.readFileSync(p, 'utf8');
+                const shopsMap = JSON.parse(raw);
+                const shopsArray = Object.values(shopsMap);
+                (0, wsClient_1.setCachedData)(cacheKey, shopsArray, 3000);
+                return res.json({ success: true, shops: shopsArray, totalSalesTax: wsClient_1.accumulatedSalesTax });
+            }
+        }
+        return res.json({ success: true, shops: [], totalSalesTax: wsClient_1.accumulatedSalesTax });
+    }
+    catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+});
+// POST /api/shop/rename
+router.post('/shop/rename', wsClient_1.authenticateToken, async (req, res) => {
+    const user = req.user;
+    if (!user)
+        return res.status(401).json({ success: false, message: '尚未登入' });
+    const { coords, custom_name } = req.body;
+    if (!coords || !custom_name) {
+        return res.status(400).json({ success: false, message: '缺少座標或新名稱參數' });
+    }
+    try {
+        const response = await (0, wsClient_1.sendWsQuery)('shop_action', {
+            action: 'rename',
+            username: user.mc_username,
+            coords,
+            custom_name
+        });
+        (0, wsClient_1.invalidateCachePattern)('cache:shops');
+        return res.json({ success: response.success, message: response.message });
+    }
+    catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+});
+// POST /api/shop/withdraw
+router.post('/shop/withdraw', wsClient_1.authenticateToken, async (req, res) => {
+    const user = req.user;
+    if (!user)
+        return res.status(401).json({ success: false, message: '尚未登入' });
+    const { coords } = req.body;
+    if (!coords) {
+        return res.status(400).json({ success: false, message: '缺少商店座標參數' });
+    }
+    try {
+        const response = await (0, wsClient_1.sendWsQuery)('shop_action', {
+            action: 'withdraw',
+            username: user.mc_username,
+            coords
+        });
+        (0, wsClient_1.invalidateCachePattern)('cache:shops');
+        return res.json({ success: response.success, message: response.message });
+    }
+    catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+});
+// POST /api/shop/rate
+router.post('/shop/rate', wsClient_1.authenticateToken, async (req, res) => {
+    const user = req.user;
+    if (!user)
+        return res.status(401).json({ success: false, message: '尚未登入' });
+    const { coords, rating } = req.body;
+    if (!coords || typeof rating !== 'number' || rating < 1 || rating > 5) {
+        return res.status(400).json({ success: false, message: '請提供有效的商店座標與 1~5 評分星等！' });
+    }
+    try {
+        const response = await (0, wsClient_1.sendWsQuery)('shop_action', {
+            action: 'rate',
+            username: user.mc_username,
+            coords,
+            rating
+        });
+        (0, wsClient_1.invalidateCachePattern)('cache:shops');
+        return res.json({ success: response.success, message: response.message || '評分成功！感謝您的回饋。' });
+    }
+    catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+});
+// GET /api/transactions
+router.get('/transactions', (req, res) => {
+    const cacheKey = 'cache:transactions:public';
+    const cached = (0, wsClient_1.getCachedData)(cacheKey);
+    if (cached) {
+        return res.json({ success: true, transactions: cached, cached: true });
+    }
+    if (!wsClient_1.db)
+        return res.json({ success: true, transactions: [] });
+    try {
+        const rows = wsClient_1.db.prepare('SELECT id, timestamp, shop_coords, buyer, seller, item, quantity, unit_price, tax_deducted, net_profit FROM transactions ORDER BY id DESC LIMIT 50').all();
+        (0, wsClient_1.setCachedData)(cacheKey, rows, 3000);
+        res.json({ success: true, transactions: rows });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+exports.default = router;
