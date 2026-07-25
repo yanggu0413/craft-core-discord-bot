@@ -764,13 +764,20 @@ public class PacketHandler {
                 case "warps_query": {
                     Packet.WarpsQueryPayload payload = GSON.fromJson(payloadObj, Packet.WarpsQueryPayload.class);
                     server.execute(() -> {
-                        java.util.List<Packet.WarpEntry> list = new java.util.ArrayList<>();
-                        java.util.List<com.craftcore.teleport.WarpManager.Warp> warps = com.craftcore.teleport.WarpManager.getWarps();
-                        for (com.craftcore.teleport.WarpManager.Warp w : warps) {
-                            String coordsStr = (int)w.x + ", " + (int)w.y + ", " + (int)w.z;
-                            list.add(new Packet.WarpEntry(w.name, coordsStr, w.dimension));
+                        try {
+                            java.util.List<Packet.WarpEntry> list = new java.util.ArrayList<>();
+                            java.util.List<com.craftcore.teleport.WarpManager.Warp> warps = com.craftcore.teleport.WarpManager.getWarps();
+                            for (com.craftcore.teleport.WarpManager.Warp w : warps) {
+                                if (w == null) continue;
+                                String name = w.name != null ? w.name.replace("\0", "") : "Unnamed";
+                                String dim = w.dimension != null ? w.dimension.replace("\0", "") : "minecraft:overworld";
+                                String coordsStr = (int)w.x + ", " + (int)w.y + ", " + (int)w.z;
+                                list.add(new Packet.WarpEntry(name, coordsStr, dim));
+                            }
+                            client.send(new Packet("warps_response", new Packet.WarpsResponsePayload(payload.query_id, list, true)));
+                        } catch (Throwable t) {
+                            System.err.println("[CraftCore] Error handling warps_query: " + t.getMessage());
                         }
-                        client.send(new Packet("warps_response", new Packet.WarpsResponsePayload(payload.query_id, list, true)));
                     });
                     break;
                 }

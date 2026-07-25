@@ -568,9 +568,9 @@ public class Packet {
         public String dimension;
 
         public WarpEntry(String name, String coords, String dimension) {
-            this.name = name;
-            this.coords = coords;
-            this.dimension = dimension;
+            this.name = name != null ? name.replace("\0", "") : "Unnamed";
+            this.coords = coords != null ? coords.replace("\0", "") : "0, 0, 0";
+            this.dimension = dimension != null ? dimension.replace("\0", "") : "minecraft:overworld";
         }
     }
 
@@ -605,9 +605,9 @@ public class Packet {
         public String dimension;
 
         public HomeEntry(String name, String coords, String dimension) {
-            this.name = name;
-            this.coords = coords;
-            this.dimension = dimension;
+            this.name = name != null ? name.replace("\0", "") : "Unnamed";
+            this.coords = coords != null ? coords.replace("\0", "") : "0, 0, 0";
+            this.dimension = dimension != null ? dimension.replace("\0", "") : "minecraft:overworld";
         }
     }
 

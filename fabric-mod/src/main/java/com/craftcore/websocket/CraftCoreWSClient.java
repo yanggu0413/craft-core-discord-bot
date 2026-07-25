@@ -69,8 +69,9 @@ public class CraftCoreWSClient {
                 String json = new Gson().toJson(packet);
                 messageQueue.offer(json);
                 processQueue();
-            } catch (Exception e) {
-                System.err.println("[CraftCore] Error queueing packet: " + e.getMessage());
+            } catch (Throwable t) {
+                System.err.println("[CraftCore] Error queueing packet: " + t.getMessage());
+                t.printStackTrace();
             }
         }
     }
