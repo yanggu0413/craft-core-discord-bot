@@ -2,10 +2,13 @@ package com.craftcore.mixin;
 
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(ServerGamePacketListenerImpl.class)
 public class ServerGamePacketListenerImplMixin {
@@ -18,7 +21,7 @@ public class ServerGamePacketListenerImplMixin {
         require = 0
     )
     private double modifyMaxInteractDistance36(double original) {
-        return 4096.0; // Expand to 64 blocks reach to allow Litematica Easy Place Mode without ghost blocks
+        return 4096.0; // Expand to 64 blocks reach
     }
 
     @ModifyConstant(
@@ -27,6 +30,18 @@ public class ServerGamePacketListenerImplMixin {
         require = 0
     )
     private double modifyMaxInteractDistance64(double original) {
-        return 4096.0; // Expand to 64 blocks reach to allow Litematica Easy Place Mode without ghost blocks
+        return 4096.0; // Expand to 64 blocks reach
+    }
+
+    @Redirect(
+        method = "handleUseItemOn",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/world/phys/Vec3;distanceToSqr(Lnet/minecraft/world/phys/Vec3;)D"
+        ),
+        require = 0
+    )
+    private double redirectDistanceToSqr(Vec3 instance, Vec3 vec) {
+        return 0.0; // Bypass distance check completely for Litematica Easy Place Mode
     }
 }

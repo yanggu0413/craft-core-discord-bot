@@ -244,6 +244,14 @@ function translateDeathMessage(details, username) {
       regex: /^(.*?)(?: was)? burned to a crisp$/i,
       format: (m1) => `${transName(m1)} 被燒成了灰燼`
     },
+    {
+      regex: /^(.*?)(?: was)? doomed to fall by (.*)$/i,
+      format: (m1, m2) => `${transName(m1)} 在與 ${transName(m2)} 戰鬥時墜落身亡`
+    },
+    {
+      regex: /^(.*?)(?: was)? doomed to fall$/i,
+      format: (m1) => `${transName(m1)} 墜落身亡`
+    },
 
     // 4. Environmental and standalone (1 target)
     {
