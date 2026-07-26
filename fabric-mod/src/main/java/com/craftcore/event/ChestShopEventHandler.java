@@ -169,9 +169,9 @@ public class ChestShopEventHandler {
 
                     int stock = 0;
                     int space = 0;
-                    int maxStack = itemObj.getDefaultMaxStackSize();
-                    BlockEntity be = world.getBlockEntity(targetPos);
-                    if (be instanceof net.minecraft.world.Container inv) {
+                    int maxStack = (itemObj != null && itemObj != net.minecraft.world.item.Items.AIR) ? itemObj.getDefaultMaxStackSize() : 64;
+                    net.minecraft.world.Container inv = ShopManager.getChestContainer(world, targetPos);
+                    if (inv != null) {
                         for (int i = 0; i < inv.getContainerSize(); i++) {
                             ItemStack s = inv.getItem(i);
                             if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {

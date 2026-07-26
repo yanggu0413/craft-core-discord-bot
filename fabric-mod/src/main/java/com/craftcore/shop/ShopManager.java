@@ -182,6 +182,22 @@ public class ShopManager {
         return key;
     }
 
+    public static net.minecraft.world.Container getChestContainer(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos) {
+        if (level == null || pos == null) return null;
+        try {
+            net.minecraft.world.level.block.state.BlockState state = level.getBlockState(pos);
+            if (state.getBlock() instanceof net.minecraft.world.level.block.ChestBlock chestBlock) {
+                net.minecraft.world.Container container = net.minecraft.world.level.block.ChestBlock.getContainer(chestBlock, state, level, pos, true);
+                if (container != null) return container;
+            }
+            net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof net.minecraft.world.Container container) {
+                return container;
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
     public static String getDimensionFromKey(String key) {
         if (key == null) return "minecraft:overworld";
         if (key.contains(":")) {
@@ -908,15 +924,13 @@ public class ShopManager {
             net.minecraft.world.item.Item shopItem = null;
             net.minecraft.world.Container chestInv = null;
             if (world != null) {
-                String[] parts = shop.coords.split(",");
+                String cleanCoords = getCleanCoords(shop.id);
+                String[] parts = cleanCoords.split(",");
                 int x = Integer.parseInt(parts[0]);
                 int y = Integer.parseInt(parts[1]);
                 int z = Integer.parseInt(parts[2]);
                 net.minecraft.core.BlockPos shopPos = new net.minecraft.core.BlockPos(x, y, z);
-                net.minecraft.world.level.block.entity.BlockEntity be = world.getBlockEntity(shopPos);
-                if (be instanceof net.minecraft.world.Container) {
-                    chestInv = (net.minecraft.world.Container) be;
-                }
+                chestInv = getChestContainer(world, shopPos);
                 try {
                     shopItem = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(shop.item));
                 } catch (Throwable t) {

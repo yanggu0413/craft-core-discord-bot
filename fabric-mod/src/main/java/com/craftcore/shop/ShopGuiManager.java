@@ -633,8 +633,8 @@ public class ShopGuiManager {
             }
             if (targetLevel != null) {
                 BlockPos pos = new BlockPos(x, y, z);
-                BlockEntity be = targetLevel.getBlockEntity(pos);
-                if (be instanceof net.minecraft.world.Container inv) {
+                net.minecraft.world.Container inv = ShopManager.getChestContainer(targetLevel, pos);
+                if (inv != null) {
                     int count = 0;
                     for (int i = 0; i < inv.getContainerSize(); i++) {
                         ItemStack s = inv.getItem(i);
