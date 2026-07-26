@@ -9,7 +9,8 @@
     "LivingEntityMixin",
     "PlayerMixin",
     "LevelMixin",
-    "BlockMixin"
+    "BlockMixin",
+    "HopperBlockEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

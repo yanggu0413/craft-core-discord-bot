@@ -463,6 +463,11 @@ dispatcher.register(Commands.literal("pay")
 
                                          double amount = DoubleArgumentType.getDouble(context, "amount");
 
+                                         if (Double.isNaN(amount) || Double.isInfinite(amount) || amount <= 0) {
+                                             player.sendSystemMessage(Component.literal("§c[Craft-Core] 轉帳失敗：金額必須為大於 0 的有效數字。"));
+                                             return 0;
+                                         }
+
 
 
                                          // 1. 冷卻時間安全檢查 (1.0 秒)

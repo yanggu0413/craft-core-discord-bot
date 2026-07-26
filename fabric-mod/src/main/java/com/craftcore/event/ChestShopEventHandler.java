@@ -337,6 +337,40 @@ public class ChestShopEventHandler {
             return InteractionResult.PASS;
         }
 
+        ItemStack heldItem = player.getItemInHand(hand);
+        if (!heldItem.isEmpty() && heldItem.is(net.minecraft.world.item.Items.HOPPER)) {
+            BlockPos placePos = hitResult.getBlockPos().relative(hitResult.getDirection());
+            String dimension = world.dimension().identifier().toString();
+            for (Direction dir : Direction.values()) {
+                BlockPos adjPos = placePos.relative(dir);
+                BlockState adjState = world.getBlockState(adjPos);
+                if (adjState.getBlock() instanceof ChestBlock) {
+                    String adjCoords = adjPos.getX() + "," + adjPos.getY() + "," + adjPos.getZ();
+                    String adjKey = dimension + ":" + adjCoords;
+                    ShopManager.Shop shop = ShopManager.getShop(adjKey);
+                    if (shop == null) {
+                        net.minecraft.world.level.block.state.properties.ChestType chestType = adjState.getValue(ChestBlock.TYPE);
+                        if (chestType == net.minecraft.world.level.block.state.properties.ChestType.LEFT || chestType == net.minecraft.world.level.block.state.properties.ChestType.RIGHT) {
+                            Direction facing = adjState.getValue(ChestBlock.FACING);
+                            Direction dirToAttached = (chestType == net.minecraft.world.level.block.state.properties.ChestType.LEFT) 
+                                ? facing.getClockWise() 
+                                : facing.getCounterClockWise();
+                            BlockPos neighborPos = adjPos.relative(dirToAttached);
+                            String neighborKey = dimension + ":" + neighborPos.getX() + "," + neighborPos.getY() + "," + neighborPos.getZ();
+                            shop = ShopManager.getShop(neighborKey);
+                        }
+                    }
+                    if (shop != null) {
+                        boolean isOwner = shop.player.equals(player.getName().getString()) || isOp(player);
+                        if (!isOwner) {
+                            player.sendSystemMessage(Component.literal("§c[Craft-Core] 禁止在其他玩家的商店箱子周圍放置漏斗！"));
+                            return InteractionResult.FAIL;
+                        }
+                    }
+                }
+            }
+        }
+
         BlockPos pos = hitResult.getBlockPos();
         var state = world.getBlockState(pos);
 
