@@ -119,6 +119,7 @@ public class DailyTaskManager {
     }
 
     private static final java.util.Set<String> processedBlocksThisTick = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
+    private static final java.util.Set<String> placedOreBlocks = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
     private static long lastClearedTick = -1;
     private static final ThreadLocal<ServerPlayer> activeMiningPlayer = new ThreadLocal<>();
 
@@ -135,6 +136,21 @@ public class DailyTaskManager {
     }
 
     public static void registerEvents() {
+        net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+            if (!world.isClientSide() && player != null) {
+                net.minecraft.world.item.ItemStack stack = player.getItemInHand(hand);
+                if (stack.getItem() instanceof net.minecraft.world.item.BlockItem blockItem) {
+                    String blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(blockItem.getBlock()).toString().toLowerCase();
+                    if (blockId.contains("ore")) {
+                        BlockPos targetPos = hitResult.getBlockPos().relative(hitResult.getDirection());
+                        String key = world.dimension().identifier().toString() + ":" + targetPos.getX() + "," + targetPos.getY() + "," + targetPos.getZ();
+                        placedOreBlocks.add(key);
+                    }
+                }
+            }
+            return net.minecraft.world.InteractionResult.PASS;
+        });
+
         net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
             if (player instanceof ServerPlayer sp) {
                 setActiveMiningPlayer(sp);
@@ -161,6 +177,23 @@ public class DailyTaskManager {
         String key = world.dimension().identifier().toString() + ":" + pos.getX() + "," + pos.getY() + "," + pos.getZ();
         if (!processedBlocksThisTick.add(key)) {
             return; // Already counted this block break in this tick!
+        }
+
+        if (placedOreBlocks.remove(key)) {
+            return; // Block was placed by a player - anti-dupe prevention!
+        }
+
+        boolean hasSilkTouch = false;
+        try {
+            net.minecraft.world.item.ItemStack mainHand = serverPlayer.getMainHandItem();
+            if (!mainHand.isEmpty()) {
+                String enchantStr = mainHand.getEnchantments().toString().toLowerCase();
+                hasSilkTouch = enchantStr.contains("silk_touch");
+            }
+        } catch (Exception ignored) {}
+
+        if (hasSilkTouch) {
+            return; // Silk touch mining does not count towards gathering natural resources!
         }
 
         String username = serverPlayer.getName().getString();

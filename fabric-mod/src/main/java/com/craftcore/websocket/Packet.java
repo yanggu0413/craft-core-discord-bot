@@ -294,10 +294,16 @@ public class Packet {
     public static class LuckydrawRequestPayload {
         public String username;
         public String uuid;
+        public int mod_keys;
 
-        public LuckydrawRequestPayload(String username, String uuid) {
+        public LuckydrawRequestPayload(String username, String uuid, int modKeys) {
             this.username = username;
             this.uuid = uuid;
+            this.mod_keys = modKeys;
+        }
+
+        public LuckydrawRequestPayload(String username, String uuid) {
+            this(username, uuid, 0);
         }
     }
 

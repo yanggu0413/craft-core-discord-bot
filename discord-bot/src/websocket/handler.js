@@ -152,8 +152,22 @@ async function handle(packet, discordClient) {
       break;
     }
 
+    case 'give_keys': {
+      const { username, amount } = payload;
+      if (username && typeof amount === 'number') {
+        let binding = await UserRepository.getBindingByMcUsername(username);
+        if (binding) {
+          const userKeys = await UserRepository.getUserKeys(binding.discord_id);
+          const currentKeys = userKeys ? (userKeys.keys_count || 0) : 0;
+          await UserRepository.updateKeys(binding.discord_id, currentKeys + amount);
+          console.log(`[WS Handler] Synchronized +${amount} lottery keys for ${username} (${binding.discord_id})`);
+        }
+      }
+      break;
+    }
+
     case 'luckydraw_request': {
-      const { username, uuid } = payload;
+      const { username, uuid, mod_keys } = payload;
       let binding = await UserRepository.getBindingByMcUuid(uuid);
       if (!binding) {
         binding = await UserRepository.getBindingByMcUsername(username);
@@ -170,14 +184,22 @@ async function handle(packet, discordClient) {
         break;
       }
       const discordId = binding.discord_id;
-      const userKeys = await UserRepository.getUserKeys(discordId);
-      if (!userKeys || (userKeys.keys_count || 0) < 1) {
+      let userKeys = await UserRepository.getUserKeys(discordId);
+      let currentDbKeys = userKeys ? (userKeys.keys_count || 0) : 0;
+
+      const modKeysVal = typeof mod_keys === 'number' ? mod_keys : 0;
+      if (modKeysVal > currentDbKeys) {
+        currentDbKeys = modKeysVal;
+        await UserRepository.updateKeys(discordId, currentDbKeys);
+      }
+
+      if (currentDbKeys < 1) {
         session.send({
           type: 'luckydraw_response',
           payload: {
             username,
             success: false,
-            message: '§c[Craft-Core] 鑰匙不足！您目前擁有 0 把鑰匙。'
+            message: `§c[Craft-Core] 鑰匙不足！您目前擁有 ${currentDbKeys} 把鑰匙。`
           }
         });
         break;

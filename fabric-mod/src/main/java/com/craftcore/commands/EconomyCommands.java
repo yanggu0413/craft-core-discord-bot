@@ -287,7 +287,8 @@ dispatcher.register(Commands.literal("luckydraw")
 
                         String uuid = player.getStringUUID();
 
-                        client.send(new Packet("luckydraw_request", new Packet.LuckydrawRequestPayload(username, uuid)));
+                        int modKeys = com.craftcore.economy.EconomyManager.getLotteryKeys(username);
+                        client.send(new Packet("luckydraw_request", new Packet.LuckydrawRequestPayload(username, uuid, modKeys)));
 
                         context.getSource().sendSystemMessage(Component.literal("§b[Craft-Core] §f正在送出抽獎請求..."));
 
