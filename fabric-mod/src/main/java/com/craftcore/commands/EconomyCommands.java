@@ -24,14 +24,22 @@ public class EconomyCommands {
     private static final java.util.Map<String, Long> payCooldowns = new java.util.concurrent.ConcurrentHashMap<>();
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-dispatcher.register(Commands.literal("events")
-                    .executes(context -> {
-                        if (context.getSource().getEntity() instanceof ServerPlayer player) {
-                            com.craftcore.event.EventManager.checkAndNotifyEvents(player);
-                        }
-                        return 1;
-                    })
-            );
+        dispatcher.register(Commands.literal("events")
+                .executes(context -> {
+                    if (context.getSource().getEntity() instanceof ServerPlayer player) {
+                        com.craftcore.event.EventManager.checkAndNotifyEvents(player, true);
+                    }
+                    return 1;
+                })
+        );
+        dispatcher.register(Commands.literal("event")
+                .executes(context -> {
+                    if (context.getSource().getEntity() instanceof ServerPlayer player) {
+                        com.craftcore.event.EventManager.checkAndNotifyEvents(player, true);
+                    }
+                    return 1;
+                })
+        );
 
 dispatcher.register(Commands.literal("luckydraw")
                     .executes(context -> {

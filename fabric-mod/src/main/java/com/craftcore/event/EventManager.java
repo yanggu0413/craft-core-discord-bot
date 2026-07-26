@@ -24,9 +24,14 @@ public class EventManager {
     private static final String API_URL = "http://localhost:3000/api/events/active";
 
     public static void checkAndNotifyEvents(ServerPlayer player) {
+        checkAndNotifyEvents(player, false);
+    }
+
+    public static void checkAndNotifyEvents(ServerPlayer player, boolean isManualCommand) {
         if (player == null) return;
 
         CompletableFuture.runAsync(() -> {
+            boolean foundEvents = false;
             try {
                 HttpRequest req = HttpRequest.newBuilder()
                         .uri(URI.create(API_URL))
@@ -41,11 +46,14 @@ public class EventManager {
                         JsonArray events = obj.getAsJsonArray("events");
                         if (events.size() > 0) {
                             sendEventBroadcast(player, events);
+                            foundEvents = true;
                         }
                     }
                 }
-            } catch (Exception e) {
-                // Ignore if web dashboard backend is offline
+            } catch (Exception ignored) {}
+
+            if (!foundEvents && isManualCommand) {
+                player.sendSystemMessage(Component.literal("§e[Craft-Core] 目前尚無舉辦中的活動，請關注官方 Discord 與網頁公告！"));
             }
         });
     }
