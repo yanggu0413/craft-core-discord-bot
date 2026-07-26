@@ -345,28 +345,32 @@ public class PacketHandler {
                 case "luckydraw_response": {
                     LuckydrawResponsePayload payload = GSON.fromJson(payloadObj, LuckydrawResponsePayload.class);
                     server.execute(() -> {
-                        com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
                         net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
-                        if (player != null) {
-                            if (payload.success) {
-                                com.craftcore.economy.EconomyManager.addMoney(payload.username, 150.0);
-                                net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
-                                    net.minecraft.resources.Identifier.parse(payload.item)
-                                ).map(net.minecraft.core.Holder::value).orElse(net.minecraft.world.item.Items.AIR);
-                                if (itemObj != null && itemObj != net.minecraft.world.item.Items.AIR) {
-                                    net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(itemObj, payload.amount);
-                                    player.getInventory().add(stack);
-                                    if (!stack.isEmpty()) {
-                                        player.drop(stack, false);
-                                    }
-                                }
-                                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                                    net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
-                                String trans = com.craftcore.shop.TranslationManager.getTranslatedName(payload.item);
-                                player.sendSystemMessage(Component.literal("§b[Craft-Core] §a幸運大抽獎成功！獲得 $150 元與 " + trans + " x" + payload.amount + "！"));
-                            } else {
-                                player.sendSystemMessage(Component.literal(payload.message));
+                        if (player == null) {
+                            System.err.println("[CraftCore] Luckydraw failed: Player " + payload.username + " is offline.");
+                            return;
+                        }
+                        if (payload.success) {
+                            if (player.getInventory().getFreeSlot() == -1) {
+                                player.sendSystemMessage(Component.literal("§c[Craft-Core] 抽獎失敗：您的背包已滿，無法放置獎勵物品！"));
+                                return;
                             }
+                            com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
+                            com.craftcore.economy.EconomyManager.addMoney(payload.username, 150.0);
+                            net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                                net.minecraft.resources.Identifier.parse(payload.item)
+                            ).map(net.minecraft.core.Holder::value).orElse(net.minecraft.world.item.Items.AIR);
+                            if (itemObj != null && itemObj != net.minecraft.world.item.Items.AIR) {
+                                net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(itemObj, payload.amount);
+                                player.getInventory().add(stack);
+                            }
+                            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                                net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
+                            String trans = com.craftcore.shop.TranslationManager.getTranslatedName(payload.item);
+                            player.sendSystemMessage(Component.literal("§b[Craft-Core] §a幸運大抽獎成功！獲得 $150 元與 " + trans + " x" + payload.amount + "！"));
+                        } else {
+                            com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
+                            player.sendSystemMessage(Component.literal(payload.message));
                         }
                     });
                     break;
@@ -658,14 +662,17 @@ public class PacketHandler {
                     com.google.gson.JsonObject obj = payloadObj.getAsJsonObject();
                     String targetName = obj.get("username").getAsString();
                     int amount = obj.get("amount").getAsInt();
+                    String queryId = obj.has("query_id") ? obj.get("query_id").getAsString() : null;
                     server.execute(() -> {
                         int current = com.craftcore.economy.EconomyManager.getLotteryKeys(targetName);
-                        com.craftcore.economy.EconomyManager.setLotteryKeys(targetName, current + amount);
+                        int newTotal = current + amount;
+                        com.craftcore.economy.EconomyManager.setLotteryKeys(targetName, newTotal);
                         ServerPlayer target = getPlayerCaseInsensitive(server, targetName);
                         if (target != null) {
                             target.sendSystemMessage(Component.literal(String.format("§b[Craft-Core] §a獲得管理員發放的抽獎鑰匙: §e+%d 把§a！", amount)));
                             target.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
                         }
+                        client.send(new Packet("give_keys_response", new GenericActionResponsePayload(queryId, true, "已成功發送 " + amount + " 把鑰匙給玩家 " + targetName, 0.0)));
                     });
                     break;
                 }

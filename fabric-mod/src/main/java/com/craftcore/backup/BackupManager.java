@@ -34,15 +34,15 @@ public class BackupManager {
         serverInstance = server;
         if (scheduler == null || scheduler.isShutdown()) {
             scheduler = Executors.newSingleThreadScheduledExecutor();
-            // Initial delay 1 minute, repeat every 3 hours (180 minutes)
+            // Initial delay 180 minutes (3 hours), repeat every 3 hours
             scheduler.scheduleAtFixedRate(() -> {
                 try {
                     performBackupAsync(false, "Auto-Scheduler");
                 } catch (Throwable t) {
                     System.err.println("[CraftCore Backup] Auto backup error: " + t.getMessage());
                 }
-            }, 1, 180, TimeUnit.MINUTES);
-            System.out.println("[CraftCore Backup] Auto-backup loop started (3-hour interval, 100GB limit).");
+            }, 180, 180, TimeUnit.MINUTES);
+            System.out.println("[CraftCore Backup] Auto-backup loop started (3-hour interval, 100GB limit, Incremental -mx=3).");
         }
     }
 
@@ -64,6 +64,17 @@ public class BackupManager {
             return;
         }
 
+        // Flush world saves on server thread before backup
+        if (serverInstance != null) {
+            serverInstance.execute(() -> {
+                try {
+                    serverInstance.saveEverything(true, true, true);
+                } catch (Exception e) {
+                    System.err.println("[CraftCore Backup] World save flush exception: " + e.getMessage());
+                }
+            });
+        }
+
         Executors.newSingleThreadExecutor().submit(() -> {
             try {
                 Path rootDir = FabricLoader.getInstance().getGameDir();
@@ -76,8 +87,8 @@ public class BackupManager {
                 String archiveName = "world_backup_" + timestamp + ".7z";
                 Path archivePath = backupDir.resolve(archiveName);
 
-                broadcastToAdmins("§b[Craft-Core 備份] §a開始執行地圖備份（7z 壓縮）... 觸發來源：" + triggerSource);
-                System.out.println("[CraftCore Backup] Starting 7z backup: " + archiveName + " by " + triggerSource);
+                broadcastToAdmins("§b[Craft-Core 備份] §a開始執行 7z 增量地圖備份 (-mx=3)... 觸發來源：" + triggerSource);
+                System.out.println("[CraftCore Backup] Starting 7z incremental backup: " + archiveName + " by " + triggerSource);
 
                 Path worldDir = rootDir.resolve("world");
                 if (!Files.exists(worldDir)) {
@@ -85,12 +96,22 @@ public class BackupManager {
                     return;
                 }
 
-                // Execute 7z process
-                // 7z a -t7z -m0=lzma2 -mx=9 backups/world_backup_...7z world/
+                // Incremental base copy
+                File[] existingArchives = backupDir.toFile().listFiles((d, name) -> name.endsWith(".7z"));
+                if (existingArchives != null && existingArchives.length > 0) {
+                    Arrays.sort(existingArchives, Comparator.comparingLong(File::lastModified).reversed());
+                    File latest = existingArchives[0];
+                    try {
+                        Files.copy(latest.toPath(), archivePath);
+                    } catch (Exception ignored) {}
+                }
+
+                // Execute 7z u process with -mx=3
                 ProcessBuilder pb = new ProcessBuilder(
-                        "7z", "a", "-t7z", "-m0=lzma2", "-mx=9",
+                        "7z", "u",
                         archivePath.toAbsolutePath().toString(),
-                        worldDir.toAbsolutePath().toString()
+                        worldDir.toAbsolutePath().toString(),
+                        "-t7z", "-m0=lzma2", "-mx=3"
                 );
                 pb.directory(rootDir.toFile());
 
@@ -100,7 +121,7 @@ public class BackupManager {
                 if (exitCode == 0 && Files.exists(archivePath)) {
                     long sizeBytes = Files.size(archivePath);
                     double sizeMB = sizeBytes / (1024.0 * 1024.0);
-                    String msg = String.format("§b[Craft-Core 備份] §a地圖備份成功！檔案：%s (%.1f MB)", archiveName, sizeMB);
+                    String msg = String.format("§b[Craft-Core 備份] §a地圖增量備份成功！檔案：%s (%.1f MB)", archiveName, sizeMB);
                     broadcastToAdmins(msg);
                     System.out.println("[CraftCore Backup] Successfully created: " + archiveName + " (" + sizeMB + " MB)");
 

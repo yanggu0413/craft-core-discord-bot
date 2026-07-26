@@ -23,5 +23,12 @@ public class LevelMixin {
         if (player != null) {
             DailyTaskManager.handleBlockBreak(level, player, pos, state, blockEntity);
         }
+        for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.values()) {
+            BlockPos adjPos = pos.relative(dir);
+            BlockState adjState = level.getBlockState(adjPos);
+            if (com.craftcore.antixray.AntiXrayManager.isOre(adjState)) {
+                level.sendBlockUpdated(adjPos, adjState, adjState, 3);
+            }
+        }
     }
 }

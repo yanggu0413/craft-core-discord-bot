@@ -270,6 +270,11 @@ dispatcher.register(Commands.literal("luckydraw")
 
                         }
 
+                        if (player.getInventory().getFreeSlot() == -1) {
+                            context.getSource().sendSystemMessage(Component.literal("§c[Craft-Core] 抽獎失敗：您的背包已滿，請先清出至少 1 格空間後再進行抽獎！"));
+                            return 0;
+                        }
+
                         String username = player.getName().getString();
 
                         String uuid = player.getStringUUID();

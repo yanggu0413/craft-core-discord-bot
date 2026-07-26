@@ -291,8 +291,21 @@ public class ShopGuiManager {
                         int x = Integer.parseInt(parts[0]);
                         int y = Integer.parseInt(parts[1]);
                         int z = Integer.parseInt(parts[2]);
+                        String dim = (shop.dimension == null || shop.dimension.isBlank()) ? "minecraft:overworld" : shop.dimension;
+                        ServerLevel targetLevel = null;
+                        if (com.craftcore.event.ServerLifecycleHandler.serverInstance != null) {
+                            for (ServerLevel sl : com.craftcore.event.ServerLifecycleHandler.serverInstance.getAllLevels()) {
+                                if (sl.dimension().identifier().toString().equalsIgnoreCase(dim)) {
+                                    targetLevel = sl;
+                                    break;
+                                }
+                            }
+                        }
+                        if (targetLevel == null) {
+                            targetLevel = (ServerLevel) spe.level();
+                        }
                         spe.teleport(new net.minecraft.world.level.portal.TeleportTransition(
-                            (ServerLevel) spe.level(),
+                            targetLevel,
                             new net.minecraft.world.phys.Vec3(x + 0.5, y + 1.0, z + 0.5),
                             net.minecraft.world.phys.Vec3.ZERO,
                             spe.getYRot(), spe.getXRot(),
