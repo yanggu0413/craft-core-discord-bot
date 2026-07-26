@@ -20,6 +20,7 @@ dotenv.config();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 const app = express();
+app.set('case sensitive routing', true);
 const server = http.createServer(app);
 
 app.use(cors());

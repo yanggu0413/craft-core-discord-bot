@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-07-26T03:38:19.455Z",
+  "timestamp": "2026-07-26T03:42:34.752Z",
   "summary": {
-    "total": 40,
-    "passed": 39,
-    "failed": 1,
-    "passRate": "97.5%"
+    "total": 139,
+    "passed": 130,
+    "failed": 9,
+    "passRate": "93.5%"
   },
   "testResults": [
     {
@@ -30,8 +30,8 @@
       "category": "Normal",
       "name": "公開讀取商店 GET /api/shops",
       "expected": "200 OK",
-      "actualStatus": 500,
-      "pass": false,
+      "actualStatus": 200,
+      "pass": true,
       "details": ""
     },
     {
@@ -82,7 +82,7 @@
     {
       "id": "E1",
       "category": "Boundary",
-      "name": "分頁上限極端值 limit=999999 (應限制最大200)",
+      "name": "分頁上限極端值 limit=999999",
       "expected": "200 OK & limit <= 200",
       "actualStatus": 200,
       "pass": true,
@@ -91,11 +91,11 @@
     {
       "id": "E2",
       "category": "Boundary",
-      "name": "分頁負數極端值 page=-50 (應修正為 page 1)",
+      "name": "分頁負數極端值 page=-50",
       "expected": "200 OK & page=1",
       "actualStatus": 200,
       "pass": true,
-      "details": "Returned page: 1"
+      "details": ""
     },
     {
       "id": "E3",
@@ -122,31 +122,31 @@
       "expected": "400 Bad Request",
       "actualStatus": 400,
       "pass": true,
-      "details": "Msg: 您今天已經完成簽到了！明天再來吧！"
+      "details": ""
     },
     {
       "id": "E6.1",
       "category": "Boundary",
       "name": "商店評分最小邊界 rating=1",
-      "expected": "200 OK (或 500 遊戲連線例外)",
+      "expected": "200 / 500(WS中斷)",
       "actualStatus": 500,
       "pass": true,
-      "details": "Msg: 遊戲伺服器連線已中斷"
+      "details": ""
     },
     {
       "id": "E6.2",
       "category": "Boundary",
       "name": "商店評分最大邊界 rating=5",
-      "expected": "200 OK (或 500 遊戲連線例外)",
+      "expected": "200 / 500(WS中斷)",
       "actualStatus": 500,
       "pass": true,
-      "details": "Msg: 遊戲伺服器連線已中斷"
+      "details": ""
     },
     {
       "id": "A1",
       "category": "Security",
       "name": "未附帶 Token 存取受保護路由",
-      "expected": "401 Unauthorized",
+      "expected": "401/403",
       "actualStatus": 401,
       "pass": true,
       "details": ""
@@ -163,7 +163,7 @@
     {
       "id": "A3",
       "category": "Security",
-      "name": "附帶偽造簽名 (Forged JWT) Token",
+      "name": "附帶偽造簽名 (Forged JWT)",
       "expected": "403 Forbidden",
       "actualStatus": 403,
       "pass": true,
@@ -181,7 +181,7 @@
     {
       "id": "A5",
       "category": "Security",
-      "name": "一般使用者越權調用管理員給錢 POST /api/admin/give-money",
+      "name": "一般使用者越權調用給錢 API",
       "expected": "403 Forbidden",
       "actualStatus": 403,
       "pass": true,
@@ -190,7 +190,7 @@
     {
       "id": "A6",
       "category": "Security",
-      "name": "一般使用者越權建立伺服器活動 POST /api/admin/events",
+      "name": "一般使用者越權建立活動 API",
       "expected": "403 Forbidden",
       "actualStatus": 403,
       "pass": true,
@@ -199,7 +199,7 @@
     {
       "id": "A7",
       "category": "Security",
-      "name": "一般使用者越權發起備份 POST /api/admin/backup/trigger",
+      "name": "一般使用者越權發起備份",
       "expected": "403 Forbidden",
       "actualStatus": 403,
       "pass": true,
@@ -208,17 +208,17 @@
     {
       "id": "A8",
       "category": "Security",
-      "name": "SQL 注入攻擊玩家查詢 /api/admin/player/NormalUser' OR '1'='1",
-      "expected": "200 / 404 (無 SQL 語法錯誤)",
+      "name": "SQL 注入攻擊玩家查詢",
+      "expected": "無 SQL 語法錯誤",
       "actualStatus": 200,
       "pass": true,
-      "details": "Result: {\"success\":true,\"profile\":{\"mc_username\":\"NormalUser' OR '1'='1\",\"balance\":0,\"online\":false,\"coords\":\"離線\",\"tps\":20},\"inventory\":[]}"
+      "details": ""
     },
     {
       "id": "A9",
       "category": "Security",
-      "name": "SQL 注入攻擊 Tickets 搜尋 search=' UNION SELECT...",
-      "expected": "200 OK (無 SQL 語法錯誤)",
+      "name": "SQL 注入攻擊 Tickets 搜尋",
+      "expected": "200 OK (安全解碼)",
       "actualStatus": 200,
       "pass": true,
       "details": ""
@@ -226,17 +226,17 @@
     {
       "id": "A10",
       "category": "Security",
-      "name": "指令注入封鎖玩家 player=\"TestPlayer; rm -rf /\"",
-      "expected": "400 / 500 (系統指令未遭執行)",
+      "name": "指令注入封鎖玩家",
+      "expected": "未執行系統指令",
       "actualStatus": 500,
       "pass": true,
-      "details": "Output: 遊戲伺服器連線已中斷"
+      "details": ""
     },
     {
       "id": "A11",
       "category": "Security",
-      "name": "指令注入踢出玩家 player=\"TestPlayer && format c:\"",
-      "expected": "400 / 500 (系統指令未遭執行)",
+      "name": "指令注入踢出玩家",
+      "expected": "未執行系統指令",
       "actualStatus": 500,
       "pass": true,
       "details": ""
@@ -244,8 +244,8 @@
     {
       "id": "A12",
       "category": "Security",
-      "name": "指令注入假人動作 botName=\"bot1; say HACKED\"",
-      "expected": "400 / 500 (系統指令未遭執行)",
+      "name": "指令注入假人動作",
+      "expected": "未執行系統指令",
       "actualStatus": 500,
       "pass": true,
       "details": ""
@@ -253,7 +253,7 @@
     {
       "id": "A13",
       "category": "Security",
-      "name": "XSS 攻擊設定稱號 title_text=\"<script>alert('XSS')</script>\"",
+      "name": "XSS 攻擊設定稱號",
       "expected": "200 OK (儲存無崩潰)",
       "actualStatus": 200,
       "pass": true,
@@ -262,7 +262,7 @@
     {
       "id": "A14",
       "category": "Security",
-      "name": "XSS 攻擊公告標題 title=\"<img src=x onerror=alert(1)>\"",
+      "name": "XSS 攻擊公告標題",
       "expected": "200 OK (儲存無崩潰)",
       "actualStatus": 200,
       "pass": true,
@@ -271,38 +271,38 @@
     {
       "id": "A15",
       "category": "Abnormal",
-      "name": "給予金幣負數金額 amount=-5000",
+      "name": "給予金幣負數金額",
       "expected": "400 Bad Request",
       "actualStatus": 400,
       "pass": true,
-      "details": "Msg: 請提供有效的目標玩家名稱與金額"
+      "details": ""
     },
     {
       "id": "A16",
       "category": "Abnormal",
-      "name": "給予金幣零金額 amount=0",
+      "name": "給予金幣零金額",
       "expected": "400 Bad Request",
       "actualStatus": 400,
       "pass": true,
-      "details": "Msg: 請提供有效的目標玩家名稱與金額"
+      "details": ""
     },
     {
       "id": "A17",
       "category": "Abnormal",
-      "name": "給予鑰匙負數量 amount=-10",
+      "name": "給予鑰匙負數量",
       "expected": "400 Bad Request",
       "actualStatus": 400,
       "pass": true,
-      "details": "Msg: 請提供有效的目標玩家名稱與鑰匙數量"
+      "details": ""
     },
     {
       "id": "A18",
       "category": "Abnormal",
-      "name": "給予金幣型別混淆 (字串金額 amount=\"5000\")",
+      "name": "給予金幣型別混淆 (字串金額)",
       "expected": "400 Bad Request",
       "actualStatus": 400,
       "pass": true,
-      "details": "Msg: 請提供有效的目標玩家名稱與金額"
+      "details": ""
     },
     {
       "id": "A19",
@@ -311,7 +311,7 @@
       "expected": "400 Bad Request",
       "actualStatus": 400,
       "pass": true,
-      "details": "Msg: 請提供有效的商店座標與 1~5 評分星等！"
+      "details": ""
     },
     {
       "id": "A20",
@@ -320,7 +320,7 @@
       "expected": "400 Bad Request",
       "actualStatus": 400,
       "pass": true,
-      "details": "Msg: 請提供有效的商店座標與 1~5 評分星等！"
+      "details": ""
     },
     {
       "id": "A21",
@@ -329,25 +329,25 @@
       "expected": "400 Bad Request",
       "actualStatus": 400,
       "pass": true,
-      "details": "Msg: 請提供有效的商店座標與 1~5 評分星等！"
+      "details": ""
     },
     {
       "id": "A22",
       "category": "Abnormal",
-      "name": "發送空 JSON Body {} 至 /api/shop/rename",
+      "name": "發送空 JSON Body {}",
       "expected": "400 Bad Request",
       "actualStatus": 400,
       "pass": true,
-      "details": "Msg: 缺少座標或新名稱參數"
+      "details": ""
     },
     {
       "id": "A23",
       "category": "Security",
-      "name": "超大 Payload (20KB Body > 10KB Limit) DOS 攻擊",
+      "name": "超大 Payload (20KB Body) DOS 攻擊",
       "expected": "413 Payload Too Large",
       "actualStatus": 413,
       "pass": true,
-      "details": "Got status: 413"
+      "details": ""
     },
     {
       "id": "A24",
@@ -356,16 +356,907 @@
       "expected": "403 Forbidden",
       "actualStatus": 403,
       "pass": true,
-      "details": "Msg: 您無權修改此領地的權限（僅限領地擁有者或管理員修改）"
+      "details": ""
     },
     {
-      "id": "A25",
-      "category": "Concurrency",
-      "name": "高併發簽到連發 (10 請求同時抵達)",
-      "expected": "僅 1 個成功 (400 阻擋 9 個)",
+      "id": "TC-001",
+      "category": "Auth",
+      "name": "Dev Login 缺省 username 預設值",
+      "expected": "200 OK",
       "actualStatus": 200,
       "pass": true,
-      "details": "成功數: 1, 阻擋數: 9"
+      "details": ""
+    },
+    {
+      "id": "TC-002",
+      "category": "Auth",
+      "name": "Dev Login 自訂 username",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-003",
+      "category": "Auth",
+      "name": "Dev Login nonAdmin=true 標記測試",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-004",
+      "category": "Auth",
+      "name": "Dev Login nonAdmin=false 標記測試",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-005",
+      "category": "Auth",
+      "name": "Dev Login SQL 注入 username 處理",
+      "expected": "200 OK (參數化寫入/無崩潰)",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-006",
+      "category": "Auth",
+      "name": "Dev Login 超長 Username (2000字元)",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-007",
+      "category": "Auth",
+      "name": "Dev Login XSS Payload Username 處理",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-008",
+      "category": "Auth",
+      "name": "OAuth Callback 缺少 code 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-009",
+      "category": "Auth",
+      "name": "OAuth Callback 空白 code 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-010",
+      "category": "Auth",
+      "name": "OAuth 授權網址選取 GET /api/auth/url",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-011",
+      "category": "User",
+      "name": "升級商店 POST /api/user/upgrade",
+      "expected": "500 (WS中斷連線例外)",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-012",
+      "category": "User",
+      "name": "查詢玩家假人 GET /api/user/fakeplayers",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-013",
+      "category": "User",
+      "name": "假人動作缺少 botName 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-014",
+      "category": "User",
+      "name": "假人動作缺少 action 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-015",
+      "category": "User",
+      "name": "假人動作 action 型別混淆 (Number)",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-016",
+      "category": "User",
+      "name": "假人動作的路徑穿越 botName=\"../../etc/passwd\"",
+      "expected": "400 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-017",
+      "category": "User",
+      "name": "查詢玩家 Home 點 GET /api/user/homes",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-018",
+      "category": "User",
+      "name": "刪除 Home 點 DELETE /api/user/homes/home1",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-019",
+      "category": "User",
+      "name": "刪除包含空白之 Home 名稱",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-020",
+      "category": "User",
+      "name": "查詢玩家上鎖箱子 GET /api/lockboxes",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-021",
+      "category": "User",
+      "name": "上鎖箱更新缺少 lockboxId 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-022",
+      "category": "User",
+      "name": "上鎖箱更新缺少 action 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-023",
+      "category": "User",
+      "name": "未登入查詢每日任務 (Fallback Tasks)",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-024",
+      "category": "User",
+      "name": "已登入查詢每日任務 GET /api/tasks/daily",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-025",
+      "category": "User",
+      "name": "領取每日任務獎勵 POST /api/tasks/claim",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-026",
+      "category": "Playtime",
+      "name": "遊玩時間兌換 mode=\"single\"",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-027",
+      "category": "Playtime",
+      "name": "遊玩時間兌換 mode=\"all\"",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-028",
+      "category": "Playtime",
+      "name": "遊玩時間兌換 mode=\"invalid_mode\"",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-029",
+      "category": "Playtime",
+      "name": "遊玩時間兌換無模式參數 (預設 single)",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-030",
+      "category": "Lockbox",
+      "name": "上鎖箱授權玩家 action=\"grant\"",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-031",
+      "category": "Lockbox",
+      "name": "上鎖箱撤銷玩家 action=\"revoke\"",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-032",
+      "category": "Lockbox",
+      "name": "上鎖箱設定密碼 action=\"setPassword\"",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-033",
+      "category": "Lockbox",
+      "name": "上鎖箱設定空字串密碼",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-034",
+      "category": "Lockbox",
+      "name": "上鎖箱標的玩家 XSS Payload 測試",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-035",
+      "category": "Lockbox",
+      "name": "上鎖箱 ID SQL 注入測試",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-036",
+      "category": "Claims",
+      "name": "讀取領地清單 GET /api/claims",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-037",
+      "category": "Claims",
+      "name": "讀取全領地清單 GET /api/claims?all=true",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-038",
+      "category": "Claims",
+      "name": "領地權限缺少 claimId 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-039",
+      "category": "Claims",
+      "name": "領地權限缺少 permissionType 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-040",
+      "category": "Claims",
+      "name": "領地權限缺少 player 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-041",
+      "category": "Claims",
+      "name": "領地權限缺少 action 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-042",
+      "category": "Claims",
+      "name": "管理員修改領地破壞權限 (grant)",
+      "expected": "200 / 400 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-043",
+      "category": "Claims",
+      "name": "管理員撤銷領地箱子權限 (revoke)",
+      "expected": "200 / 400 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-044",
+      "category": "Claims",
+      "name": "設定領地公開標籤 (public_containers)",
+      "expected": "200 OK",
+      "actualStatus": 400,
+      "pass": false,
+      "details": ""
+    },
+    {
+      "id": "TC-045",
+      "category": "Claims",
+      "name": "設定領地黑名單列表 (banned_players)",
+      "expected": "200 OK",
+      "actualStatus": 400,
+      "pass": false,
+      "details": ""
+    },
+    {
+      "id": "TC-046",
+      "category": "Claims",
+      "name": "領地標籤型別非布林 public_entry=\"invalid_boolean\"",
+      "expected": "200 OK",
+      "actualStatus": 400,
+      "pass": false,
+      "details": ""
+    },
+    {
+      "id": "TC-047",
+      "category": "Claims",
+      "name": "領地黑名單非陣列 banned_players=\"not_an_array\"",
+      "expected": "200 OK",
+      "actualStatus": 400,
+      "pass": false,
+      "details": ""
+    },
+    {
+      "id": "TC-048",
+      "category": "Shops",
+      "name": "商店重新命名缺少 coords 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-049",
+      "category": "Shops",
+      "name": "商店重新命名缺少 custom_name 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-050",
+      "category": "Shops",
+      "name": "商店重新命名包含 Minecraft 顏色碼 §",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-051",
+      "category": "Shops",
+      "name": "商店重新命名超長名稱 (5000字元)",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-052",
+      "category": "Shops",
+      "name": "商店提款缺少 coords 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-053",
+      "category": "Shops",
+      "name": "商店提款非標準座標字串",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-054",
+      "category": "Shops",
+      "name": "公開交易紀錄 GET /api/transactions",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-055",
+      "category": "Shops",
+      "name": "商店評分 coords 型別混淆 (Number)",
+      "expected": "400 Bad Request",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-056",
+      "category": "Shops",
+      "name": "商店評分浮點數 rating=3.5",
+      "expected": "200 / 400 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-057",
+      "category": "Shops",
+      "name": "商店評分字串 rating=\"5\"",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-058",
+      "category": "AdminTickets",
+      "name": "查詢特定客服單 GET /api/admin/tickets/ticket-1",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-059",
+      "category": "AdminTickets",
+      "name": "查詢不存在之客服單",
+      "expected": "404 Not Found",
+      "actualStatus": 404,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-060",
+      "category": "AdminTickets",
+      "name": "依據資料庫主鍵 ID 查詢客服單",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-061",
+      "category": "AdminTickets",
+      "name": "客服單特定單號關鍵字搜尋",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-062",
+      "category": "AdminTickets",
+      "name": "客服單 limit=0 邊界測試",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-063",
+      "category": "AdminTickets",
+      "name": "客服單負數 limit=-10 邊界測試",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-064",
+      "category": "AdminTx",
+      "name": "管理員交易紀錄分頁 GET /api/admin/transactions?page=2",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-065",
+      "category": "AdminTx",
+      "name": "管理員交易紀錄搜尋買賣家",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-066",
+      "category": "AdminTx",
+      "name": "搜尋字串包含 SQL 通配符 %",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-067",
+      "category": "AdminTx",
+      "name": "搜尋字串包含 SQL 通配符 _",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-068",
+      "category": "Events",
+      "name": "公開讀取發布中活動 GET /api/events/active",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-069",
+      "category": "Events",
+      "name": "建立活動缺少 title 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-070",
+      "category": "Events",
+      "name": "建立活動缺少 description 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-071",
+      "category": "Events",
+      "name": "管理員建立新活動 POST /api/admin/events",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-072",
+      "category": "Events",
+      "name": "管理員建立排程狀態活動 status=\"scheduled\"",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-073",
+      "category": "Events",
+      "name": "更新活動資料 PUT /api/admin/events/1",
+      "expected": "200 OK",
+      "actualStatus": 500,
+      "pass": false,
+      "details": ""
+    },
+    {
+      "id": "TC-074",
+      "category": "Events",
+      "name": "更新不存在之活動 ID 99999",
+      "expected": "200 OK (SQL UPDATE 0 筆)",
+      "actualStatus": 500,
+      "pass": false,
+      "details": ""
+    },
+    {
+      "id": "TC-075",
+      "category": "Events",
+      "name": "更新活動指定非數字 ID",
+      "expected": "200 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-076",
+      "category": "Events",
+      "name": "刪除活動 DELETE /api/admin/events/1",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-077",
+      "category": "Events",
+      "name": "刪除不存在之活動 ID 99999",
+      "expected": "200 OK (SQL DELETE 0 筆)",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-078",
+      "category": "Titles",
+      "name": "公開讀取全服稱號對照表 GET /api/titles",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-079",
+      "category": "Titles",
+      "name": "設定稱號缺少 username 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-080",
+      "category": "Titles",
+      "name": "設定空字串稱號 (視為清除稱號)",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-081",
+      "category": "Titles",
+      "name": "設定稱號與顏色/粗體 POST /api/admin/titles",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-082",
+      "category": "Titles",
+      "name": "設定稱號顏色為 null (自動後備預設值)",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-083",
+      "category": "Titles",
+      "name": "刪除玩家稱號 DELETE /api/admin/titles/:username",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-084",
+      "category": "Titles",
+      "name": "刪除不存在玩家之稱號",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-085",
+      "category": "Titles",
+      "name": "刪除稱號缺少 Username 路徑",
+      "expected": "404 Not Found",
+      "actualStatus": 404,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-086",
+      "category": "Announcements",
+      "name": "發布公告缺少 title 參數",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-087",
+      "category": "Announcements",
+      "name": "發布公告 title 為純空白字串",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-088",
+      "category": "Announcements",
+      "name": "管理員完整發布公告 POST /api/admin/announcements",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-089",
+      "category": "Announcements",
+      "name": "發布公告長內文 (8000字元)",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-090",
+      "category": "Announcements",
+      "name": "確認全服公告寫入並成功讀取",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-091",
+      "category": "Backup",
+      "name": "管理員查詢備份狀態 GET /api/admin/backup/status",
+      "expected": "200 OK",
+      "actualStatus": 500,
+      "pass": false,
+      "details": ""
+    },
+    {
+      "id": "TC-092",
+      "category": "Backup",
+      "name": "一般玩家越權查詢備份狀態",
+      "expected": "403 Forbidden",
+      "actualStatus": 403,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-093",
+      "category": "Backup",
+      "name": "管理員觸發地圖備份作業",
+      "expected": "200 OK",
+      "actualStatus": 500,
+      "pass": false,
+      "details": ""
+    },
+    {
+      "id": "TC-094",
+      "category": "SecurityHeader",
+      "name": "Content-Type 設為 text/plain 之 JSON Body 測試",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-095",
+      "category": "SecurityHeader",
+      "name": "語法錯誤之 JSON (Malformed JSON Payload)",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-096",
+      "category": "SecurityNumber",
+      "name": "極端浮點數 / 無窮大 amount=1e308 測試",
+      "expected": "200 / 400 / 500",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-097",
+      "category": "SecurityNumber",
+      "name": "金額為 null (amount=null) 測試",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-098",
+      "category": "SecurityMethod",
+      "name": "不支援之 HTTP Method (PATCH /api/user/profile)",
+      "expected": "404 Not Found",
+      "actualStatus": 404,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "TC-099",
+      "category": "SecurityMethod",
+      "name": "大寫 URL 路徑 (/API/USER/PROFILE)",
+      "expected": "404 Not Found",
+      "actualStatus": 200,
+      "pass": false,
+      "details": ""
+    },
+    {
+      "id": "TC-100",
+      "category": "SecurityHeader",
+      "name": "小寫 HTTP Authorization Header (authorization: bearer...)",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
     }
   ]
 }

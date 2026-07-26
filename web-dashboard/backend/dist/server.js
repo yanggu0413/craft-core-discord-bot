@@ -21,6 +21,7 @@ const announcements_routes_1 = __importDefault(require("./routes/announcements.r
 dotenv_1.default.config();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const app = (0, express_1.default)();
+app.set('case sensitive routing', true);
 const server = http_1.default.createServer(app);
 app.use((0, cors_1.default)());
 app.use(express_1.default.json({ limit: '10kb' }));

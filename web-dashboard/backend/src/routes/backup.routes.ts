@@ -9,11 +9,25 @@ router.use(authenticateToken, requireAdmin);
 
 // GET /api/admin/backup/status
 router.get('/status', async (req: CustomRequest, res: Response) => {
+  let wsStats: any = null;
+  let fetchedViaWs = false;
+
   try {
     const wsRes = await sendWsQuery('backup_query', { action: 'status' });
     if (wsRes && wsRes.success) {
-      return res.json({ success: true, stats: wsRes.stats });
+      wsStats = wsRes.stats;
+      fetchedViaWs = true;
     }
+  } catch (wsErr) {
+    console.warn('[Backup Route] WebSocket query failed, falling back to local backups directory:', wsErr);
+  }
+
+  if (fetchedViaWs && wsStats) {
+    return res.json({ success: true, stats: wsStats });
+  }
+
+  // Fallback: Scan local backups/ directory when WS is offline
+  try {
     const possibleDirs = [
       path.resolve(__dirname, '../../../../backups'),
       path.resolve(__dirname, '../../../../../fabric-mod/backups'),
@@ -59,7 +73,7 @@ router.post('/trigger', async (req: CustomRequest, res: Response) => {
     const wsRes = await sendWsQuery('backup_query', { action: 'trigger', admin_username: adminUsername });
     return res.json(wsRes || { success: true, message: '地圖備份作業已發起！' });
   } catch (err: any) {
-    return res.status(500).json({ success: false, message: err.message });
+    return res.status(503).json({ success: false, message: '遊戲伺服器未連線，無法即時發起備份（' + err.message + '）' });
   }
 });
 

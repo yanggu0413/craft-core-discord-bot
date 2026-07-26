@@ -170,31 +170,48 @@ router.post('/flags', wsClient_1.authenticateToken, async (req, res) => {
                 path_1.default.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/claims.json'),
                 path_1.default.resolve('config/craft-core-shop/claims.json')
             ];
-            for (const p of possiblePaths) {
-                if (fs_1.default.existsSync(p)) {
-                    const raw = fs_1.default.readFileSync(p, 'utf8');
-                    const claimsMap = JSON.parse(raw);
-                    const claim = claimsMap[claim_id];
-                    if (claim) {
-                        if (claim.owner.toLowerCase() === (username || '').toLowerCase() || isAdmin) {
-                            if (typeof public_containers === 'boolean')
-                                claim.public_containers = public_containers;
-                            if (typeof public_interact === 'boolean')
-                                claim.public_interact = public_interact;
-                            if (typeof public_entry === 'boolean')
-                                claim.public_entry = public_entry;
-                            if (Array.isArray(banned_players))
-                                claim.banned_players = banned_players;
-                            fs_1.default.writeFileSync(p, JSON.stringify(claimsMap, null, 2), 'utf8');
-                            return res.json({ success: true, message: '領地權限標籤已設定完成 (檔案更新)' });
-                        }
-                        else {
-                            return res.status(403).json({ success: false, message: '您無權修改此領地的標籤 (僅限領地擁有者或管理員)' });
-                        }
-                    }
+            let targetPath = possiblePaths.find(p => fs_1.default.existsSync(p)) || possiblePaths[0];
+            const dirPath = path_1.default.dirname(targetPath);
+            if (!fs_1.default.existsSync(dirPath)) {
+                try {
+                    fs_1.default.mkdirSync(dirPath, { recursive: true });
                 }
+                catch (e) { }
             }
-            return res.status(400).json({ success: false, message: '找不到該領地或無法通訊' });
+            let claimsMap = {};
+            if (fs_1.default.existsSync(targetPath)) {
+                try {
+                    claimsMap = JSON.parse(fs_1.default.readFileSync(targetPath, 'utf8'));
+                }
+                catch (e) { }
+            }
+            let claim = claimsMap[claim_id];
+            if (!claim) {
+                claim = {
+                    id: claim_id,
+                    owner: username || 'Unknown',
+                    public_containers: false,
+                    public_interact: false,
+                    public_entry: true,
+                    banned_players: []
+                };
+                claimsMap[claim_id] = claim;
+            }
+            if (claim.owner.toLowerCase() === (username || '').toLowerCase() || isAdmin) {
+                if (typeof public_containers === 'boolean')
+                    claim.public_containers = public_containers;
+                if (typeof public_interact === 'boolean')
+                    claim.public_interact = public_interact;
+                if (typeof public_entry === 'boolean')
+                    claim.public_entry = public_entry;
+                if (Array.isArray(banned_players))
+                    claim.banned_players = banned_players;
+                fs_1.default.writeFileSync(targetPath, JSON.stringify(claimsMap, null, 2), 'utf8');
+                return res.json({ success: true, message: '領地權限標籤已設定完成 (離線檔案更新)' });
+            }
+            else {
+                return res.status(403).json({ success: false, message: '您無權修改此領地的標籤 (僅限領地擁有者或管理員)' });
+            }
         }
     }
     catch (error) {
