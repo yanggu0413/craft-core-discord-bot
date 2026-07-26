@@ -15,13 +15,24 @@ router.get('/shops', async (req, res) => {
     if (cached) {
         return res.json({ success: true, shops: cached, cached: true, totalSalesTax: wsClient_1.accumulatedSalesTax });
     }
+    let shops = [];
+    let fetchedViaWs = false;
     try {
         const response = await (0, wsClient_1.sendWsQuery)('shops_query', {});
         if (response && response.success) {
-            const shops = response.shops || [];
-            (0, wsClient_1.setCachedData)(cacheKey, shops, 3000);
-            return res.json({ success: true, shops, totalSalesTax: wsClient_1.accumulatedSalesTax });
+            shops = response.shops || [];
+            fetchedViaWs = true;
         }
+    }
+    catch (wsErr) {
+        console.warn('[Shops Route] WebSocket query failed, falling back to local file:', wsErr);
+    }
+    if (fetchedViaWs) {
+        (0, wsClient_1.setCachedData)(cacheKey, shops, 3000);
+        return res.json({ success: true, shops, totalSalesTax: wsClient_1.accumulatedSalesTax });
+    }
+    // Fallback to local JSON file reading when WS is disconnected
+    try {
         const possiblePaths = [
             path_1.default.resolve(__dirname, '../../../../config/craft-core-shop/shops.json'),
             path_1.default.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/shops.json'),

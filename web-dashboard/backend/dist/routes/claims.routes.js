@@ -11,28 +11,36 @@ const router = (0, express_1.Router)();
 // GET /api/claims
 router.get('/', async (req, res) => {
     const isAll = req.query.all === 'true';
+    let claims = [];
+    let fetchedViaWs = false;
     try {
         const response = await (0, wsClient_1.sendWsQuery)('claims_query', {});
         if (response && response.success) {
-            return res.json({ success: true, claims: response.claims || [] });
+            claims = response.claims || [];
+            fetchedViaWs = true;
         }
-        // Fallback: Read config/craft-core-shop/claims.json
-        try {
-            const possiblePaths = [
-                path_1.default.resolve(__dirname, '../../../../config/craft-core-shop/claims.json'),
-                path_1.default.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/claims.json'),
-                path_1.default.resolve('config/craft-core-shop/claims.json')
-            ];
-            for (const p of possiblePaths) {
-                if (fs_1.default.existsSync(p)) {
-                    const raw = fs_1.default.readFileSync(p, 'utf8');
-                    const claimsMap = JSON.parse(raw);
-                    const claimsArray = Object.values(claimsMap);
-                    return res.json({ success: true, claims: claimsArray });
-                }
+    }
+    catch (wsErr) {
+        console.warn('[Claims Route] WebSocket query failed, falling back to local file:', wsErr);
+    }
+    if (fetchedViaWs) {
+        return res.json({ success: true, claims });
+    }
+    // Fallback: Read config/craft-core-shop/claims.json
+    try {
+        const possiblePaths = [
+            path_1.default.resolve(__dirname, '../../../../config/craft-core-shop/claims.json'),
+            path_1.default.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/claims.json'),
+            path_1.default.resolve('config/craft-core-shop/claims.json')
+        ];
+        for (const p of possiblePaths) {
+            if (fs_1.default.existsSync(p)) {
+                const raw = fs_1.default.readFileSync(p, 'utf8');
+                const claimsMap = JSON.parse(raw);
+                const claimsArray = Object.values(claimsMap);
+                return res.json({ success: true, claims: claimsArray });
             }
         }
-        catch (fsErr) { }
         return res.json({ success: true, claims: [] });
     }
     catch (error) {

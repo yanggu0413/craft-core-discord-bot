@@ -9,27 +9,38 @@ const router = Router();
 router.get('/', async (req: Request, res: Response) => {
   const isAll = req.query.all === 'true';
 
+  let claims: any[] = [];
+  let fetchedViaWs = false;
+
   try {
     const response = await sendWsQuery('claims_query', {});
     if (response && response.success) {
-      return res.json({ success: true, claims: response.claims || [] });
+      claims = response.claims || [];
+      fetchedViaWs = true;
     }
-    // Fallback: Read config/craft-core-shop/claims.json
-    try {
-      const possiblePaths = [
-        path.resolve(__dirname, '../../../../config/craft-core-shop/claims.json'),
-        path.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/claims.json'),
-        path.resolve('config/craft-core-shop/claims.json')
-      ];
-      for (const p of possiblePaths) {
-        if (fs.existsSync(p)) {
-          const raw = fs.readFileSync(p, 'utf8');
-          const claimsMap = JSON.parse(raw);
-          const claimsArray = Object.values(claimsMap);
-          return res.json({ success: true, claims: claimsArray });
-        }
+  } catch (wsErr) {
+    console.warn('[Claims Route] WebSocket query failed, falling back to local file:', wsErr);
+  }
+
+  if (fetchedViaWs) {
+    return res.json({ success: true, claims });
+  }
+
+  // Fallback: Read config/craft-core-shop/claims.json
+  try {
+    const possiblePaths = [
+      path.resolve(__dirname, '../../../../config/craft-core-shop/claims.json'),
+      path.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/claims.json'),
+      path.resolve('config/craft-core-shop/claims.json')
+    ];
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, 'utf8');
+        const claimsMap = JSON.parse(raw);
+        const claimsArray = Object.values(claimsMap);
+        return res.json({ success: true, claims: claimsArray });
       }
-    } catch (fsErr) {}
+    }
     return res.json({ success: true, claims: [] });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });

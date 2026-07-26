@@ -1,0 +1,371 @@
+{
+  "timestamp": "2026-07-26T03:38:19.455Z",
+  "summary": {
+    "total": 40,
+    "passed": 39,
+    "failed": 1,
+    "passRate": "97.5%"
+  },
+  "testResults": [
+    {
+      "id": "N1.1",
+      "category": "Normal",
+      "name": "公開讀取公告 GET /api/announcements",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "N1.2",
+      "category": "Normal",
+      "name": "公開讀取活動 GET /api/events",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "N1.3",
+      "category": "Normal",
+      "name": "公開讀取商店 GET /api/shops",
+      "expected": "200 OK",
+      "actualStatus": 500,
+      "pass": false,
+      "details": ""
+    },
+    {
+      "id": "N2",
+      "category": "Normal",
+      "name": "開發者模式登入 GET /api/auth/dev-login",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "N3",
+      "category": "Normal",
+      "name": "一般使用者讀取 Profile GET /api/user/profile",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "N4",
+      "category": "Normal",
+      "name": "一般使用者首次每日簽到 POST /api/user/checkin",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "N5",
+      "category": "Normal",
+      "name": "管理員查詢玩家 GET /api/admin/player/:username",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "N6",
+      "category": "Normal",
+      "name": "管理員發放聯名獎勵 POST /api/admin/co-branding",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "E1",
+      "category": "Boundary",
+      "name": "分頁上限極端值 limit=999999 (應限制最大200)",
+      "expected": "200 OK & limit <= 200",
+      "actualStatus": 200,
+      "pass": true,
+      "details": "Returned: 200 items"
+    },
+    {
+      "id": "E2",
+      "category": "Boundary",
+      "name": "分頁負數極端值 page=-50 (應修正為 page 1)",
+      "expected": "200 OK & page=1",
+      "actualStatus": 200,
+      "pass": true,
+      "details": "Returned page: 1"
+    },
+    {
+      "id": "E3",
+      "category": "Boundary",
+      "name": "搜尋空字串 search=\"\"",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "E4",
+      "category": "Boundary",
+      "name": "特殊字元與 Emoji 搜尋",
+      "expected": "200 OK",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "E5",
+      "category": "Boundary",
+      "name": "同天二次簽到 (冪等性邊界測試)",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": "Msg: 您今天已經完成簽到了！明天再來吧！"
+    },
+    {
+      "id": "E6.1",
+      "category": "Boundary",
+      "name": "商店評分最小邊界 rating=1",
+      "expected": "200 OK (或 500 遊戲連線例外)",
+      "actualStatus": 500,
+      "pass": true,
+      "details": "Msg: 遊戲伺服器連線已中斷"
+    },
+    {
+      "id": "E6.2",
+      "category": "Boundary",
+      "name": "商店評分最大邊界 rating=5",
+      "expected": "200 OK (或 500 遊戲連線例外)",
+      "actualStatus": 500,
+      "pass": true,
+      "details": "Msg: 遊戲伺服器連線已中斷"
+    },
+    {
+      "id": "A1",
+      "category": "Security",
+      "name": "未附帶 Token 存取受保護路由",
+      "expected": "401 Unauthorized",
+      "actualStatus": 401,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "A2",
+      "category": "Security",
+      "name": "附帶格式錯誤 Token",
+      "expected": "403 Forbidden",
+      "actualStatus": 403,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "A3",
+      "category": "Security",
+      "name": "附帶偽造簽名 (Forged JWT) Token",
+      "expected": "403 Forbidden",
+      "actualStatus": 403,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "A4",
+      "category": "Security",
+      "name": "附帶過期 JWT Token",
+      "expected": "403 Forbidden",
+      "actualStatus": 403,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "A5",
+      "category": "Security",
+      "name": "一般使用者越權調用管理員給錢 POST /api/admin/give-money",
+      "expected": "403 Forbidden",
+      "actualStatus": 403,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "A6",
+      "category": "Security",
+      "name": "一般使用者越權建立伺服器活動 POST /api/admin/events",
+      "expected": "403 Forbidden",
+      "actualStatus": 403,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "A7",
+      "category": "Security",
+      "name": "一般使用者越權發起備份 POST /api/admin/backup/trigger",
+      "expected": "403 Forbidden",
+      "actualStatus": 403,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "A8",
+      "category": "Security",
+      "name": "SQL 注入攻擊玩家查詢 /api/admin/player/NormalUser' OR '1'='1",
+      "expected": "200 / 404 (無 SQL 語法錯誤)",
+      "actualStatus": 200,
+      "pass": true,
+      "details": "Result: {\"success\":true,\"profile\":{\"mc_username\":\"NormalUser' OR '1'='1\",\"balance\":0,\"online\":false,\"coords\":\"離線\",\"tps\":20},\"inventory\":[]}"
+    },
+    {
+      "id": "A9",
+      "category": "Security",
+      "name": "SQL 注入攻擊 Tickets 搜尋 search=' UNION SELECT...",
+      "expected": "200 OK (無 SQL 語法錯誤)",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "A10",
+      "category": "Security",
+      "name": "指令注入封鎖玩家 player=\"TestPlayer; rm -rf /\"",
+      "expected": "400 / 500 (系統指令未遭執行)",
+      "actualStatus": 500,
+      "pass": true,
+      "details": "Output: 遊戲伺服器連線已中斷"
+    },
+    {
+      "id": "A11",
+      "category": "Security",
+      "name": "指令注入踢出玩家 player=\"TestPlayer && format c:\"",
+      "expected": "400 / 500 (系統指令未遭執行)",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "A12",
+      "category": "Security",
+      "name": "指令注入假人動作 botName=\"bot1; say HACKED\"",
+      "expected": "400 / 500 (系統指令未遭執行)",
+      "actualStatus": 500,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "A13",
+      "category": "Security",
+      "name": "XSS 攻擊設定稱號 title_text=\"<script>alert('XSS')</script>\"",
+      "expected": "200 OK (儲存無崩潰)",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "A14",
+      "category": "Security",
+      "name": "XSS 攻擊公告標題 title=\"<img src=x onerror=alert(1)>\"",
+      "expected": "200 OK (儲存無崩潰)",
+      "actualStatus": 200,
+      "pass": true,
+      "details": ""
+    },
+    {
+      "id": "A15",
+      "category": "Abnormal",
+      "name": "給予金幣負數金額 amount=-5000",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": "Msg: 請提供有效的目標玩家名稱與金額"
+    },
+    {
+      "id": "A16",
+      "category": "Abnormal",
+      "name": "給予金幣零金額 amount=0",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": "Msg: 請提供有效的目標玩家名稱與金額"
+    },
+    {
+      "id": "A17",
+      "category": "Abnormal",
+      "name": "給予鑰匙負數量 amount=-10",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": "Msg: 請提供有效的目標玩家名稱與鑰匙數量"
+    },
+    {
+      "id": "A18",
+      "category": "Abnormal",
+      "name": "給予金幣型別混淆 (字串金額 amount=\"5000\")",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": "Msg: 請提供有效的目標玩家名稱與金額"
+    },
+    {
+      "id": "A19",
+      "category": "Abnormal",
+      "name": "商店評分超出範圍 rating=0",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": "Msg: 請提供有效的商店座標與 1~5 評分星等！"
+    },
+    {
+      "id": "A20",
+      "category": "Abnormal",
+      "name": "商店評分超出範圍 rating=6",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": "Msg: 請提供有效的商店座標與 1~5 評分星等！"
+    },
+    {
+      "id": "A21",
+      "category": "Abnormal",
+      "name": "商店評分超出範圍 rating=-5",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": "Msg: 請提供有效的商店座標與 1~5 評分星等！"
+    },
+    {
+      "id": "A22",
+      "category": "Abnormal",
+      "name": "發送空 JSON Body {} 至 /api/shop/rename",
+      "expected": "400 Bad Request",
+      "actualStatus": 400,
+      "pass": true,
+      "details": "Msg: 缺少座標或新名稱參數"
+    },
+    {
+      "id": "A23",
+      "category": "Security",
+      "name": "超大 Payload (20KB Body > 10KB Limit) DOS 攻擊",
+      "expected": "413 Payload Too Large",
+      "actualStatus": 413,
+      "pass": true,
+      "details": "Got status: 413"
+    },
+    {
+      "id": "A24",
+      "category": "Security",
+      "name": "未授權玩家試圖修改他人領地權限",
+      "expected": "403 Forbidden",
+      "actualStatus": 403,
+      "pass": true,
+      "details": "Msg: 您無權修改此領地的權限（僅限領地擁有者或管理員修改）"
+    },
+    {
+      "id": "A25",
+      "category": "Concurrency",
+      "name": "高併發簽到連發 (10 請求同時抵達)",
+      "expected": "僅 1 個成功 (400 阻擋 9 個)",
+      "actualStatus": 200,
+      "pass": true,
+      "details": "成功數: 1, 阻擋數: 9"
+    }
+  ]
+}
