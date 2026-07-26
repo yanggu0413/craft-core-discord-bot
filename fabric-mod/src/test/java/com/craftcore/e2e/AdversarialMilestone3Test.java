@@ -127,7 +127,7 @@ public class AdversarialMilestone3Test {
         ShopManager.ChatInterceptionResult result2 = ShopManager.handleChatInput(buyer, "16", mockBuyer, mockWorld);
         assertTrue(result2.intercepted);
         assertTrue(result2.success);
-        assertTrue(result2.responseMessage.contains("successful"));
+        assertTrue(result2.responseMessage.contains("successful") || result2.responseMessage.contains("成功"));
 
         // Verify balances
         // Bob pays $240, remaining balance $760

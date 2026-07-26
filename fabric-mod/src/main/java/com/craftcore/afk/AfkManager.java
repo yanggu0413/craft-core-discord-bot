@@ -104,8 +104,8 @@ public class AfkManager {
 
         // Position change > 0.01 blocks (distSq > 0.0001)
         if (distSq > 0.0001 || rotationChanged) {
-            // If movement was caused by mob attack or pushing (hurtTime > 0 or no camera rotation change)
-            if (isHurtOrPushed || (!rotationChanged && state.isAfk)) {
+            // If movement was caused by mob attack or pushing (hurtTime > 0 or no camera rotation change for minor shift <= 1.0 block)
+            if (isHurtOrPushed || (!rotationChanged && state.isAfk && distSq <= 1.0)) {
                 // Update position without canceling AFK
                 state.lastX = currentX;
                 state.lastY = currentY;
