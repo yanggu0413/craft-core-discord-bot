@@ -128,7 +128,8 @@ public class ShopGuiManager {
                 } else {
                     lore.add(Component.literal("§7價格: §a$" + shop.price));
                 }
-                lore.add(Component.literal("§7庫存: §e" + shop.stock));
+                int currentStock = calculateStockFromChest(shop, player.level());
+                lore.add(Component.literal("§7庫存: §e" + (shop.infinite ? "無限" : currentStock)));
                 lore.add(Component.literal("§7評分: §e" + ShopManager.getAverageRatingString(shop.id)));
                 if (shop.player.equals(getPlayerNameSafely(player)) || isOp(player)) {
                     lore.add(Component.literal("§7營業額: §d$" + shop.revenue));
@@ -604,7 +605,57 @@ public class ShopGuiManager {
                 .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(net.minecraft.network.chat.Component.literal(hoverText))));
     }
 
+    public static int calculateStockFromChest(ShopManager.Shop shop, net.minecraft.world.level.Level level) {
+        if (shop == null) return 0;
+        if (shop.infinite) return 999999;
+        if (level == null) return shop.stock;
+
+        String cleanCoords = ShopManager.getCleanCoords(shop.id);
+        String[] parts = cleanCoords.split(",");
+        if (parts.length != 3) return shop.stock;
+
+        try {
+            int x = Integer.parseInt(parts[0]);
+            int y = Integer.parseInt(parts[1]);
+            int z = Integer.parseInt(parts[2]);
+            String dim = (shop.dimension == null || shop.dimension.isBlank()) ? "minecraft:overworld" : shop.dimension;
+            net.minecraft.server.level.ServerLevel targetLevel = null;
+            if (com.craftcore.event.ServerLifecycleHandler.serverInstance != null) {
+                for (net.minecraft.server.level.ServerLevel sl : com.craftcore.event.ServerLifecycleHandler.serverInstance.getAllLevels()) {
+                    if (sl.dimension().identifier().toString().equalsIgnoreCase(dim)) {
+                        targetLevel = sl;
+                        break;
+                    }
+                }
+            }
+            if (targetLevel == null && level instanceof net.minecraft.server.level.ServerLevel sl) {
+                targetLevel = sl;
+            }
+            if (targetLevel != null) {
+                BlockPos pos = new BlockPos(x, y, z);
+                BlockEntity be = targetLevel.getBlockEntity(pos);
+                if (be instanceof net.minecraft.world.Container inv) {
+                    int count = 0;
+                    for (int i = 0; i < inv.getContainerSize(); i++) {
+                        ItemStack s = inv.getItem(i);
+                        if (!s.isEmpty()) {
+                            String itemKey = BuiltInRegistries.ITEM.getKey(s.getItem()).toString();
+                            if (itemKey.equalsIgnoreCase(shop.item)) {
+                                count += s.getCount();
+                            }
+                        }
+                    }
+                    shop.stock = count;
+                    ShopManager.save();
+                    return count;
+                }
+            }
+        } catch (Exception ignored) {}
+        return shop.stock;
+    }
+
     public static void openOwnerControlPanel(ServerPlayer player, ShopManager.Shop shop) {
+        calculateStockFromChest(shop, player.level());
         player.sendSystemMessage(Component.literal("§6=================== 商店管理面板 ==================="));
         player.sendSystemMessage(Component.literal("§f商店座標: §e" + shop.coords));
         
@@ -623,7 +674,7 @@ public class ShopGuiManager {
             modeStr = "收購 (收: " + shop.buyPrice + ")";
         }
         player.sendSystemMessage(Component.literal("§f目前模式: §7" + modeStr));
-        player.sendSystemMessage(Component.literal("§f目前庫存: §e" + shop.stock));
+        player.sendSystemMessage(Component.literal("§f目前庫存: §e" + (shop.infinite ? "無限" : shop.stock)));
         if (isOp(player)) {
             player.sendSystemMessage(Component.literal("§f無限模式: " + (shop.infinite ? "§a啟用" : "§c停用")));
         }
