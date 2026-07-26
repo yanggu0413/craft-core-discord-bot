@@ -22,6 +22,16 @@ public class LevelMixin {
         Player player = (entity instanceof Player p) ? p : DailyTaskManager.getActiveMiningPlayer();
         if (player != null) {
             DailyTaskManager.handleBlockBreak(level, player, pos, state, blockEntity);
+            if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                boolean triggered = com.craftcore.antixray.HoneypotTrapManager.checkAndTriggerTrap(serverPlayer, pos);
+                if (triggered) {
+                    com.craftcore.antixray.HoneypotTrapManager.generateTrapForPlayer(serverPlayer);
+                } else if (state.is(net.minecraft.world.level.block.Blocks.STONE) || state.is(net.minecraft.world.level.block.Blocks.DEEPSLATE) || state.is(net.minecraft.world.level.block.Blocks.NETHERRACK)) {
+                    if (level.getRandom().nextInt(35) == 0) {
+                        com.craftcore.antixray.HoneypotTrapManager.generateTrapForPlayer(serverPlayer);
+                    }
+                }
+            }
         }
         for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.values()) {
             BlockPos adjPos = pos.relative(dir);
