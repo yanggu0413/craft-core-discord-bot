@@ -42,10 +42,11 @@ public class HoneypotTrapManager {
         BlockPos playerPos = player.blockPosition();
         BlockPos centerPos = null;
 
-        for (int attempt = 0; attempt < 25; attempt++) {
-            int dx = (RANDOM.nextBoolean() ? 1 : -1) * (5 + RANDOM.nextInt(6));
-            int dy = RANDOM.nextInt(5) - 2;
-            int dz = (RANDOM.nextBoolean() ? 1 : -1) * (5 + RANDOM.nextInt(6));
+        for (int attempt = 0; attempt < 30; attempt++) {
+            // Generate very close to player (2 to 4 blocks away inside solid wall)
+            int dx = (RANDOM.nextBoolean() ? 1 : -1) * (2 + RANDOM.nextInt(3));
+            int dy = RANDOM.nextInt(3) - 1;
+            int dz = (RANDOM.nextBoolean() ? 1 : -1) * (2 + RANDOM.nextInt(3));
             BlockPos check = playerPos.offset(dx, dy, dz);
 
             BlockState st = level.getBlockState(check);
