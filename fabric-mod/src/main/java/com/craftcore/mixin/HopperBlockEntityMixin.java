@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(HopperBlockEntity.class)
 public class HopperBlockEntityMixin {
-    @Inject(method = "extract(net/minecraft/world/level/Level;net/minecraft/world/level/block/entity/Hopper;)Z", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "extract", at = @At("HEAD"), cancellable = true)
     private static void onExtract(Level level, Hopper hopper, CallbackInfoReturnable<Boolean> cir) {
         if (level != null && hopper != null) {
             BlockPos sourcePos = BlockPos.containing(hopper.getLevelX(), hopper.getLevelY() + 1.0D, hopper.getLevelZ());
