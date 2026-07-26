@@ -103,7 +103,7 @@ public class HoneypotTrapManager {
 
             System.err.println("[CraftCore AntiCheat] WARNING: Player " + player.getName().getString() + " triggered X-Ray Honeypot Trap at " + pos);
 
-            // Notify online ops/admins
+            // Notify online ops/admins & Send Discord Channel Alert
             net.minecraft.server.MinecraftServer server = com.craftcore.event.ServerLifecycleHandler.serverInstance;
             if (server != null) {
                 String alert = "§c[防作弊警報] 玩家 §e" + player.getName().getString() + " §c踩中 X-Ray 蜜罐陷阱 (" + pos.toShortString() + ")！";
@@ -112,6 +112,16 @@ public class HoneypotTrapManager {
                         op.sendSystemMessage(Component.literal(alert));
                     }
                 }
+            }
+
+            com.craftcore.websocket.CraftCoreWSClient client = com.craftcore.CraftCoreMod.getWSClient();
+            if (client != null && client.isAuthenticated()) {
+                client.send(new com.craftcore.websocket.Packet("anticheat_alert", new com.craftcore.websocket.Packet.AntiCheatAlertPayload(
+                    player.getName().getString(),
+                    "X-Ray 透視採礦蜜罐陷阱",
+                    pos.toShortString(),
+                    "1524977578362933419"
+                )));
             }
             return true;
         }

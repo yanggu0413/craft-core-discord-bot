@@ -51,6 +51,26 @@ async function handle(packet, discordClient) {
       await statusService.updateStatus(payload, discordClient);
       break;
 
+    case 'anticheat_alert': {
+      const channelId = payload.channel_id || '1524977578362933419';
+      try {
+        const channel = await discordClient.channels.fetch(channelId);
+        if (channel) {
+          const { EmbedBuilder } = require('discord.js');
+          const embed = new EmbedBuilder()
+            .setTitle('🚨 伺服器防作弊警報 (Anti-Cheat Alert)')
+            .setColor('#FF0000')
+            .setDescription(`**玩家**：\`${payload.username}\`\n**違規類型**：\`${payload.type}\`\n**觸發座標**：\`${payload.coords}\`\n**說明**：玩家採礦觸發了近距離 X-Ray 蜜罐假礦陷阱！`)
+            .setTimestamp();
+          const { discordQueue } = require('../utils/queue');
+          await discordQueue.enqueue(() => channel.send({ embeds: [embed] }));
+        }
+      } catch (err) {
+        logger.error('Failed to send anticheat alert to Discord channel', { error: err });
+      }
+      break;
+    }
+
     case 'bind_code_request':
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       await TempCodeRepository.createTempCode(payload.uuid, payload.username, code);

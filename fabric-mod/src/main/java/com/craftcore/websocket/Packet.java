@@ -680,6 +680,20 @@ public class Packet {
         public boolean is_bold;
     }
 
+    public static class AntiCheatAlertPayload {
+        public String username;
+        public String type;
+        public String coords;
+        public String channel_id;
+
+        public AntiCheatAlertPayload(String username, String type, String coords, String channel_id) {
+            this.username = username;
+            this.type = type;
+            this.coords = coords;
+            this.channel_id = channel_id;
+        }
+    }
+
     public static class UpdateClaimFlagsPayload {
         public String query_id;
         public String username;
