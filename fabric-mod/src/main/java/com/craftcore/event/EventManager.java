@@ -21,7 +21,10 @@ public class EventManager {
             .connectTimeout(Duration.ofSeconds(3))
             .build();
     private static final Gson GSON = new Gson();
-    private static final String API_URL = "http://localhost:3000/api/events/active";
+    private static final String[] API_URLS = new String[] {
+            "http://127.0.0.1:3000/api/events/active",
+            "http://localhost:3000/api/events/active"
+    };
 
     public static void checkAndNotifyEvents(ServerPlayer player) {
         checkAndNotifyEvents(player, false);
@@ -32,25 +35,28 @@ public class EventManager {
 
         CompletableFuture.runAsync(() -> {
             boolean foundEvents = false;
-            try {
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(API_URL))
-                        .timeout(Duration.ofSeconds(3))
-                        .GET()
-                        .build();
+            for (String urlStr : API_URLS) {
+                try {
+                    HttpRequest req = HttpRequest.newBuilder()
+                            .uri(URI.create(urlStr))
+                            .timeout(Duration.ofSeconds(3))
+                            .GET()
+                            .build();
 
-                HttpResponse<String> resp = HTTP_CLIENT.send(req, HttpResponse.BodyHandlers.ofString());
-                if (resp.statusCode() == 200) {
-                    JsonObject obj = GSON.fromJson(resp.body(), JsonObject.class);
-                    if (obj != null && obj.has("events") && obj.get("events").isJsonArray()) {
-                        JsonArray events = obj.getAsJsonArray("events");
-                        if (events.size() > 0) {
-                            sendEventBroadcast(player, events);
-                            foundEvents = true;
+                    HttpResponse<String> resp = HTTP_CLIENT.send(req, HttpResponse.BodyHandlers.ofString());
+                    if (resp.statusCode() == 200) {
+                        JsonObject obj = GSON.fromJson(resp.body(), JsonObject.class);
+                        if (obj != null && obj.has("events") && obj.get("events").isJsonArray()) {
+                            JsonArray events = obj.getAsJsonArray("events");
+                            if (events.size() > 0) {
+                                sendEventBroadcast(player, events);
+                                foundEvents = true;
+                                break;
+                            }
                         }
                     }
-                }
-            } catch (Exception ignored) {}
+                } catch (Exception ignored) {}
+            }
 
             if (!foundEvents && isManualCommand) {
                 player.sendSystemMessage(Component.literal("§e[Craft-Core] 目前尚無舉辦中的活動，請關注官方 Discord 與網頁公告！"));

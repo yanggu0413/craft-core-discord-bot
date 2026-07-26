@@ -29,7 +29,7 @@ router.get('/events/active', (req, res) => {
     if (!wsClient_1.db)
         return res.json({ success: true, events: [] });
     try {
-        const events = wsClient_1.db.prepare("SELECT * FROM server_events WHERE status = 'active' ORDER BY id DESC").all();
+        const events = wsClient_1.db.prepare("SELECT * FROM server_events WHERE LOWER(COALESCE(status, 'active')) = 'active' ORDER BY id DESC").all();
         (0, wsClient_1.setCachedData)(cacheKey, events, 5000);
         res.json({ success: true, events });
     }
