@@ -146,7 +146,11 @@ const handleLeaderboard = async (req, res) => {
                     const realBalance = playerEco && typeof playerEco.balance === 'number' ? playerEco.balance : 0.0;
                     return {
                         username: row.username,
+                        mc_username: row.username,
                         balance: realBalance,
+                        keys_count: Number(row.keys_count) || 0,
+                        checkin_streak: Number(row.checkin_streak) || 0,
+                        total_checkins: Number(row.total_checkins) || 0,
                         shopsCount: 0,
                         avatar: `https://mc-heads.net/avatar/${row.username}/64`
                     };

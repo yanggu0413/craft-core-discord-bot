@@ -749,24 +749,32 @@ export default function WelfareView({
                   </TableHeader>
                   <TableBody>
                     {leaderboard.length > 0 ? (
-                      leaderboard.map((player, idx) => {
+                      leaderboard.map((player: any, idx: number) => {
                         let rankBadge = '👤';
                         if (idx === 0) rankBadge = '🥇';
                         else if (idx === 1) rankBadge = '🥈';
                         else if (idx === 2) rankBadge = '🥉';
+                        const name = player.mc_username || player.username || '匿名玩家';
                         return (
                           <TableRow key={idx} className="hover:bg-muted/30">
                             <TableCell className="text-center text-xs py-1.5 font-bold h-8">
                               {idx < 3 ? rankBadge : idx + 1}
                             </TableCell>
-                            <TableCell className="text-left text-xs py-1.5 font-bold truncate h-8 max-w-[80px]">
-                              {player.mc_username}
+                            <TableCell className="text-left text-xs py-1.5 font-bold truncate h-8 max-w-[120px]">
+                              <div className="flex items-center space-x-1.5">
+                                <img 
+                                  src={`https://mc-heads.net/avatar/${name}/16`} 
+                                  alt={name}
+                                  className="w-4 h-4 rounded-[2px] border border-border shrink-0"
+                                />
+                                <span className="truncate">{name}</span>
+                              </div>
                             </TableCell>
                             <TableCell className="text-center text-xs py-1.5 font-black text-yellow-500 h-8">
-                              🔑 {player.keys_count}
+                              🔑 {player.keys_count || 0}
                             </TableCell>
                             <TableCell className="text-center text-xs py-1.5 font-bold text-red-400 h-8">
-                              🔥 {player.checkin_streak}
+                              🔥 {player.checkin_streak || 0}
                             </TableCell>
                           </TableRow>
                         );
