@@ -75,7 +75,7 @@ out.log
 items_fields.txt
 check_java.py
 clean_java.py
-config/
+/config/
 ORIGINAL_REQUEST.md
 PROJECT.md
 convert_and_search.py
