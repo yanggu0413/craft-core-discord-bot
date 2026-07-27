@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.botWsClient = exports.totalShopsCount = exports.accumulatedSalesTax = exports.db = exports.ADMIN_DISCORD_IDS = exports.DATABASE_PATH = exports.WEBSOCKET_SECRET = exports.WEBSOCKET_URL = exports.JWT_SECRET = void 0;
+exports.requireAdmin = exports.authenticateToken = exports.botWsClient = exports.totalShopsCount = exports.accumulatedSalesTax = exports.db = exports.ADMIN_DISCORD_IDS = exports.DATABASE_PATH = exports.WEBSOCKET_SECRET = exports.WEBSOCKET_URL = exports.JWT_SECRET = void 0;
 exports.setWssInstance = setWssInstance;
 exports.broadcastToWebClients = broadcastToWebClients;
 exports.connectToBotWS = connectToBotWS;
@@ -11,10 +11,7 @@ exports.sendWsQuery = sendWsQuery;
 exports.getCachedData = getCachedData;
 exports.setCachedData = setCachedData;
 exports.invalidateCachePattern = invalidateCachePattern;
-exports.authenticateToken = authenticateToken;
-exports.requireAdmin = requireAdmin;
 exports.sendEventAnnouncementToDiscord = sendEventAnnouncementToDiscord;
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const ws_1 = __importDefault(require("ws"));
 // @ts-ignore
 const node_sqlite_1 = require("node:sqlite");
@@ -56,6 +53,19 @@ try {
     `);
     }
     if (exports.db) {
+        exports.db.exec(`
+      CREATE TABLE IF NOT EXISTS offline_mails (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_discord_id TEXT,
+        sender_username TEXT,
+        receiver_username TEXT,
+        item_id TEXT,
+        quantity INTEGER,
+        nbt TEXT,
+        status TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
         exports.db.exec(`
       CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -280,31 +290,10 @@ function invalidateCachePattern(pattern) {
         }
     }
 }
-// Middlewares
-function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) {
-        return res.status(401).json({ success: false, message: '尚未登入，請先進行身份驗證' });
-    }
-    jsonwebtoken_1.default.verify(token, exports.JWT_SECRET, (err, decoded) => {
-        if (err) {
-            return res.status(403).json({ success: false, message: '認證憑證無效或已過期' });
-        }
-        req.user = decoded;
-        next();
-    });
-}
-function requireAdmin(req, res, next) {
-    const user = req.user;
-    if (!user) {
-        return res.status(401).json({ success: false, message: '尚未登入，請先進行身份驗證' });
-    }
-    if (!exports.ADMIN_DISCORD_IDS.has(user.discord_id || '')) {
-        return res.status(403).json({ success: false, message: 'Forbidden: 您不是系統管理員' });
-    }
-    next();
-}
+// Middlewares re-exported from middleware/auth
+var auth_1 = require("../middleware/auth");
+Object.defineProperty(exports, "authenticateToken", { enumerable: true, get: function () { return auth_1.authenticateToken; } });
+Object.defineProperty(exports, "requireAdmin", { enumerable: true, get: function () { return auth_1.requireAdmin; } });
 async function sendEventAnnouncementToDiscord(event) {
     const token = process.env.DISCORD_BOT_TOKEN;
     const channelId = process.env.DISCORD_ANNOUNCEMENT_CHANNEL_ID;

@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { apiFetch } from '../lib/api';
 
 interface HomeItem {
   name: string;
@@ -64,30 +65,25 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
     try {
       if (activeTab === 'homes') {
         if (!token) return;
-        const res = await fetch('/api/user/homes', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success) {
-          setHomes(data.homes || []);
+        const res = await apiFetch('/user/homes');
+        if (res.ok && res.data?.success) {
+          setHomes(res.data.homes || []);
           setError(null);
         } else {
-          setError(data.message || '讀取家園列表失敗');
+          setError(res.data?.message || '讀取家園列表失敗');
         }
       } else if (activeTab === 'warps') {
-        const res = await fetch('/api/warps');
-        const data = await res.json();
-        if (data.success) {
-          setWarps(data.warps || []);
+        const res = await apiFetch('/warps');
+        if (res.ok && res.data?.success) {
+          setWarps(res.data.warps || []);
           setError(null);
         } else {
-          setError(data.message || '讀取公共地標失敗');
+          setError(res.data?.message || '讀取公共地標失敗');
         }
       } else {
-        const res = await fetch('/api/warp-submissions');
-        const data = await res.json();
-        if (data.success) {
-          setSubmissions(data.submissions || []);
+        const res = await apiFetch('/warp-submissions');
+        if (res.ok && res.data?.success) {
+          setSubmissions(res.data.submissions || []);
           setError(null);
         }
       }
@@ -112,12 +108,9 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/warp-submissions', {
+      const res = await apiFetch('/warp-submissions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           facility_name: facilityName.trim(),
           function_desc: functionDesc.trim(),
@@ -125,16 +118,15 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
           dimension: dimInput
         })
       });
-      const data = await res.json();
-      if (data.success) {
-        setMsg({ type: 'success', text: data.message || '設施審核已成功提交！' });
+      if (res.ok && res.data?.success) {
+        setMsg({ type: 'success', text: res.data.message || '設施審核已成功提交！' });
         setIsSubmitModalOpen(false);
         setFacilityName('');
         setFunctionDesc('');
         setCoordsInput('');
         fetchTeleportData();
       } else {
-        setMsg({ type: 'error', text: data.message || '提交失敗' });
+        setMsg({ type: 'error', text: res.data?.message || '提交失敗' });
       }
     } catch (err: any) {
       setMsg({ type: 'error', text: '網路連線失敗' });
@@ -146,16 +138,14 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
   const handleApproveSubmission = async (id: number) => {
     if (!token) return;
     try {
-      const res = await fetch(`/api/admin/warp-submissions/${id}/approve`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await apiFetch(`/admin/warp-submissions/${id}/approve`, {
+        method: 'POST'
       });
-      const data = await res.json();
-      if (data.success) {
-        setMsg({ type: 'success', text: data.message });
+      if (res.ok && res.data?.success) {
+        setMsg({ type: 'success', text: res.data.message });
         fetchTeleportData();
       } else {
-        setMsg({ type: 'error', text: data.message || '審核失敗' });
+        setMsg({ type: 'error', text: res.data?.message || '審核失敗' });
       }
     } catch (err) {
       setMsg({ type: 'error', text: '網路連線失敗' });
@@ -165,16 +155,14 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
   const handleRejectSubmission = async (id: number) => {
     if (!token) return;
     try {
-      const res = await fetch(`/api/admin/warp-submissions/${id}/reject`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await apiFetch(`/admin/warp-submissions/${id}/reject`, {
+        method: 'POST'
       });
-      const data = await res.json();
-      if (data.success) {
-        setMsg({ type: 'success', text: data.message });
+      if (res.ok && res.data?.success) {
+        setMsg({ type: 'success', text: res.data.message });
         fetchTeleportData();
       } else {
-        setMsg({ type: 'error', text: data.message || '操作失敗' });
+        setMsg({ type: 'error', text: res.data?.message || '操作失敗' });
       }
     } catch (err) {
       setMsg({ type: 'error', text: '網路連線失敗' });
@@ -191,19 +179,17 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
     setDeleting(true);
     try {
       const url = confirmModal.type === 'home' 
-        ? `/api/user/homes/${encodeURIComponent(confirmModal.name)}`
-        : `/api/warps/${encodeURIComponent(confirmModal.name)}`;
+        ? `/user/homes/${encodeURIComponent(confirmModal.name)}`
+        : `/warps/${encodeURIComponent(confirmModal.name)}`;
 
-      const res = await fetch(url, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await apiFetch(url, {
+        method: 'DELETE'
       });
-      const data = await res.json();
-      if (data.success) {
+      if (res.ok && res.data?.success) {
         setMsg({ type: 'success', text: `成功刪除${confirmModal.type === 'home' ? '家園' : '地標'}：「${confirmModal.name}」` });
         fetchTeleportData();
       } else {
-        setMsg({ type: 'error', text: data.message || '刪除失敗' });
+        setMsg({ type: 'error', text: res.data?.message || '刪除失敗' });
       }
     } catch (err) {
       setMsg({ type: 'error', text: '網路請求失敗' });

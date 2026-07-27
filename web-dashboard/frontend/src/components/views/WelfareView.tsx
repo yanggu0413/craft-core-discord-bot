@@ -218,7 +218,7 @@ export default function WelfareView({
     }
     setLoadingExchange(true);
     try {
-      const res = await fetch(`${API_URL}/user/exchange-playtime`, {
+      const res = await fetch(`${API_URL}/playtime/exchange`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

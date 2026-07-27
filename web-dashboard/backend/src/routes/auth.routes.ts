@@ -1,11 +1,19 @@
 import { Router, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import { db, JWT_SECRET, ADMIN_DISCORD_IDS } from '../websocket/wsClient';
+import { signToken, JWT_SECRET } from '../services/auth.service';
+import { db, ADMIN_DISCORD_IDS } from '../websocket/wsClient';
 
 const router = Router();
 
 // Developer Mock login bypass endpoint
 router.get('/dev-login', (req: Request, res: Response) => {
+  const isDevEnvironment = process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_LOGIN === 'true';
+  if (!isDevEnvironment) {
+    return res.status(403).json({
+      success: false,
+      message: 'Forbidden: /dev-login 僅限開發測試環境使用'
+    });
+  }
+
   const username = (req.query.username as string) || 'Yanggu';
   const nonAdmin = req.query.nonAdmin === 'true';
   const roles = nonAdmin ? [] : ['1360409328175153242'];
@@ -24,7 +32,7 @@ router.get('/dev-login', (req: Request, res: Response) => {
       const addBinding = db.prepare('INSERT INTO bindings (discord_id, mc_uuid, mc_username) VALUES (?, ?, ?)');
       addBinding.run(dummyDiscordId, dummyUuid, username);
       
-      const token = jwt.sign({ 
+      const token = signToken({ 
         mc_uuid: dummyUuid, 
         mc_username: username, 
         discord_id: nonAdmin ? dummyDiscordId : '1248891236480188517',
@@ -33,7 +41,7 @@ router.get('/dev-login', (req: Request, res: Response) => {
           roles,
           isAdmin: !nonAdmin
         }
-      }, JWT_SECRET, { expiresIn: '7d' });
+      }, '7d');
       
       return res.json({
         success: true,
@@ -43,7 +51,7 @@ router.get('/dev-login', (req: Request, res: Response) => {
       });
     }
 
-    const token = jwt.sign({ 
+    const token = signToken({ 
       mc_uuid: binding.mc_uuid, 
       mc_username: binding.mc_username, 
       discord_id: nonAdmin ? binding.discord_id : '1248891236480188517',
@@ -52,7 +60,7 @@ router.get('/dev-login', (req: Request, res: Response) => {
         roles,
         isAdmin: !nonAdmin
       }
-    }, JWT_SECRET, { expiresIn: '7d' });
+    }, '7d');
     
     return res.json({
       success: true,
@@ -134,7 +142,7 @@ router.get('/callback', async (req: Request, res: Response) => {
     const roles: string[] = [];
     const isAdmin = ADMIN_DISCORD_IDS.has(realDiscordId);
 
-    const token = jwt.sign(
+    const token = signToken(
       { 
         mc_uuid: binding.mc_uuid, 
         mc_username: binding.mc_username, 
@@ -145,8 +153,7 @@ router.get('/callback', async (req: Request, res: Response) => {
           isAdmin
         }
       },
-      JWT_SECRET,
-      { expiresIn: '7d' }
+      '7d'
     );
     res.redirect(`${frontendUrl}/?token=${token}&username=${binding.mc_username}&uuid=${binding.mc_uuid}`);
   } catch (err: any) {

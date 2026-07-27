@@ -1,21 +1,19 @@
 import { Router, Request, Response } from 'express';
-import path from 'path';
-import fs from 'fs';
-import { sendWsQuery, authenticateToken, ADMIN_DISCORD_IDS, CustomRequest } from '../websocket/wsClient';
+import { sendWsQuery, ADMIN_DISCORD_IDS, CustomRequest } from '../websocket/wsClient';
+import { authenticateToken } from '../middleware/auth';
+import { loadConfigJson, saveConfigJson } from '../utils/configLoader';
 
 const router = Router();
 
 // GET /api/claims
 router.get('/', async (req: Request, res: Response) => {
-  const isAll = req.query.all === 'true';
-
   let claims: any[] = [];
   let fetchedViaWs = false;
 
   try {
     const response = await sendWsQuery('claims_query', {});
-    if (response && response.success) {
-      claims = response.claims || [];
+    if (response && response.success && Array.isArray(response.claims) && response.claims.length > 0) {
+      claims = response.claims;
       fetchedViaWs = true;
     }
   } catch (wsErr) {
@@ -26,20 +24,12 @@ router.get('/', async (req: Request, res: Response) => {
     return res.json({ success: true, claims });
   }
 
-  // Fallback: Read config/craft-core-shop/claims.json
+  // Fallback: Read claims.json from MCSManager / local paths
   try {
-    const possiblePaths = [
-      path.resolve(__dirname, '../../../../config/craft-core-shop/claims.json'),
-      path.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/claims.json'),
-      path.resolve('config/craft-core-shop/claims.json')
-    ];
-    for (const p of possiblePaths) {
-      if (fs.existsSync(p)) {
-        const raw = fs.readFileSync(p, 'utf8');
-        const claimsMap = JSON.parse(raw);
-        const claimsArray = Object.values(claimsMap);
-        return res.json({ success: true, claims: claimsArray });
-      }
+    const claimsMap = loadConfigJson<Record<string, any>>('claims.json');
+    if (claimsMap && typeof claimsMap === 'object') {
+      const claimsArray = Object.values(claimsMap);
+      return res.json({ success: true, claims: claimsArray });
     }
     return res.json({ success: true, claims: [] });
   } catch (error: any) {
@@ -69,23 +59,13 @@ router.post('/permission', authenticateToken, async (req: CustomRequest, res: Re
         isOwnerOrAdmin = true;
       }
     } catch (err) {
-      try {
-        const possiblePaths = [
-          path.resolve(__dirname, '../../../../config/craft-core-shop/claims.json'),
-          path.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/claims.json'),
-          path.resolve('config/craft-core-shop/claims.json')
-        ];
-        for (const p of possiblePaths) {
-          if (fs.existsSync(p)) {
-            const raw = fs.readFileSync(p, 'utf8');
-            const claimsMap = JSON.parse(raw);
-            const targetClaim = claimsMap[claimId];
-            if (targetClaim && targetClaim.owner.toLowerCase() === username.toLowerCase()) {
-              isOwnerOrAdmin = true;
-            }
-          }
+      const claimsMap = loadConfigJson<Record<string, any>>('claims.json');
+      if (claimsMap && claimsMap[claimId]) {
+        const targetClaim = claimsMap[claimId];
+        if (targetClaim && targetClaim.owner.toLowerCase() === username.toLowerCase()) {
+          isOwnerOrAdmin = true;
         }
-      } catch (fsErr) {}
+      }
     }
   }
 
@@ -101,46 +81,32 @@ router.post('/permission', authenticateToken, async (req: CustomRequest, res: Re
       action
     });
     if (result.success) {
-      res.json({ success: true, message: '權限更新成功' });
+      return res.json({ success: true, message: '權限更新成功' });
     } else {
-      res.status(400).json({ success: false, message: result.message || '更新失敗' });
+      return res.status(400).json({ success: false, message: result.message || '更新失敗' });
     }
   } catch (error: any) {
-    try {
-      const possiblePaths = [
-        path.resolve(__dirname, '../../../../config/craft-core-shop/claims.json'),
-        path.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/claims.json'),
-        path.resolve('config/craft-core-shop/claims.json')
-      ];
-      for (const p of possiblePaths) {
-        if (fs.existsSync(p)) {
-          const raw = fs.readFileSync(p, 'utf8');
-          const claimsMap = JSON.parse(raw);
-          if (claimsMap[claimId]) {
-            const claim = claimsMap[claimId];
-            if (!claim.permissions) {
-              claim.permissions = { build: [], break: [], containers: [], interact: [] };
-            }
-            let key = permissionType === 'break' ? 'break' : permissionType;
-            if (!claim.permissions[key]) {
-              claim.permissions[key] = [];
-            }
-            if (action === 'grant') {
-              if (!claim.permissions[key].includes(player)) {
-                claim.permissions[key].push(player);
-              }
-            } else if (action === 'revoke') {
-              claim.permissions[key] = claim.permissions[key].filter((p: string) => p !== player);
-            }
-            fs.writeFileSync(p, JSON.stringify(claimsMap, null, 2), 'utf8');
-            return res.json({ success: true, message: '權限更新成功 (本地備份)' });
-          }
-        }
+    const claimsMap = loadConfigJson<Record<string, any>>('claims.json') || {};
+    if (claimsMap[claimId]) {
+      const claim = claimsMap[claimId];
+      if (!claim.permissions) {
+        claim.permissions = { build: [], break: [], containers: [], interact: [] };
       }
-    } catch (fsErr) {
-      console.error('Failed to update claims fallback:', fsErr);
+      let key = permissionType === 'break' ? 'break' : permissionType;
+      if (!claim.permissions[key]) {
+        claim.permissions[key] = [];
+      }
+      if (action === 'grant') {
+        if (!claim.permissions[key].includes(player)) {
+          claim.permissions[key].push(player);
+        }
+      } else if (action === 'revoke') {
+        claim.permissions[key] = claim.permissions[key].filter((p: string) => p !== player);
+      }
+      saveConfigJson('claims.json', claimsMap);
+      return res.json({ success: true, message: '權限更新成功 (離線檔案更新)' });
     }
-    res.status(500).json({ success: false, message: error.message || '遊戲伺服器未連線' });
+    return res.status(500).json({ success: false, message: error.message || '遊戲伺服器未連線' });
   }
 });
 
@@ -163,25 +129,7 @@ router.post('/flags', authenticateToken, async (req: CustomRequest, res: Respons
       });
       return res.json(wsRes || { success: true, message: '領地權限標籤已設定完成！' });
     } catch (wsErr) {
-      const possiblePaths = [
-        path.resolve(__dirname, '../../../../config/craft-core-shop/claims.json'),
-        path.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/claims.json'),
-        path.resolve('config/craft-core-shop/claims.json')
-      ];
-      let targetPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
-
-      const dirPath = path.dirname(targetPath);
-      if (!fs.existsSync(dirPath)) {
-        try { fs.mkdirSync(dirPath, { recursive: true }); } catch (e) {}
-      }
-
-      let claimsMap: any = {};
-      if (fs.existsSync(targetPath)) {
-        try {
-          claimsMap = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
-        } catch (e) {}
-      }
-
+      let claimsMap = loadConfigJson<Record<string, any>>('claims.json') || {};
       let claim = claimsMap[claim_id];
       if (!claim) {
         claim = {
@@ -200,7 +148,7 @@ router.post('/flags', authenticateToken, async (req: CustomRequest, res: Respons
         if (typeof public_interact === 'boolean') claim.public_interact = public_interact;
         if (typeof public_entry === 'boolean') claim.public_entry = public_entry;
         if (Array.isArray(banned_players)) claim.banned_players = banned_players;
-        fs.writeFileSync(targetPath, JSON.stringify(claimsMap, null, 2), 'utf8');
+        saveConfigJson('claims.json', claimsMap);
         return res.json({ success: true, message: '領地權限標籤已設定完成 (離線檔案更新)' });
       } else {
         return res.status(403).json({ success: false, message: '您無權修改此領地的標籤 (僅限領地擁有者或管理員)' });

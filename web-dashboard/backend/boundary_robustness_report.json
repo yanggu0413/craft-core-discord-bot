@@ -1,0 +1,672 @@
+{
+  "timestamp": "2026-07-27T04:01:10.938Z",
+  "unitTestResults": [
+    {
+      "testName": "verifyToken(null) returns null",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "testName": "verifyToken(undefined) returns null",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "testName": "verifyToken(\"\") returns null",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "testName": "verifyToken(\"   \") returns null",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "testName": "verifyToken(\"invalid.token.format\") returns null",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "testName": "verifyToken(\"Bearer invalid\") returns null",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "testName": "verifyToken(\"dev-token\") is rejected and returns null",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "testName": "verifyToken(\"dev-token-Steve\") is rejected and returns null",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "testName": "verifyToken(\"dev_token\") is rejected and returns null",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "testName": "verifyToken(validToken) decodes valid payload",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "testName": "verifyToken(expiredToken) returns null",
+      "status": "PASS",
+      "details": ""
+    }
+  ],
+  "httpResults": [
+    {
+      "name": "Protected route without token",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "尚未登入，請先進行身份驗證"
+      }
+    },
+    {
+      "name": "Protected route with empty Bearer header",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "認證憑證無效或已過期"
+      }
+    },
+    {
+      "name": "Protected route with whitespace Bearer header",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "認證憑證無效或已過期"
+      }
+    },
+    {
+      "name": "Protected route with malformed token",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "認證憑證無效或已過期"
+      }
+    },
+    {
+      "name": "Protected route with dev-token (rejected)",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "認證憑證無效或已過期"
+      }
+    },
+    {
+      "name": "Protected route with dev-token in query param (rejected)",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "認證憑證無效或已過期"
+      }
+    },
+    {
+      "name": "Protected route with dev-token in x-access-token header (rejected)",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "認證憑證無效或已過期"
+      }
+    },
+    {
+      "name": "GET /api/stats normal",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "totalCirculation": 150000,
+        "accumulatedSalesTax": 0,
+        "totalShopsCount": 0,
+        "activeClaims": 3,
+        "totalPlayers": 1,
+        "onlinePlayers": 1,
+        "tps": 20
+      }
+    },
+    {
+      "name": "GET /api/stats with special char query params",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "totalCirculation": 150000,
+        "accumulatedSalesTax": 0,
+        "totalShopsCount": 0,
+        "activeClaims": 3,
+        "totalPlayers": 1,
+        "onlinePlayers": 1,
+        "tps": 20
+      }
+    },
+    {
+      "name": "GET /api/leaderboard normal",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "leaderboard": [
+          {
+            "rank": 1,
+            "username": "Yanggu",
+            "balance": 0,
+            "shopsCount": 0,
+            "avatar": "https://mc-heads.net/avatar/Yanggu/64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GET /api/user/leaderboard alias",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "leaderboard": [
+          {
+            "rank": 1,
+            "username": "Yanggu",
+            "balance": 0,
+            "shopsCount": 0,
+            "avatar": "https://mc-heads.net/avatar/Yanggu/64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GET /api/leaderboard with out-of-range parameters",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "leaderboard": [
+          {
+            "rank": 1,
+            "username": "Yanggu",
+            "balance": 0,
+            "shopsCount": 0,
+            "avatar": "https://mc-heads.net/avatar/Yanggu/64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GET /api/leaderboard with special characters",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "leaderboard": [
+          {
+            "rank": 1,
+            "username": "Yanggu",
+            "balance": 0,
+            "shopsCount": 0,
+            "avatar": "https://mc-heads.net/avatar/Yanggu/64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GET /api/market/analytics normal",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "minecraft:diamond": [],
+        "minecraft:netherite_ingot": [],
+        "minecraft:iron_ingot": [],
+        "trends": {
+          "minecraft:diamond": [],
+          "minecraft:netherite_ingot": [],
+          "minecraft:iron_ingot": []
+        }
+      }
+    },
+    {
+      "name": "GET /api/market/recent normal",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "trades": [],
+        "transactions": []
+      }
+    },
+    {
+      "name": "GET /api/shops normal",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "shops": [],
+        "totalSalesTax": 0
+      }
+    },
+    {
+      "name": "POST /api/shop/rename unauthenticated",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "尚未登入，請先進行身份驗證"
+      }
+    },
+    {
+      "name": "POST /api/shop/rename empty body",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "缺少座標或新名稱參數"
+      }
+    },
+    {
+      "name": "POST /api/shop/rename missing custom_name",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "缺少座標或新名稱參數"
+      }
+    },
+    {
+      "name": "POST /api/shop/rename special characters",
+      "status": "PASS",
+      "httpCode": 500,
+      "response": {
+        "success": false,
+        "message": "遊戲伺服器連線已中斷"
+      }
+    },
+    {
+      "name": "POST /api/shop/withdraw unauthenticated",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "尚未登入，請先進行身份驗證"
+      }
+    },
+    {
+      "name": "POST /api/shop/withdraw empty body",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "缺少商店座標參數"
+      }
+    },
+    {
+      "name": "POST /api/shop/rate empty body",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "請提供有效的商店座標與 1~5 評分星等！"
+      }
+    },
+    {
+      "name": "POST /api/shop/rate out of range rating (0)",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "請提供有效的商店座標與 1~5 評分星等！"
+      }
+    },
+    {
+      "name": "POST /api/shop/rate out of range rating (6)",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "請提供有效的商店座標與 1~5 評分星等！"
+      }
+    },
+    {
+      "name": "POST /api/shop/rate string rating (\"five\")",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "請提供有效的商店座標與 1~5 評分星等！"
+      }
+    },
+    {
+      "name": "POST /api/shop/rate valid rating (5)",
+      "status": "PASS",
+      "httpCode": 500,
+      "response": {
+        "success": false,
+        "message": "遊戲伺服器連線已中斷"
+      }
+    },
+    {
+      "name": "GET /api/claims normal",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "claims": [
+          {
+            "owner": "Yanggu",
+            "public_containers": false,
+            "public_interact": false,
+            "public_entry": true,
+            "banned_players": []
+          },
+          {
+            "id": "claim_1",
+            "owner": "Yanggu",
+            "public_containers": false,
+            "public_interact": false,
+            "public_entry": true,
+            "banned_players": [],
+            "permissions": {
+              "build": [
+                "<script>alert(1)</script>' OR 1=1"
+              ],
+              "break": [],
+              "containers": [],
+              "interact": []
+            }
+          },
+          {
+            "id": "c1",
+            "owner": "AdminPlayer",
+            "public_containers": true,
+            "public_interact": false,
+            "public_entry": true,
+            "banned_players": [
+              "Bad1",
+              "Bad2"
+            ],
+            "permissions": {
+              "build": [],
+              "break": [
+                "User"
+              ],
+              "containers": [],
+              "interact": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "POST /api/claims/permission unauthenticated",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "尚未登入，請先進行身份驗證"
+      }
+    },
+    {
+      "name": "POST /api/claims/permission empty body",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "缺少必要參數"
+      }
+    },
+    {
+      "name": "POST /api/claims/permission missing parameters",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "缺少必要參數"
+      }
+    },
+    {
+      "name": "POST /api/claims/permission special character player",
+      "status": "PASS",
+      "httpCode": 403,
+      "response": {
+        "success": false,
+        "message": "您無權修改此領地的權限（僅限領地擁有者或管理員修改）"
+      }
+    },
+    {
+      "name": "POST /api/claims/flags unauthenticated",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "尚未登入，請先進行身份驗證"
+      }
+    },
+    {
+      "name": "POST /api/claims/flags empty body with valid token",
+      "status": "PASS",
+      "httpCode": 403,
+      "response": {
+        "success": false,
+        "message": "您無權修改此領地的標籤 (僅限領地擁有者或管理員)"
+      }
+    },
+    {
+      "name": "POST /api/claims/flags boundary values",
+      "status": "PASS",
+      "httpCode": 403,
+      "response": {
+        "success": false,
+        "message": "您無權修改此領地的標籤 (僅限領地擁有者或管理員)"
+      }
+    },
+    {
+      "name": "GET /api/user/fakeplayers unauthenticated",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "尚未登入，請先進行身份驗證"
+      }
+    },
+    {
+      "name": "GET /api/user/fakeplayers with valid token",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "fakeplayers": []
+      }
+    },
+    {
+      "name": "POST /api/user/fakeplayers/action empty body",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "請提供有效的假人名稱與動作"
+      }
+    },
+    {
+      "name": "POST /api/user/fakeplayers/action missing action",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "請提供有效的假人名稱與動作"
+      }
+    },
+    {
+      "name": "POST /api/user/fakeplayers/action special char botName",
+      "status": "PASS",
+      "httpCode": 500,
+      "response": {
+        "success": false,
+        "message": "遊戲伺服器連線已中斷"
+      }
+    },
+    {
+      "name": "GET /api/tasks/daily unauthenticated",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "date": "2026-07-27",
+        "slay_task": {
+          "type": 1,
+          "target": "Creeper",
+          "count": 5,
+          "reward": 400
+        },
+        "mine_task": {
+          "type": 2,
+          "target": "Diamond Ore",
+          "count": 3,
+          "reward": 1000
+        },
+        "tasks": [
+          {
+            "type": 1,
+            "target": "Creeper",
+            "count": 5,
+            "reward": 400,
+            "progress": 0,
+            "claimed": false
+          },
+          {
+            "type": 2,
+            "target": "Diamond Ore",
+            "count": 3,
+            "reward": 1000,
+            "progress": 0,
+            "claimed": false
+          }
+        ],
+        "slay_progress": 0,
+        "mine_progress": 0,
+        "has_claimed": false,
+        "is_completed": false
+      }
+    },
+    {
+      "name": "GET /api/tasks/daily with valid token",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "date": "2026-07-27",
+        "slay_task": {
+          "type": 1,
+          "target": "Creeper",
+          "count": 5,
+          "reward": 400
+        },
+        "mine_task": {
+          "type": 2,
+          "target": "Diamond Ore",
+          "count": 3,
+          "reward": 1000
+        },
+        "tasks": [
+          {
+            "type": 1,
+            "target": "Creeper",
+            "count": 5,
+            "reward": 400,
+            "progress": 0,
+            "claimed": false
+          },
+          {
+            "type": 2,
+            "target": "Diamond Ore",
+            "count": 3,
+            "reward": 1000,
+            "progress": 0,
+            "claimed": false
+          }
+        ],
+        "slay_progress": 0,
+        "mine_progress": 0,
+        "has_claimed": false,
+        "is_completed": false
+      }
+    },
+    {
+      "name": "POST /api/tasks/claim unauthenticated",
+      "status": "PASS",
+      "httpCode": 401,
+      "response": {
+        "success": false,
+        "message": "尚未登入，請先進行身份驗證"
+      }
+    },
+    {
+      "name": "POST /api/tasks/claim with valid token",
+      "status": "PASS",
+      "httpCode": 500,
+      "response": {
+        "success": false,
+        "message": "遊戲伺服器連線已中斷"
+      }
+    },
+    {
+      "name": "POST /api/user/buy-key-with-money empty body",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "金幣餘額不足！購買 1 把鑰匙需要 $500，您目前僅有 $0"
+      }
+    },
+    {
+      "name": "POST /api/user/buy-key-with-money negative count (-100)",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "金幣餘額不足！購買 1 把鑰匙需要 $500，您目前僅有 $0"
+      }
+    },
+    {
+      "name": "POST /api/user/buy-key-with-money invalid string count",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "message": "成功購買 NaN 把鑰匙！",
+        "keys_count": null
+      }
+    },
+    {
+      "name": "POST /api/mail/send empty body",
+      "status": "PASS",
+      "httpCode": 400,
+      "response": {
+        "success": false,
+        "message": "缺少接收者、物品 ID 或數量參數"
+      }
+    },
+    {
+      "name": "POST /api/mail/send special character receiver",
+      "status": "PASS",
+      "httpCode": 200,
+      "response": {
+        "success": true,
+        "message": "包裹已成功寄出給 Player_<script>alert(1)</script>！"
+      }
+    }
+  ],
+  "passedUnitCount": 11,
+  "totalUnitCount": 11,
+  "passedHttpCount": 49,
+  "totalHttpCount": 49
+}

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
-import path from 'path';
-import fs from 'fs';
-import { db, sendWsQuery, getCachedData, setCachedData, invalidateCachePattern, authenticateToken, CustomRequest, accumulatedSalesTax } from '../websocket/wsClient';
+import { db, sendWsQuery, getCachedData, setCachedData, invalidateCachePattern, CustomRequest, accumulatedSalesTax } from '../websocket/wsClient';
+import { authenticateToken } from '../middleware/auth';
+import { loadConfigJson } from '../utils/configLoader';
 
 const router = Router();
 
@@ -9,7 +9,7 @@ const router = Router();
 router.get('/shops', async (req: Request, res: Response) => {
   const cacheKey = 'cache:shops:all';
   const cached = getCachedData<any[]>(cacheKey);
-  if (cached) {
+  if (cached && Array.isArray(cached) && cached.length > 0) {
     return res.json({ success: true, shops: cached, cached: true, totalSalesTax: accumulatedSalesTax });
   }
 
@@ -18,8 +18,8 @@ router.get('/shops', async (req: Request, res: Response) => {
 
   try {
     const response = await sendWsQuery('shops_query', {});
-    if (response && response.success) {
-      shops = response.shops || [];
+    if (response && response.success && Array.isArray(response.shops) && response.shops.length > 0) {
+      shops = response.shops;
       fetchedViaWs = true;
     }
   } catch (wsErr) {
@@ -31,21 +31,13 @@ router.get('/shops', async (req: Request, res: Response) => {
     return res.json({ success: true, shops, totalSalesTax: accumulatedSalesTax });
   }
 
-  // Fallback to local JSON file reading when WS is disconnected
+  // Fallback to MCSManager / local JSON file reading when WS is disconnected
   try {
-    const possiblePaths = [
-      path.resolve(__dirname, '../../../../config/craft-core-shop/shops.json'),
-      path.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/shops.json'),
-      path.resolve('config/craft-core-shop/shops.json')
-    ];
-    for (const p of possiblePaths) {
-      if (fs.existsSync(p)) {
-        const raw = fs.readFileSync(p, 'utf8');
-        const shopsMap = JSON.parse(raw);
-        const shopsArray = Object.values(shopsMap);
-        setCachedData(cacheKey, shopsArray, 3000);
-        return res.json({ success: true, shops: shopsArray, totalSalesTax: accumulatedSalesTax });
-      }
+    const shopsMap = loadConfigJson<Record<string, any>>('shops.json');
+    if (shopsMap && typeof shopsMap === 'object') {
+      const shopsArray = Object.values(shopsMap);
+      setCachedData(cacheKey, shopsArray, 3000);
+      return res.json({ success: true, shops: shopsArray, totalSalesTax: accumulatedSalesTax });
     }
     return res.json({ success: true, shops: [], totalSalesTax: accumulatedSalesTax });
   } catch (error: any) {

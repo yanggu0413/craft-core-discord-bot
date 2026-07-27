@@ -1,14 +1,18 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const auth_service_1 = require("../services/auth.service");
 const wsClient_1 = require("../websocket/wsClient");
 const router = (0, express_1.Router)();
 // Developer Mock login bypass endpoint
 router.get('/dev-login', (req, res) => {
+    const isDevEnvironment = process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_LOGIN === 'true';
+    if (!isDevEnvironment) {
+        return res.status(403).json({
+            success: false,
+            message: 'Forbidden: /dev-login 僅限開發測試環境使用'
+        });
+    }
     const username = req.query.username || 'Yanggu';
     const nonAdmin = req.query.nonAdmin === 'true';
     const roles = nonAdmin ? [] : ['1360409328175153242'];
@@ -23,7 +27,7 @@ router.get('/dev-login', (req, res) => {
             const dummyUuid = `dev-uuid-${Math.floor(Math.random() * 10000)}`;
             const addBinding = wsClient_1.db.prepare('INSERT INTO bindings (discord_id, mc_uuid, mc_username) VALUES (?, ?, ?)');
             addBinding.run(dummyDiscordId, dummyUuid, username);
-            const token = jsonwebtoken_1.default.sign({
+            const token = (0, auth_service_1.signToken)({
                 mc_uuid: dummyUuid,
                 mc_username: username,
                 discord_id: nonAdmin ? dummyDiscordId : '1248891236480188517',
@@ -32,7 +36,7 @@ router.get('/dev-login', (req, res) => {
                     roles,
                     isAdmin: !nonAdmin
                 }
-            }, wsClient_1.JWT_SECRET, { expiresIn: '7d' });
+            }, '7d');
             return res.json({
                 success: true,
                 message: '開發者模式建立全新測試綁定登入',
@@ -40,7 +44,7 @@ router.get('/dev-login', (req, res) => {
                 user: { mc_username: username, mc_uuid: dummyUuid }
             });
         }
-        const token = jsonwebtoken_1.default.sign({
+        const token = (0, auth_service_1.signToken)({
             mc_uuid: binding.mc_uuid,
             mc_username: binding.mc_username,
             discord_id: nonAdmin ? binding.discord_id : '1248891236480188517',
@@ -49,7 +53,7 @@ router.get('/dev-login', (req, res) => {
                 roles,
                 isAdmin: !nonAdmin
             }
-        }, wsClient_1.JWT_SECRET, { expiresIn: '7d' });
+        }, '7d');
         return res.json({
             success: true,
             message: '開發者模式成功登入',
@@ -117,7 +121,7 @@ router.get('/callback', async (req, res) => {
         }
         const roles = [];
         const isAdmin = wsClient_1.ADMIN_DISCORD_IDS.has(realDiscordId);
-        const token = jsonwebtoken_1.default.sign({
+        const token = (0, auth_service_1.signToken)({
             mc_uuid: binding.mc_uuid,
             mc_username: binding.mc_username,
             discord_id: realDiscordId,
@@ -126,7 +130,7 @@ router.get('/callback', async (req, res) => {
                 roles,
                 isAdmin
             }
-        }, wsClient_1.JWT_SECRET, { expiresIn: '7d' });
+        }, '7d');
         res.redirect(`${frontendUrl}/?token=${token}&username=${binding.mc_username}&uuid=${binding.mc_uuid}`);
     }
     catch (err) {

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import MinecraftItemIcon from '../ui/MinecraftItemIcon';
+import { apiFetch } from '../../lib/api';
 
 interface InventoryItem {
   slot: number;
@@ -45,14 +46,11 @@ export default function InventoryView({
     if (!token || !isOnline) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/user/inventory', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setItems(data.items || []);
+      const res = await apiFetch('/user/inventory');
+      if (res.ok && res.data?.success) {
+        setItems(res.data.items || []);
       } else {
-        triggerToast(data.message || '無法取得背包物品', 'error');
+        triggerToast(res.data?.message || '無法取得背包物品', 'error');
       }
     } catch (err: any) {
       triggerToast('連線 API 錯誤：' + err.message, 'error');
@@ -84,26 +82,22 @@ export default function InventoryView({
 
     setSendingMail(true);
     try {
-      const res = await fetch('/api/mail/send', {
+      const res = await apiFetch('/mail/send', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           receiver: moneyReceiver.trim(),
           type: 'money',
           amount: amt
         })
       });
-      const data = await res.json();
-      if (data.success) {
+      if (res.ok && res.data?.success) {
         triggerToast('金幣電子匯款成功送出！', 'success');
         setMoneyReceiver('');
         setMoneyAmount('');
         fetchData(); // Refresh balance
       } else {
-        triggerToast(data.message || '匯款失敗', 'error');
+        triggerToast(res.data?.message || '匯款失敗', 'error');
       }
     } catch (err: any) {
       triggerToast('傳送失敗：' + err.message, 'error');
@@ -124,12 +118,9 @@ export default function InventoryView({
 
     setSendingMail(true);
     try {
-      const res = await fetch('/api/mail/send', {
+      const res = await apiFetch('/mail/send', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           receiver: itemReceiver.trim(),
           type: 'item',
@@ -139,14 +130,13 @@ export default function InventoryView({
           nbt: selectedSlot.nbt
         })
       });
-      const data = await res.json();
-      if (data.success) {
+      if (res.ok && res.data?.success) {
         triggerToast('物品快遞包裹成功送出！', 'success');
         setItemReceiver('');
         setSelectedSlot(null);
         fetchInventory(); // Reload inventory
       } else {
-        triggerToast(data.message || '寄送物品失敗', 'error');
+        triggerToast(res.data?.message || '寄送物品失敗', 'error');
       }
     } catch (err: any) {
       triggerToast('傳送失敗：' + err.message, 'error');

@@ -58,6 +58,19 @@ try {
 
   if (db) {
     db.exec(`
+      CREATE TABLE IF NOT EXISTS offline_mails (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_discord_id TEXT,
+        sender_username TEXT,
+        receiver_username TEXT,
+        item_id TEXT,
+        quantity INTEGER,
+        nbt TEXT,
+        status TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    db.exec(`
       CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -299,35 +312,9 @@ export function invalidateCachePattern(pattern: string): void {
   }
 }
 
-// Middlewares
-export function authenticateToken(req: CustomRequest, res: Response, next: NextFunction) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+// Middlewares re-exported from middleware/auth
+export { authenticateToken, requireAdmin } from '../middleware/auth';
 
-  if (!token) {
-    return res.status(401).json({ success: false, message: '尚未登入，請先進行身份驗證' });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ success: false, message: '認證憑證無效或已過期' });
-    }
-    req.user = decoded as CustomRequest['user'];
-    next();
-  });
-}
-
-export function requireAdmin(req: CustomRequest, res: Response, next: NextFunction) {
-  const user = req.user;
-  if (!user) {
-    return res.status(401).json({ success: false, message: '尚未登入，請先進行身份驗證' });
-  }
-
-  if (!ADMIN_DISCORD_IDS.has(user.discord_id || '')) {
-    return res.status(403).json({ success: false, message: 'Forbidden: 您不是系統管理員' });
-  }
-  next();
-}
 
 export async function sendEventAnnouncementToDiscord(event: any) {
   const token = process.env.DISCORD_BOT_TOKEN;

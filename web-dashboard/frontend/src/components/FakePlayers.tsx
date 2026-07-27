@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bot, Swords, Hand, ArrowDown, UserMinus, RefreshCw, Power, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 import { Button } from './ui/button';
+import { apiFetch } from '../lib/api';
 
 interface FakePlayer {
   name: string;
@@ -24,15 +25,12 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/user/fakeplayers', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setFakeplayers(data.fakeplayers || []);
+      const res = await apiFetch('/user/fakeplayers');
+      if (res.ok && res.data?.success) {
+        setFakeplayers(res.data.fakeplayers || []);
         setError(null);
       } else {
-        setError(data.message || '無法讀取假人列表');
+        setError(res.data?.message || '無法讀取假人列表');
       }
     } catch (err: any) {
       setError('連線至伺服器失敗');
@@ -50,20 +48,16 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
     setSubmitting(true);
     setMsg(null);
     try {
-      const res = await fetch('/api/user/fakeplayers/action', {
+      const res = await apiFetch('/user/fakeplayers/action', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ botName, action })
       });
-      const data = await res.json();
-      if (data.success) {
-        setMsg({ type: 'success', text: data.message || '指令已成功發送' });
+      if (res.ok && res.data?.success) {
+        setMsg({ type: 'success', text: res.data.message || '指令已成功發送' });
         setTimeout(() => fetchFakePlayers(), 1000);
       } else {
-        setMsg({ type: 'error', text: data.message || '操作失敗' });
+        setMsg({ type: 'error', text: res.data?.message || '操作失敗' });
       }
     } catch (err: any) {
       setMsg({ type: 'error', text: '網路請求失敗' });

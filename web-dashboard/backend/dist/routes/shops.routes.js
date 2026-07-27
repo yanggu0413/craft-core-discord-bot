@@ -1,26 +1,23 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
 const wsClient_1 = require("../websocket/wsClient");
+const auth_1 = require("../middleware/auth");
+const configLoader_1 = require("../utils/configLoader");
 const router = (0, express_1.Router)();
 // GET /api/shops
 router.get('/shops', async (req, res) => {
     const cacheKey = 'cache:shops:all';
     const cached = (0, wsClient_1.getCachedData)(cacheKey);
-    if (cached) {
+    if (cached && Array.isArray(cached) && cached.length > 0) {
         return res.json({ success: true, shops: cached, cached: true, totalSalesTax: wsClient_1.accumulatedSalesTax });
     }
     let shops = [];
     let fetchedViaWs = false;
     try {
         const response = await (0, wsClient_1.sendWsQuery)('shops_query', {});
-        if (response && response.success) {
-            shops = response.shops || [];
+        if (response && response.success && Array.isArray(response.shops) && response.shops.length > 0) {
+            shops = response.shops;
             fetchedViaWs = true;
         }
     }
@@ -31,21 +28,13 @@ router.get('/shops', async (req, res) => {
         (0, wsClient_1.setCachedData)(cacheKey, shops, 3000);
         return res.json({ success: true, shops, totalSalesTax: wsClient_1.accumulatedSalesTax });
     }
-    // Fallback to local JSON file reading when WS is disconnected
+    // Fallback to MCSManager / local JSON file reading when WS is disconnected
     try {
-        const possiblePaths = [
-            path_1.default.resolve(__dirname, '../../../../config/craft-core-shop/shops.json'),
-            path_1.default.resolve(__dirname, '../../../../../fabric-mod/config/craft-core-shop/shops.json'),
-            path_1.default.resolve('config/craft-core-shop/shops.json')
-        ];
-        for (const p of possiblePaths) {
-            if (fs_1.default.existsSync(p)) {
-                const raw = fs_1.default.readFileSync(p, 'utf8');
-                const shopsMap = JSON.parse(raw);
-                const shopsArray = Object.values(shopsMap);
-                (0, wsClient_1.setCachedData)(cacheKey, shopsArray, 3000);
-                return res.json({ success: true, shops: shopsArray, totalSalesTax: wsClient_1.accumulatedSalesTax });
-            }
+        const shopsMap = (0, configLoader_1.loadConfigJson)('shops.json');
+        if (shopsMap && typeof shopsMap === 'object') {
+            const shopsArray = Object.values(shopsMap);
+            (0, wsClient_1.setCachedData)(cacheKey, shopsArray, 3000);
+            return res.json({ success: true, shops: shopsArray, totalSalesTax: wsClient_1.accumulatedSalesTax });
         }
         return res.json({ success: true, shops: [], totalSalesTax: wsClient_1.accumulatedSalesTax });
     }
@@ -54,7 +43,7 @@ router.get('/shops', async (req, res) => {
     }
 });
 // POST /api/shop/rename
-router.post('/shop/rename', wsClient_1.authenticateToken, async (req, res) => {
+router.post('/shop/rename', auth_1.authenticateToken, async (req, res) => {
     const user = req.user;
     if (!user)
         return res.status(401).json({ success: false, message: '尚未登入' });
@@ -77,7 +66,7 @@ router.post('/shop/rename', wsClient_1.authenticateToken, async (req, res) => {
     }
 });
 // POST /api/shop/withdraw
-router.post('/shop/withdraw', wsClient_1.authenticateToken, async (req, res) => {
+router.post('/shop/withdraw', auth_1.authenticateToken, async (req, res) => {
     const user = req.user;
     if (!user)
         return res.status(401).json({ success: false, message: '尚未登入' });
@@ -99,7 +88,7 @@ router.post('/shop/withdraw', wsClient_1.authenticateToken, async (req, res) => 
     }
 });
 // POST /api/shop/rate
-router.post('/shop/rate', wsClient_1.authenticateToken, async (req, res) => {
+router.post('/shop/rate', auth_1.authenticateToken, async (req, res) => {
     const user = req.user;
     if (!user)
         return res.status(401).json({ success: false, message: '尚未登入' });

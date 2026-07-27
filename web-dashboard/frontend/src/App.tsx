@@ -15,14 +15,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from './components/ui/ca
 import { cn } from './lib/utils';
 import { FakePlayers } from './components/FakePlayers';
 import { TeleportManager } from './components/TeleportManager';
-
-// 後端介面設定
-const API_URL = window.location.port === '5173'
-  ? 'http://localhost:3000/api'
-  : `${window.location.protocol}//${window.location.host}/api`;
-const WS_URL = window.location.port === '5173'
-  ? 'ws://localhost:3000/ws'
-  : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+import { API_URL, WS_URL, apiFetch } from './lib/api';
 
 interface LeaderboardEntry {
   username: string;
@@ -159,111 +152,144 @@ export default function App() {
   // 獲取伺服器基礎數據
   const fetchData = async () => {
     setIsRefreshing(true);
-    try {
+
+    const tasksToRun = [
       // 1. 系統統計
-      const statsRes = await fetch(`${API_URL}/stats`);
-      const statsJson = await statsRes.json();
-      if (statsJson.success) setStats(statsJson.stats);
-
+      async () => {
+        const res = await apiFetch('/stats');
+        if (res.ok && res.data?.success) {
+          setStats(res.data.stats);
+        }
+      },
       // 2. 富豪榜
-      const leadRes = await fetch(`${API_URL}/leaderboard`);
-      const leadJson = await leadRes.json();
-      if (leadJson.success) setLeaderboard(leadJson.leaderboard);
-
+      async () => {
+        let res = await apiFetch('/leaderboard');
+        if (!res.ok || !res.data?.success) {
+          res = await apiFetch('/user/leaderboard');
+        }
+        if (res.ok && res.data?.success) {
+          setLeaderboard(res.data.leaderboard || []);
+        }
+      },
       // 3. 商店列表
-      const shopsRes = await fetch(`${API_URL}/shops`);
-      const shopsJson = await shopsRes.json();
-      if (shopsJson.success) setShops(shopsJson.shops);
-
+      async () => {
+        const res = await apiFetch('/shops');
+        if (res.ok && res.data?.success) {
+          setShops(res.data.shops || []);
+        }
+      },
       // 4. 市場行情
-      const analRes = await fetch(`${API_URL}/market/analytics`);
-      const analJson = await analRes.json();
-      if (analJson.success) setAnalytics(analJson.analytics);
-
+      async () => {
+        const res = await apiFetch('/market/analytics');
+        if (res.ok && res.data?.success) {
+          setAnalytics(res.data.analytics || {});
+        }
+      },
       // 5. 即時成交歷史
-      try {
-        const recentRes = await fetch(`${API_URL}/market/recent`);
-        const recentJson = await recentRes.json();
-        if (recentJson.success) {
-          setLiveTrades(recentJson.trades || []);
-        }
-      } catch (err) {
-        console.error('Failed to fetch recent trades', err);
-      }
-
-      // 6. 登入玩家的帳戶資料與信箱
-      if (token) {
-        try {
-          const profileRes = await fetch(`${API_URL}/user/profile`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const profileJson = await profileRes.json();
-            if (profileJson.success) {
-              setUserBalance(profileJson.user.balance);
-              setKeysCount(profileJson.user.keys_count || 0);
-              setCheckinStreak(profileJson.user.checkin_streak || 0);
-              setTotalCheckins(profileJson.user.total_checkins || 0);
-              setLastCheckin(profileJson.user.last_checkin || null);
-              setSubscribeReminder(profileJson.user.subscribe_reminder || 0);
-              setIsOnline(!!profileJson.user.online);
-              setPlayerCoords(profileJson.user.coords || '離線');
-              setServerTps(typeof profileJson.user.tps === 'number' ? profileJson.user.tps : 20.0);
-              setIsAdmin(!!profileJson.user.isAdmin);
-            }
-        } catch (err) {
-          console.error('Failed to fetch profile', err);
-        }
-
-        try {
-          const mailsRes = await fetch(`${API_URL}/user/mails`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const mailsJson = await mailsRes.json();
-          if (mailsJson.success) {
-            setMails(mailsJson.mails || []);
+      async () => {
+        let res = await apiFetch('/market/recent');
+        if (res.ok && res.data?.success && res.data.trades) {
+          setLiveTrades(res.data.trades);
+        } else {
+          // Fallback to /transactions if /market/recent unavailable
+          const txRes = await apiFetch('/transactions');
+          if (txRes.ok && txRes.data?.success && Array.isArray(txRes.data.transactions)) {
+            const mapped = txRes.data.transactions.map((tx: any) => ({
+              time: tx.timestamp ? new Date(tx.timestamp).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+              buyer: tx.buyer || 'Unknown',
+              seller: tx.seller || 'Unknown',
+              item: (tx.item || '').replace('minecraft:', '').toUpperCase(),
+              quantity: tx.quantity || 1,
+              profit: tx.net_profit || 0,
+            }));
+            setLiveTrades(mapped);
           }
-        } catch (err) {
-          console.error('Failed to fetch mails', err);
         }
-      }
+      },
+      // 6. 登入玩家帳號資料與信箱
+      async () => {
+        if (!token) return;
+        const profileRes = await apiFetch('/user/profile');
+        if (profileRes.ok && profileRes.data?.success) {
+          const u = profileRes.data.user;
+          if (u) {
+            setUserBalance(u.balance || 0);
+            setKeysCount(u.keys_count || 0);
+            setCheckinStreak(u.checkin_streak || 0);
+            setTotalCheckins(u.total_checkins || 0);
+            setLastCheckin(u.last_checkin || null);
+            setSubscribeReminder(u.subscribe_reminder || 0);
+            setIsOnline(!!u.online);
+            setPlayerCoords(u.coords || '離線');
+            setServerTps(typeof u.tps === 'number' ? u.tps : 20.0);
+            setIsAdmin(!!u.isAdmin);
+          }
+        }
 
+        const mailsRes = await apiFetch('/user/mails');
+        if (mailsRes.ok && mailsRes.data?.success) {
+          setMails(mailsRes.data.mails || []);
+        }
+      },
       // 7. 今日每日任務
-      try {
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
+      async () => {
+        const res = await apiFetch('/tasks/daily');
+        if (res.ok && res.data?.success) {
+          const tasksJson = res.data;
+          let tasks: any[] = [];
+          if (Array.isArray(tasksJson.tasks) && tasksJson.tasks.length > 0) {
+            tasks = tasksJson.tasks;
+          } else {
+            if (tasksJson.slay_task) {
+              tasks.push({
+                type: 1,
+                target: tasksJson.slay_task.target || 'Zombie',
+                count: tasksJson.slay_task.count || 15,
+                reward: tasksJson.slay_task.reward || 250,
+                progress: tasksJson.slay_progress || 0,
+                claimed: Boolean(tasksJson.has_claimed),
+              });
+            }
+            if (tasksJson.mine_task) {
+              tasks.push({
+                type: 2,
+                target: tasksJson.mine_task.target || 'Coal Ore',
+                count: tasksJson.mine_task.count || 20,
+                reward: tasksJson.mine_task.reward || 200,
+                progress: tasksJson.mine_progress || 0,
+                claimed: Boolean(tasksJson.has_claimed),
+              });
+            }
+          }
+          setDailyTasks(tasks);
+          setDailyTasksDate(tasksJson.date || new Date().toISOString().split('T')[0]);
         }
-        const tasksRes = await fetch(`${API_URL}/tasks/daily`, { headers });
-        const tasksJson = await tasksRes.json();
-        if (tasksJson.success) {
-          setDailyTasks(tasksJson.tasks || []);
-          setDailyTasksDate(tasksJson.date || '');
+      },
+      // 8. 領地列表
+      async () => {
+        const res = await apiFetch('/claims?all=true');
+        if (res.ok && res.data?.success) {
+          setClaims(res.data.claims || []);
         }
-      } catch (err) {
-        console.error('Failed to fetch tasks', err);
-      }
-
-      // 8. 領地列表 (管理員可帶 all=true 獲取全服所有領地)
-      const claimsRes = await fetch(`${API_URL}/claims?all=true`, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      const claimsJson = await claimsRes.json();
-      if (claimsJson.success) setClaims(claimsJson.claims);
-
+      },
       // 9. 密碼鎖列表
-      const lockboxesRes = await fetch(`${API_URL}/lockboxes`, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      const lockboxesJson = await lockboxesRes.json();
-      if (lockboxesJson.success) setLockboxes(lockboxesJson.lockboxes);
-
+      async () => {
+        const res = await apiFetch('/lockboxes');
+        if (res.ok && res.data?.success) {
+          setLockboxes(res.data.lockboxes || []);
+        }
+      },
       // 10. 伺服器活動列表
-      try {
-        const eventsRes = await fetch(`${API_URL}/events/active`);
-        const eventsJson = await eventsRes.json();
-        if (eventsJson.success) setEvents(eventsJson.events || []);
-      } catch (e) {}
+      async () => {
+        const res = await apiFetch('/events/active');
+        if (res.ok && res.data?.success) {
+          setEvents(res.data.events || []);
+        }
+      },
+    ];
 
+    try {
+      await Promise.allSettled(tasksToRun.map(fn => fn()));
     } catch (err) {
       console.error('Failed to fetch data', err);
     } finally {
@@ -341,10 +367,10 @@ export default function App() {
   };
 
   const handleLoginTrigger = () => {
-    fetch(`${API_URL}/auth/url`)
-      .then(res => res.json())
-      .then(json => {
-        if (json.url) window.location.href = json.url;
+    apiFetch('/auth/url')
+      .then(res => {
+        if (res.ok && res.data?.url) window.location.href = res.data.url;
+        else triggerToast('安全驗證連結獲取失敗，請改用下方開發者測試通道登入。', 'error');
       })
       .catch(() => triggerToast('安全驗證連結獲取失敗，請改用下方開發者測試通道登入。', 'error'));
   };
@@ -363,23 +389,19 @@ export default function App() {
   const handleRenameShopSubmit = async (coords: string, newName: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_URL}/shop/rename`, {
+      const res = await apiFetch('/shop/rename', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           coords,
           custom_name: newName.trim()
         })
       });
-      const data = await res.json();
-      if (data.success) {
+      if (res.ok && res.data?.success) {
         triggerToast('商店告示牌名稱修改成功！帳戶已扣除金幣手續費 $5,000 元。', 'success');
         fetchData();
       } else {
-        triggerToast(`更名失敗：${data.message}`, 'error');
+        triggerToast(`更名失敗：${res.data?.message || '未知錯誤'}`, 'error');
       }
     } catch (err) {
       triggerToast('更名操作連線失敗，請檢查網路連線。', 'error');
@@ -390,20 +412,16 @@ export default function App() {
   const handleWithdrawRevenue = async (coords: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_URL}/shop/withdraw`, {
+      const res = await apiFetch('/shop/withdraw', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ coords })
       });
-      const data = await res.json();
-      if (data.success) {
-        triggerToast(data.message || '金幣提領成功！已匯入您的個人帳戶。', 'success');
+      if (res.ok && res.data?.success) {
+        triggerToast(res.data.message || '金幣提領成功！已匯入您的個人帳戶。', 'success');
         fetchData();
       } else {
-        triggerToast(`提領失敗：${data.message}`, 'error');
+        triggerToast(`提領失敗：${res.data?.message || '未知錯誤'}`, 'error');
       }
     } catch (err) {
       triggerToast('提領營收連線異常，請稍後再試。', 'error');
@@ -414,16 +432,12 @@ export default function App() {
   const handleUpgradeSlots = async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_URL}/user/upgrade`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
+      const res = await apiFetch('/user/upgrade', { method: 'POST' });
+      if (res.ok && res.data?.success) {
         triggerToast('成功提升商店最大註冊數量上限！', 'success');
         fetchData();
       } else {
-        triggerToast(`升級失敗：${data.message}`, 'error');
+        triggerToast(`升級失敗：${res.data?.message || '未知錯誤'}`, 'error');
       }
     } catch (err) {
       triggerToast('升級申請連線錯誤', 'error');
@@ -434,16 +448,12 @@ export default function App() {
   const handleClaimReward = async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_URL}/tasks/claim`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
+      const res = await apiFetch('/tasks/claim', { method: 'POST' });
+      if (res.ok && res.data?.success) {
         triggerToast('成功領取每日任務獎勵！', 'success');
         fetchData();
       } else {
-        triggerToast(`領取失敗：${data.message}`, 'error');
+        triggerToast(`領取失敗：${res.data?.message || '未知錯誤'}`, 'error');
       }
     } catch (err) {
       triggerToast('領取任務獎勵連線異常，請稍後再試。', 'error');
@@ -454,20 +464,16 @@ export default function App() {
   const handleUpdateLockbox = async (lockboxId: string, action: string, targetPlayer?: string, newPassword?: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_URL}/lockboxes/update`, {
+      const res = await apiFetch('/lockboxes/update', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lockboxId, action, targetPlayer, newPassword })
       });
-      const data = await res.json();
-      if (data.success) {
-        triggerToast(data.message || '密碼鎖設定更新成功！', 'success');
+      if (res.ok && res.data?.success) {
+        triggerToast(res.data.message || '密碼鎖設定更新成功！', 'success');
         fetchData();
       } else {
-        triggerToast(`更新失敗：${data.message}`, 'error');
+        triggerToast(`更新失敗：${res.data?.message || '未知錯誤'}`, 'error');
       }
     } catch (err) {
       triggerToast('更新密碼鎖連線錯誤，請稍後重試。', 'error');
@@ -477,26 +483,18 @@ export default function App() {
   // 更新領地保護區玩家權限
   const handleUpdatePermission = async (claimId: string, permissionType: string, player: string, action: 'grant' | 'revoke') => {
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const res = await fetch(`${API_URL}/claims/permission`, {
+      const res = await apiFetch('/claims/permission', {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ claimId, permissionType, player, action })
       });
-      const data = await res.json();
-      if (data.success) {
-        triggerToast(data.message || '領地授權名單更新成功！', 'success');
+      if (res.ok && res.data?.success) {
+        triggerToast(res.data.message || '領地授權名單更新成功！', 'success');
         // 重新獲取最新的領地保護區資料
-        const claimsRes = await fetch(`${API_URL}/claims`, {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        });
-        const claimsJson = await claimsRes.json();
-        if (claimsJson.success) setClaims(claimsJson.claims);
+        const claimsRes = await apiFetch('/claims');
+        if (claimsRes.ok && claimsRes.data?.success) setClaims(claimsRes.data.claims);
       } else {
-        triggerToast(data.message || '更新授權名單失敗！', 'error');
+        triggerToast(res.data?.message || '更新授權名單失敗！', 'error');
       }
     } catch (err: any) {
       triggerToast(`連線失敗：${err.message}`, 'error');

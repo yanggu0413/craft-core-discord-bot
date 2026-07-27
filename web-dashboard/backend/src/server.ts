@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import { connectToBotWS, setWssInstance } from './websocket/wsClient';
@@ -14,8 +16,6 @@ import eventsRoutes from './routes/events.routes';
 import backupRoutes from './routes/backup.routes';
 import titleRoutes from './routes/title.routes';
 import announcementsRoutes from './routes/announcements.routes';
-
-dotenv.config();
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
