@@ -31,7 +31,7 @@ const config = {
       ticketCategory: process.env.NODE_ENV === 'test' ? '9999000011112222' : (configJson.discord?.channels?.ticketCategory || ''),
       ticketLogs: process.env.NODE_ENV === 'test' ? '3333444455556666' : (configJson.discord?.channels?.ticketLogs || ''),
     },
-    chatWebhookUrl: configJson.discord?.chatWebhookUrl,
+    chatWebhookUrl: process.env.DISCORD_CHAT_WEBHOOK_URL || configJson.discord?.chatWebhookUrl,
   },
   websocket: {
     port: parseInt(process.env.WEBSOCKET_PORT || configJson.websocket?.port || '8080', 10),
