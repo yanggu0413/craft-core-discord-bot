@@ -38,8 +38,8 @@ interface HomeViewProps {
 }
 
 export default function HomeView({
-  stats,
-  dailyTasks,
+  stats = { totalCirculation: 0, accumulatedSalesTax: 0, totalShopsCount: 0 },
+  dailyTasks = [],
   dailyTasksDate,
   activeEvents = [],
   onNavigateToEvents,
@@ -177,7 +177,7 @@ export default function HomeView({
           <CardHeader className="pb-2">
             <CardDescription className="uppercase tracking-wider font-bold text-[10px]">總流通金幣</CardDescription>
             <CardTitle className="text-2xl font-black mt-1 text-emerald-500 font-mono">
-              ${stats.totalCirculation.toLocaleString()} 元
+              ${(stats?.totalCirculation || 0).toLocaleString()} 元
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -189,7 +189,7 @@ export default function HomeView({
           <CardHeader className="pb-2">
             <CardDescription className="uppercase tracking-wider font-bold text-[10px]">累計收繳稅額</CardDescription>
             <CardTitle className="text-2xl font-black mt-1 text-primary font-mono">
-              ${Number(stats.accumulatedSalesTax.toFixed(1)).toLocaleString()} 元
+              ${Number((stats?.accumulatedSalesTax || 0).toFixed(1)).toLocaleString()} 元
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -201,7 +201,7 @@ export default function HomeView({
           <CardHeader className="pb-2">
             <CardDescription className="uppercase tracking-wider font-bold text-[10px]">營運中箱子商店</CardDescription>
             <CardTitle className="text-2xl font-black mt-1 text-amber-500 font-mono">
-              {stats.totalShopsCount} 間
+              {stats?.totalShopsCount || 0} 間
             </CardTitle>
           </CardHeader>
           <CardContent>

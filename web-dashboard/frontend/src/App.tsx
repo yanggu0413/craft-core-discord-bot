@@ -158,7 +158,12 @@ export default function App() {
       async () => {
         const res = await apiFetch('/stats');
         if (res.ok && res.data?.success) {
-          setStats(res.data.stats);
+          const s = res.data.stats || res.data;
+          setStats({
+            totalCirculation: Number(s.totalCirculation) || 0,
+            accumulatedSalesTax: Number(s.accumulatedSalesTax) || 0,
+            totalShopsCount: Number(s.totalShopsCount) || 0
+          });
         }
       },
       // 2. 富豪榜
