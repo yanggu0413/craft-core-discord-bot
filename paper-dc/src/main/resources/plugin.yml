@@ -1,5 +1,5 @@
 name: CraftCoreLink
-version: '1.1.0'
+version: '2.3.7'
 main: com.craftcore.link.CraftCoreLink
 api-version: '1.21'
 author: CraftCore
