@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { db, sendWsQuery, getCachedData, setCachedData, invalidateCachePattern, CustomRequest, JWT_SECRET } from '../websocket/wsClient';
+import { db, sendWsQuery, getCachedData, setCachedData, invalidateCachePattern, CustomRequest, JWT_SECRET, ADMIN_DISCORD_IDS } from '../websocket/wsClient';
 import { authenticateToken } from '../middleware/auth';
 import { loadConfigJson } from '../utils/configLoader';
 
@@ -63,6 +63,9 @@ function getDailyTasksFallback(dateStr: string) {
 
 // GET /api/stats - Aggregate global server statistics
 router.get('/stats', async (req: Request, res: Response) => {
+  const cached = getCachedData<any>('stats_cache');
+  if (cached) return res.json(cached);
+
   let totalCirculation = 150000.0;
   let salesTax = 0.0;
   let shopsCount = 0;
@@ -106,7 +109,7 @@ router.get('/stats', async (req: Request, res: Response) => {
   let tps = 20.0;
 
   try {
-    const wsRes = await sendWsQuery('stats_query', {}, 1500);
+    const wsRes = await sendWsQuery('stats_query', {}, 300);
     if (wsRes && wsRes.success) {
       if (wsRes.onlinePlayers !== undefined) onlinePlayers = wsRes.onlinePlayers;
       if (wsRes.tps !== undefined) tps = wsRes.tps;
@@ -115,7 +118,7 @@ router.get('/stats', async (req: Request, res: Response) => {
     }
   } catch (e) {}
 
-  return res.json({
+  const result = {
     success: true,
     totalCirculation,
     accumulatedSalesTax: salesTax,
@@ -124,7 +127,10 @@ router.get('/stats', async (req: Request, res: Response) => {
     totalPlayers,
     onlinePlayers,
     tps
-  });
+  };
+
+  setCachedData('stats_cache', result, 2000);
+  return res.json(result);
 });
 
 // GET /api/leaderboard & GET /api/user/leaderboard - Top wealth players
@@ -278,7 +284,7 @@ router.get('/user/profile', authenticateToken, async (req: CustomRequest, res: R
 
   let balance = 0.0;
   try {
-    const response = await sendWsQuery('balance_query', { username }, 1500);
+    const response = await sendWsQuery('balance_query', { username }, 300);
     if (response && response.success) {
       balance = response.balance;
     }
@@ -305,12 +311,16 @@ router.get('/user/profile', authenticateToken, async (req: CustomRequest, res: R
     }
   }
 
+  const userDiscordId = dbStats.discord_id || user.discord_id || '';
+  const isAdmin = ADMIN_DISCORD_IDS.has(userDiscordId) || Boolean(user.profile?.isAdmin) || (user.roles || []).includes('1360409328175153242');
+
   res.json({
     success: true,
     user: {
       mc_username: username,
       mc_uuid: user.mc_uuid,
       balance,
+      isAdmin,
       ...dbStats
     }
   });
@@ -930,5 +940,26 @@ router.post('/warp-submissions', authenticateToken, (req: CustomRequest, res: Re
 
   return res.json({ success: true, message: '公用設施傳送點申請已送出！' });
 });
+
+// GET /api/warps & GET /api/public/warps - Public landmark warps
+const handleGetWarps = (req: Request, res: Response) => {
+  const cached = getCachedData<any>('warps_cache');
+  if (cached) return res.json(cached);
+
+  let warps: any[] = [];
+  const warpsConfig = loadConfigJson<any>('warps.json');
+  if (Array.isArray(warpsConfig)) {
+    warps = warpsConfig;
+  } else if (warpsConfig && typeof warpsConfig === 'object') {
+    warps = Object.values(warpsConfig);
+  }
+
+  const result = { success: true, warps };
+  setCachedData('warps_cache', result, 5000);
+  return res.json(result);
+};
+
+router.get('/warps', handleGetWarps);
+router.get('/public/warps', handleGetWarps);
 
 export default router;

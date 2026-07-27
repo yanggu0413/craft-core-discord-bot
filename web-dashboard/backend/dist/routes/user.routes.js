@@ -59,6 +59,9 @@ function getDailyTasksFallback(dateStr) {
 }
 // GET /api/stats - Aggregate global server statistics
 router.get('/stats', async (req, res) => {
+    const cached = (0, wsClient_1.getCachedData)('stats_cache');
+    if (cached)
+        return res.json(cached);
     let totalCirculation = 150000.0;
     let salesTax = 0.0;
     let shopsCount = 0;
@@ -101,7 +104,7 @@ router.get('/stats', async (req, res) => {
     let onlinePlayers = 1;
     let tps = 20.0;
     try {
-        const wsRes = await (0, wsClient_1.sendWsQuery)('stats_query', {}, 1500);
+        const wsRes = await (0, wsClient_1.sendWsQuery)('stats_query', {}, 300);
         if (wsRes && wsRes.success) {
             if (wsRes.onlinePlayers !== undefined)
                 onlinePlayers = wsRes.onlinePlayers;
@@ -114,7 +117,7 @@ router.get('/stats', async (req, res) => {
         }
     }
     catch (e) { }
-    return res.json({
+    const result = {
         success: true,
         totalCirculation,
         accumulatedSalesTax: salesTax,
@@ -123,7 +126,9 @@ router.get('/stats', async (req, res) => {
         totalPlayers,
         onlinePlayers,
         tps
-    });
+    };
+    (0, wsClient_1.setCachedData)('stats_cache', result, 2000);
+    return res.json(result);
 });
 // GET /api/leaderboard & GET /api/user/leaderboard - Top wealth players
 const handleLeaderboard = async (req, res) => {
@@ -260,7 +265,7 @@ router.get('/user/profile', auth_1.authenticateToken, async (req, res) => {
     const username = user.mc_username;
     let balance = 0.0;
     try {
-        const response = await (0, wsClient_1.sendWsQuery)('balance_query', { username }, 1500);
+        const response = await (0, wsClient_1.sendWsQuery)('balance_query', { username }, 300);
         if (response && response.success) {
             balance = response.balance;
         }
@@ -287,12 +292,15 @@ router.get('/user/profile', auth_1.authenticateToken, async (req, res) => {
             console.warn('[Profile API] Failed to fetch DB stats:', dbErr);
         }
     }
+    const userDiscordId = dbStats.discord_id || user.discord_id || '';
+    const isAdmin = wsClient_1.ADMIN_DISCORD_IDS.has(userDiscordId) || Boolean(user.profile?.isAdmin) || (user.roles || []).includes('1360409328175153242');
     res.json({
         success: true,
         user: {
             mc_username: username,
             mc_uuid: user.mc_uuid,
             balance,
+            isAdmin,
             ...dbStats
         }
     });
@@ -880,4 +888,23 @@ router.post('/warp-submissions', auth_1.authenticateToken, (req, res) => {
     }
     return res.json({ success: true, message: '公用設施傳送點申請已送出！' });
 });
+// GET /api/warps & GET /api/public/warps - Public landmark warps
+const handleGetWarps = (req, res) => {
+    const cached = (0, wsClient_1.getCachedData)('warps_cache');
+    if (cached)
+        return res.json(cached);
+    let warps = [];
+    const warpsConfig = (0, configLoader_1.loadConfigJson)('warps.json');
+    if (Array.isArray(warpsConfig)) {
+        warps = warpsConfig;
+    }
+    else if (warpsConfig && typeof warpsConfig === 'object') {
+        warps = Object.values(warpsConfig);
+    }
+    const result = { success: true, warps };
+    (0, wsClient_1.setCachedData)('warps_cache', result, 5000);
+    return res.json(result);
+};
+router.get('/warps', handleGetWarps);
+router.get('/public/warps', handleGetWarps);
 exports.default = router;

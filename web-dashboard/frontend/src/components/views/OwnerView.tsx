@@ -53,7 +53,7 @@ export default function OwnerView({
     );
   }
 
-  const myShops = shops.filter(shop => shop.owner.toLowerCase() === username?.toLowerCase());
+  const myShops = (shops || []).filter(shop => shop && (shop.owner || '').toLowerCase() === (username || '').toLowerCase());
 
   const handleOpenRename = (coords: string, currentName: string) => {
     setRenameCoords(coords);
@@ -100,7 +100,7 @@ export default function OwnerView({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {myShops.map((shop, i) => {
-            const cleanItem = shop.item.replace('minecraft:', '').toUpperCase();
+            const cleanItem = (shop.item || '').replace('minecraft:', '').toUpperCase() || 'UNKNOWN';
             return (
               <Card key={i} className="flex flex-col justify-between">
                 <CardHeader className="pb-3">

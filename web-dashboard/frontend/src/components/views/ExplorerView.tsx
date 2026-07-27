@@ -33,12 +33,13 @@ export default function ExplorerView({
   handleCopyTpCommand
 }: ExplorerViewProps) {
   // 過濾與排序邏輯
-  const filteredShops = shops
+  const filteredShops = (shops || [])
     .filter(shop => {
-      const cleanItem = shop.item.replace('minecraft:', '').toLowerCase();
+      if (!shop) return false;
+      const cleanItem = (shop.item || '').replace('minecraft:', '').toLowerCase();
       const customName = (shop.custom_name || '').toLowerCase();
-      const owner = shop.owner.toLowerCase();
-      const query = searchQuery.toLowerCase();
+      const owner = (shop.owner || '').toLowerCase();
+      const query = (searchQuery || '').toLowerCase();
       return cleanItem.includes(query) || customName.includes(query) || owner.includes(query);
     })
     .sort((a, b) => {
@@ -115,7 +116,7 @@ export default function ExplorerView({
             </TableHeader>
             <TableBody>
               {filteredShops.map((shop, i) => {
-                const cleanItemName = shop.item.replace('minecraft:', '').replace(/_/g, ' ').toUpperCase();
+                const cleanItemName = (shop.item || '').replace('minecraft:', '').replace(/_/g, ' ').toUpperCase() || 'UNKNOWN';
                 return (
                   <TableRow key={i}>
                     <TableCell className="font-mono text-xs pl-4 font-bold text-primary">

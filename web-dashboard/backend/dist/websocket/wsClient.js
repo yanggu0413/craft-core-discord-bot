@@ -20,7 +20,16 @@ const fs_1 = __importDefault(require("fs"));
 exports.JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_99881122';
 exports.WEBSOCKET_URL = process.env.WEBSOCKET_URL || 'ws://localhost:8080';
 exports.WEBSOCKET_SECRET = process.env.WEBSOCKET_SECRET || 'c34fc25b90a6ea1d38e2bc79679fbc9d';
-exports.DATABASE_PATH = process.env.DATABASE_PATH ? path_1.default.resolve(__dirname, process.env.DATABASE_PATH) : path_1.default.resolve(__dirname, '../../../../discord-bot/src/database/database.db');
+const dbCandidates = [
+    process.env.DATABASE_PATH ? path_1.default.resolve(__dirname, process.env.DATABASE_PATH) : null,
+    '/root/craft-core/discord-bot/src/database/database.db',
+    '/craft-core/discord-bot/src/database/database.db',
+    path_1.default.resolve(__dirname, '../../../discord-bot/src/database/database.db'),
+    path_1.default.resolve(__dirname, '../../../../discord-bot/src/database/database.db'),
+    path_1.default.resolve('discord-bot/src/database/database.db'),
+    path_1.default.resolve('../discord-bot/src/database/database.db')
+].filter(Boolean);
+exports.DATABASE_PATH = dbCandidates.find(p => fs_1.default.existsSync(p)) || dbCandidates[0];
 exports.ADMIN_DISCORD_IDS = new Set([
     '1248891236480188517',
     '1286603217056174080',

@@ -14,13 +14,26 @@ function loadConfigJson(filename) {
     const safeFilename = path_1.default.basename(filename);
     const candidatePaths = [
         process.env.CRAFT_CORE_CONFIG_DIR ? path_1.default.join(process.env.CRAFT_CORE_CONFIG_DIR, safeFilename) : null,
+        `/opt/mcsmanager/daemon/data/InstanceData/e73c05307a6b4259bd052b88706757df/config/craft-core-shop/${safeFilename}`,
         `/opt/mcsmanager/daemon/data/InstanceData/2010082ee9374bebbdf2be4bab7fe169/config/craft-core-shop/${safeFilename}`,
+        `/root/craft-core/config/craft-core-shop/${safeFilename}`,
         `/craft-core/config/craft-core-shop/${safeFilename}`,
         path_1.default.resolve(__dirname, `../../../../config/craft-core-shop/${safeFilename}`),
         path_1.default.resolve(__dirname, `../../../../../fabric-mod/config/craft-core-shop/${safeFilename}`),
         path_1.default.resolve(`config/craft-core-shop/${safeFilename}`),
         path_1.default.resolve(`../config/craft-core-shop/${safeFilename}`)
     ].filter(Boolean);
+    // Dynamic scan for any active MCSManager instances
+    try {
+        const instanceBase = '/opt/mcsmanager/daemon/data/InstanceData';
+        if (fs_1.default.existsSync(instanceBase)) {
+            const instances = fs_1.default.readdirSync(instanceBase);
+            for (const inst of instances) {
+                candidatePaths.unshift(path_1.default.join(instanceBase, inst, 'config/craft-core-shop', safeFilename));
+            }
+        }
+    }
+    catch (e) { }
     for (const filePath of candidatePaths) {
         try {
             if (fs_1.default.existsSync(filePath)) {
@@ -41,7 +54,9 @@ function saveConfigJson(filename, data) {
     const safeFilename = path_1.default.basename(filename);
     const candidatePaths = [
         process.env.CRAFT_CORE_CONFIG_DIR ? path_1.default.join(process.env.CRAFT_CORE_CONFIG_DIR, safeFilename) : null,
+        `/opt/mcsmanager/daemon/data/InstanceData/e73c05307a6b4259bd052b88706757df/config/craft-core-shop/${safeFilename}`,
         `/opt/mcsmanager/daemon/data/InstanceData/2010082ee9374bebbdf2be4bab7fe169/config/craft-core-shop/${safeFilename}`,
+        `/root/craft-core/config/craft-core-shop/${safeFilename}`,
         `/craft-core/config/craft-core-shop/${safeFilename}`,
         path_1.default.resolve(__dirname, `../../../../config/craft-core-shop/${safeFilename}`),
         path_1.default.resolve(`config/craft-core-shop/${safeFilename}`)
