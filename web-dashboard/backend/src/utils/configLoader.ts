@@ -8,13 +8,26 @@ export function loadConfigJson<T = any>(filename: string): T | null {
   const safeFilename = path.basename(filename);
   const candidatePaths = [
     process.env.CRAFT_CORE_CONFIG_DIR ? path.join(process.env.CRAFT_CORE_CONFIG_DIR, safeFilename) : null,
+    `/opt/mcsmanager/daemon/data/InstanceData/e73c05307a6b4259bd052b88706757df/config/craft-core-shop/${safeFilename}`,
     `/opt/mcsmanager/daemon/data/InstanceData/2010082ee9374bebbdf2be4bab7fe169/config/craft-core-shop/${safeFilename}`,
+    `/root/craft-core/config/craft-core-shop/${safeFilename}`,
     `/craft-core/config/craft-core-shop/${safeFilename}`,
     path.resolve(__dirname, `../../../../config/craft-core-shop/${safeFilename}`),
     path.resolve(__dirname, `../../../../../fabric-mod/config/craft-core-shop/${safeFilename}`),
     path.resolve(`config/craft-core-shop/${safeFilename}`),
     path.resolve(`../config/craft-core-shop/${safeFilename}`)
   ].filter(Boolean) as string[];
+
+  // Dynamic scan for any active MCSManager instances
+  try {
+    const instanceBase = '/opt/mcsmanager/daemon/data/InstanceData';
+    if (fs.existsSync(instanceBase)) {
+      const instances = fs.readdirSync(instanceBase);
+      for (const inst of instances) {
+        candidatePaths.unshift(path.join(instanceBase, inst, 'config/craft-core-shop', safeFilename));
+      }
+    }
+  } catch (e) {}
 
   for (const filePath of candidatePaths) {
     try {
@@ -37,7 +50,9 @@ export function saveConfigJson(filename: string, data: any): boolean {
   const safeFilename = path.basename(filename);
   const candidatePaths = [
     process.env.CRAFT_CORE_CONFIG_DIR ? path.join(process.env.CRAFT_CORE_CONFIG_DIR, safeFilename) : null,
+    `/opt/mcsmanager/daemon/data/InstanceData/e73c05307a6b4259bd052b88706757df/config/craft-core-shop/${safeFilename}`,
     `/opt/mcsmanager/daemon/data/InstanceData/2010082ee9374bebbdf2be4bab7fe169/config/craft-core-shop/${safeFilename}`,
+    `/root/craft-core/config/craft-core-shop/${safeFilename}`,
     `/craft-core/config/craft-core-shop/${safeFilename}`,
     path.resolve(__dirname, `../../../../config/craft-core-shop/${safeFilename}`),
     path.resolve(`config/craft-core-shop/${safeFilename}`)

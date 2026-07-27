@@ -9,7 +9,18 @@ import fs from 'fs';
 export const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_99881122';
 export const WEBSOCKET_URL = process.env.WEBSOCKET_URL || 'ws://localhost:8080';
 export const WEBSOCKET_SECRET = process.env.WEBSOCKET_SECRET || 'c34fc25b90a6ea1d38e2bc79679fbc9d';
-export const DATABASE_PATH = process.env.DATABASE_PATH ? path.resolve(__dirname, process.env.DATABASE_PATH) : path.resolve(__dirname, '../../../../discord-bot/src/database/database.db');
+
+const dbCandidates = [
+  process.env.DATABASE_PATH ? path.resolve(__dirname, process.env.DATABASE_PATH) : null,
+  '/root/craft-core/discord-bot/src/database/database.db',
+  '/craft-core/discord-bot/src/database/database.db',
+  path.resolve(__dirname, '../../../discord-bot/src/database/database.db'),
+  path.resolve(__dirname, '../../../../discord-bot/src/database/database.db'),
+  path.resolve('discord-bot/src/database/database.db'),
+  path.resolve('../discord-bot/src/database/database.db')
+].filter(Boolean) as string[];
+
+export const DATABASE_PATH = dbCandidates.find(p => fs.existsSync(p)) || dbCandidates[0];
 
 export interface CustomRequest extends Request {
   user?: {
