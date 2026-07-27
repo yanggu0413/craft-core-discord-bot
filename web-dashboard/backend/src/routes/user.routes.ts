@@ -133,8 +133,8 @@ router.get('/stats', async (req: Request, res: Response) => {
   return res.json(result);
 });
 
-// GET /api/leaderboard & GET /api/user/leaderboard - Top wealth players
-const handleLeaderboard = async (req: Request, res: Response) => {
+// GET /api/leaderboard - Top wealth players
+router.get('/leaderboard', async (req: Request, res: Response) => {
   let leaderboard: any[] = [];
   const ecoMap = loadConfigJson<Record<string, any>>('economy.json') || {};
 
@@ -184,20 +184,52 @@ const handleLeaderboard = async (req: Request, res: Response) => {
     leaderboard = entries.map((item, idx) => ({
       rank: idx + 1,
       username: item.username,
+      mc_username: item.username,
       balance: item.balance,
+      keys_count: 0,
+      checkin_streak: 0,
+      total_checkins: 0,
       shopsCount: 0,
       avatar: `https://mc-heads.net/avatar/${item.username}/64`
     }));
   }
 
-  return res.json({
-    success: true,
-    leaderboard
-  });
+  return res.json({ success: true, leaderboard });
+});
+
+// GET /api/user/leaderboard & GET /api/welfare/leaderboard - Top keys & checkin players
+const handleWelfareLeaderboard = async (req: Request, res: Response) => {
+  let leaderboard: any[] = [];
+  if (db) {
+    try {
+      const rows = db.prepare(`
+        SELECT mc_username as username, keys_count, checkin_streak, total_checkins
+        FROM bindings
+        ORDER BY keys_count DESC, checkin_streak DESC, total_checkins DESC
+        LIMIT 10
+      `).all() as any[];
+
+      if (rows && rows.length > 0) {
+        leaderboard = rows.map((row, idx) => ({
+          rank: idx + 1,
+          username: row.username,
+          mc_username: row.username,
+          keys_count: Number(row.keys_count) || 0,
+          checkin_streak: Number(row.checkin_streak) || 0,
+          total_checkins: Number(row.total_checkins) || 0,
+          avatar: `https://mc-heads.net/avatar/${row.username}/64`
+        }));
+      }
+    } catch (e) {
+      console.warn('[Welfare Leaderboard] Query failed:', e);
+    }
+  }
+
+  return res.json({ success: true, leaderboard });
 };
 
-router.get('/leaderboard', handleLeaderboard);
-router.get('/user/leaderboard', handleLeaderboard);
+router.get('/user/leaderboard', handleWelfareLeaderboard);
+router.get('/welfare/leaderboard', handleWelfareLeaderboard);
 
 // GET /api/market/analytics - Mineral price & volume 7-day trends
 router.get('/market/analytics', (req: Request, res: Response) => {
