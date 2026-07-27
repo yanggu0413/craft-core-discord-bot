@@ -7,10 +7,15 @@ const configLoader_1 = require("../utils/configLoader");
 const router = (0, express_1.Router)();
 // GET /api/claims
 router.get('/', async (req, res) => {
+    const cacheKey = 'cache:claims:all';
+    const cached = (0, wsClient_1.getCachedData)(cacheKey);
+    if (cached && Array.isArray(cached) && cached.length > 0) {
+        return res.json({ success: true, claims: cached, cached: true });
+    }
     let claims = [];
     let fetchedViaWs = false;
     try {
-        const response = await (0, wsClient_1.sendWsQuery)('claims_query', {});
+        const response = await (0, wsClient_1.sendWsQuery)('claims_query', {}, 300);
         if (response && response.success && Array.isArray(response.claims) && response.claims.length > 0) {
             claims = response.claims;
             fetchedViaWs = true;
@@ -19,7 +24,8 @@ router.get('/', async (req, res) => {
     catch (wsErr) {
         console.warn('[Claims Route] WebSocket query failed, falling back to local file:', wsErr);
     }
-    if (fetchedViaWs) {
+    if (fetchedViaWs && claims.length > 0) {
+        (0, wsClient_1.setCachedData)(cacheKey, claims, 10000);
         return res.json({ success: true, claims });
     }
     // Fallback: Read claims.json from MCSManager / local paths
@@ -27,6 +33,7 @@ router.get('/', async (req, res) => {
         const claimsMap = (0, configLoader_1.loadConfigJson)('claims.json');
         if (claimsMap && typeof claimsMap === 'object') {
             const claimsArray = Object.values(claimsMap);
+            (0, wsClient_1.setCachedData)(cacheKey, claimsArray, 10000);
             return res.json({ success: true, claims: claimsArray });
         }
         return res.json({ success: true, claims: [] });

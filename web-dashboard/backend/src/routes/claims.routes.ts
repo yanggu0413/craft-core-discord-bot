@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { sendWsQuery, ADMIN_DISCORD_IDS, CustomRequest } from '../websocket/wsClient';
+import { sendWsQuery, ADMIN_DISCORD_IDS, CustomRequest, getCachedData, setCachedData } from '../websocket/wsClient';
 import { authenticateToken } from '../middleware/auth';
 import { loadConfigJson, saveConfigJson } from '../utils/configLoader';
 
@@ -7,11 +7,17 @@ const router = Router();
 
 // GET /api/claims
 router.get('/', async (req: Request, res: Response) => {
+  const cacheKey = 'cache:claims:all';
+  const cached = getCachedData<any[]>(cacheKey);
+  if (cached && Array.isArray(cached) && cached.length > 0) {
+    return res.json({ success: true, claims: cached, cached: true });
+  }
+
   let claims: any[] = [];
   let fetchedViaWs = false;
 
   try {
-    const response = await sendWsQuery('claims_query', {});
+    const response = await sendWsQuery('claims_query', {}, 300);
     if (response && response.success && Array.isArray(response.claims) && response.claims.length > 0) {
       claims = response.claims;
       fetchedViaWs = true;
@@ -20,7 +26,8 @@ router.get('/', async (req: Request, res: Response) => {
     console.warn('[Claims Route] WebSocket query failed, falling back to local file:', wsErr);
   }
 
-  if (fetchedViaWs) {
+  if (fetchedViaWs && claims.length > 0) {
+    setCachedData(cacheKey, claims, 10000);
     return res.json({ success: true, claims });
   }
 
@@ -29,6 +36,7 @@ router.get('/', async (req: Request, res: Response) => {
     const claimsMap = loadConfigJson<Record<string, any>>('claims.json');
     if (claimsMap && typeof claimsMap === 'object') {
       const claimsArray = Object.values(claimsMap);
+      setCachedData(cacheKey, claimsArray, 10000);
       return res.json({ success: true, claims: claimsArray });
     }
     return res.json({ success: true, claims: [] });

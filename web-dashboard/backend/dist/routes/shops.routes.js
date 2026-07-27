@@ -5,6 +5,23 @@ const wsClient_1 = require("../websocket/wsClient");
 const auth_1 = require("../middleware/auth");
 const configLoader_1 = require("../utils/configLoader");
 const router = (0, express_1.Router)();
+function normalizeShop(raw) {
+    if (!raw || typeof raw !== 'object')
+        return null;
+    const owner = raw.player || raw.owner || raw.username || '伺服器玩家';
+    const buyPrice = Number(raw.price !== undefined ? raw.price : (raw.sellPrice !== undefined ? raw.sellPrice : raw.buy_price)) || 0;
+    const sellPrice = Number(raw.buyPrice !== undefined ? raw.buyPrice : raw.sell_price) || 0;
+    const coords = raw.coords || raw.location || raw.id || '0, 64, 0';
+    return {
+        location: coords,
+        owner,
+        item: raw.item || 'minecraft:stone',
+        stock: Number(raw.stock) || 0,
+        buy_price: buyPrice,
+        sell_price: sellPrice,
+        custom_name: raw.customName || raw.custom_name || undefined
+    };
+}
 // GET /api/shops
 router.get('/shops', async (req, res) => {
     const cacheKey = 'cache:shops:all';
@@ -15,25 +32,25 @@ router.get('/shops', async (req, res) => {
     let shops = [];
     let fetchedViaWs = false;
     try {
-        const response = await (0, wsClient_1.sendWsQuery)('shops_query', {});
+        const response = await (0, wsClient_1.sendWsQuery)('shops_query', {}, 300);
         if (response && response.success && Array.isArray(response.shops) && response.shops.length > 0) {
-            shops = response.shops;
+            shops = response.shops.map(normalizeShop).filter(Boolean);
             fetchedViaWs = true;
         }
     }
     catch (wsErr) {
         console.warn('[Shops Route] WebSocket query failed, falling back to local file:', wsErr);
     }
-    if (fetchedViaWs) {
-        (0, wsClient_1.setCachedData)(cacheKey, shops, 3000);
+    if (fetchedViaWs && shops.length > 0) {
+        (0, wsClient_1.setCachedData)(cacheKey, shops, 10000);
         return res.json({ success: true, shops, totalSalesTax: wsClient_1.accumulatedSalesTax });
     }
     // Fallback to MCSManager / local JSON file reading when WS is disconnected
     try {
         const shopsMap = (0, configLoader_1.loadConfigJson)('shops.json');
         if (shopsMap && typeof shopsMap === 'object') {
-            const shopsArray = Object.values(shopsMap);
-            (0, wsClient_1.setCachedData)(cacheKey, shopsArray, 3000);
+            const shopsArray = Object.values(shopsMap).map(normalizeShop).filter(Boolean);
+            (0, wsClient_1.setCachedData)(cacheKey, shopsArray, 10000);
             return res.json({ success: true, shops: shopsArray, totalSalesTax: wsClient_1.accumulatedSalesTax });
         }
         return res.json({ success: true, shops: [], totalSalesTax: wsClient_1.accumulatedSalesTax });

@@ -5,6 +5,23 @@ import { loadConfigJson } from '../utils/configLoader';
 
 const router = Router();
 
+function normalizeShop(raw: any) {
+  if (!raw || typeof raw !== 'object') return null;
+  const owner = raw.player || raw.owner || raw.username || '伺服器玩家';
+  const buyPrice = Number(raw.price !== undefined ? raw.price : (raw.sellPrice !== undefined ? raw.sellPrice : raw.buy_price)) || 0;
+  const sellPrice = Number(raw.buyPrice !== undefined ? raw.buyPrice : raw.sell_price) || 0;
+  const coords = raw.coords || raw.location || raw.id || '0, 64, 0';
+  return {
+    location: coords,
+    owner,
+    item: raw.item || 'minecraft:stone',
+    stock: Number(raw.stock) || 0,
+    buy_price: buyPrice,
+    sell_price: sellPrice,
+    custom_name: raw.customName || raw.custom_name || undefined
+  };
+}
+
 // GET /api/shops
 router.get('/shops', async (req: Request, res: Response) => {
   const cacheKey = 'cache:shops:all';
@@ -17,17 +34,17 @@ router.get('/shops', async (req: Request, res: Response) => {
   let fetchedViaWs = false;
 
   try {
-    const response = await sendWsQuery('shops_query', {});
+    const response = await sendWsQuery('shops_query', {}, 300);
     if (response && response.success && Array.isArray(response.shops) && response.shops.length > 0) {
-      shops = response.shops;
+      shops = response.shops.map(normalizeShop).filter(Boolean);
       fetchedViaWs = true;
     }
   } catch (wsErr) {
     console.warn('[Shops Route] WebSocket query failed, falling back to local file:', wsErr);
   }
 
-  if (fetchedViaWs) {
-    setCachedData(cacheKey, shops, 3000);
+  if (fetchedViaWs && shops.length > 0) {
+    setCachedData(cacheKey, shops, 10000);
     return res.json({ success: true, shops, totalSalesTax: accumulatedSalesTax });
   }
 
@@ -35,8 +52,8 @@ router.get('/shops', async (req: Request, res: Response) => {
   try {
     const shopsMap = loadConfigJson<Record<string, any>>('shops.json');
     if (shopsMap && typeof shopsMap === 'object') {
-      const shopsArray = Object.values(shopsMap);
-      setCachedData(cacheKey, shopsArray, 3000);
+      const shopsArray = Object.values(shopsMap).map(normalizeShop).filter(Boolean);
+      setCachedData(cacheKey, shopsArray, 10000);
       return res.json({ success: true, shops: shopsArray, totalSalesTax: accumulatedSalesTax });
     }
     return res.json({ success: true, shops: [], totalSalesTax: accumulatedSalesTax });
