@@ -1,0 +1,17 @@
+name: CraftCoreLink
+version: '1.1.0'
+main: com.craftcore.link.CraftCoreLink
+api-version: '1.21'
+author: CraftCore
+description: Standalone Minecraft to Discord Synchronization & LuckPerms Sync & RTP Plugin
+softdepend: [LuckPerms]
+
+commands:
+  discord:
+    description: Discord link and info command
+    usage: /discord [link|bind]
+    aliases: [dc]
+  rtp:
+    description: Randomly teleport to a safe location in the world
+    usage: /rtp
+    aliases: [wild, randomtp]

@@ -1,0 +1,43 @@
+# Craft-Core Link Messages & Embed Customization File
+
+in-game:
+  prefix: "§b[Craft-Core] "
+  invite-link: "§b[Craft-Core] §fDiscord 邀請連結：§a§n{url}"
+  invite-hover: "點擊在此瀏覽器開啟 Discord 邀請"
+  requesting-code: "§b[Craft-Core] §f正在向 Discord 申請綁定驗證碼..."
+  code-generated: "§b[Craft-Core] §f申請成功！請在 5 分鐘內私訊 [機器人] 傳送驗證碼：§a{code}§f 以完成帳號綁定。"
+  already-bound: "§c[Craft-Core] 您已經綁定過 Discord 帳號！綁定帳號：{username}"
+  discord-chat-format: "§8[§bDiscord§8] §f{sender}: {message}"
+  only-player: "此指令只能由遊戲內玩家執行。"
+
+  rtp-cooldown: "§c[Craft-Core] RTP 冷卻中，請等待 {seconds} 秒！"
+  rtp-success: "§b[Craft-Core] §a已隨機傳送至：X: {x}, Y: {y}, Z: {z}"
+  rtp-searching: "§b[Craft-Core] §e正在尋找安全的隨機傳送位置..."
+  rtp-failed: "§c[Craft-Core] 找不到安全的傳送位置，請再試一次！"
+  rtp-disabled: "§c[Craft-Core] 隨機傳送功能已被管理員停用。"
+
+discord:
+  server-start: "✅ 伺服器已開啟"
+  server-stop: "❌ 伺服器已關閉"
+  chat-fallback-format: "💬 **{sender}**：{message}"
+  
+  dm:
+    already-bound: "✅ 您的 Discord 帳號已綁定 Minecraft 帳號 `{username}`。"
+    cooldown: "❌ 嘗試次數過多，請在 {seconds} 秒後再試。"
+    locked: "❌ 嘗試次數過多，已鎖定 60 秒。請稍後再試。"
+    invalid-code: "❌ 驗證碼無效或已過期！請在遊戲內輸入 `/discord link` 重新取得 6 位數驗證碼。"
+    expired-code: "❌ 驗證碼已過期！請在遊戲內輸入 `/discord link` 重新取得 6 位數驗證碼。"
+    success: "✅ 帳號綁定成功！\n- 遊戲名稱：`{username}`\n已為您賦予身份組，祝您遊戲愉快！"
+    help: "💡 請私訊輸入遊戲中 `/discord link` 獲得的 6 位數驗證碼來完成帳號綁定。"
+
+  embeds:
+    join:
+      author: "{username} 加入了伺服器"
+    leave:
+      author: "{username} 離開了伺服器"
+    death:
+      author: "{username} 死亡了"
+      description: "💀 {death_message}"
+    advancement:
+      author: "{username} 已完成進度 【{title}】"
+      description: "{description}"

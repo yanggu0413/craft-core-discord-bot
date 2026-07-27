@@ -1,0 +1,36 @@
+# Craft-Core Link Configuration
+
+discord:
+  # Your Discord Bot Token
+  bot-token: "YOUR_DISCORD_BOT_TOKEN_HERE"
+  # Your Discord Server (Guild) ID
+  guild-id: "YOUR_DISCORD_GUILD_ID_HERE"
+  channels:
+    # Channel ID for Minecraft <-> Discord bidirectional chat sync and game event embeds
+    chat-sync: "YOUR_CHAT_SYNC_CHANNEL_ID_HERE"
+  # Optional: Discord Webhook URL for sending MC chat with player avatar & username.
+  # If left empty (""), the bot will fall back to sending standard bot channel messages.
+  chat-webhook-url: ""
+  # Discord Server Invite URL shown when player runs /discord
+  invite-url: "https://discord.gg/yourserver"
+
+roles:
+  # Discord Role ID granted automatically when a player links their MC account
+  verified-role-id: "1521767183326249100"
+  # Discord Role ID synchronized bidirectionally with LuckPerms VIP group
+  vip-role-id: "1521773153448099980"
+
+luckperms:
+  # LuckPerms group name to sync with Discord VIP role
+  vip-group-name: "vip"
+
+minecraft:
+  # Avatar API URL template ({uuid} will be replaced with player's UUID)
+  avatar-provider: "https://mc-heads.net/avatar/{uuid}"
+
+rtp:
+  enabled: true
+  cooldown-seconds: 60
+  min-radius: 500
+  max-radius: 3000
+  max-attempts: 20
