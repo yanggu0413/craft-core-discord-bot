@@ -19,6 +19,12 @@ try {
   require('dotenv').config({ path: envPath });
 } catch (e) {}
 
+// Fallback envs for config validation in CLI mode
+process.env.DISCORD_TOKEN = process.env.DISCORD_TOKEN || 'cli_debug_token';
+process.env.DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || 'dummy_client';
+process.env.DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || 'dummy_guild';
+process.env.WEBSOCKET_SECRET = process.env.WEBSOCKET_SECRET || 'c34fc25b90a6ea1d38e2bc79679fbc9d';
+
 const dbPath = fs.existsSync('/root/craft-core/discord-bot/src/database/database.db')
   ? '/root/craft-core/discord-bot/src/database/database.db'
   : path.join(__dirname, 'discord-bot/src/database/database.db');
