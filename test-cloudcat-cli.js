@@ -17,6 +17,7 @@ const envPath = fs.existsSync('/root/craft-core/discord-bot/.env')
 
 try {
   require('dotenv').config({ path: envPath });
+  require('dotenv').config({ path: path.join(__dirname, '.env') });
 } catch (e) {}
 
 // Fallback envs for config validation in CLI mode
