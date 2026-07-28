@@ -608,8 +608,22 @@ async function executeTool(name, args, contextUser) {
   }
 }
 
+const TOOL_STATUS_MAP = {
+  'web_search': '🌐 雲喵正在搜尋網路最新資訊中...',
+  'read_webpage': '📄 雲喵正在深入閱讀網頁內容中...',
+  'get_taiwan_weather': '🌤️ 雲喵正在連線中央氣象署觀測天氣中...',
+  'query_player_checkin_stats': '⚔️ 雲喵正在翻閱玩家簽到資料與鑰匙紀錄中...',
+  'query_chest_shops': '🏪 雲喵正在翻閱全服箱子商店目錄與物價中...',
+  'query_land_claims': '🗺️ 雲喵正在調閱全服領地劃分與邊界圖紙中...',
+  'query_public_warps': '📍 雲喵正在查詢全服公共傳送點中...',
+  'query_death_leaderboard': '💀 雲喵正在調閱全服死亡排行榜中...',
+  'calculate_expression': '🧮 雲喵正在執行精密算式計算中...',
+  'generate_ai_image': '🎨 雲喵正在揮毫繪製圖片中 (Nano Banana)...',
+  'query_user_image_quota': '📊 雲喵正在查詢您今日的 AI 額度次數中...'
+};
+
 // Process AI Chat via Gemini API REST (supporting Multimodal Images, History & Function Calling)
-async function generateAiResponse(userMessage, contextUser, attachments = [], channelId = AI_CHANNEL_ID) {
+async function generateAiResponse(userMessage, contextUser, attachments = [], channelId = AI_CHANNEL_ID, onStatusUpdate = null) {
   try {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
@@ -695,10 +709,20 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
       // Execute function calls
       const functionResponseParts = [];
       for (const fc of functionCalls) {
-        const toolResult = await executeTool(fc.functionCall.name, fc.functionCall.args || {}, contextUser);
+        const toolName = fc.functionCall.name;
+
+        // Trigger dynamic status update callback if provided
+        if (onStatusUpdate && typeof onStatusUpdate === 'function') {
+          const statusMsg = TOOL_STATUS_MAP[toolName] || `⚙️ 雲喵正在處理 ${toolName} 中...`;
+          try {
+            await onStatusUpdate(statusMsg);
+          } catch (e) {}
+        }
+
+        const toolResult = await executeTool(toolName, fc.functionCall.args || {}, contextUser);
         functionResponseParts.push({
           functionResponse: {
-            name: fc.functionCall.name,
+            name: toolName,
             response: { result: toolResult }
           }
         });

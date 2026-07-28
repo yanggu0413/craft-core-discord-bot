@@ -245,7 +245,17 @@ client.on('messageCreate', async (message) => {
       };
 
       const attachments = Array.from(message.attachments.values());
-      const reply = await aiService.generateAiResponse(message.content, contextUser, attachments, message.channelId);
+      const reply = await aiService.generateAiResponse(
+        message.content,
+        contextUser,
+        attachments,
+        message.channelId,
+        async (statusText) => {
+          if (thinkingMsg) {
+            await thinkingMsg.edit(statusText).catch(() => {});
+          }
+        }
+      );
       if (thinkingMsg) {
         if (reply.length > 1900) {
           // Smart split by lines to prevent mid-sentence truncations
