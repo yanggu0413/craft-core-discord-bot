@@ -228,12 +228,25 @@ client.on('messageCreate', async (message) => {
       const attachments = Array.from(message.attachments.values());
       const reply = await aiService.generateAiResponse(message.content, contextUser, attachments, message.channelId);
       if (thinkingMsg) {
-        if (reply.length > 2000) {
-          // Split large replies into multiple messages
-          const chunks = reply.match(/[\s\S]{1,1950}/g) || [reply];
-          await thinkingMsg.edit(chunks[0]);
+        if (reply.length > 1900) {
+          // Smart split by lines to prevent mid-sentence truncations
+          const lines = reply.split('\n');
+          const chunks = [];
+          let currentChunk = '';
+          for (const line of lines) {
+            if ((currentChunk + '\n' + line).length > 1900) {
+              if (currentChunk.trim()) chunks.push(currentChunk.trim());
+              currentChunk = line;
+            } else {
+              currentChunk = currentChunk ? currentChunk + '\n' + line : line;
+            }
+          }
+          if (currentChunk.trim()) chunks.push(currentChunk.trim());
+
+          await thinkingMsg.edit(chunks[0] || reply);
           for (let i = 1; i < chunks.length; i++) {
             await message.channel.send(chunks[i]);
+            await new Promise(r => setTimeout(r, 500));
           }
         } else {
           await thinkingMsg.edit(reply);
