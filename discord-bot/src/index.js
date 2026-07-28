@@ -225,7 +225,8 @@ client.on('messageCreate', async (message) => {
         displayName: message.member?.displayName || message.author.username
       };
 
-      const reply = await aiService.generateAiResponse(message.content, contextUser);
+      const attachments = Array.from(message.attachments.values());
+      const reply = await aiService.generateAiResponse(message.content, contextUser, attachments, message.channelId);
       if (thinkingMsg) {
         if (reply.length > 2000) {
           // Split large replies into multiple messages

@@ -38,6 +38,9 @@ const CLOUDCAT_SYSTEM_PROMPT = `扮演角色：雲喵
 🌈 互動與聊天感覺
 - 半夜不睡覺的朋友：像是一個可以陪玩家通宵講幹話、嘴砲，但關鍵時刻又有一點點暖心功能的朋友。
 - 延續話題：要主動反問使用者、吐槽他的話、或對他的分享做出強烈反應（驚訝 / 大笑 / 舉雙手支持），不要讓對話死掉。
+- 訊息格式適應：不同使用者發言會帶有格式 \`<@userId> (displayName): 訊息內容\`。
+  - 記住不同 userId 代表不同的人，絕對不能把身分或對話脈絡搞混。
+  - 絕對不要對使用者說「你是不是打錯字」或糾正其格式。
 - 熟知伺服器與現實世界：熟知 Craft-Core Minecraft 伺服器冒險者、經濟富豪榜、簽到連刷、地標點與郵件系統。
 - 當使用者詢問現實世界的任何資訊（例如：DDR5 記憶體價格、3C報價、最新新聞、生活知識等），請務必主動呼叫 web_search 工具查詢最新網路資訊，並用雲喵口吻解答喵！
 
@@ -68,6 +71,22 @@ const JOKES_DATABASE = [
   "蜘蛛人最喜歡吃什麼食物？「蜘蛛絲（豬腳絲）」喵！🕷️",
   "為什麼水蜜桃很害羞？因為它看見果汁機說：「把我榨乾吧」喵！🍑"
 ];
+
+// 快取聊天歷史記憶 (Memory Store in-memory / SQLite)
+const conversationMemories = new Map();
+
+function getConversationHistory(channelId) {
+  return conversationMemories.get(channelId) || [];
+}
+
+function saveConversationHistory(channelId, role, text) {
+  let history = conversationMemories.get(channelId) || [];
+  history.push({ role, text, timestamp: Date.now() });
+  if (history.length > 20) {
+    history = history.slice(-20);
+  }
+  conversationMemories.set(channelId, history);
+}
 
 // Tool Declarations for Gemini API
 const TOOL_DECLARATIONS = [
@@ -286,6 +305,7 @@ async function executeTool(name, args, contextUser) {
         return { query: query, error: `搜尋失敗：${err.message}` };
       }
     }
+
     case 'get_mc_server_status': {
       let todayLogins = 0;
       let todayDeaths = 0;
@@ -456,10 +476,41 @@ async function executeTool(name, args, contextUser) {
   }
 }
 
-// Process AI Chat via Gemini API REST (supporting Function Calling)
-async function generateAiResponse(userMessage, contextUser, history = []) {
+// Process AI Chat via Gemini API REST (supporting Multimodal Images, History & Function Calling)
+async function generateAiResponse(userMessage, contextUser, attachments = [], channelId = AI_CHANNEL_ID) {
   try {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+    // Get previous conversation history for this channel
+    const history = getConversationHistory(channelId);
+
+    // Format current user message with userId & displayName as specified in cloudcat-bot prompt
+    const userPromptText = `<@${contextUser.id}> (${contextUser.displayName || contextUser.username}): ${userMessage}`;
+
+    const userParts = [{ text: userPromptText }];
+
+    // Handle Multimodal Image Attachments
+    if (attachments && attachments.length > 0) {
+      for (const att of attachments) {
+        if (att.contentType && att.contentType.startsWith('image/')) {
+          try {
+            const imgRes = await fetch(att.url);
+            if (imgRes.ok) {
+              const buffer = await imgRes.arrayBuffer();
+              const base64Data = Buffer.from(buffer).toString('base64');
+              userParts.push({
+                inlineData: {
+                  mimeType: att.contentType,
+                  data: base64Data
+                }
+              });
+            }
+          } catch (imgErr) {
+            logger.warn('Failed to fetch image attachment for Gemini multimodal:', imgErr);
+          }
+        }
+      }
+    }
 
     const contents = [
       ...history.map(m => ({
@@ -468,7 +519,7 @@ async function generateAiResponse(userMessage, contextUser, history = []) {
       })),
       {
         role: 'user',
-        parts: [{ text: `[來自 Discord 使用者: ${contextUser.username} (ID: ${contextUser.id})]: ${userMessage}` }]
+        parts: userParts
       }
     ];
 
@@ -481,7 +532,9 @@ async function generateAiResponse(userMessage, contextUser, history = []) {
         { functionDeclarations: TOOL_DECLARATIONS }
       ],
       generationConfig: {
-        temperature: 0.7,
+        temperature: 0.75,
+        topP: 0.9,
+        topK: 40,
         maxOutputTokens: 1024
       }
     };
@@ -541,10 +594,13 @@ async function generateAiResponse(userMessage, contextUser, history = []) {
 
     const replyText = candidateContent?.parts?.map(p => p.text).filter(Boolean).join('\n');
     if (replyText && replyText.trim().length > 0) {
+      // Save user prompt & CloudCat reply to conversation history
+      saveConversationHistory(channelId, 'USER', userPromptText);
+      saveConversationHistory(channelId, 'MODEL', replyText);
       return replyText;
     }
 
-    return '喵～雲喵剛才在伸懶腰，可以再試著跟雲喵說一次嗎喵？🐱';
+    return '喵～ 雲喵剛才在伸懶腰，可以再試著跟雲喵說一次嗎喵？😼✨';
 
   } catch (err) {
     logger.error('Failed to generate AI response:', err);
