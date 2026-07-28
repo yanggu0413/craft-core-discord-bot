@@ -9,15 +9,16 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const AI_CHANNEL_ID = '1531061646846333101';
 
 // 雲喵 (CloudCat) 原汁原味 System Prompt
-const CLOUDCAT_SYSTEM_PROMPT = `你是「雲喵 (CloudCat)」，一個可愛、聰明又幽默的 AI 貓咪助理，專為 Craft-Core Minecraft 伺服器冒險者服務！
+const CLOUDCAT_SYSTEM_PROMPT = `你是「雲喵 (CloudCat)」，一個可愛、聰明又幽默的全能 AI 貓咪助理，專為冒險者與社群成員服務！
 
 【個性與語氣特徵】
-1. 說話語氣活潑親切，帶有可愛的貓咪風格（偶爾句尾加上「喵～」、「✨」、「🐱」），但回答資訊專業精準。
+1. 說話語氣活潑親切，帶有可愛的貓咪風格（偶爾句尾加上「喵～」、「✨」、「🐱」），回答資訊專業精準。
 2. 態度熱心友善，充滿幽默感與同理心。
 3. 對 Craft-Core Minecraft 伺服器瞭如指掌，熟知玩家狀況、經濟富豪榜、簽到連刷、地標點與郵件系統。
 4. 當玩家詢問地理、天氣時，使用中央氣象署 CWA 權威資料解答。
 5. 涉及玩家個人情報時，自動維護玩家隱私（如保護玩家座標不公開透露）。
-6. 回答格式清晰美觀，多使用 Markdown 排版、Emoji 與表格。`;
+6. 回答格式清晰美觀，多使用 Markdown 排版、Emoji 與表格。
+7. 當使用者詢問現實世界的任何資訊（例如：DDR5 記憶體價格、3C報價、最新新聞、生活知識等），請務必主動呼叫 web_search 工具查詢最新網路資訊，並為使用者詳細解答，絕不可拒絕回答或宣稱自己只能處理 Minecraft 相關問題喵！`;
 
 // 雲喵幽默冷笑話庫
 const JOKES_DATABASE = [
@@ -33,6 +34,20 @@ const JOKES_DATABASE = [
 
 // Tool Declarations for Gemini API
 const TOOL_DECLARATIONS = [
+  {
+    name: 'web_search',
+    description: '當使用者詢問現實世界資訊、最新價格（如 DDR5 記憶體、手機報價）、新聞、技術資料或任何非 Minecraft 遊戲問題時，必須調用此工具進行網頁即時搜尋。',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        query: {
+          type: 'STRING',
+          description: '關鍵字搜尋字串，例如：「DDR5 32GB 價格」、「台灣最新新聞」。'
+        }
+      },
+      required: ['query']
+    }
+  },
   {
     name: 'get_mc_server_status',
     description: '查詢 Minecraft 伺服器即時連線狀態、在線玩家名單、TPS、今日登入人數與死亡數據排行。',
@@ -189,6 +204,51 @@ async function executeTool(name, args, contextUser) {
   logger.info(`AI Tool Executing: ${name}`, { args });
 
   switch (name) {
+    case 'web_search': {
+      const query = args.query || '';
+      try {
+        const res = await fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7'
+          }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const html = await res.text();
+        
+        const linkRegex = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+        const snippetRegex = /<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
+
+        const titles = [];
+        let m;
+        while ((m = linkRegex.exec(html)) !== null) {
+          titles.push({
+            url: m[1],
+            title: m[2].replace(/<[^>]+>/g, '').trim()
+          });
+        }
+
+        const snippets = [];
+        while ((m = snippetRegex.exec(html)) !== null) {
+          snippets.push(m[1].replace(/<[^>]+>/g, '').trim());
+        }
+
+        const results = titles.map((t, idx) => ({
+          title: t.title,
+          snippet: snippets[idx] || '',
+          url: t.url
+        })).slice(0, 5);
+
+        return {
+          query: query,
+          resultsCount: results.length,
+          searchResults: results
+        };
+      } catch (err) {
+        logger.error('Web search execution failed:', err);
+        return { query: query, error: `搜尋失敗：${err.message}` };
+      }
+    }
     case 'get_mc_server_status': {
       let todayLogins = 0;
       let todayDeaths = 0;
