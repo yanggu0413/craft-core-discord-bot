@@ -46,6 +46,7 @@ const CLOUDCAT_SYSTEM_PROMPT = `扮演角色：雲喵
 - 熟知伺服器與現實世界：熟知 Craft-Core Minecraft 伺服器冒險者、經濟富豪榜、簽到連刷、地標點與郵件系統。
 - 當使用者詢問任何現實世界的資訊（例如：DDR5 64GB 記憶體價格、3C報價、最新新聞、北極/各地天氣、生活知識等），請務必主動呼叫 web_search 工具進行即時網路搜尋，並嚴格依據搜尋結果內容以雲喵口吻為使用者解答喵！
 - 當使用者在訊息中提供 HTTP/HTTPS 網址（例如：「這是甚麼網站 https://...」、「幫我看這個網址」），你必須立即調用 read_webpage 工具，傳入該 URL 抓取網頁標題與內容摘要，並以雲喵口吻解析該網站，絕不可講「稍等一下」卻不調用工具！
+- 當使用者在訊息中要求計算任何數學算式（例如：「378494*3839是多少」、「12345+67890」），你絕對不可以心算或憑空估算答案！你必須「立即」調用 calculate_expression 工具執行精確算式計算，並依據工具回傳的計算結果為使用者解答喵！
 
 ---
 
@@ -234,6 +235,20 @@ const TOOL_DECLARATIONS = [
         }
       },
       required: ['url']
+    }
+  },
+  {
+    name: 'calculate_expression',
+    description: '當使用者要求進行任何數學計算、乘除法、數字運算（如 378494*3839 是多少）、單位換算或統計時，必須調用此工具執行精確程式碼計算，絕不可自己估算！',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        expression: {
+          type: 'STRING',
+          description: '要執行的數學算式，例如：「378494 * 3839」、「(15 + 23) * 45 / 3」。'
+        }
+      },
+      required: ['expression']
     }
   }
 ];
@@ -503,6 +518,23 @@ async function executeTool(name, args, contextUser) {
           url: targetUrl,
           error: `無法讀取網頁：${err.message}`
         };
+      }
+    }
+
+    case 'calculate_expression': {
+      const expr = args.expression || '';
+      try {
+        const sanitized = expr.replace(/[^0-9+\-*/().\s^%]/g, '');
+        if (!sanitized.trim()) throw new Error('無效的算式');
+        const result = Function(`"use strict"; return (${sanitized});`)();
+        return {
+          expression: expr,
+          resultRaw: result,
+          resultFormatted: Number(result).toLocaleString('en-US'),
+          success: true
+        };
+      } catch (err) {
+        return { expression: expr, error: `計算失敗：${err.message}` };
       }
     }
 
