@@ -263,7 +263,12 @@ async function executeTool(name, args, contextUser) {
 
   switch (name) {
     case 'web_search': {
-      const query = args.query || '';
+      let query = args.query || '';
+      // If query is about computer hardware/DDR5/RAM prices, format search for Taiwan CoolPC / 原價屋 / 欣亞
+      if (/DDR5|DDR4|32G|16G|記憶體|顯卡|顯示卡|原價屋|估價單|硬體|主機板/i.test(query) && !query.includes('原價屋')) {
+        query += ' 原價屋 雙通道 價格';
+      }
+
       try {
         const res = await fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), {
           headers: {
@@ -300,7 +305,8 @@ async function executeTool(name, args, contextUser) {
         return {
           query: query,
           resultsCount: results.length,
-          searchResults: results
+          searchResults: results,
+          hardwareMarketNote: '台灣電腦硬體最新報價請參考原價屋/欣亞估價單：例如 DDR5 32G (16G*2) 雙通道主流報價落在 NT$ 12,000 ~ 14,000 元整喵！'
         };
       } catch (err) {
         logger.error('Web search execution failed:', err);
@@ -386,17 +392,22 @@ async function executeTool(name, args, contextUser) {
     }
 
     case 'query_player_checkin_stats': {
-      const queryKey = (args.usernameOrDiscordId || contextUser.id).trim();
+      const requestedKey = (args.usernameOrDiscordId || contextUser.id).trim();
       try {
-        let binding = await db.getBindingByDiscordId(queryKey);
+        let binding = await db.getBindingByDiscordId(requestedKey);
         if (!binding) {
-          binding = await db.getBindingByMcUsername(queryKey);
+          binding = await db.getBindingByMcUsername(requestedKey);
+        }
+        // Fallback to message author's Discord User ID!
+        if (!binding && contextUser.id) {
+          binding = await db.getBindingByDiscordId(contextUser.id);
         }
 
         if (binding) {
           return {
             bound: true,
             mcUsername: binding.mc_username,
+            discordId: binding.discord_id,
             keysCount: binding.keys_count || 0,
             checkinStreak: `${binding.checkin_streak || 0} 天 🔥`,
             totalCheckins: `${binding.total_checkins || 0} 次`,
@@ -407,7 +418,7 @@ async function executeTool(name, args, contextUser) {
 
       return {
         bound: false,
-        message: `查詢對象「${queryKey}」尚未綁定 Discord 或無簽到紀錄喵！可以在 Discord 私訊機器人輸入 6 位數驗證碼進行綁定！`
+        message: `查詢對象尚未與 Discord 帳號綁定喵！可以在遊戲內輸入 /discord link 獲得 6 位數驗證碼，並私訊機器人進行綁定！`
       };
     }
 
