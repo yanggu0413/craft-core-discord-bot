@@ -43,6 +43,11 @@ const config = {
   },
   database: {
     path: process.env.DATABASE_PATH || path.join(__dirname, 'database/database.db')
+  },
+  ai: {
+    geminiApiKey: process.env.GEMINI_API_KEY || configJson.ai?.geminiApiKey,
+    cwaApiKey: process.env.CWA_API_KEY || configJson.ai?.cwaApiKey,
+    aiChannelId: configJson.ai?.aiChannelId || '1531061646846333101'
   }
 };
 

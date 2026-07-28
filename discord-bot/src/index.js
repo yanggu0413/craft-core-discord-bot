@@ -213,6 +213,40 @@ client.on('messageCreate', async (message) => {
     }
   }
 
+  // AI Chatbot Channel (1531061646846333101) - CloudCat AI
+  if (message.channelId === '1531061646846333101') {
+    let thinkingMsg = null;
+    try {
+      thinkingMsg = await message.reply('💭 雲喵思考中...').catch(() => null);
+      const aiService = require('./services/aiService');
+      const contextUser = {
+        id: message.author.id,
+        username: message.author.username,
+        displayName: message.member?.displayName || message.author.username
+      };
+
+      const reply = await aiService.generateAiResponse(message.content, contextUser);
+      if (thinkingMsg) {
+        if (reply.length > 2000) {
+          // Split large replies into multiple messages
+          const chunks = reply.match(/[\s\S]{1,1950}/g) || [reply];
+          await thinkingMsg.edit(chunks[0]);
+          for (let i = 1; i < chunks.length; i++) {
+            await message.channel.send(chunks[i]);
+          }
+        } else {
+          await thinkingMsg.edit(reply);
+        }
+      }
+    } catch (err) {
+      logger.error('Error handling CloudCat AI channel message', { error: err });
+      if (thinkingMsg) {
+        await thinkingMsg.edit(`喵嗷... 雲喵的腦袋暫時卡住了喵！(錯誤: ${err.message})`).catch(() => {});
+      }
+    }
+    return;
+  }
+
   // Bidirectional Chat Sync & R5 message count increment
   if (message.channelId === config.discord.channels.chatSync) {
     const todayStr = getTaipeiDateString();
