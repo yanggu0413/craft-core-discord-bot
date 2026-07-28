@@ -254,7 +254,7 @@ const TOOL_DECLARATIONS = [
   },
   {
     name: 'generate_ai_image',
-    description: '當使用者要求畫圖、生圖、產生圖片、畫出某個畫面時，必須調用此工具生成圖片。模型可選 nano-banana-2 (預設) 或 nano-banana-lite，每人每天各限用 4 張。',
+    description: '當使用者要求畫圖、生圖、產生圖片、畫出某個畫面時，必須調用此工具生成圖片。模型可選 nano-banana-2 (gemini-3.1-flash-image) 或 nano-banana-lite (gemini-3.1-flash-lite-image)，每人每天各限用 4 張。',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -264,7 +264,7 @@ const TOOL_DECLARATIONS = [
         },
         model: {
           type: 'STRING',
-          description: '選擇繪圖模型：nano-banana-2 (預設，高畫質) 或 nano-banana-lite (快速模型)。'
+          description: '選擇繪圖模型：nano-banana-2 (預設，gemini-3.1-flash-image) 或 nano-banana-lite (gemini-3.1-flash-lite-image)。'
         }
       },
       required: ['prompt']

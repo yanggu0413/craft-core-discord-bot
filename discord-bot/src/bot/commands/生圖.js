@@ -16,8 +16,8 @@ module.exports = {
         .setDescription('選擇繪圖模型 (每日每模型限 4 張)')
         .setRequired(false)
         .addChoices(
-          { name: '🍌 Nano Banana 2 (高畫質/預設)', value: 'nano-banana-2' },
-          { name: '⚡ Nano Banana Lite (快速模型)', value: 'nano-banana-lite' }
+          { name: '🍌 Nano Banana 2 (gemini-3.1-flash-image)', value: 'nano-banana-2' },
+          { name: '⚡ Nano Banana 2 Lite (gemini-3.1-flash-lite-image)', value: 'nano-banana-lite' }
         )
     ),
 

@@ -15,6 +15,14 @@ const panelService = require('./services/panelService');
 // 1. Register Event Handlers
 client.once('ready', async () => {
   logger.info(`Logged in as ${client.user.tag}!`);
+
+  // Auto-register slash commands with Discord API
+  try {
+    require('./bot/deploy-commands');
+  } catch (err) {
+    logger.warn('Failed to auto-deploy slash commands on ready:', err);
+  }
+
   // Start WebSocket server
   wsServer.start(client);
 

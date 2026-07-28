@@ -8,13 +8,13 @@ const MODELS_CONFIG = {
     id: 'nano-banana-2',
     name: 'Nano Banana 2',
     dailyLimit: 4,
-    apiModel: 'nano-banana-pro-preview'
+    apiModel: 'gemini-3.1-flash-image'
   },
   'nano-banana-lite': {
     id: 'nano-banana-lite',
-    name: 'Nano Banana Lite',
+    name: 'Nano Banana 2 Lite',
     dailyLimit: 4,
-    apiModel: 'gemini-3.1-flash-image'
+    apiModel: 'gemini-3.1-flash-lite-image'
   }
 };
 
