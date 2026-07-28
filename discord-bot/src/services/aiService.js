@@ -45,6 +45,7 @@ const CLOUDCAT_SYSTEM_PROMPT = `扮演角色：雲喵
   - 絕對不要對使用者說「你是不是打錯字」或糾正其格式。
 - 熟知伺服器與現實世界：熟知 Craft-Core Minecraft 伺服器冒險者、經濟富豪榜、簽到連刷、地標點與郵件系統。
 - 當使用者詢問任何現實世界的資訊（例如：DDR5 64GB 記憶體價格、3C報價、最新新聞、北極/各地天氣、生活知識等），請務必主動呼叫 web_search 工具進行即時網路搜尋，並嚴格依據搜尋結果內容以雲喵口吻為使用者解答喵！
+- 當使用者在訊息中提供 HTTP/HTTPS 網址（例如：「這是甚麼網站 https://...」、「幫我看這個網址」），你必須立即調用 read_webpage 工具，傳入該 URL 抓取網頁標題與內容摘要，並以雲喵口吻解析該網站，絕不可講「稍等一下」卻不調用工具！
 
 ---
 
@@ -223,13 +224,13 @@ const TOOL_DECLARATIONS = [
   },
   {
     name: 'read_webpage',
-    description: '抓取並讀取指定網址 (URL) 的純文字內容並進行摘要。',
+    description: '當使用者提供 HTTP/HTTPS 網址 URL（例如詢問這是什麼網站、分析網址）時，必須立即調用此工具讀取該網頁內文標題與摘要。',
     parameters: {
       type: 'OBJECT',
       properties: {
         url: {
           type: 'STRING',
-          description: '要讀取的 HTTP/HTTPS 網址。'
+          description: '要抓取與讀取的完整 HTTP/HTTPS 網址。'
         }
       },
       required: ['url']
@@ -462,12 +463,39 @@ async function executeTool(name, args, contextUser) {
     case 'read_webpage': {
       const targetUrl = args.url;
       try {
-        const res = await fetch(targetUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const res = await fetch(targetUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept-Language': 'zh-TW,zh;q=0.9,zh-CN;q=0.8,en;q=0.7'
+          }
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const text = await res.text();
-        const cleanText = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 1500);
+        const buffer = await res.arrayBuffer();
+
+        let text = new TextDecoder('utf-8').decode(buffer);
+        if (text.includes('charset=gb2312') || text.includes('charset=gbk')) {
+          try {
+            text = new TextDecoder('gbk').decode(buffer);
+          } catch (e) {}
+        }
+
+        const titleMatch = text.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+        const metaDescMatch = text.match(/<meta[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["']/i);
+
+        const title = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : '';
+        const description = metaDescMatch ? metaDescMatch[1].trim() : '';
+
+        const cleanText = text.replace(/<script[\s\S]*?<\/script>/gi, ' ')
+                             .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+                             .replace(/<[^>]+>/g, ' ')
+                             .replace(/\s+/g, ' ')
+                             .trim()
+                             .slice(0, 1500);
+
         return {
           url: targetUrl,
+          title: title,
+          description: description,
           contentSnippet: cleanText
         };
       } catch (err) {
