@@ -8,19 +8,16 @@
  *   node test-cloudcat-cli.js --inspect-user <discordId>
  */
 
-try {
-  require('dotenv').config({ path: '/root/craft-core/discord-bot/.env' });
-  require('dotenv').config();
-} catch (e) {}
-
-// Fallback dummy envs for local debug CLI
-process.env.DISCORD_TOKEN = process.env.DISCORD_TOKEN || 'cli_debug_token';
-process.env.DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || 'dummy_client';
-process.env.DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || 'dummy_guild';
-process.env.WEBSOCKET_SECRET = process.env.WEBSOCKET_SECRET || 'c34fc25b90a6ea1d38e2bc79679fbc9d';
-
 const path = require('path');
 const fs = require('fs');
+
+const envPath = fs.existsSync('/root/craft-core/discord-bot/.env')
+  ? '/root/craft-core/discord-bot/.env'
+  : path.join(__dirname, 'discord-bot/.env');
+
+try {
+  require('dotenv').config({ path: envPath });
+} catch (e) {}
 
 const dbPath = fs.existsSync('/root/craft-core/discord-bot/src/database/database.db')
   ? '/root/craft-core/discord-bot/src/database/database.db'
