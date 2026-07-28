@@ -486,8 +486,9 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
     // Get previous conversation history for this channel
     const history = getConversationHistory(channelId);
 
-    // Format current user message with userId & displayName as specified in cloudcat-bot prompt
-    const userPromptText = `<@${contextUser.id}> (${contextUser.displayName || contextUser.username}): ${userMessage}`;
+    // Format current user message with userId & displayName as specified in cloudcat-bot prompt, plus current Taipei time
+    const nowTaipei = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'full', timeStyle: 'medium' });
+    const userPromptText = `[當前時間: ${nowTaipei}] <@${contextUser.id}> (${contextUser.displayName || contextUser.username}): ${userMessage}`;
 
     const userParts = [{ text: userPromptText }];
 
