@@ -44,7 +44,7 @@ const CLOUDCAT_SYSTEM_PROMPT = `扮演角色：雲喵
   - 記住不同 userId 代表不同的人，絕對不能把身分或對話脈絡搞混。
   - 絕對不要對使用者說「你是不是打錯字」或糾正其格式。
 - 熟知伺服器與現實世界：熟知 Craft-Core Minecraft 伺服器冒險者、經濟富豪榜、簽到連刷、地標點與郵件系統。
-- 當使用者詢問現實世界的任何資訊（例如：DDR5 記憶體價格、3C報價、最新新聞、生活知識等），請務必主動呼叫 web_search 工具查詢最新網路資訊，並用雲喵口吻解答喵！
+- 當使用者詢問任何現實世界的資訊（例如：DDR5 64GB 記憶體價格、3C報價、最新新聞、北極/各地天氣、生活知識等），請務必主動呼叫 web_search 工具進行即時網路搜尋，並嚴格依據搜尋結果內容以雲喵口吻為使用者解答喵！
 
 ---
 
@@ -94,13 +94,13 @@ function saveConversationHistory(channelId, role, text) {
 const TOOL_DECLARATIONS = [
   {
     name: 'web_search',
-    description: '當使用者詢問現實世界資訊、最新價格（如 DDR5 記憶體、手機報價）、新聞、技術資料或任何非 Minecraft 遊戲問題時，必須調用此工具進行網頁即時搜尋。',
+    description: '當使用者詢問現實世界資訊、各地天氣（如北極天氣、外國氣象）、最新價格（如 DDR5 64GB 記憶體價格）、新聞、技術資料或任何非 Minecraft 遊戲問題時，必須調用此工具進行即時網路搜尋。',
     parameters: {
       type: 'OBJECT',
       properties: {
         query: {
           type: 'STRING',
-          description: '關鍵字搜尋字串，例如：「DDR5 32GB 價格」、「台灣最新新聞」。'
+          description: '關鍵字搜尋字串，例如：「DDR5 64GB 價格」、「北極 天氣」。'
         }
       },
       required: ['query']
@@ -263,12 +263,7 @@ async function executeTool(name, args, contextUser) {
 
   switch (name) {
     case 'web_search': {
-      let query = args.query || '';
-      // If query is about computer hardware/DDR5/RAM prices, format search for Taiwan CoolPC / 原價屋 / 欣亞
-      if (/DDR5|DDR4|32G|16G|記憶體|顯卡|顯示卡|原價屋|估價單|硬體|主機板/i.test(query) && !query.includes('原價屋')) {
-        query += ' 原價屋 雙通道 價格';
-      }
-
+      const query = args.query || '';
       try {
         const res = await fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), {
           headers: {
@@ -300,13 +295,12 @@ async function executeTool(name, args, contextUser) {
           title: t.title,
           snippet: snippets[idx] || '',
           url: t.url
-        })).slice(0, 5);
+        })).slice(0, 6);
 
         return {
           query: query,
           resultsCount: results.length,
-          searchResults: results,
-          hardwareMarketNote: '台灣電腦硬體最新報價請參考原價屋/欣亞估價單：例如 DDR5 32G (16G*2) 雙通道主流報價落在 NT$ 12,000 ~ 14,000 元整喵！'
+          searchResults: results
         };
       } catch (err) {
         logger.error('Web search execution failed:', err);
