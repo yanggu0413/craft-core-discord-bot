@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const CWA_API_KEY = process.env.CWA_API_KEY || '';
 
 // City mapping for Taiwan
