@@ -126,15 +126,19 @@ async function getUserImageQuotaOverview(userId) {
   const todayStr = new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' });
   let nb2Used = 0;
   let nblUsed = 0;
+  let chatStatus = { count: 0, remainingMs: 0, resetMinutes: 0 };
+
   try {
     nb2Used = await db.getImageUsage(userId, 'nano-banana-2', todayStr);
     nblUsed = await db.getImageUsage(userId, 'nano-banana-lite', todayStr);
+    chatStatus = await db.getChatUsageStatus(userId, 50, 5 * 60 * 60 * 1000);
   } catch (e) {
     logger.warn('Failed to query quota overview from DB:', e);
   }
 
   return {
     todayStr,
+    chatStatus,
     models: [
       {
         id: 'nano-banana-2',

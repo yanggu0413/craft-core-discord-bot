@@ -12,15 +12,24 @@ module.exports = {
       const overview = await imageGenService.getUserImageQuotaOverview(interaction.user.id);
 
       const embed = new EmbedBuilder()
-        .setTitle('📊 今日 AI 繪圖額度概況')
-        .setDescription(`**查詢使用者**: <@${interaction.user.id}>\n**日期**: \`${overview.todayStr}\` (每日 00:00 自動重置)`)
+        .setTitle('📊 今日 AI 對話與生圖額度概況')
+        .setDescription(`**查詢使用者**: <@${interaction.user.id}>\n**日期**: \`${overview.todayStr}\``)
         .setColor('#00AE86')
         .setTimestamp();
+
+      if (overview.chatStatus) {
+        const chatProgress = '🟦'.repeat(Math.min(10, Math.floor(overview.chatStatus.used / 5))) + '⬜'.repeat(Math.max(0, 10 - Math.floor(overview.chatStatus.used / 5)));
+        embed.addFields({
+          name: '💬 普通 AI 對話訊息 (近 5 小時)',
+          value: `已發送: \`${overview.chatStatus.used} / ${overview.chatStatus.limit}\` 則\n剩餘可用: **${overview.chatStatus.remaining}** 則\n${chatProgress}`,
+          inline: false
+        });
+      }
 
       for (const m of overview.models) {
         const progressBar = '🟦'.repeat(m.used) + '⬜'.repeat(m.remaining);
         embed.addFields({
-          name: `${m.name}`,
+          name: `${m.name} (每日配額)`,
           value: `已使用: \`${m.used} / ${m.limit}\` 張\n剩餘可用: **${m.remaining}** 張\n${progressBar}`,
           inline: false
         });

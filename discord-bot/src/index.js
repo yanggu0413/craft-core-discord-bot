@@ -223,6 +223,17 @@ client.on('messageCreate', async (message) => {
 
   // AI Chatbot Channel (1531061646846333101) - CloudCat AI
   if (message.channelId === '1531061646846333101') {
+    // Check Rate Limit (50 messages per 5 hours per user)
+    try {
+      const rateLimit = await db.checkAndRecordChatRateLimit(message.author.id, 50, 5 * 60 * 60 * 1000);
+      if (!rateLimit.allowed) {
+        await message.reply(`喵嗷… <@${message.author.id}>！你最近 5 小時內已經跟本雲聊了 ${rateLimit.count} 則訊息了啦！喵~ 本雲的雲端大腦需要冷卻休息一下下！請在 **${rateLimit.resetMinutes} 分鐘** 後再來找本雲聊喔！😼☁️`).catch(() => {});
+        return;
+      }
+    } catch (e) {
+      logger.warn('Failed to check chat rate limit:', e);
+    }
+
     let thinkingMsg = null;
     try {
       thinkingMsg = await message.reply('💭 雲喵思考中...').catch(() => null);

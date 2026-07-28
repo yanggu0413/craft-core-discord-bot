@@ -381,6 +381,64 @@ async function incrementImageUsage(userId, modelName, dateStr) {
   stmt.run(userId, modelName, dateStr);
 }
 
+/**
+ * 5-hour rolling window chat rate limiter (50 messages max per 5 hours)
+ */
+async function checkAndRecordChatRateLimit(userId, maxMessages = 50, windowMs = 5 * 60 * 60 * 1000) {
+  if (!db) throw new Error('Database not initialized');
+  const now = Date.now();
+  const cutoff = now - windowMs;
+
+  // Clean old expired chat records
+  try {
+    db.prepare('DELETE FROM ai_chat_messages WHERE created_at < ?').run(cutoff);
+  } catch (e) {}
+
+  // Count user messages in the last 5 hours
+  const countRow = db.prepare('SELECT COUNT(*) as count, MIN(created_at) as oldestTime FROM ai_chat_messages WHERE user_id = ? AND created_at >= ?').get(userId, cutoff);
+  const count = countRow ? countRow.count : 0;
+  const oldestTime = (countRow && countRow.oldestTime) ? countRow.oldestTime : now;
+
+  if (count >= maxMessages) {
+    const resetTime = oldestTime + windowMs;
+    const remainingMs = Math.max(0, resetTime - now);
+    return {
+      allowed: false,
+      count,
+      maxMessages,
+      remainingMs,
+      resetMinutes: Math.ceil(remainingMs / (60 * 1000))
+    };
+  }
+
+  // Record this new chat message
+  db.prepare('INSERT INTO ai_chat_messages (user_id, created_at) VALUES (?, ?)').run(userId, now);
+
+  return {
+    allowed: true,
+    count: count + 1,
+    maxMessages,
+    remainingCount: maxMessages - (count + 1)
+  };
+}
+
+async function getChatUsageStatus(userId, maxMessages = 50, windowMs = 5 * 60 * 60 * 1000) {
+  if (!db) throw new Error('Database not initialized');
+  const now = Date.now();
+  const cutoff = now - windowMs;
+  const countRow = db.prepare('SELECT COUNT(*) as count, MIN(created_at) as oldestTime FROM ai_chat_messages WHERE user_id = ? AND created_at >= ?').get(userId, cutoff);
+  const count = countRow ? countRow.count : 0;
+  const oldestTime = (countRow && countRow.oldestTime) ? countRow.oldestTime : now;
+  const remainingMs = Math.max(0, (oldestTime + windowMs) - now);
+
+  return {
+    used: count,
+    limit: maxMessages,
+    remaining: Math.max(0, maxMessages - count),
+    resetMinutes: Math.ceil(remainingMs / (60 * 1000))
+  };
+}
+
 module.exports = {
   init,
   close,
@@ -425,6 +483,8 @@ module.exports = {
   getStats,
   getLoginCount,
   getImageUsage,
-  incrementImageUsage
+  incrementImageUsage,
+  checkAndRecordChatRateLimit,
+  getChatUsageStatus
 };
 

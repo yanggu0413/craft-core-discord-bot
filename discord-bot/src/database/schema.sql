@@ -90,4 +90,13 @@ CREATE TABLE IF NOT EXISTS ai_image_usage (
     PRIMARY KEY (user_id, model_name, usage_date)
 );
 
+-- 9. AI Chat Messages Rate Limit Table (5 hours rolling window)
+CREATE TABLE IF NOT EXISTS ai_chat_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_user_time ON ai_chat_messages(user_id, created_at);
+
+
 
