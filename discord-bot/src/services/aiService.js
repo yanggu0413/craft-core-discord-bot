@@ -600,7 +600,7 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
         { functionDeclarations: TOOL_DECLARATIONS }
       ],
       generationConfig: {
-        maxOutputTokens: 1024
+        maxOutputTokens: 8192
       }
     };
 
