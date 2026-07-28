@@ -119,7 +119,43 @@ async function generateAiImage(userId, prompt, modelKey = 'nano-banana-2') {
   }
 }
 
+/**
+ * Get user image quota overview for today
+ */
+async function getUserImageQuotaOverview(userId) {
+  const todayStr = new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' });
+  let nb2Used = 0;
+  let nblUsed = 0;
+  try {
+    nb2Used = await db.getImageUsage(userId, 'nano-banana-2', todayStr);
+    nblUsed = await db.getImageUsage(userId, 'nano-banana-lite', todayStr);
+  } catch (e) {
+    logger.warn('Failed to query quota overview from DB:', e);
+  }
+
+  return {
+    todayStr,
+    models: [
+      {
+        id: 'nano-banana-2',
+        name: 'Nano Banana 2',
+        used: nb2Used,
+        limit: 4,
+        remaining: Math.max(0, 4 - nb2Used)
+      },
+      {
+        id: 'nano-banana-lite',
+        name: 'Nano Banana 2 Lite',
+        used: nblUsed,
+        limit: 4,
+        remaining: Math.max(0, 4 - nblUsed)
+      }
+    ]
+  };
+}
+
 module.exports = {
   generateAiImage,
+  getUserImageQuotaOverview,
   MODELS_CONFIG
 };

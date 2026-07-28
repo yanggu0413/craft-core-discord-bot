@@ -269,6 +269,15 @@ const TOOL_DECLARATIONS = [
       },
       required: ['prompt']
     }
+  },
+  {
+    name: 'query_user_image_quota',
+    description: '當使用者詢問自己今日剩餘多少繪圖/生圖額度、查詢生圖次數或剩餘張數時，必須調用此工具查詢。',
+    parameters: {
+      type: 'OBJECT',
+      properties: {},
+      required: []
+    }
   }
 ];
 
@@ -578,6 +587,19 @@ async function executeTool(name, args, contextUser) {
         remainingCount: genResult.remainingCount,
         imageUrl: genResult.imageUrl,
         notice: `圖片已成功生成！模型 ${genResult.modelName} 今日剩餘額度: ${genResult.remainingCount}/${genResult.dailyLimit} 張喵！`
+      };
+    }
+
+    case 'query_user_image_quota': {
+      const imageGenService = require('./imageGenService');
+      const overview = await imageGenService.getUserImageQuotaOverview(contextUser.id);
+      return {
+        todayDate: overview.todayStr,
+        quotas: overview.models.map(m => ({
+          modelName: m.name,
+          usedCount: `${m.used} / ${m.limit} 張`,
+          remainingCount: `${m.remaining} 張`
+        }))
       };
     }
 
