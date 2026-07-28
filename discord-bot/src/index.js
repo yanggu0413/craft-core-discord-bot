@@ -117,6 +117,38 @@ function getTaipeiDateString(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+function splitMessageText(text, maxLength = 1900) {
+  if (!text || text.length <= maxLength) return [text || ''];
+  const chunks = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLength) {
+      chunks.push(remaining);
+      break;
+    }
+
+    // Try finding last newline within maxLength limit
+    let splitIndex = remaining.lastIndexOf('\n', maxLength);
+    
+    // If no newline, try finding space within limit
+    if (splitIndex <= 0) {
+      splitIndex = remaining.lastIndexOf(' ', maxLength);
+    }
+
+    // If still no space/newline, hard cut at maxLength
+    if (splitIndex <= 0) {
+      splitIndex = maxLength;
+    }
+
+    const chunk = remaining.substring(0, splitIndex).trim();
+    if (chunk) chunks.push(chunk);
+    remaining = remaining.substring(splitIndex).trim();
+  }
+
+  return chunks;
+}
+
 const discordQueue = require('./utils/discordQueue');
 const dmVerifyAttempts = new Map();
 
@@ -256,29 +288,15 @@ client.on('messageCreate', async (message) => {
           }
         }
       );
-      if (thinkingMsg) {
-        if (reply.length > 1900) {
-          // Smart split by lines to prevent mid-sentence truncations
-          const lines = reply.split('\n');
-          const chunks = [];
-          let currentChunk = '';
-          for (const line of lines) {
-            if ((currentChunk + '\n' + line).length > 1900) {
-              if (currentChunk.trim()) chunks.push(currentChunk.trim());
-              currentChunk = line;
-            } else {
-              currentChunk = currentChunk ? currentChunk + '\n' + line : line;
-            }
-          }
-          if (currentChunk.trim()) chunks.push(currentChunk.trim());
 
-          await thinkingMsg.edit(chunks[0] || reply);
-          for (let i = 1; i < chunks.length; i++) {
+      if (thinkingMsg) {
+        const chunks = splitMessageText(reply, 1900);
+        await thinkingMsg.edit(chunks[0] || '喵～');
+        for (let i = 1; i < chunks.length; i++) {
+          if (chunks[i].trim()) {
             await message.channel.send(chunks[i]);
             await new Promise(r => setTimeout(r, 500));
           }
-        } else {
-          await thinkingMsg.edit(reply);
         }
       }
     } catch (err) {
