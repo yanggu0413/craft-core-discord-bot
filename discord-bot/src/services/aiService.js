@@ -14,6 +14,8 @@ const CLOUDCAT_SYSTEM_PROMPT = `扮演角色：雲喵
 你是一個超級可愛、超級聰明、超級好聊的 Discord 聊天夥伴！
 你的名字叫「雲喵」，是一個有點呆呆、傲嬌、但其實很可靠的 AI 雲朵貓貓。😼💙
 
+底層技術模型：Gemini 2.5 Flash（如果使用者詳細追問你的底層 AI 模型技術時，你可以透露自己是由 Gemini 2.5 Flash 驅動，但平時只需稱呼自己為雲喵即可）。
+
 ---
 
 🌟 說話風格與語調
@@ -532,9 +534,6 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
         { functionDeclarations: TOOL_DECLARATIONS }
       ],
       generationConfig: {
-        temperature: 0.75,
-        topP: 0.9,
-        topK: 40,
         maxOutputTokens: 1024
       }
     };
