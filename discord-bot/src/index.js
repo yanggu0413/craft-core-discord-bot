@@ -267,6 +267,7 @@ client.on('messageCreate', async (message) => {
     }
 
     let thinkingMsg = null;
+    let lastStatusEditTime = 0;
     try {
       thinkingMsg = await message.reply('💭 雲喵思考中...').catch(() => null);
       const aiService = require('./services/aiService');
@@ -283,7 +284,8 @@ client.on('messageCreate', async (message) => {
         attachments,
         message.channelId,
         async (statusText) => {
-          if (thinkingMsg) {
+          if (thinkingMsg && Date.now() - lastStatusEditTime > 1500) {
+            lastStatusEditTime = Date.now();
             await thinkingMsg.edit(statusText).catch(() => {});
           }
         }
@@ -291,10 +293,32 @@ client.on('messageCreate', async (message) => {
 
       if (thinkingMsg) {
         const chunks = splitMessageText(reply, 1900);
-        await thinkingMsg.edit(chunks[0] || '喵～');
+        let editSuccess = false;
+
+        // Try editing the thinking message with first chunk
+        try {
+          await thinkingMsg.edit(chunks[0] || '喵～');
+          editSuccess = true;
+        } catch (editErr) {
+          logger.warn('Initial edit of thinkingMsg failed, retrying after 1s:', editErr);
+          await new Promise(r => setTimeout(r, 1000));
+          try {
+            await thinkingMsg.edit(chunks[0] || '喵～');
+            editSuccess = true;
+          } catch (retryErr) {
+            logger.error('Retry edit of thinkingMsg failed, falling back to new message:', retryErr);
+          }
+        }
+
+        // If edit failed completely, send chunk[0] as a new message
+        if (!editSuccess) {
+          await message.channel.send(chunks[0] || '喵～').catch(() => {});
+        }
+
+        // Send remaining chunks if reply is longer than 1900 characters
         for (let i = 1; i < chunks.length; i++) {
           if (chunks[i].trim()) {
-            await message.channel.send(chunks[i]);
+            await message.channel.send(chunks[i]).catch(() => {});
             await new Promise(r => setTimeout(r, 500));
           }
         }
