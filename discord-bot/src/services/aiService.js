@@ -251,6 +251,24 @@ const TOOL_DECLARATIONS = [
       },
       required: ['expression']
     }
+  },
+  {
+    name: 'generate_ai_image',
+    description: '當使用者要求畫圖、生圖、產生圖片、畫出某個畫面時，必須調用此工具生成圖片。模型可選 nano-banana-2 (預設) 或 nano-banana-lite，每人每天各限用 4 張。',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        prompt: {
+          type: 'STRING',
+          description: '生圖的詳細畫面描述或提示詞（英文或中文）。'
+        },
+        model: {
+          type: 'STRING',
+          description: '選擇繪圖模型：nano-banana-2 (預設，高畫質) 或 nano-banana-lite (快速模型)。'
+        }
+      },
+      required: ['prompt']
+    }
   }
 ];
 
@@ -537,6 +555,30 @@ async function executeTool(name, args, contextUser) {
       } catch (err) {
         return { expression: expr, error: `計算失敗：${err.message}` };
       }
+    }
+
+    case 'generate_ai_image': {
+      const prompt = args.prompt || '';
+      const modelKey = args.model || 'nano-banana-2';
+      const imageGenService = require('./imageGenService');
+      const genResult = await imageGenService.generateAiImage(contextUser.id, prompt, modelKey);
+
+      if (!genResult.success) {
+        return {
+          success: false,
+          error: genResult.error
+        };
+      }
+
+      return {
+        success: true,
+        modelName: genResult.modelName,
+        usedCount: genResult.usedCount,
+        dailyLimit: genResult.dailyLimit,
+        remainingCount: genResult.remainingCount,
+        imageUrl: genResult.imageUrl,
+        notice: `圖片已成功生成！模型 ${genResult.modelName} 今日剩餘額度: ${genResult.remainingCount}/${genResult.dailyLimit} 張喵！`
+      };
     }
 
     default:

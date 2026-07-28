@@ -81,3 +81,13 @@ CREATE TABLE IF NOT EXISTS daily_logins (
     PRIMARY KEY (date, mc_username)
 );
 
+-- 8. AI Image Usage Table
+CREATE TABLE IF NOT EXISTS ai_image_usage (
+    user_id TEXT NOT NULL,
+    model_name TEXT NOT NULL,
+    usage_date TEXT NOT NULL,
+    usage_count INTEGER DEFAULT 0,
+    PRIMARY KEY (user_id, model_name, usage_date)
+);
+
+

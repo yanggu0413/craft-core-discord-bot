@@ -364,6 +364,23 @@ async function close() {
   }
 }
 
+async function getImageUsage(userId, modelName, dateStr) {
+  if (!db) throw new Error('Database not initialized');
+  const stmt = db.prepare('SELECT usage_count FROM ai_image_usage WHERE user_id = ? AND model_name = ? AND usage_date = ?');
+  const row = stmt.get(userId, modelName, dateStr);
+  return row ? row.usage_count : 0;
+}
+
+async function incrementImageUsage(userId, modelName, dateStr) {
+  if (!db) throw new Error('Database not initialized');
+  const stmt = db.prepare(`
+    INSERT INTO ai_image_usage (user_id, model_name, usage_date, usage_count)
+    VALUES (?, ?, ?, 1)
+    ON CONFLICT(user_id, model_name, usage_date) DO UPDATE SET usage_count = usage_count + 1
+  `);
+  stmt.run(userId, modelName, dateStr);
+}
+
 module.exports = {
   init,
   close,
@@ -406,5 +423,8 @@ module.exports = {
   recordLogin,
   updateMaxOnline,
   getStats,
-  getLoginCount
+  getLoginCount,
+  getImageUsage,
+  incrementImageUsage
 };
+
