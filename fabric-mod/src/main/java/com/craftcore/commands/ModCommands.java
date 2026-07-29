@@ -14,6 +14,9 @@ public class ModCommands {
             FakePlayerCommand.register(dispatcher);
             BackupCommand.register(dispatcher);
             InvSeeCommand.register(dispatcher);
+            MachineCommand.register(dispatcher);
+            TitleCommand.register(dispatcher);
+            RetentionCommands.register(dispatcher);
         });
     }
 }

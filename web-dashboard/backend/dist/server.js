@@ -19,6 +19,7 @@ const events_routes_1 = __importDefault(require("./routes/events.routes"));
 const backup_routes_1 = __importDefault(require("./routes/backup.routes"));
 const title_routes_1 = __importDefault(require("./routes/title.routes"));
 const announcements_routes_1 = __importDefault(require("./routes/announcements.routes"));
+const retention_routes_1 = __importDefault(require("./routes/retention.routes"));
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const app = (0, express_1.default)();
 app.set('case sensitive routing', true);
@@ -35,6 +36,7 @@ app.use('/api', user_routes_1.default);
 app.use('/api', events_routes_1.default);
 app.use('/api', title_routes_1.default);
 app.use('/api', announcements_routes_1.default);
+app.use('/api', retention_routes_1.default);
 // WebSocket Server for Web Frontend Real-time Events
 const wss = new ws_1.WebSocketServer({ server });
 (0, wsClient_1.setWssInstance)(wss);

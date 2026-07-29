@@ -16,6 +16,7 @@ import eventsRoutes from './routes/events.routes';
 import backupRoutes from './routes/backup.routes';
 import titleRoutes from './routes/title.routes';
 import announcementsRoutes from './routes/announcements.routes';
+import retentionRoutes from './routes/retention.routes';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
@@ -36,6 +37,7 @@ app.use('/api', userRoutes);
 app.use('/api', eventsRoutes);
 app.use('/api', titleRoutes);
 app.use('/api', announcementsRoutes);
+app.use('/api', retentionRoutes);
 
 // WebSocket Server for Web Frontend Real-time Events
 const wss = new WebSocketServer({ server });

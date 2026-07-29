@@ -255,7 +255,7 @@ public class ClaimManager {
             }
         }
 
-        double cost = hasExistingClaim ? (chunks * 30.0) : 0.0;
+        double cost = (hasExistingClaim && !isOp) ? (chunks * 30.0) : 0.0;
         double balance = EconomyManager.getBalance(username);
 
         if (cost > 0 && balance < cost) {

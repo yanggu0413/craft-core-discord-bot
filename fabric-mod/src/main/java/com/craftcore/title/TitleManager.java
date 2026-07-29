@@ -9,42 +9,20 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TitleManager {
+    public static class PlayerTitleData {
+        public String activeTitle = "";
+        public Set<String> unlockedTitles = new HashSet<>();
 
-    public static class TitleData {
-        public String titleText;
-        public String colorCode; // e.g. "§c", "§6", "§b", "§d", "§a", "§e", "§f"
-        public boolean isBold;
-
-        public TitleData(String titleText, String colorCode, boolean isBold) {
-            this.titleText = titleText;
-            this.colorCode = colorCode != null ? colorCode : "§c";
-            this.isBold = isBold;
-        }
-
-        public String getFormattedPrefix() {
-            if (titleText == null || titleText.trim().isEmpty()) {
-                return "";
-            }
-            String cleanText = titleText.trim();
-            if (!cleanText.startsWith("[")) {
-                cleanText = "[" + cleanText;
-            }
-            if (!cleanText.endsWith("]")) {
-                cleanText = cleanText + "]";
-            }
-            String color = colorCode != null ? colorCode : "§c";
-            String boldStr = isBold ? "§l" : "";
-            return color + boldStr + cleanText + "§r ";
-        }
+        public PlayerTitleData() {}
     }
 
     private static Path configPath;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Map<String, TitleData> titlesMap = new ConcurrentHashMap<>();
+    private static final Map<String, PlayerTitleData> playerTitles = new ConcurrentHashMap<>();
 
     static {
         try {
@@ -54,27 +32,19 @@ public class TitleManager {
             configPath = Path.of("config", "craft-core-shop", "titles.json");
         }
         load();
-
-        // Default fallback: im_little_rory => §c§l[服主]
-        if (!titlesMap.containsKey("im_little_rory")) {
-            titlesMap.put("im_little_rory", new TitleData("[服主]", "§c", true));
-            save();
-        }
     }
 
     public static synchronized void load() {
         if (configPath != null && Files.exists(configPath)) {
             try (BufferedReader reader = Files.newBufferedReader(configPath)) {
-                Map<String, TitleData> loaded = GSON.fromJson(reader, new TypeToken<Map<String, TitleData>>(){}.getType());
+                Map<String, PlayerTitleData> loaded = GSON.fromJson(reader, new TypeToken<Map<String, PlayerTitleData>>(){}.getType());
                 if (loaded != null) {
-                    titlesMap.clear();
-                    for (Map.Entry<String, TitleData> entry : loaded.entrySet()) {
-                        if (entry.getKey() != null && entry.getValue() != null) {
-                            titlesMap.put(entry.getKey().toLowerCase(), entry.getValue());
-                        }
+                    playerTitles.clear();
+                    for (Map.Entry<String, PlayerTitleData> entry : loaded.entrySet()) {
+                        playerTitles.put(entry.getKey().toLowerCase(), entry.getValue());
                     }
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 System.err.println("[CraftCore] Failed to load titles.json: " + e.getMessage());
             }
         }
@@ -85,7 +55,7 @@ public class TitleManager {
             try {
                 Files.createDirectories(configPath.getParent());
                 try (BufferedWriter writer = Files.newBufferedWriter(configPath)) {
-                    GSON.toJson(titlesMap, writer);
+                    GSON.toJson(playerTitles, writer);
                 }
             } catch (IOException e) {
                 System.err.println("[CraftCore] Failed to save titles.json: " + e.getMessage());
@@ -93,33 +63,54 @@ public class TitleManager {
         }
     }
 
-    public static synchronized String getTitlePrefix(String username) {
-        if (username == null) return "";
-        TitleData data = titlesMap.get(username.toLowerCase());
-        if (data != null) {
-            return data.getFormattedPrefix();
+    public static synchronized void unlockTitle(String username, String title) {
+        if (username == null || title == null) return;
+        String key = username.toLowerCase();
+        PlayerTitleData data = playerTitles.computeIfAbsent(key, k -> new PlayerTitleData());
+        if (data.unlockedTitles.add(title)) {
+            if (data.activeTitle == null || data.activeTitle.isEmpty()) {
+                data.activeTitle = title;
+            }
+            save();
         }
-        return "";
     }
 
-    public static synchronized void setTitle(String username, String titleText, String colorCode, boolean isBold) {
-        if (username == null || username.trim().isEmpty()) return;
+    public static synchronized String getActiveTitle(String username) {
+        if (username == null) return "";
+        PlayerTitleData data = playerTitles.get(username.toLowerCase());
+        return data != null && data.activeTitle != null ? data.activeTitle : "";
+    }
+
+    public static synchronized boolean setActiveTitle(String username, String title) {
+        if (username == null) return false;
         String key = username.toLowerCase();
-        if (titleText == null || titleText.trim().isEmpty()) {
-            titlesMap.remove(key);
-        } else {
-            titlesMap.put(key, new TitleData(titleText.trim(), colorCode, isBold));
+        PlayerTitleData data = playerTitles.get(key);
+        if (data != null && (title.isEmpty() || data.unlockedTitles.contains(title))) {
+            data.activeTitle = title;
+            save();
+            return true;
         }
-        save();
+        return false;
+    }
+
+    public static synchronized Set<String> getUnlockedTitles(String username) {
+        if (username == null) return Collections.emptySet();
+        PlayerTitleData data = playerTitles.get(username.toLowerCase());
+        return data != null ? new HashSet<>(data.unlockedTitles) : Collections.emptySet();
+    }
+
+    public static synchronized String getTitlePrefix(String username) {
+        String active = getActiveTitle(username);
+        return active.isEmpty() ? "" : active + " ";
     }
 
     public static synchronized void removeTitle(String username) {
-        if (username == null) return;
-        titlesMap.remove(username.toLowerCase());
-        save();
+        setActiveTitle(username, "");
     }
 
-    public static synchronized Map<String, TitleData> getAllTitles() {
-        return new ConcurrentHashMap<>(titlesMap);
+    public static synchronized void setTitle(String username, String text, String color, boolean bold) {
+        String titleStr = (color != null ? color : "") + (bold ? "§l" : "") + text;
+        unlockTitle(username, titleStr);
+        setActiveTitle(username, titleStr);
     }
 }

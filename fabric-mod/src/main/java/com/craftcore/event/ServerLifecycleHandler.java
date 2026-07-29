@@ -41,6 +41,8 @@ public class ServerLifecycleHandler {
             com.craftcore.task.DailyTaskManager.register();
             com.craftcore.fakeplayer.FakePlayerManager.scheduleAutoReconnect(server);
             com.craftcore.backup.BackupManager.startAutoBackupLoop(server);
+            com.craftcore.lottery.HourlyLotteryManager.startHourlyLoop(server);
+            com.craftcore.treasure.TreasureChestManager.startLoop(server);
         });
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
