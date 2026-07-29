@@ -13,6 +13,7 @@ public class ModCommands {
             EconomyCommands.register(dispatcher);
             FakePlayerCommand.register(dispatcher);
             BackupCommand.register(dispatcher);
+            InvSeeCommand.register(dispatcher);
         });
     }
 }
