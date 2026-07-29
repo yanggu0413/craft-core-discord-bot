@@ -459,7 +459,21 @@ public class ShopManager {
     }
 
     public static synchronized Shop getShop(String coords) {
-        return shopMap.get(getNormalizedKey(coords));
+        if (coords == null) return null;
+        if (shopMap.containsKey(coords)) {
+            return shopMap.get(coords);
+        }
+        String normalized = getNormalizedKey(coords);
+        if (shopMap.containsKey(normalized)) {
+            return shopMap.get(normalized);
+        }
+        String clean = getCleanCoords(coords);
+        for (Shop s : shopMap.values()) {
+            if (getCleanCoords(s.coords).equalsIgnoreCase(clean)) {
+                return s;
+            }
+        }
+        return null;
     }
 
     public static synchronized List<Shop> getShops() {

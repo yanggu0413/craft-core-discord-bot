@@ -25,10 +25,25 @@ public class FakePlayerManager {
     public static class FakePlayerEntry {
         public String owner;
         public boolean enabled;
+        public String dimension;
+        public Double x;
+        public Double y;
+        public Double z;
+        public Float yaw;
+        public Float pitch;
 
         public FakePlayerEntry(String owner, boolean enabled) {
             this.owner = owner;
             this.enabled = enabled;
+        }
+
+        public void setLocation(String dimension, double x, double y, double z, float yaw, float pitch) {
+            this.dimension = dimension;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.yaw = yaw;
+            this.pitch = pitch;
         }
     }
 
@@ -147,7 +162,41 @@ public class FakePlayerManager {
         return count;
     }
 
+    private static ScheduledExecutorService positionRecorderScheduler;
+
+    public static void startPositionRecorder(MinecraftServer server) {
+        if (positionRecorderScheduler != null && !positionRecorderScheduler.isShutdown()) {
+            return;
+        }
+        positionRecorderScheduler = Executors.newSingleThreadScheduledExecutor();
+        positionRecorderScheduler.scheduleAtFixedRate(() -> {
+            try {
+                if (server == null || server.getPlayerList() == null) return;
+                server.execute(() -> {
+                    boolean changed = false;
+                    synchronized (FakePlayerManager.class) {
+                        for (Map.Entry<String, FakePlayerEntry> entry : fakePlayers.entrySet()) {
+                            String botName = entry.getKey();
+                            ServerPlayer sp = server.getPlayerList().getPlayerByName(botName);
+                            if (sp != null) {
+                                String dim = sp.level().dimension().identifier().toString();
+                                entry.getValue().setLocation(dim, sp.getX(), sp.getY(), sp.getZ(), sp.getYRot(), sp.getXRot());
+                                changed = true;
+                            }
+                        }
+                    }
+                    if (changed) {
+                        save();
+                    }
+                });
+            } catch (Throwable t) {
+                System.err.println("[CraftCore] Failed to record fake player positions: " + t.getMessage());
+            }
+        }, 5, 5, TimeUnit.MINUTES);
+    }
+
     public static void scheduleAutoReconnect(MinecraftServer server) {
+        startPositionRecorder(server);
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.schedule(() -> {
             try {
@@ -182,6 +231,17 @@ public class FakePlayerManager {
                                     var source = server.createCommandSourceStack();
                                     server.getCommands().performPrefixedCommand(source, "player " + botName + " spawn");
                                     System.out.println("[CraftCore] Auto-reconnected fake player bot: " + botName);
+
+                                    FakePlayerEntry botData = fakePlayers.get(botName.toLowerCase());
+                                    if (botData != null && botData.x != null && botData.y != null && botData.z != null) {
+                                        String dim = botData.dimension != null ? botData.dimension : "minecraft:overworld";
+                                        float yaw = botData.yaw != null ? botData.yaw : 0.0f;
+                                        float pitch = botData.pitch != null ? botData.pitch : 0.0f;
+                                        String tpCmd = String.format(java.util.Locale.US, "execute in %s run tp %s %.2f %.2f %.2f %.2f %.2f",
+                                                dim, botName, botData.x, botData.y, botData.z, yaw, pitch);
+                                        server.getCommands().performPrefixedCommand(source, tpCmd);
+                                        System.out.println("[CraftCore] Teleported " + botName + " to recorded location: " + tpCmd);
+                                    }
                                 }
                             } catch (Throwable t) {
                                 System.err.println("[CraftCore] Failed to auto-reconnect bot " + botName + ": " + t.getMessage());

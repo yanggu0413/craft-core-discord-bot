@@ -725,7 +725,7 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mt-6 border-t border-border pt-4 text-xs">
                   <div className="p-2.5 bg-muted/30 border border-border rounded-md">
                     <p className="text-[9px] uppercase font-bold text-muted-foreground">帳戶金幣餘額</p>
-                    <p className="text-sm font-bold text-emerald-500 font-mono mt-0.5">${searchedProfile.balance.toLocaleString()} 元</p>
+                    <p className="text-sm font-bold text-emerald-500 font-mono mt-0.5">${Math.floor(searchedProfile.balance).toLocaleString()} 元</p>
                   </div>
                   <div className="p-2.5 bg-muted/30 border border-border rounded-md">
                     <p className="text-[9px] uppercase font-bold text-muted-foreground">遊戲內座標</p>

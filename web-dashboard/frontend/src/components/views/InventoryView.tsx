@@ -299,7 +299,7 @@ export default function InventoryView({
                 <div className="space-y-1 text-left">
                   <label className="text-[10px] font-bold text-muted-foreground uppercase flex justify-between">
                     <span>匯款金額 (元)</span>
-                    <span className="text-emerald-500">可用：${userBalance.toLocaleString()}</span>
+                    <span className="text-emerald-500">可用：${Math.floor(userBalance).toLocaleString()}</span>
                   </label>
                   <Input
                     type="number"

@@ -1,0 +1,22 @@
+{
+  "steve": {
+    "home3": {
+      "name": "home3",
+      "x": 5.0,
+      "y": 5.0,
+      "z": 5.0,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "dimension": "minecraft:overworld"
+    },
+    "home2": {
+      "name": "home2",
+      "x": 1.0,
+      "y": 2.0,
+      "z": 3.0,
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "dimension": "minecraft:overworld"
+    }
+  }
+}

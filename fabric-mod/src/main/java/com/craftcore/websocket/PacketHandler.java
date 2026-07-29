@@ -14,10 +14,21 @@ public class PacketHandler {
     private static final Gson GSON = new Gson();
 
     private static net.minecraft.server.level.ServerPlayer getPlayerCaseInsensitive(MinecraftServer server, String username) {
-        if (username == null) return null;
+        if (username == null || username.trim().isEmpty()) return null;
+        String cleanTarget = username.trim().replaceFirst("^\\.", "");
         for (net.minecraft.server.level.ServerPlayer p : server.getPlayerList().getPlayers()) {
-            if (p.getName().getString().equalsIgnoreCase(username)) {
+            String pName = p.getName().getString();
+            if (pName.equalsIgnoreCase(username)) {
                 return p;
+            }
+            if (pName.replaceFirst("^\\.", "").equalsIgnoreCase(cleanTarget)) {
+                return p;
+            }
+            if (p.getGameProfile() != null && p.getGameProfile().name() != null) {
+                String profName = p.getGameProfile().name();
+                if (profName.equalsIgnoreCase(username) || profName.replaceFirst("^\\.", "").equalsIgnoreCase(cleanTarget)) {
+                    return p;
+                }
             }
         }
         return null;
@@ -255,6 +266,58 @@ public class PacketHandler {
                             client.send(new Packet("rename_shop_response", new GenericActionResponsePayload(payload.query_id, true, "Shop renamed successfully!", 0.0)));
                         } else {
                             client.send(new Packet("rename_shop_response", new GenericActionResponsePayload(payload.query_id, false, "Failed to deduct money", 0.0)));
+                        }
+                    });
+                    break;
+                }
+                case "shop_action": {
+                    String queryId = payloadObj.has("query_id") ? payloadObj.get("query_id").getAsString() : null;
+                    String action = payloadObj.has("action") ? payloadObj.get("action").getAsString() : "";
+                    String username = payloadObj.has("username") ? payloadObj.get("username").getAsString() : "";
+                    String coords = payloadObj.has("coords") ? payloadObj.get("coords").getAsString() : "";
+
+                    server.execute(() -> {
+                        com.craftcore.shop.ShopManager.Shop shop = com.craftcore.shop.ShopManager.getShop(coords);
+                        if (shop == null) {
+                            client.send(new Packet("shop_action_response", new GenericActionResponsePayload(queryId, false, "Shop not found", 0.0)));
+                            return;
+                        }
+
+                        if ("withdraw".equalsIgnoreCase(action)) {
+                            if (!shop.player.equalsIgnoreCase(username) && !shop.player.replaceAll("^\\.", "").equalsIgnoreCase(username.replaceAll("^\\.", ""))) {
+                                client.send(new Packet("shop_action_response", new GenericActionResponsePayload(queryId, false, "您無權提領他人商店的營業額！", 0.0)));
+                                return;
+                            }
+                            double revenue = shop.revenue;
+                            if (revenue <= 0.0) {
+                                client.send(new Packet("shop_action_response", new GenericActionResponsePayload(queryId, false, "No pending revenue to withdraw", 0.0)));
+                                return;
+                            }
+                            shop.revenue = 0.0;
+                            com.craftcore.shop.ShopManager.save();
+                            com.craftcore.economy.EconomyManager.addMoney(shop.player, revenue);
+                            client.send(new Packet("shop_action_response", new GenericActionResponsePayload(queryId, true, "Revenue withdrawn successfully", revenue)));
+                        } else if ("rename".equalsIgnoreCase(action)) {
+                            if (!shop.player.equalsIgnoreCase(username) && !shop.player.replaceAll("^\\.", "").equalsIgnoreCase(username.replaceAll("^\\.", ""))) {
+                                client.send(new Packet("shop_action_response", new GenericActionResponsePayload(queryId, false, "您無權修改他人商店名稱！", 0.0)));
+                                return;
+                            }
+                            String customName = payloadObj.has("custom_name") ? payloadObj.get("custom_name").getAsString() : null;
+                            if (customName == null || customName.trim().isEmpty() || customName.length() > 15) {
+                                client.send(new Packet("shop_action_response", new GenericActionResponsePayload(queryId, false, "商店名稱長度必須介於 1 到 15 個字元", 0.0)));
+                                return;
+                            }
+                            double balance = com.craftcore.economy.EconomyManager.getBalance(username);
+                            if (balance < 5000.0) {
+                                client.send(new Packet("shop_action_response", new GenericActionResponsePayload(queryId, false, "Insufficient funds ($5000 required)", 0.0)));
+                                return;
+                            }
+                            com.craftcore.economy.EconomyManager.removeMoney(username, 5000.0);
+                            shop.customName = customName.trim();
+                            com.craftcore.shop.ShopManager.save();
+                            client.send(new Packet("shop_action_response", new GenericActionResponsePayload(queryId, true, "商店名稱已更新為: " + customName, 0.0)));
+                        } else {
+                            client.send(new Packet("shop_action_response", new GenericActionResponsePayload(queryId, false, "未知的商店動作", 0.0)));
                         }
                     });
                     break;

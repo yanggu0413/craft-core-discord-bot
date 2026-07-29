@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { db, sendWsQuery, getCachedData, setCachedData, invalidateCachePattern, CustomRequest, JWT_SECRET, ADMIN_DISCORD_IDS } from '../websocket/wsClient';
 import { authenticateToken } from '../middleware/auth';
-import { loadConfigJson } from '../utils/configLoader';
+import { loadConfigJson, saveConfigJson } from '../utils/configLoader';
 
 const router = Router();
 
@@ -135,8 +135,8 @@ router.get('/stats', async (req: Request, res: Response) => {
 
 // GET /api/leaderboard - Top wealth players
 router.get('/leaderboard', async (req: Request, res: Response) => {
-  let leaderboard: any[] = [];
   const ecoMap = loadConfigJson<Record<string, any>>('economy.json') || {};
+  let dbBindingsMap: Record<string, any> = {};
 
   if (db) {
     try {
@@ -144,55 +144,64 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
         SELECT mc_username as username, keys_count, checkin_streak, total_checkins
         FROM bindings
       `).all() as any[];
-
-      if (rows && rows.length > 0) {
-        leaderboard = rows.map((row) => {
-          const playerEco = ecoMap[row.username] || Object.values(ecoMap).find((v: any) =>
-            v && typeof v === 'object' && (v.username?.toLowerCase() === row.username.toLowerCase() || v.name?.toLowerCase() === row.username.toLowerCase())
-          );
-          const realBalance = playerEco && typeof playerEco.balance === 'number' ? playerEco.balance : 0.0;
-
-          return {
-            username: row.username,
-            mc_username: row.username,
-            balance: realBalance,
-            keys_count: Number(row.keys_count) || 0,
-            checkin_streak: Number(row.checkin_streak) || 0,
-            total_checkins: Number(row.total_checkins) || 0,
-            shopsCount: 0,
-            avatar: `https://mc-heads.net/avatar/${row.username}/64`
-          };
-        })
-        .sort((a, b) => b.balance - a.balance)
-        .map((item, idx) => ({ rank: idx + 1, ...item }))
-        .slice(0, 10);
+      if (rows) {
+        for (const row of rows) {
+          if (row.username) {
+            dbBindingsMap[row.username.toLowerCase()] = row;
+          }
+        }
       }
     } catch (e) {
       console.warn('[Leaderboard] Database query failed:', e);
     }
   }
 
-  if (leaderboard.length === 0 && Object.keys(ecoMap).length > 0) {
-    const entries = Object.entries(ecoMap)
-      .map(([uuid, data]: [string, any]) => ({
-        username: data.username || data.name || uuid,
-        balance: Number(data.balance) || 0.0
-      }))
-      .sort((a, b) => b.balance - a.balance)
-      .slice(0, 10);
+  const allPlayersMap = new Map<string, { username: string; balance: number; keys_count: number; checkin_streak: number; total_checkins: number }>();
 
-    leaderboard = entries.map((item, idx) => ({
+  // 1. Process economy.json (all players with money, bound or unbound)
+  for (const [key, data] of Object.entries(ecoMap)) {
+    if (!data || typeof data !== 'object') continue;
+    const uname = data.username || data.name || key;
+    if (!uname || uname.startsWith("fp_")) continue; // Skip fake players
+    const bal = typeof data.balance === 'number' ? data.balance : 0.0;
+    const dbData = dbBindingsMap[uname.toLowerCase()];
+
+    allPlayersMap.set(uname.toLowerCase(), {
+      username: uname,
+      balance: bal,
+      keys_count: dbData ? (Number(dbData.keys_count) || 0) : 0,
+      checkin_streak: dbData ? (Number(dbData.checkin_streak) || 0) : 0,
+      total_checkins: dbData ? (Number(dbData.total_checkins) || 0) : 0
+    });
+  }
+
+  // 2. Process DB bindings for any bound players not in economy.json
+  for (const [lowerName, dbData] of Object.entries(dbBindingsMap)) {
+    if (!allPlayersMap.has(lowerName)) {
+      allPlayersMap.set(lowerName, {
+        username: dbData.username,
+        balance: 0.0,
+        keys_count: Number(dbData.keys_count) || 0,
+        checkin_streak: Number(dbData.checkin_streak) || 0,
+        total_checkins: Number(dbData.total_checkins) || 0
+      });
+    }
+  }
+
+  const leaderboard = Array.from(allPlayersMap.values())
+    .sort((a, b) => b.balance - a.balance)
+    .slice(0, 10)
+    .map((item, idx) => ({
       rank: idx + 1,
       username: item.username,
       mc_username: item.username,
-      balance: item.balance,
-      keys_count: 0,
-      checkin_streak: 0,
-      total_checkins: 0,
+      balance: Math.floor(item.balance),
+      keys_count: item.keys_count,
+      checkin_streak: item.checkin_streak,
+      total_checkins: item.total_checkins,
       shopsCount: 0,
       avatar: `https://mc-heads.net/avatar/${item.username}/64`
     }));
-  }
 
   return res.json({ success: true, leaderboard });
 });
@@ -435,15 +444,58 @@ router.get('/user/mails', authenticateToken, (req: CustomRequest, res: Response)
   });
 });
 
-// POST /api/mail/send - Send mail package
+// POST /api/mail/send - Send mail package or money transfer
 router.post('/mail/send', authenticateToken, async (req: CustomRequest, res: Response) => {
   const user = req.user;
   if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
 
-  const { receiver_username, item_id, quantity, nbt } = req.body;
-  if (!receiver_username || !item_id || !quantity) {
-    return res.status(400).json({ success: false, message: '缺少接收者、物品 ID 或數量參數' });
+  const { receiver_username, receiver, type, amount, item_id, quantity, nbt } = req.body;
+  const targetReceiver = (receiver_username || receiver || '').trim();
+
+  if (!targetReceiver) {
+    return res.status(400).json({ success: false, message: '請提供接收者玩家名稱' });
   }
+
+  // Handle Money Transfer
+  if (type === 'money' || (amount !== undefined && Number(amount) > 0)) {
+    const payAmount = Number(amount);
+    if (isNaN(payAmount) || payAmount <= 0) {
+      return res.status(400).json({ success: false, message: '請輸入有效的轉帳金額' });
+    }
+
+    try {
+      // Try in-game pay command first
+      const payResponse = await sendWsQuery('command_request', {
+        command: `/pay ${targetReceiver} ${payAmount}`
+      }, 3000);
+
+      if (payResponse && payResponse.success) {
+        return res.json({ success: true, message: `成功轉帳 $${Math.floor(payAmount)} 元給玩家 ${targetReceiver}！` });
+      }
+    } catch (e) {}
+
+    // Fallback: update economy.json directly
+    const ecoMap = loadConfigJson<Record<string, any>>('economy.json') || {};
+    const senderEcoKey = Object.keys(ecoMap).find(k => k.toLowerCase() === user.mc_username.toLowerCase()) || user.mc_username;
+    const receiverEcoKey = Object.keys(ecoMap).find(k => k.toLowerCase() === targetReceiver.toLowerCase()) || targetReceiver;
+
+    const senderBalance = ecoMap[senderEcoKey]?.balance || 0;
+    if (senderBalance < payAmount) {
+      return res.status(400).json({ success: false, message: '您的餘額不足！' });
+    }
+
+    if (!ecoMap[senderEcoKey]) ecoMap[senderEcoKey] = { username: user.mc_username, balance: senderBalance };
+    if (!ecoMap[receiverEcoKey]) ecoMap[receiverEcoKey] = { username: targetReceiver, balance: 0 };
+
+    ecoMap[senderEcoKey].balance = Math.max(0, ecoMap[senderEcoKey].balance - payAmount);
+    ecoMap[receiverEcoKey].balance = (ecoMap[receiverEcoKey].balance || 0) + payAmount;
+    saveConfigJson('economy.json', ecoMap);
+    return res.json({ success: true, message: `成功電子匯款 $${Math.floor(payAmount)} 元給玩家 ${targetReceiver}！` });
+  }
+
+  // Handle Item Package Mail
+  const itemId = item_id || 'minecraft:paper';
+  const qty = Number(quantity || 1);
 
   if (db) {
     try {
@@ -451,14 +503,14 @@ router.post('/mail/send', authenticateToken, async (req: CustomRequest, res: Res
         INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, nbt, status)
         VALUES (?, ?, ?, ?, ?, ?, 'pending')
       `);
-      insertStmt.run(user.discord_id || 'system', user.mc_username, receiver_username, item_id, Number(quantity), nbt || null);
-      return res.json({ success: true, message: `包裹已成功寄出給 ${receiver_username}！` });
+      insertStmt.run(user.discord_id || 'system', user.mc_username, targetReceiver, itemId, qty, nbt || null);
+      return res.json({ success: true, message: `包裹已成功寄出給 ${targetReceiver}！` });
     } catch (error: any) {
       return res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  return res.json({ success: true, message: `包裹已成功寄出給 ${receiver_username}！` });
+  return res.json({ success: true, message: `包裹已成功寄出給 ${targetReceiver}！` });
 });
 
 // GET /api/user/inventory - 41 slot player inventory
@@ -872,9 +924,11 @@ router.get('/tasks/daily', async (req: Request, res: Response) => {
     if (response && response.success) {
       const slay_task = response.slay_task;
       const mine_task = response.mine_task;
+      const slayClaimed = Boolean(response.slay_claimed !== undefined ? response.slay_claimed : response.has_claimed);
+      const mineClaimed = Boolean(response.mine_claimed !== undefined ? response.mine_claimed : response.has_claimed);
       const tasks = [
-        { type: 1, target: slay_task?.target || 'Zombie', count: slay_task?.count || 15, reward: slay_task?.reward || 250, progress: response.slay_progress || 0, claimed: Boolean(response.has_claimed) },
-        { type: 2, target: mine_task?.target || 'Coal Ore', count: mine_task?.count || 20, reward: mine_task?.reward || 200, progress: response.mine_progress || 0, claimed: Boolean(response.has_claimed) }
+        { type: 1, target: slay_task?.target || 'Zombie', count: slay_task?.count || 15, reward: slay_task?.reward || 250, progress: response.slay_progress || 0, claimed: slayClaimed },
+        { type: 2, target: mine_task?.target || 'Coal Ore', count: mine_task?.count || 20, reward: mine_task?.reward || 200, progress: response.mine_progress || 0, claimed: mineClaimed }
       ];
       return res.json({
         success: true,
@@ -884,27 +938,41 @@ router.get('/tasks/daily', async (req: Request, res: Response) => {
         tasks,
         slay_progress: response.slay_progress || 0,
         mine_progress: response.mine_progress || 0,
-        has_claimed: Boolean(response.has_claimed),
+        slay_claimed: slayClaimed,
+        mine_claimed: mineClaimed,
+        has_claimed: slayClaimed && mineClaimed,
         is_completed: Boolean(response.is_completed)
       });
     }
   } catch (error: any) {}
 
+  // Fallback: Read directly from economy.json
+  const ecoMap = loadConfigJson<Record<string, any>>('economy.json') || {};
+  const ecoKey = Object.keys(ecoMap).find(k => k.toLowerCase() === username!.toLowerCase()) || username;
+  const pEco = ecoMap[ecoKey] || {};
+  const slayProg = pEco.daily_slay_progress || 0;
+  const mineProg = pEco.daily_gather_progress || 0;
+  const slayClaimed = Boolean(pEco.daily_slay_claimed);
+  const mineClaimed = Boolean(pEco.daily_gather_claimed);
+
   const fallbackTasks = getDailyTasksFallback(dateStr);
   const tasks = [
-    { type: 1, target: fallbackTasks[0].target, count: fallbackTasks[0].count, reward: fallbackTasks[0].reward, progress: 0, claimed: false },
-    { type: 2, target: fallbackTasks[1].target, count: fallbackTasks[1].count, reward: fallbackTasks[1].reward, progress: 0, claimed: false }
+    { type: 1, target: fallbackTasks[0].target, count: fallbackTasks[0].count, reward: fallbackTasks[0].reward, progress: slayProg, claimed: slayClaimed },
+    { type: 2, target: fallbackTasks[1].target, count: fallbackTasks[1].count, reward: fallbackTasks[1].reward, progress: mineProg, claimed: mineClaimed }
   ];
+
   return res.json({
     success: true,
     date: dateStr,
     slay_task: fallbackTasks[0],
     mine_task: fallbackTasks[1],
     tasks,
-    slay_progress: 0,
-    mine_progress: 0,
-    has_claimed: false,
-    is_completed: false
+    slay_progress: slayProg,
+    mine_progress: mineProg,
+    slay_claimed: slayClaimed,
+    mine_claimed: mineClaimed,
+    has_claimed: slayClaimed && mineClaimed,
+    is_completed: slayProg >= fallbackTasks[0].count && mineProg >= fallbackTasks[1].count
   });
 });
 

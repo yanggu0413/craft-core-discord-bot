@@ -89,7 +89,7 @@ export default function HomeView({
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center text-emerald-500 font-bold font-mono">
-                      💰 ${userBalance.toLocaleString()} 元
+                      💰 ${Math.floor(userBalance).toLocaleString()} 元
                     </span>
                     <span>•</span>
                     <span className="flex items-center font-mono">
@@ -404,7 +404,7 @@ export default function HomeView({
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-bold text-emerald-500 font-mono py-2">
-                          ${player.balance.toLocaleString()}
+                          ${Math.floor(player.balance).toLocaleString()}
                         </TableCell>
                       </TableRow>
                     );

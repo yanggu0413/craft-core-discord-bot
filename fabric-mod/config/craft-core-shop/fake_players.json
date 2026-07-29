@@ -1,0 +1,10 @@
+{
+  "fp_bot2": {
+    "owner": "Steve",
+    "enabled": true
+  },
+  "fp_bot1": {
+    "owner": "Steve",
+    "enabled": true
+  }
+}
