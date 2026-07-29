@@ -97,7 +97,13 @@ fabric-mod/*.bak
 fabric-mod/build-reviewer/
 scratch/
 web-dashboard/backend/test_admin_security.js
-web-dashboard/backend/verify_checkin_playtime.js
-LuckPerm.zip
-LuckPerms/
+# Minecraft Configs
+config/craft-core-shop/
+**/config/craft-core-shop/*
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!components.json
+!fabric-mod/src/main/resources/*.json
 
