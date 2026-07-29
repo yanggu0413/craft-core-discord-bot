@@ -49,7 +49,7 @@ public class FakePlayerManager {
 
     private static Path configPath;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Map<String, FakePlayerEntry> fakePlayers = new ConcurrentHashMap<>(); // Key: botName, Value: FakePlayerEntry
+    private static final Map<String, FakePlayerEntry> fakePlayers = new ConcurrentHashMap<>();
 
     static {
         try {
@@ -72,13 +72,32 @@ public class FakePlayerManager {
                         String botName = entry.getKey().toLowerCase();
                         JsonElement val = entry.getValue();
                         if (val.isJsonPrimitive()) {
-                            // Backward compatibility: "botname": "owner"
                             fakePlayers.put(botName, new FakePlayerEntry(val.getAsString(), true));
                         } else if (val.isJsonObject()) {
                             JsonObject obj = val.getAsJsonObject();
                             String owner = obj.has("owner") ? obj.get("owner").getAsString() : "Unknown";
                             boolean enabled = !obj.has("enabled") || obj.get("enabled").getAsBoolean();
-                            fakePlayers.put(botName, new FakePlayerEntry(owner, enabled));
+                            FakePlayerEntry botEntry = new FakePlayerEntry(owner, enabled);
+
+                            if (obj.has("dimension") && !obj.get("dimension").isJsonNull()) {
+                                botEntry.dimension = obj.get("dimension").getAsString();
+                            }
+                            if (obj.has("x") && !obj.get("x").isJsonNull()) {
+                                botEntry.x = obj.get("x").getAsDouble();
+                            }
+                            if (obj.has("y") && !obj.get("y").isJsonNull()) {
+                                botEntry.y = obj.get("y").getAsDouble();
+                            }
+                            if (obj.has("z") && !obj.get("z").isJsonNull()) {
+                                botEntry.z = obj.get("z").getAsDouble();
+                            }
+                            if (obj.has("yaw") && !obj.get("yaw").isJsonNull()) {
+                                botEntry.yaw = obj.get("yaw").getAsFloat();
+                            }
+                            if (obj.has("pitch") && !obj.get("pitch").isJsonNull()) {
+                                botEntry.pitch = obj.get("pitch").getAsFloat();
+                            }
+                            fakePlayers.put(botName, botEntry);
                         }
                     }
                 }
@@ -98,6 +117,23 @@ public class FakePlayerManager {
             } catch (IOException e) {
                 System.err.println("[CraftCore] Failed to save fake players: " + e.getMessage());
             }
+        }
+    }
+
+    public static synchronized void saveAllCurrentPositions(MinecraftServer server) {
+        if (server == null || server.getPlayerList() == null) return;
+        boolean changed = false;
+        for (Map.Entry<String, FakePlayerEntry> entry : fakePlayers.entrySet()) {
+            String botName = entry.getKey();
+            ServerPlayer sp = server.getPlayerList().getPlayerByName(botName);
+            if (sp != null) {
+                String dim = sp.level().dimension().identifier().toString();
+                entry.getValue().setLocation(dim, sp.getX(), sp.getY(), sp.getZ(), sp.getYRot(), sp.getXRot());
+                changed = true;
+            }
+        }
+        if (changed) {
+            save();
         }
     }
 
@@ -172,27 +208,11 @@ public class FakePlayerManager {
         positionRecorderScheduler.scheduleAtFixedRate(() -> {
             try {
                 if (server == null || server.getPlayerList() == null) return;
-                server.execute(() -> {
-                    boolean changed = false;
-                    synchronized (FakePlayerManager.class) {
-                        for (Map.Entry<String, FakePlayerEntry> entry : fakePlayers.entrySet()) {
-                            String botName = entry.getKey();
-                            ServerPlayer sp = server.getPlayerList().getPlayerByName(botName);
-                            if (sp != null) {
-                                String dim = sp.level().dimension().identifier().toString();
-                                entry.getValue().setLocation(dim, sp.getX(), sp.getY(), sp.getZ(), sp.getYRot(), sp.getXRot());
-                                changed = true;
-                            }
-                        }
-                    }
-                    if (changed) {
-                        save();
-                    }
-                });
+                server.execute(() -> saveAllCurrentPositions(server));
             } catch (Throwable t) {
                 System.err.println("[CraftCore] Failed to record fake player positions: " + t.getMessage());
             }
-        }, 5, 5, TimeUnit.MINUTES);
+        }, 1, 1, TimeUnit.MINUTES);
     }
 
     public static void scheduleAutoReconnect(MinecraftServer server) {
@@ -220,7 +240,7 @@ public class FakePlayerManager {
                     return;
                 }
 
-                System.out.println("[CraftCore] Auto-reconnecting " + botsToReconnect.size() + " fake player(s) with 0.5s interval...");
+                System.out.println("[CraftCore] Auto-reconnecting " + botsToReconnect.size() + " fake player(s) at saved positions...");
                 for (int i = 0; i < botsToReconnect.size(); i++) {
                     final String botName = botsToReconnect.get(i);
                     scheduler.schedule(() -> {
@@ -229,18 +249,27 @@ public class FakePlayerManager {
                                 ServerPlayer checkPlayer = server.getPlayerList().getPlayerByName(botName);
                                 if (checkPlayer == null) {
                                     var source = server.createCommandSourceStack();
-                                    server.getCommands().performPrefixedCommand(source, "player " + botName + " spawn");
-                                    System.out.println("[CraftCore] Auto-reconnected fake player bot: " + botName);
-
                                     FakePlayerEntry botData = fakePlayers.get(botName.toLowerCase());
+
                                     if (botData != null && botData.x != null && botData.y != null && botData.z != null) {
                                         String dim = botData.dimension != null ? botData.dimension : "minecraft:overworld";
                                         float yaw = botData.yaw != null ? botData.yaw : 0.0f;
                                         float pitch = botData.pitch != null ? botData.pitch : 0.0f;
+
+                                        // 1. Try Carpet Carpet Mod direct spawn at coordinates
+                                        String carpetSpawnCmd = String.format(java.util.Locale.US, "player %s spawn at %.2f %.2f %.2f facing %.2f %.2f in %s",
+                                                botName, botData.x, botData.y, botData.z, yaw, pitch, dim);
+                                        server.getCommands().performPrefixedCommand(source, carpetSpawnCmd);
+
+                                        // 2. Fallback TP to ensure exact position & rotation
                                         String tpCmd = String.format(java.util.Locale.US, "execute in %s run tp %s %.2f %.2f %.2f %.2f %.2f",
                                                 dim, botName, botData.x, botData.y, botData.z, yaw, pitch);
                                         server.getCommands().performPrefixedCommand(source, tpCmd);
-                                        System.out.println("[CraftCore] Teleported " + botName + " to recorded location: " + tpCmd);
+
+                                        System.out.println("[CraftCore] Auto-reconnected bot " + botName + " at recorded position: " + carpetSpawnCmd);
+                                    } else {
+                                        server.getCommands().performPrefixedCommand(source, "player " + botName + " spawn");
+                                        System.out.println("[CraftCore] Auto-reconnected bot " + botName + " at default spawn.");
                                     }
                                 }
                             } catch (Throwable t) {

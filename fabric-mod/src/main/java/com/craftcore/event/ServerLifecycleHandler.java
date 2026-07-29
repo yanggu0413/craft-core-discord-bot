@@ -53,6 +53,7 @@ public class ServerLifecycleHandler {
                     greetingScheduler = null;
                 }
             }
+            com.craftcore.fakeplayer.FakePlayerManager.saveAllCurrentPositions(server);
             com.craftcore.backup.BackupManager.stopAutoBackupLoop();
             CraftCoreMod.stopWSClient();
         });
