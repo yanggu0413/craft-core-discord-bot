@@ -5,6 +5,9 @@ import com.craftcore.shop.ShopGuiManager;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
@@ -536,6 +539,54 @@ public class ChestShopEventHandler {
                         sender.playSound(SoundEvents.VILLAGER_NO, 1.0f, 1.0f);
                     }
                     return false;
+                }
+            }
+            return true;
+        });
+
+        // 5. Claim Entity Protection (AttackEntityCallback)
+        AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (world.isClientSide()) return InteractionResult.PASS;
+            if (player instanceof ServerPlayer serverPlayer) {
+                BlockPos pos = entity.blockPosition();
+                ClaimManager.Claim claim = ClaimManager.getClaimAt(pos, world);
+                if (claim != null) {
+                    if (!ClaimManager.checkPermission(serverPlayer, pos, world, "interact")) {
+                        serverPlayer.sendSystemMessage(Component.literal("§c[Craft-Core] 領地保護：您無權傷害玩家 §e" + claim.owner + " §c領地內的生物/物品！"));
+                        return InteractionResult.FAIL;
+                    }
+                }
+            }
+            return InteractionResult.PASS;
+        });
+
+        // 6. Claim Entity Interaction Protection (UseEntityCallback)
+        UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (world.isClientSide()) return InteractionResult.PASS;
+            if (player instanceof ServerPlayer serverPlayer) {
+                BlockPos pos = entity.blockPosition();
+                ClaimManager.Claim claim = ClaimManager.getClaimAt(pos, world);
+                if (claim != null) {
+                    if (!ClaimManager.checkPermission(serverPlayer, pos, world, "interact")) {
+                        serverPlayer.sendSystemMessage(Component.literal("§c[Craft-Core] 領地保護：您無權互動玩家 §e" + claim.owner + " §c領地內的生物/物品！"));
+                        return InteractionResult.FAIL;
+                    }
+                }
+            }
+            return InteractionResult.PASS;
+        });
+
+        // 7. Claim Living Entity Damage Protection (ServerLivingEntityEvents.ALLOW_DAMAGE)
+        ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
+            if (entity.level().isClientSide()) return true;
+            if (source.getEntity() instanceof ServerPlayer attacker) {
+                BlockPos pos = entity.blockPosition();
+                ClaimManager.Claim claim = ClaimManager.getClaimAt(pos, entity.level());
+                if (claim != null) {
+                    if (!ClaimManager.checkPermission(attacker, pos, entity.level(), "interact")) {
+                        attacker.sendSystemMessage(Component.literal("§c[Craft-Core] 領地保護：您無權傷害玩家 §e" + claim.owner + " §c領地內的生物！"));
+                        return false;
+                    }
                 }
             }
             return true;
