@@ -337,6 +337,20 @@ router.get('/user/profile', authenticateToken, async (req: CustomRequest, res: R
     console.warn('[Profile API] Failed to fetch balance via WS:', error.message);
   }
 
+  let online = false;
+  let coords = '離線';
+  let tps = 20.0;
+  try {
+    const statusRes = await sendWsQuery('player_status_query', { username }, 1000);
+    if (statusRes && statusRes.online) {
+      online = true;
+      coords = statusRes.coords || '線上';
+      if (typeof statusRes.tps === 'number') tps = statusRes.tps;
+    }
+  } catch (e) {
+    console.warn('[Profile API] Failed to fetch player online status:', e);
+  }
+
   let dbStats: any = {};
   if (db) {
     try {
@@ -365,6 +379,9 @@ router.get('/user/profile', authenticateToken, async (req: CustomRequest, res: R
       mc_username: username,
       mc_uuid: user.mc_uuid,
       balance,
+      online,
+      coords,
+      tps,
       isAdmin,
       ...dbStats
     }
