@@ -579,13 +579,17 @@ public class ChestShopEventHandler {
         // 7. Claim Living Entity Damage Protection (ServerLivingEntityEvents.ALLOW_DAMAGE)
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
             if (entity.level().isClientSide()) return true;
-            if (source.getEntity() instanceof ServerPlayer attacker) {
-                BlockPos pos = entity.blockPosition();
-                ClaimManager.Claim claim = ClaimManager.getClaimAt(pos, entity.level());
-                if (claim != null) {
+            BlockPos pos = entity.blockPosition();
+            ClaimManager.Claim claim = ClaimManager.getClaimAt(pos, entity.level());
+            if (claim != null) {
+                if (source.getEntity() instanceof ServerPlayer attacker) {
                     if (!ClaimManager.checkPermission(attacker, pos, entity.level(), "interact")) {
                         attacker.sendSystemMessage(Component.literal("§c[Craft-Core] 領地保護：您無權傷害玩家 §e" + claim.owner + " §c領地內的生物！"));
                         return false;
+                    }
+                } else if (source.is(net.minecraft.world.damagesource.DamageTypes.EXPLOSION) || source.is(net.minecraft.world.damagesource.DamageTypes.PLAYER_EXPLOSION)) {
+                    if (!(entity instanceof ServerPlayer)) {
+                        return false; // Prevent explosions from killing animals/villagers inside claims
                     }
                 }
             }

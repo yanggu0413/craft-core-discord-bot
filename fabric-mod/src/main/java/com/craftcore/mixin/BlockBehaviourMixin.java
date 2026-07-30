@@ -19,6 +19,12 @@ import net.minecraft.core.Direction;
 public class BlockBehaviourMixin {
     @Inject(method = "onExplosionHit", at = @At("HEAD"), cancellable = true)
     private void onExplosionHit(BlockState state, ServerLevel level, BlockPos pos, Explosion explosion, BiConsumer<ItemStack, BlockPos> dropConsumer, CallbackInfo ci) {
+        // 1. Claim protection: 100% cancel explosion block destruction inside any claim
+        if (com.craftcore.claim.ClaimManager.getClaimAt(pos, level) != null) {
+            ci.cancel();
+            return;
+        }
+
         String coords = pos.getX() + "," + pos.getY() + "," + pos.getZ();
         String dimension = level.dimension().identifier().toString();
         String key = dimension + ":" + coords;
