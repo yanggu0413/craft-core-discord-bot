@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   BarChart3, ShoppingBag, TrendingUp, User, Shield, 
   Settings, LogOut, Sun, Moon, Menu, X, Compass, Mail, ShieldAlert, Gift,
-  Cpu, MapPin, Sparkles
+  Cpu, MapPin, Sparkles, BookOpen
 } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -64,6 +64,12 @@ export default function DashboardLayout({
         { id: 'inventory', label: '郵局與背包', icon: Mail }
       ]
     },
+    {
+      title: '說明與維基',
+      items: [
+        { id: 'docs', label: '官方說明文檔', icon: BookOpen, externalUrl: '/docs/' }
+      ]
+    },
     ...(token ? [{
       title: '遊戲快捷',
       items: [
@@ -82,8 +88,12 @@ export default function DashboardLayout({
   const allItems = navigationCategories.flatMap(cat => cat.items);
   const currentTabLabel = allItems.find(item => item.id === activeTab)?.label || '';
 
-  const handleTabClick = (tabId: typeof activeTab) => {
-    setActiveTab(tabId);
+  const handleTabClick = (item: any) => {
+    if (item.externalUrl) {
+      window.open(item.externalUrl, '_blank');
+      return;
+    }
+    setActiveTab(item.id);
     setMobileMenuOpen(false);
   };
 
@@ -99,7 +109,7 @@ export default function DashboardLayout({
             return (
               <button
                 key={item.id}
-                onClick={() => handleTabClick(item.id as any)}
+                onClick={() => handleTabClick(item)}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   isActive 
                     ? 'bg-primary text-primary-foreground shadow-sm' 

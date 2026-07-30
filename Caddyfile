@@ -15,7 +15,14 @@ dash.craft-core.xyz {
         reverse_proxy localhost:3000
     }
 
-    # 3. 其他所有請求（包含 React/Vite 路由）交給靜態檔案伺服器直接服務
+    # 3. 官方說明文檔 Vitepress 靜態網站
+    handle /docs/* {
+        root * /var/www/craft-core/docs
+        file_server
+        try_files {path} {path}/ /index.html
+    }
+
+    # 4. 其他所有請求（包含 React/Vite 路由）交給靜態檔案伺服器直接服務
     handle {
         root * /var/www/craft-core/dashboard
         file_server
