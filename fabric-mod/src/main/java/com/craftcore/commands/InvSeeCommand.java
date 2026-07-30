@@ -6,23 +6,29 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.Permissions;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class InvSeeCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("invsee")
-                .then(Commands.argument("target", StringArgumentType.string())
+                .then(Commands.argument("target", StringArgumentType.word())
                         .suggests((context, builder) -> {
+                            Set<String> candidates = new HashSet<>();
                             var server = context.getSource().getServer();
                             if (server != null) {
                                 for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-                                    builder.suggest(p.getName().getString());
+                                    candidates.add(p.getName().getString());
                                 }
                             }
-                            return builder.buildFuture();
+                            candidates.addAll(FakePlayerManager.getAllFakePlayers().keySet());
+                            return SharedSuggestionProvider.suggest(candidates, builder);
                         })
                         .executes(context -> {
                             ServerPlayer viewer = context.getSource().getPlayer();
