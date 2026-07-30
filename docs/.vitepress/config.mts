@@ -35,6 +35,7 @@ export default defineConfig({
       {
         text: '🎮 Minecraft 遊戲指南',
         items: [
+          { text: '/menu 54-槽位箱子選單 GUI', link: '/Mc-Menu-System' },
           { text: '每日任務系統', link: '/Mc-Task-System' },
           { text: '全服共同目標與每週懸賞', link: '/Mc-Global-Goal' },
           { text: '整點幸運雨與錦鯉抽獎', link: '/Mc-Hourly-Lottery' },

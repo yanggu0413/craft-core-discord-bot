@@ -1,1 +1,0 @@
-import{_ as a,o as e,c as i,ae as t}from"./chunks/framework.BzQXgbNp.js";const M=JSON.parse('{"title":"維基文件大綱","description":"","frontmatter":{},"headers":[],"relativePath":"SUMMARY.md","filePath":"SUMMARY.md"}'),r={name:"SUMMARY.md"};function h(m,l,o,c,n,f){return e(),i("div",null,[...l[0]||(l[0]=[t("",2)])])}const d=a(r,[["render",h]]);export{M as __pageData,d as default};

@@ -17,6 +17,7 @@ public class ModCommands {
             MachineCommand.register(dispatcher);
             TitleCommand.register(dispatcher);
             RetentionCommands.register(dispatcher);
+            MenuCommand.register(dispatcher);
         });
     }
 }

@@ -11,6 +11,7 @@
   * [每日簽到與抽獎](Web-Welfare.md)
   * [郵局快遞與個人背包](Web-Postal-Inventory.md)
 * [🎮 Minecraft 遊戲指南]
+  * [📜 /menu 54-槽位箱子選單 GUI](Mc-Menu-System.md)
   * [🎪 伺服器活動系統](Mc-Server-Events.md)
   * [每日任務系統](Mc-Task-System.md)
   * [全服共同目標與每週懸賞](Mc-Global-Goal.md)

@@ -29,6 +29,7 @@
 * 📬 [郵局快遞與個人背包](Web-Postal-Inventory.md) — 即時預覽背包格、發送快遞包裹與金幣電子匯款。
 
 ### 🎮 2. Minecraft 遊戲指南
+* 📜 [/menu 54-槽位箱子選單 GUI](Mc-Menu-System.md) — 全功能視覺化箱子選單大廳（/menu、/m、/cd）。
 * ⚔️ [每日任務系統](Mc-Task-System.md) — 遊戲內擊殺與挖掘任務的玩法與領賞。
 * 🌐 [全服共同目標與每週懸賞](Mc-Global-Goal.md) — 全服玩家合作達成 100% 目標領取金幣與鑰匙。
 * 🎰 [整點幸運雨與錦鯉抽獎](Mc-Hourly-Lottery.md) — 每整點在線禮包與抽選幸運錦鯉。
