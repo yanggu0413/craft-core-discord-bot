@@ -1,0 +1,20 @@
+---
+layout: home
+
+hero:
+  name: "Craft-Core Hosting"
+  text: "Docker 容器託管開發者文檔"
+  tagline: "提供獨立安全的 Node.js 與 Python 容器環境，支援 REST API 控制、GitHub CI/CD 自動部署與 AI MCP 伺服器整合。"
+  actions:
+    - theme: brand
+      text: 快速上手
+      link: /getting-started
+
+features:
+  - title: REST API 程式化控制
+    details: 使用 Personal Access Token (PAT) 即可從外部 Bash 腳本或 CI/CD 自動啟動、停止或查詢容器日誌。
+  - title: GitHub CI/CD 自動部署
+    details: 綁定 Webhook 後，只要執行 git push，伺服器便會自動進行代碼拉取、套件安裝並重啟服務。
+  - title: AI MCP 伺服器整合
+    details: 支援 Model Context Protocol (JSON-RPC)，允許 AI 助手進行容器自動化調度。
+---

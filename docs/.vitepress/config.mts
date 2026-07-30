@@ -36,6 +36,13 @@ export default defineConfig({
         text: '🎮 Minecraft 遊戲指南',
         items: [
           { text: '每日任務系統', link: '/Mc-Task-System' },
+          { text: '全服共同目標與每週懸賞', link: '/Mc-Global-Goal' },
+          { text: '整點幸運雨與錦鯉抽獎', link: '/Mc-Hourly-Lottery' },
+          { text: '野外藏寶圖與地城寶箱', link: '/Mc-Treasure-Hunt' },
+          { text: '機器認證與免領地費', link: '/Mc-Machine-Certification' },
+          { text: '頭頂炫彩稱號系統', link: '/Mc-Custom-Titles' },
+          { text: '/invsee 玩家與假人背包管理', link: '/Mc-InvSee-System' },
+          { text: '領地生物與實體保護規範', link: '/Mc-Claim-Entity-Protection' },
           { text: '商店系統概覽', link: '/Mc-Shop-System' },
           { text: '如何新增商店', link: '/Mc-Create-Shop' },
           { text: '如何刪除商店', link: '/Mc-Delete-Shop' },

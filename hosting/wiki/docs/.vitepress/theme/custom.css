@@ -1,0 +1,51 @@
+/* Custom Responsive & Layout Fixes for Craft-Core Hosting Wiki */
+:root {
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+}
+
+/* Fix Hero Name Text Overflow / Breaking out of screen */
+.VPHero .name {
+  font-size: clamp(1.8rem, 4.5vw, 3.2rem) !important;
+  line-height: 1.25 !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+}
+
+.VPHero .text {
+  font-size: clamp(1.1rem, 2.5vw, 1.8rem) !important;
+  line-height: 1.3 !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+}
+
+.VPHero .tagline {
+  font-size: clamp(0.85rem, 1.8vw, 1.1rem) !important;
+  line-height: 1.5 !important;
+  max-width: 100% !important;
+}
+
+/* Container & Table Responsive Word Wrapping */
+.vp-doc {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+}
+
+.vp-doc table {
+  display: block !important;
+  overflow-x: auto !important;
+  width: 100% !important;
+}
+
+/* NavBar Menu Tight spacing so it doesn't overflow search bar */
+.VPNavBarMenuLink {
+  font-size: 13px !important;
+  padding: 0 8px !important;
+}
+
+/* Ensure images & code blocks fit inside viewport */
+.vp-doc img, .vp-doc pre {
+  max-width: 100% !important;
+}

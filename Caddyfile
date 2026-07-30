@@ -10,7 +10,7 @@ dash.craft-core.xyz {
         reverse_proxy localhost:3000
     }
 
-    # 2. 將即時同步的 WebSocket 連線轉發至後端 (Port 3000)
+    # 2. 將即時同步的 WebSocket 連線轉發至後end (Port 3000)
     handle /ws {
         reverse_proxy localhost:3000
     }
@@ -18,6 +18,31 @@ dash.craft-core.xyz {
     # 3. 其他所有請求（包含 React/Vite 路由）交給靜態檔案伺服器直接服務
     handle {
         root * /var/www/craft-core/dashboard
+        file_server
+        try_files {path} /index.html
+    }
+}
+
+# ===================================================
+# 容器託管平台 (Craft-Core Hosting Platform)
+# 域名：hosting.craft-core.xyz
+# ===================================================
+hosting.craft-core.xyz {
+    encode zstd gzip
+
+    # 1. 轉發託管 API 請求至 Hosting 後端 (Port 3001)
+    handle /api/* {
+        reverse_proxy localhost:3001
+    }
+
+    # 2. 轉發 Hosting WebSocket 連線至 Backend (Port 3001)
+    handle /ws {
+        reverse_proxy localhost:3001
+    }
+
+    # 3. Hosting Web 前端靜態頁面託管
+    handle {
+        root * /var/www/craft-core/hosting
         file_server
         try_files {path} /index.html
     }

@@ -30,6 +30,13 @@
 
 ### 🎮 2. Minecraft 遊戲指南
 * ⚔️ [每日任務系統](Mc-Task-System.md) — 遊戲內擊殺與挖掘任務的玩法與領賞。
+* 🌐 [全服共同目標與每週懸賞](Mc-Global-Goal.md) — 全服玩家合作達成 100% 目標領取金幣與鑰匙。
+* 🎰 [整點幸運雨與錦鯉抽獎](Mc-Hourly-Lottery.md) — 每整點在線禮包與抽選幸運錦鯉。
+* 🗺️ [野外藏寶圖與地城寶箱](Mc-Treasure-Hunt.md) — 探險開箱獲得大獎與專屬稱號。
+* 🏭 [機器認證與免領地費](Mc-Machine-Certification.md) — 機器評級申請與 T2/T3 免領地費權益。
+* 🎖️ [頭頂炫彩稱號系統](Mc-Custom-Titles.md) — `/title` 選單、解鎖條件與佩戴切換。
+* 🔍 [/invsee 玩家與假人背包管理](Mc-InvSee-System.md) — 54 槽位雙向同步介面、假人與末影箱切換。
+* 🛡️ [領地生物與實體保護規範](Mc-Claim-Entity-Protection.md) — 領地內動物、村民、盔甲架傷害與互動攔截。
 * 🏪 [商店系統概覽](Mc-Shop-System.md) — 玩家基礎買賣操作與商店更名升級。
 * 🔨 [如何新增商店](Mc-Create-Shop.md) — 告示牌寫法規範與手持 `[this]` 自動建立技巧。
 * ❌ [如何刪除商店](Mc-Delete-Shop.md) — 手動敲除與店主面板註銷商店方法。

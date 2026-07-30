@@ -13,6 +13,13 @@
 * [🎮 Minecraft 遊戲指南]
   * [🎪 伺服器活動系統](Mc-Server-Events.md)
   * [每日任務系統](Mc-Task-System.md)
+  * [全服共同目標與每週懸賞](Mc-Global-Goal.md)
+  * [整點幸運雨與錦鯉抽獎](Mc-Hourly-Lottery.md)
+  * [野外藏寶圖與地城寶箱](Mc-Treasure-Hunt.md)
+  * [機器認證與免領地費](Mc-Machine-Certification.md)
+  * [頭頂炫彩稱號系統](Mc-Custom-Titles.md)
+  * [/invsee 玩家與假人背包管理](Mc-InvSee-System.md)
+  * [領地生物與實體保護規範](Mc-Claim-Entity-Protection.md)
   * [商店系統概覽](Mc-Shop-System.md)
   * [如何新增商店](Mc-Create-Shop.md)
   * [如何刪除商店](Mc-Delete-Shop.md)
