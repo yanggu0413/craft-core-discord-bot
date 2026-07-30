@@ -20,7 +20,7 @@ craft-core-shop/
 
 ### [1] `fabric-mod/` — Fabric 伺服器模組 (主伺服器核心)
 - **語言與環境**: Java 25 / Fabric Loader (Minecraft 1.21.4 / 26.2)。
-- **建置命令**: `./gradlew build` ➔ 產出 `build/libs/craft-core-mod-2.3.7.jar`。
+- **建置命令**: `./gradlew build` ➔ 產出 `build/libs/craft-core-mod-2.4.0.jar`。
 - **目標實例路徑**: `/opt/mcsmanager/daemon/data/InstanceData/e73c05307a6b4259bd052b88706757df/mods/`。
 - **核心功能**:
   - **經濟與商店**: 箱子商店 (`shops.json`)、遊戲幣轉帳 (`economy.json`)。
