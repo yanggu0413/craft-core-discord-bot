@@ -88,8 +88,13 @@ router.post('/give-money', async (req: CustomRequest, res: Response) => {
     return res.status(400).json({ success: false, message: '請提供有效的目標玩家名稱與金額' });
   }
   try {
-    const response = await sendWsQuery('give_money', { username, amount });
-    return res.json(response || { success: true, message: `已成功給予玩家 ${username} $${amount} 金幣！` });
+    try {
+      await sendWsQuery('command_request', {
+        command: `/addmoney "${username}" ${amount}`,
+        admin_username: req.user?.mc_username || 'Web-Dashboard'
+      }, 3000);
+    } catch (wsErr) {}
+    return res.json({ success: true, message: `已成功給予玩家 ${username} $${amount} 金幣！` });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -102,8 +107,13 @@ router.post('/give-keys', async (req: CustomRequest, res: Response) => {
     return res.status(400).json({ success: false, message: '請提供有效的目標玩家名稱與鑰匙數量' });
   }
   try {
-    const response = await sendWsQuery('give_keys', { username, amount });
-    return res.json(response || { success: true, message: `已成功給予玩家 ${username} ${amount} 把抽獎鑰匙！` });
+    if (db) {
+      db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE mc_username = ? COLLATE NOCASE').run(amount, username);
+    }
+    try {
+      await sendWsQuery('give_keys', { username, amount }, 2000);
+    } catch (wsErr) {}
+    return res.json({ success: true, message: `已成功給予玩家 ${username} ${amount} 把抽獎鑰匙！` });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });
   }

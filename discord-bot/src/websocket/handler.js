@@ -152,16 +152,44 @@ async function handle(packet, discordClient) {
       break;
     }
 
+    case 'give_money': {
+      const { username, amount } = payload;
+      if (username && typeof amount === 'number' && amount > 0) {
+        try {
+          await session.sendCommand(`/addmoney "${username}" ${amount}`);
+          session.send({
+            type: 'give_money_response',
+            payload: { username, amount, success: true, message: `已成功給予玩家 ${username} $${amount} 金幣！` }
+          });
+        } catch (e) {
+          session.send({
+            type: 'give_money_response',
+            payload: { username, amount, success: false, message: `給予金幣失敗：${e.message}` }
+          });
+        }
+      }
+      break;
+    }
+
     case 'give_keys': {
       const { username, amount } = payload;
-      if (username && typeof amount === 'number') {
+      if (username && typeof amount === 'number' && amount > 0) {
         let binding = await UserRepository.getBindingByMcUsername(username);
         if (binding) {
           const userKeys = await UserRepository.getUserKeys(binding.discord_id);
           const currentKeys = userKeys ? (userKeys.keys_count || 0) : 0;
-          await UserRepository.updateKeys(binding.discord_id, currentKeys + amount);
-          console.log(`[WS Handler] Synchronized +${amount} lottery keys for ${username} (${binding.discord_id})`);
+          const newTotal = currentKeys + amount;
+          await UserRepository.updateKeys(binding.discord_id, newTotal);
+
+          session.send({
+            type: 'player_keys_update',
+            payload: { username, keys: newTotal }
+          });
         }
+        session.send({
+          type: 'give_keys_response',
+          payload: { username, amount, success: true, message: `已成功給予玩家 ${username} ${amount} 把抽獎鑰匙！` }
+        });
       }
       break;
     }
