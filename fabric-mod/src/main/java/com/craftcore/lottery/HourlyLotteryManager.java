@@ -56,8 +56,8 @@ public class HourlyLotteryManager {
         for (ServerPlayer p : realPlayers) {
             String name = p.getName().getString();
             com.craftcore.economy.EconomyManager.addMoney(name, 200.0);
-            p.getInventory().add(new ItemStack(Items.EXPERIENCE_BOTTLE, 4));
-            p.sendSystemMessage(Component.literal("§a[整點禮包] 感謝您持續在線！獲得 §d$200 元金幣 + 4 瓶經驗瓶§a！"));
+            p.getInventory().add(new ItemStack(Items.GOLDEN_CARROT, 8));
+            p.sendSystemMessage(Component.literal("§a[整點禮包] 感謝您持續在線！獲得 §d$200 元金幣 + 8 根金胡蘿蔔§a！"));
         }
 
         // 2. Pick a random Lucky Koi from real players only
