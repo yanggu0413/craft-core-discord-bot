@@ -81,18 +81,19 @@ router.get('/player/:username', async (req, res) => {
 // POST /api/admin/give-money
 router.post('/give-money', async (req, res) => {
     const { username, amount } = req.body;
-    if (!username || typeof amount !== 'number' || amount <= 0) {
+    const numAmount = typeof amount === 'number' ? amount : parseFloat(amount);
+    if (!username || isNaN(numAmount) || numAmount <= 0) {
         return res.status(400).json({ success: false, message: '請提供有效的目標玩家名稱與金額' });
     }
     try {
         try {
             await (0, wsClient_1.sendWsQuery)('command_request', {
-                command: `/addmoney "${username}" ${amount}`,
+                command: `/addmoney "${username}" ${numAmount}`,
                 admin_username: req.user?.mc_username || 'Web-Dashboard'
             }, 3000);
         }
         catch (wsErr) { }
-        return res.json({ success: true, message: `已成功給予玩家 ${username} $${amount} 金幣！` });
+        return res.json({ success: true, message: `已成功給予玩家 ${username} $${numAmount} 金幣！` });
     }
     catch (err) {
         return res.status(500).json({ success: false, message: err.message });
@@ -101,18 +102,19 @@ router.post('/give-money', async (req, res) => {
 // POST /api/admin/give-keys
 router.post('/give-keys', async (req, res) => {
     const { username, amount } = req.body;
-    if (!username || typeof amount !== 'number' || amount <= 0) {
+    const numAmount = typeof amount === 'number' ? amount : parseInt(amount, 10);
+    if (!username || isNaN(numAmount) || numAmount <= 0) {
         return res.status(400).json({ success: false, message: '請提供有效的目標玩家名稱與鑰匙數量' });
     }
     try {
         if (wsClient_1.db) {
-            wsClient_1.db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE mc_username = ? COLLATE NOCASE').run(amount, username);
+            wsClient_1.db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE mc_username = ? COLLATE NOCASE').run(numAmount, username);
         }
         try {
-            await (0, wsClient_1.sendWsQuery)('give_keys', { username, amount }, 2000);
+            await (0, wsClient_1.sendWsQuery)('give_keys', { username, amount: numAmount }, 2000);
         }
         catch (wsErr) { }
-        return res.json({ success: true, message: `已成功給予玩家 ${username} ${amount} 把抽獎鑰匙！` });
+        return res.json({ success: true, message: `已成功給予玩家 ${username} ${numAmount} 把抽獎鑰匙！` });
     }
     catch (err) {
         return res.status(500).json({ success: false, message: err.message });
