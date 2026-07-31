@@ -13,7 +13,7 @@ import net.minecraft.sounds.SoundEvents;
 public class PacketHandler {
     private static final Gson GSON = new Gson();
 
-    private static net.minecraft.server.level.ServerPlayer getPlayerCaseInsensitive(MinecraftServer server, String username) {
+    public static net.minecraft.server.level.ServerPlayer getPlayerCaseInsensitive(MinecraftServer server, String username) {
         if (username == null || username.trim().isEmpty()) return null;
         String cleanTarget = username.trim().replaceFirst("^\\.", "");
         for (net.minecraft.server.level.ServerPlayer p : server.getPlayerList().getPlayers()) {

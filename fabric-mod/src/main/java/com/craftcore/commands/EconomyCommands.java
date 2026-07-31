@@ -391,10 +391,8 @@ dispatcher.register(Commands.literal("pay")
 
 
 
-                                         // 檢查接收者是否在線
-
-                                         ServerPlayer recipientPlayer = context.getSource().getServer().getPlayerList().getPlayerByName(recipient);
-
+                                         // 檢查接收者是否在線 (大小寫不敏感)
+                                         ServerPlayer recipientPlayer = com.craftcore.websocket.PacketHandler.getPlayerCaseInsensitive(context.getSource().getServer(), recipient);
                                          boolean recipientOnline = (recipientPlayer != null);
 
 
