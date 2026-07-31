@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import MinecraftItemIcon from '../ui/MinecraftItemIcon';
+import PageHeader from '../ui/PageHeader';
 
 interface AdminViewProps {
   token: string | null;
@@ -47,8 +48,7 @@ const COLOR_MAP: Record<string, string> = {
 };
 
 export default function AdminView({ token, triggerToast, API_URL, subTab }: AdminViewProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'audit' | 'announcement' | 'cobrand' | 'transactions' | 'tickets' | 'backup'>('audit');
-  const currentSubTab = subTab || activeSubTab;
+  const currentSubTab = subTab || 'audit';
 
   // Ban & Kick States
   const [banPlayer, setBanPlayer] = useState('');
@@ -539,94 +539,14 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
 
   return (
     <div className="space-y-6 text-left">
-      {/* 標題與簡介 */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-border pb-4">
-        <div>
-          <h2 className="text-lg font-black tracking-wider uppercase text-foreground flex items-center space-x-2">
-            <Shield className="w-5 h-5 text-primary" />
-            <span>管理員主控台 (Admin Dashboard)</span>
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            伺服器高階管理與稽核系統：玩家檔案調閱、封鎖/踢出、聯名發放與 Discord 公告推播。
-          </p>
-        </div>
-
-        {/* 子頁籤導航選單 (Sub-Tabs) */}
-        <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg border border-border shrink-0">
-          <button
-            onClick={() => setActiveSubTab('audit')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-              activeSubTab === 'audit' 
-                ? 'bg-card text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            玩家查核與懲處
-          </button>
-          <button
-            onClick={() => setActiveSubTab('announcement')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-              activeSubTab === 'announcement' 
-                ? 'bg-card text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            公告發布器
-          </button>
-          <button
-            onClick={() => setActiveSubTab('cobrand')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-              activeSubTab === 'cobrand' 
-                ? 'bg-card text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            聯名加值禮包
-          </button>
-          <button
-            onClick={() => {
-              setActiveSubTab('transactions');
-              fetchAdminTransactions(1, txSearch);
-            }}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-              currentSubTab === 'transactions' 
-                ? 'bg-primary text-primary-foreground shadow-sm font-semibold' 
-                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>交易日誌稽核</span>
-          </button>
-          <button
-            onClick={() => {
-              setActiveSubTab('tickets');
-              fetchAdminTickets(1, ticketSearch);
-            }}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-              currentSubTab === 'tickets' 
-                ? 'bg-primary text-primary-foreground shadow-sm font-semibold' 
-                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-            }`}
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>工單對話歸檔</span>
-          </button>
-          <button
-            onClick={() => {
-              setActiveSubTab('backup');
-              fetchBackupStatus();
-            }}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-              currentSubTab === 'backup' 
-                ? 'bg-primary text-primary-foreground shadow-sm font-semibold' 
-                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-            }`}
-          >
-            <HardDrive className="w-3.5 h-3.5" />
-            <span>地圖自動備份</span>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        icon={Shield}
+        iconColor="text-red-500"
+        title="管理員主控台"
+        description="伺服器高階管理與稽核系統：玩家檔案調閱、封鎖與處分、公告發布、交易日誌及備份管理"
+        badgeText="管理員專用"
+        badgeVariant="destructive"
+      />
 
       {currentSubTab === 'audit' && (
         /* 1. 玩家搜尋、處分與資產發放區塊 */
@@ -917,7 +837,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
       )}
 
       {/* 2. 子分頁 B: 📢 伺服器公告發布器 (Discord Announcement Publisher) */}
-      {activeSubTab === 'announcement' && (
+      {currentSubTab === 'announcement' && (
         <Card className="bg-card border-border shadow-sm animate-fade-in">
           <CardHeader className="pb-3 border-b border-border">
             <CardTitle className="text-xs font-bold flex items-center space-x-2 text-indigo-500">
@@ -1025,7 +945,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
       )}
 
       {/* 3. 子分頁 C: 🤝 聯名加值與禮包發放 (Co-Branding Distribution) */}
-      {activeSubTab === 'cobrand' && (
+      {currentSubTab === 'cobrand' && (
         <Card className="bg-card border-border shadow-sm max-w-xl animate-fade-in">
           <CardHeader className="pb-3 border-b border-border">
             <CardTitle className="text-xs font-bold flex items-center space-x-2 text-emerald-500">
@@ -1061,7 +981,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
       )}
 
       {/* 4. 子分頁 D: 📜 玩家交易日誌查詢器 (Transaction Log Inspector) */}
-      {activeSubTab === 'transactions' && (
+      {currentSubTab === 'transactions' && (
         <Card className="bg-card border-border shadow-sm animate-fade-in">
           <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
             <div>
@@ -1188,7 +1108,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
       )}
 
       {/* 5. 子分頁 E: 🎫 客服單歷史備份 (Ticket Archives) */}
-      {activeSubTab === 'tickets' && (
+      {currentSubTab === 'tickets' && (
         <Card className="bg-card border-border shadow-sm animate-fade-in">
           <CardHeader className="pb-3 border-b border-border">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1301,7 +1221,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
       )}
 
       {/* 6. 子分頁 F: 💾 地圖自動備份與 100GB 容量防護 */}
-      {activeSubTab === 'backup' && (
+      {currentSubTab === 'backup' && (
         <div className="space-y-6 animate-fade-in">
           <Card className="bg-card border-border shadow-sm">
             <CardHeader className="pb-3 border-b border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
