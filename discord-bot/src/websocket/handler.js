@@ -178,6 +178,8 @@ async function handle(packet, discordClient) {
           payload: {
             username,
             success: false,
+            keysLeft: 0,
+            keysCount: 0,
             message: '§c[Craft-Core] 您尚未綁定 Discord 帳號！請先在遊戲內輸入 /discord link 取得驗證碼，並於 Discord 完成綁定。'
           }
         });
@@ -190,22 +192,26 @@ async function handle(packet, discordClient) {
       const modKeysVal = typeof mod_keys === 'number' ? mod_keys : 0;
       if (modKeysVal > currentDbKeys) {
         currentDbKeys = modKeysVal;
-        await UserRepository.updateKeys(discordId, currentDbKeys);
       }
 
       if (currentDbKeys < 1) {
+        const safeKeys = Math.max(0, currentDbKeys);
+        await UserRepository.updateKeys(discordId, safeKeys);
         session.send({
           type: 'luckydraw_response',
           payload: {
             username,
             success: false,
-            message: `§c[Craft-Core] 鑰匙不足！您目前擁有 ${currentDbKeys} 把鑰匙。`
+            keysLeft: safeKeys,
+            keysCount: safeKeys,
+            message: `§c[Craft-Core] 鑰匙不足！您目前擁有 ${safeKeys} 把鑰匙。`
           }
         });
         break;
       }
 
-      await UserRepository.updateKeys(discordId, userKeys.keys_count - 1);
+      const remainingKeys = Math.max(0, currentDbKeys - 1);
+      await UserRepository.updateKeys(discordId, remainingKeys);
 
       const drawPool = [
         { id: 'minecraft:diamond', amount: 5 },
@@ -223,8 +229,8 @@ async function handle(packet, discordClient) {
           success: true,
           item: prize.id,
           amount: prize.amount,
-          keysLeft: userKeys.keys_count - 1,
-          keysCount: userKeys.keys_count - 1,
+          keysLeft: remainingKeys,
+          keysCount: remainingKeys,
           message: `§b[Craft-Core] §a幸運大抽獎成功！`
         }
       });

@@ -226,7 +226,7 @@ public class EconomyManager {
 
     public static synchronized void setLotteryKeys(String username, int keys) {
         PlayerData data = getOrCreate(username);
-        data.lotteryKeys = keys;
+        data.lotteryKeys = Math.max(0, keys);
         save();
     }
 

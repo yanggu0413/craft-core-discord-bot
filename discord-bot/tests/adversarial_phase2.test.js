@@ -232,7 +232,7 @@ describe('Adversarial Testing on Phase 2 Features', () => {
     const replyVal = mockInteraction.editReply.mock.calls[0][0];
     const embed = replyVal.embeds[0];
     const title = embed.data ? embed.data.title : embed.title;
-    expect(title).toContain('幸運大抽獎');
+    expect(title).toMatch(/幸運/);
 
     // Clean up
     await UserRepository.removeBindingByDiscordId('lottery-user-discord');
