@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'com.craftcore.link'
-version = '1.2.0'
+version = '2.4.1'
 
 repositories {
     mavenCentral()
