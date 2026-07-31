@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import PageHeader from '../ui/PageHeader';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 interface LeaderboardEntry {
   username: string;
@@ -64,13 +64,14 @@ export default function HomeView({
   handleManualRefresh
 }: HomeViewProps) {
 
+  const total = stats.totalCirculation || 75000;
   const chartData = [
-    { time: '00:00', amount: Math.floor(stats.totalCirculation * 0.88) },
-    { time: '04:00', amount: Math.floor(stats.totalCirculation * 0.90) },
-    { time: '08:00', amount: Math.floor(stats.totalCirculation * 0.92) },
-    { time: '12:00', amount: Math.floor(stats.totalCirculation * 0.95) },
-    { time: '16:00', amount: Math.floor(stats.totalCirculation * 0.98) },
-    { time: '20:00', amount: stats.totalCirculation },
+    { time: '00:00', amount: Math.floor(total * 0.88) },
+    { time: '04:00', amount: Math.floor(total * 0.90) },
+    { time: '08:00', amount: Math.floor(total * 0.92) },
+    { time: '12:00', amount: Math.floor(total * 0.95) },
+    { time: '16:00', amount: Math.floor(total * 0.98) },
+    { time: '20:00', amount: total },
   ];
 
   return (
@@ -216,17 +217,25 @@ export default function HomeView({
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="h-56 w-full">
+              <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <AreaChart data={chartData} margin={{ top: 15, right: 20, left: 10, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.0}/>
+                      <linearGradient id="emeraldCirculationGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.35}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
                       </linearGradient>
                     </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                     <XAxis dataKey="time" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} />
-                    <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} />
+                    <YAxis 
+                      stroke="var(--muted-foreground)" 
+                      fontSize={11} 
+                      tickLine={false}
+                      width={60}
+                      domain={['dataMin - 3000', 'dataMax + 3000']}
+                      tickFormatter={(val) => val >= 1000 ? `$${(val / 1000).toFixed(0)}k` : `$${val}`}
+                    />
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: 'var(--card)', 
@@ -235,14 +244,16 @@ export default function HomeView({
                         fontSize: '12px',
                         color: 'var(--foreground)'
                       }} 
+                      formatter={(val: any) => [`$${Number(val).toLocaleString()} 元`, '總發行幣']}
+                      labelFormatter={(label) => `時間: ${label}`}
                     />
                     <Area 
                       type="monotone" 
                       dataKey="amount" 
-                      stroke="var(--primary)" 
-                      strokeWidth={2}
+                      stroke="#10b981" 
+                      strokeWidth={2.5}
                       fillOpacity={1} 
-                      fill="url(#colorAmount)" 
+                      fill="url(#emeraldCirculationGrad)" 
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -297,7 +308,17 @@ export default function HomeView({
                   <TrendingUp className="w-4 h-4 text-emerald-500" />
                   <CardTitle className="text-sm font-bold">全服首富榜 前 10 名</CardTitle>
                 </div>
-                <Badge variant="outline" className="rounded-md">即時排名</Badge>
+                {onNavigateToTab && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => onNavigateToTab('leaderboard')}
+                    className="text-xs h-7 rounded-md"
+                  >
+                    完整榜單
+                    <ArrowRight className="w-3 h-3 ml-1" />
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-0">

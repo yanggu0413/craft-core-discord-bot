@@ -1,4 +1,4 @@
-import { Copy, Search, ShoppingBag, Cpu, MapPin } from 'lucide-react';
+import { Search, ShoppingBag, Cpu, MapPin } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
@@ -25,7 +25,7 @@ interface ExplorerViewProps {
   setSearchQuery: (query: string) => void;
   sortBy: 'price_asc' | 'price_desc' | 'stock_desc';
   setSortBy: (sort: 'price_asc' | 'price_desc' | 'stock_desc') => void;
-  handleCopyTpCommand: (location: string) => void;
+  handleCopyTpCommand?: (location: string) => void;
   API_URL?: string;
 }
 
@@ -34,8 +34,7 @@ export default function ExplorerView({
   searchQuery,
   setSearchQuery,
   sortBy,
-  setSortBy,
-  handleCopyTpCommand
+  setSortBy
 }: ExplorerViewProps) {
 
   const filteredShops = (shops || [])
@@ -120,7 +119,7 @@ export default function ExplorerView({
                   <TableHead className="text-right">售價 (買入)</TableHead>
                   <TableHead className="text-right">收購價 (賣出)</TableHead>
                   <TableHead className="text-center">剩餘庫存</TableHead>
-                  <TableHead className="text-right">座標與傳送</TableHead>
+                  <TableHead className="text-right">商店座標</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -151,16 +150,10 @@ export default function ExplorerView({
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCopyTpCommand(shop.location)}
-                          className="text-xs font-mono rounded-md"
-                        >
-                          <MapPin className="w-3 h-3 mr-1 text-rose-500" />
-                          <span>傳送至 {shop.location}</span>
-                          <Copy className="w-3 h-3 ml-1.5 opacity-60" />
-                        </Button>
+                        <div className="inline-flex items-center space-x-1.5 font-mono text-xs text-foreground bg-muted/30 border border-border px-2.5 py-1 rounded-md">
+                          <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <span>{shop.location}</span>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

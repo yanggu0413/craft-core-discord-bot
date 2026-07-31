@@ -48,13 +48,13 @@ export default function MarketView({
   ];
 
   const currentChartData = analytics[selectedMineral] || [
-    { date: '第 1 天', price: 100 },
-    { date: '第 2 天', price: 105 },
-    { date: '第 3 天', price: 98 },
-    { date: '第 4 天', price: 110 },
-    { date: '第 5 天', price: 115 },
-    { date: '第 6 天', price: 112 },
-    { date: '第 7 天', price: 120 }
+    { date: '07/25', price: 100 },
+    { date: '07/26', price: 105 },
+    { date: '07/27', price: 98 },
+    { date: '07/28', price: 110 },
+    { date: '07/29', price: 115 },
+    { date: '07/30', price: 112 },
+    { date: '07/31', price: 120 }
   ];
 
   return (
@@ -108,7 +108,7 @@ export default function MarketView({
         <CardContent className="pt-6">
           <div className="w-full h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={currentChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={currentChartData} margin={{ top: 15, right: 20, left: 10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="marketPriceGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.35}/>
@@ -117,7 +117,14 @@ export default function MarketView({
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} />
-                <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} />
+                <YAxis 
+                  stroke="var(--muted-foreground)" 
+                  fontSize={11} 
+                  tickLine={false}
+                  width={60}
+                  domain={['auto', 'auto']}
+                  tickFormatter={(val) => val >= 1000 ? `$${(val / 1000).toFixed(0)}k` : `$${val}`}
+                />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: 'var(--card)', 
@@ -126,12 +133,13 @@ export default function MarketView({
                     fontSize: '12px',
                     color: 'var(--foreground)'
                   }} 
+                  formatter={(val: any) => [`$${Number(val).toLocaleString()} 元`, '單價']}
                 />
                 <Area 
                   type="monotone" 
                   dataKey="price" 
                   stroke="#14b8a6" 
-                  strokeWidth={2}
+                  strokeWidth={2.5}
                   fillOpacity={1} 
                   fill="url(#marketPriceGrad)" 
                 />
