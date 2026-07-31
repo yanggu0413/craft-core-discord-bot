@@ -354,18 +354,21 @@ export default function WelfareView({
         return;
       }
 
-      // Decrement key count locally
-      setKeysCount(data.keys_count);
+      // Safely extract reward prize object and remaining keys from backend response
+      const wonItem = data.prize || data.reward || (Array.isArray(data.rewards) ? data.rewards[0] : null) || { id: 'minecraft:gold_ingot', name: '金錠 x5' };
+      const keysLeft = data.keys_count ?? data.remaining_keys ?? (keysCount - 1);
+      
+      setKeysCount(keysLeft);
       fetchData();
 
       // Setup Case Spinner Items (Construct 60 cards, winning one at index 50)
-      const winPrize = PRIZE_POOL.find(p => p.id === data.reward.id) || PRIZE_POOL[5]; // fallback to gold
+      const winPrize = PRIZE_POOL.find(p => p.id === wonItem.id) || PRIZE_POOL[5]; // fallback to gold
       const fullList: typeof PRIZE_POOL = [];
       for (let i = 0; i < 60; i++) {
         if (i === 50) {
           fullList.push({
             ...winPrize,
-            name: data.reward.name // Use exact display name from server (e.g. including random money)
+            name: wonItem.name || winPrize.name // Use exact display name from server
           });
         } else {
           // Fill with random items from pool
@@ -429,9 +432,9 @@ export default function WelfareView({
           }
           playLevelUpSound();
           if (data.count_drawn && data.count_drawn > 1) {
-            triggerToast(`🎉 批量抽獎完成 (${data.count_drawn} 抽)！共獲得 $${data.total_money} 金幣與物資！`, 'success');
+            triggerToast(`🎉 批量抽獎完成 (${data.count_drawn} 抽)！共獲得 $${data.total_money || 0} 金幣與物資！`, 'success');
           } else {
-            triggerToast(`🎉 恭喜您獲得：${data.reward.name}！`, 'success');
+            triggerToast(`🎉 恭喜您獲得：${wonItem.name || winPrize.name}！`, 'success');
           }
           setIsSpinning(false);
           fetchData();
