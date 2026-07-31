@@ -331,7 +331,16 @@ router.get('/user/profile', auth_1.authenticateToken, async (req, res) => {
     let dbStats = {};
     if (wsClient_1.db) {
         try {
-            const row = wsClient_1.db.prepare('SELECT keys_count, checkin_streak, total_checkins, last_checkin, subscribe_reminder, discord_id FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username);
+            const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+            const userDiscordId = user.discord_id || '';
+            const userUuid = user.mc_uuid || '';
+            const row = wsClient_1.db.prepare(`
+        SELECT keys_count, checkin_streak, total_checkins, last_checkin, subscribe_reminder, discord_id
+        FROM bindings
+        WHERE lower(replace(mc_username, '.', '')) = ?
+           OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
+           OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
+      `).get(cleanUsername, userDiscordId, userUuid);
             if (row) {
                 dbStats = {
                     keys_count: row.keys_count || 0,
@@ -374,7 +383,15 @@ router.post('/user/checkin', auth_1.authenticateToken, async (req, res) => {
     const todayStr = getTaipeiDateString();
     const yesterdayStr = getTaipeiYesterdayDateString();
     try {
-        const row = wsClient_1.db.prepare('SELECT * FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username);
+        const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+        const userDiscordId = user.discord_id || '';
+        const userUuid = user.mc_uuid || '';
+        const row = wsClient_1.db.prepare(`
+      SELECT * FROM bindings
+      WHERE lower(replace(mc_username, '.', '')) = ?
+         OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
+         OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
+    `).get(cleanUsername, userDiscordId, userUuid);
         if (!row) {
             return res.status(404).json({ success: false, message: '找不到玩家綁定紀錄' });
         }
@@ -392,9 +409,9 @@ router.post('/user/checkin', auth_1.authenticateToken, async (req, res) => {
           last_checkin = ?,
           checkin_streak = ?,
           total_checkins = ?
-      WHERE mc_username = ? COLLATE NOCASE
+      WHERE id = ?
     `);
-        updateStmt.run(todayStr, newStreak, newTotal, username);
+        updateStmt.run(todayStr, newStreak, newTotal, row.id);
         res.json({
             success: true,
             message: `簽到成功！獲得抽獎鑰匙 x1（連續簽到 ${newStreak} 天，累計 ${newTotal} 天）`,
@@ -530,13 +547,23 @@ router.post('/user/luckydraw', auth_1.authenticateToken, async (req, res) => {
     if (!wsClient_1.db)
         return res.status(500).json({ success: false, message: '資料庫連線不可用' });
     try {
-        const row = wsClient_1.db.prepare('SELECT keys_count FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username);
+        const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+        const userDiscordId = user.discord_id || '';
+        const userUuid = user.mc_uuid || '';
+        const row = wsClient_1.db.prepare(`
+      SELECT id, keys_count FROM bindings
+      WHERE lower(replace(mc_username, '.', '')) = ?
+         OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
+         OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
+    `).get(cleanUsername, userDiscordId, userUuid);
         const currentKeys = row?.keys_count || 0;
         if (currentKeys < 1) {
             return res.status(400).json({ success: false, message: '您的抽獎鑰匙不足！請先進行每日簽到或完成任務獲得鑰匙。' });
         }
         const newKeys = currentKeys - 1;
-        wsClient_1.db.prepare('UPDATE bindings SET keys_count = ? WHERE mc_username = ? COLLATE NOCASE').run(newKeys, username);
+        if (row?.id) {
+            wsClient_1.db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(newKeys, row.id);
+        }
         const prizeIndex = Math.floor(Math.random() * PRIZE_POOL.length);
         const prize = PRIZE_POOL[prizeIndex];
         // Handle Title Prizes with 2-day (48-hour) expiration limit
@@ -683,14 +710,22 @@ router.post('/user/buy-key-with-money', auth_1.authenticateToken, async (req, re
     }
     // 3. Update SQLite bindings keys_count
     try {
-        const row = wsClient_1.db.prepare('SELECT keys_count FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username);
+        const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+        const userDiscordId = user.discord_id || '';
+        const userUuid = user.mc_uuid || '';
+        const row = wsClient_1.db.prepare(`
+      SELECT id, keys_count FROM bindings
+      WHERE lower(replace(mc_username, '.', '')) = ?
+         OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
+         OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
+    `).get(cleanUsername, userDiscordId, userUuid);
         const currentKeys = row?.keys_count || 0;
         const newKeys = currentKeys + count;
         if (!row) {
             wsClient_1.db.prepare('INSERT INTO bindings (discord_id, mc_uuid, mc_username, keys_count) VALUES (?, ?, ?, ?)').run(user.discord_id || 'system', user.mc_uuid || `dev-uuid-${username.toLowerCase()}`, username, newKeys);
         }
         else {
-            wsClient_1.db.prepare('UPDATE bindings SET keys_count = ? WHERE mc_username = ? COLLATE NOCASE').run(newKeys, username);
+            wsClient_1.db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(newKeys, row.id);
         }
         return res.json({
             success: true,
@@ -948,33 +983,44 @@ router.get('/tasks/daily', async (req, res) => {
     try {
         const response = await (0, wsClient_1.sendWsQuery)('daily_tasks_query', { username });
         if (response && response.success) {
-            const slay_task = response.slay_task;
-            const mine_task = response.mine_task;
-            const slayClaimed = Boolean(response.slay_claimed !== undefined ? response.slay_claimed : response.has_claimed);
-            const mineClaimed = Boolean(response.mine_claimed !== undefined ? response.mine_claimed : response.has_claimed);
+            const responseTasks = Array.isArray(response.tasks) ? response.tasks : [];
+            const slay_task = responseTasks.find((t) => t.type === 1) || response.slay_task;
+            const mine_task = responseTasks.find((t) => t.type === 2) || response.mine_task;
+            const slayProgress = typeof slay_task?.progress === 'number' ? slay_task.progress : (response.slay_progress || 0);
+            const mineProgress = typeof mine_task?.progress === 'number' ? mine_task.progress : (response.mine_progress || 0);
+            const slayClaimed = Boolean(slay_task?.claimed !== undefined ? slay_task.claimed : (response.slay_claimed !== undefined ? response.slay_claimed : response.has_claimed));
+            const mineClaimed = Boolean(mine_task?.claimed !== undefined ? mine_task.claimed : (response.mine_claimed !== undefined ? response.mine_claimed : response.has_claimed));
+            const fallbackTasks = getDailyTasksFallback(dateStr);
+            const sTarget = slay_task?.target || fallbackTasks[0].target;
+            const sCount = slay_task?.count || fallbackTasks[0].count;
+            const sReward = slay_task?.reward || fallbackTasks[0].reward;
+            const mTarget = mine_task?.target || fallbackTasks[1].target;
+            const mCount = mine_task?.count || fallbackTasks[1].count;
+            const mReward = mine_task?.reward || fallbackTasks[1].reward;
             const tasks = [
-                { type: 1, target: slay_task?.target || 'Zombie', count: slay_task?.count || 15, reward: slay_task?.reward || 250, progress: response.slay_progress || 0, claimed: slayClaimed },
-                { type: 2, target: mine_task?.target || 'Coal Ore', count: mine_task?.count || 20, reward: mine_task?.reward || 200, progress: response.mine_progress || 0, claimed: mineClaimed }
+                { type: 1, target: sTarget, count: sCount, reward: sReward, progress: slayProgress, claimed: slayClaimed },
+                { type: 2, target: mTarget, count: mCount, reward: mReward, progress: mineProgress, claimed: mineClaimed }
             ];
             return res.json({
                 success: true,
                 date: dateStr,
-                slay_task,
-                mine_task,
+                slay_task: tasks[0],
+                mine_task: tasks[1],
                 tasks,
-                slay_progress: response.slay_progress || 0,
-                mine_progress: response.mine_progress || 0,
+                slay_progress: slayProgress,
+                mine_progress: mineProgress,
                 slay_claimed: slayClaimed,
                 mine_claimed: mineClaimed,
                 has_claimed: slayClaimed && mineClaimed,
-                is_completed: Boolean(response.is_completed)
+                is_completed: (slayProgress >= sCount) && (mineProgress >= mCount)
             });
         }
     }
     catch (error) { }
     // Fallback: Read directly from economy.json
     const ecoMap = (0, configLoader_1.loadConfigJson)('economy.json') || {};
-    const ecoKey = Object.keys(ecoMap).find(k => k.toLowerCase() === username.toLowerCase()) || username;
+    const cleanUser = (username || '').replace(/^\./, '').toLowerCase();
+    const ecoKey = Object.keys(ecoMap).find(k => k.replace(/^\./, '').toLowerCase() === cleanUser) || username;
     const pEco = ecoMap[ecoKey] || {};
     const slayProg = pEco.daily_slay_progress || 0;
     const mineProg = pEco.daily_gather_progress || 0;

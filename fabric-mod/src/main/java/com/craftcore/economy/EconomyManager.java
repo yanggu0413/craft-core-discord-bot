@@ -155,8 +155,10 @@ public class EconomyManager {
     private static PlayerData getOrCreate(String username) {
         String correctKey = username;
         if (username != null) {
+            String cleanTarget = username.replaceAll("^\\.", "").toLowerCase();
             for (String key : dataMap.keySet()) {
-                if (key.equalsIgnoreCase(username)) {
+                String cleanKey = key.replaceAll("^\\.", "").toLowerCase();
+                if (cleanKey.equals(cleanTarget)) {
                     correctKey = key;
                     break;
                 }

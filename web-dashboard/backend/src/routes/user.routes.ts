@@ -345,7 +345,16 @@ router.get('/user/profile', authenticateToken, async (req: CustomRequest, res: R
   let dbStats: any = {};
   if (db) {
     try {
-      const row = db.prepare('SELECT keys_count, checkin_streak, total_checkins, last_checkin, subscribe_reminder, discord_id FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username) as any;
+      const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+      const userDiscordId = user.discord_id || '';
+      const userUuid = user.mc_uuid || '';
+      const row = db.prepare(`
+        SELECT keys_count, checkin_streak, total_checkins, last_checkin, subscribe_reminder, discord_id
+        FROM bindings
+        WHERE lower(replace(mc_username, '.', '')) = ?
+           OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
+           OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
+      `).get(cleanUsername, userDiscordId, userUuid) as any;
       if (row) {
         dbStats = {
           keys_count: row.keys_count || 0,
@@ -391,7 +400,16 @@ router.post('/user/checkin', authenticateToken, async (req: CustomRequest, res: 
   const yesterdayStr = getTaipeiYesterdayDateString();
 
   try {
-    const row = db.prepare('SELECT * FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username) as any;
+    const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+    const userDiscordId = user.discord_id || '';
+    const userUuid = user.mc_uuid || '';
+    const row = db.prepare(`
+      SELECT * FROM bindings
+      WHERE lower(replace(mc_username, '.', '')) = ?
+         OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
+         OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
+    `).get(cleanUsername, userDiscordId, userUuid) as any;
+
     if (!row) {
       return res.status(404).json({ success: false, message: '找不到玩家綁定紀錄' });
     }
@@ -412,9 +430,9 @@ router.post('/user/checkin', authenticateToken, async (req: CustomRequest, res: 
           last_checkin = ?,
           checkin_streak = ?,
           total_checkins = ?
-      WHERE mc_username = ? COLLATE NOCASE
+      WHERE id = ?
     `);
-    updateStmt.run(todayStr, newStreak, newTotal, username);
+    updateStmt.run(todayStr, newStreak, newTotal, row.id);
 
     res.json({
       success: true,
@@ -561,7 +579,15 @@ router.post('/user/luckydraw', authenticateToken, async (req: CustomRequest, res
   if (!db) return res.status(500).json({ success: false, message: '資料庫連線不可用' });
 
   try {
-    const row = db.prepare('SELECT keys_count FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username) as any;
+    const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+    const userDiscordId = user.discord_id || '';
+    const userUuid = user.mc_uuid || '';
+    const row = db.prepare(`
+      SELECT id, keys_count FROM bindings
+      WHERE lower(replace(mc_username, '.', '')) = ?
+         OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
+         OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
+    `).get(cleanUsername, userDiscordId, userUuid) as any;
     const currentKeys = row?.keys_count || 0;
 
     if (currentKeys < 1) {
@@ -569,7 +595,9 @@ router.post('/user/luckydraw', authenticateToken, async (req: CustomRequest, res
     }
 
     const newKeys = currentKeys - 1;
-    db.prepare('UPDATE bindings SET keys_count = ? WHERE mc_username = ? COLLATE NOCASE').run(newKeys, username);
+    if (row?.id) {
+      db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(newKeys, row.id);
+    }
 
     const prizeIndex = Math.floor(Math.random() * PRIZE_POOL.length);
     const prize = PRIZE_POOL[prizeIndex];
@@ -722,7 +750,15 @@ router.post('/user/buy-key-with-money', authenticateToken, async (req: CustomReq
 
   // 3. Update SQLite bindings keys_count
   try {
-    const row = db.prepare('SELECT keys_count FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username) as any;
+    const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+    const userDiscordId = user.discord_id || '';
+    const userUuid = user.mc_uuid || '';
+    const row = db.prepare(`
+      SELECT id, keys_count FROM bindings
+      WHERE lower(replace(mc_username, '.', '')) = ?
+         OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
+         OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
+    `).get(cleanUsername, userDiscordId, userUuid) as any;
     const currentKeys = row?.keys_count || 0;
     const newKeys = currentKeys + count;
 
@@ -734,7 +770,7 @@ router.post('/user/buy-key-with-money', authenticateToken, async (req: CustomReq
         newKeys
       );
     } else {
-      db.prepare('UPDATE bindings SET keys_count = ? WHERE mc_username = ? COLLATE NOCASE').run(newKeys, username);
+      db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(newKeys, row.id);
     }
 
     return res.json({
@@ -1001,33 +1037,48 @@ router.get('/tasks/daily', async (req: Request, res: Response) => {
   try {
     const response = await sendWsQuery('daily_tasks_query', { username });
     if (response && response.success) {
-      const slay_task = response.slay_task;
-      const mine_task = response.mine_task;
-      const slayClaimed = Boolean(response.slay_claimed !== undefined ? response.slay_claimed : response.has_claimed);
-      const mineClaimed = Boolean(response.mine_claimed !== undefined ? response.mine_claimed : response.has_claimed);
+      const responseTasks = Array.isArray(response.tasks) ? response.tasks : [];
+      const slay_task = responseTasks.find((t: any) => t.type === 1) || response.slay_task;
+      const mine_task = responseTasks.find((t: any) => t.type === 2) || response.mine_task;
+
+      const slayProgress = typeof slay_task?.progress === 'number' ? slay_task.progress : (response.slay_progress || 0);
+      const mineProgress = typeof mine_task?.progress === 'number' ? mine_task.progress : (response.mine_progress || 0);
+      const slayClaimed = Boolean(slay_task?.claimed !== undefined ? slay_task.claimed : (response.slay_claimed !== undefined ? response.slay_claimed : response.has_claimed));
+      const mineClaimed = Boolean(mine_task?.claimed !== undefined ? mine_task.claimed : (response.mine_claimed !== undefined ? response.mine_claimed : response.has_claimed));
+
+      const fallbackTasks = getDailyTasksFallback(dateStr);
+      const sTarget = slay_task?.target || fallbackTasks[0].target;
+      const sCount = slay_task?.count || fallbackTasks[0].count;
+      const sReward = slay_task?.reward || fallbackTasks[0].reward;
+
+      const mTarget = mine_task?.target || fallbackTasks[1].target;
+      const mCount = mine_task?.count || fallbackTasks[1].count;
+      const mReward = mine_task?.reward || fallbackTasks[1].reward;
+
       const tasks = [
-        { type: 1, target: slay_task?.target || 'Zombie', count: slay_task?.count || 15, reward: slay_task?.reward || 250, progress: response.slay_progress || 0, claimed: slayClaimed },
-        { type: 2, target: mine_task?.target || 'Coal Ore', count: mine_task?.count || 20, reward: mine_task?.reward || 200, progress: response.mine_progress || 0, claimed: mineClaimed }
+        { type: 1, target: sTarget, count: sCount, reward: sReward, progress: slayProgress, claimed: slayClaimed },
+        { type: 2, target: mTarget, count: mCount, reward: mReward, progress: mineProgress, claimed: mineClaimed }
       ];
       return res.json({
         success: true,
         date: dateStr,
-        slay_task,
-        mine_task,
+        slay_task: tasks[0],
+        mine_task: tasks[1],
         tasks,
-        slay_progress: response.slay_progress || 0,
-        mine_progress: response.mine_progress || 0,
+        slay_progress: slayProgress,
+        mine_progress: mineProgress,
         slay_claimed: slayClaimed,
         mine_claimed: mineClaimed,
         has_claimed: slayClaimed && mineClaimed,
-        is_completed: Boolean(response.is_completed)
+        is_completed: (slayProgress >= sCount) && (mineProgress >= mCount)
       });
     }
   } catch (error: any) {}
 
   // Fallback: Read directly from economy.json
   const ecoMap = loadConfigJson<Record<string, any>>('economy.json') || {};
-  const ecoKey = Object.keys(ecoMap).find(k => k.toLowerCase() === username!.toLowerCase()) || username;
+  const cleanUser = (username || '').replace(/^\./, '').toLowerCase();
+  const ecoKey = Object.keys(ecoMap).find(k => k.replace(/^\./, '').toLowerCase() === cleanUser) || username;
   const pEco = ecoMap[ecoKey] || {};
   const slayProg = pEco.daily_slay_progress || 0;
   const mineProg = pEco.daily_gather_progress || 0;
