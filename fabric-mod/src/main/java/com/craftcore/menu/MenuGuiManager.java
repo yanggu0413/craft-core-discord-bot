@@ -557,7 +557,7 @@ public class MenuGuiManager {
         container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
-        container.setItem(20, createGuiItem(Items.CHEST, "§4全服玩家 /invsee 背包管理", List.of("§7點擊開啟選擇器", "", "§e[點擊開啟]")));
+        container.setItem(20, createGuiItem(Items.PLAYER_HEAD, "§4全服玩家 /invsee 背包管理", List.of("§7點擊開啟線上玩家選擇器", "", "§e[點擊開啟選擇器]")));
         container.setItem(22, createGuiItem(Items.REPEATER, "§4機器認證審核列表", List.of("§7點擊查看待審核機器", "", "§e[點擊開啟]")));
         container.setItem(24, createGuiItem(Items.COMMAND_BLOCK, "§4手動觸發 7z 地圖備份", List.of("§7一鍵觸發全服地圖增量備份", "", "§e[點擊執行]")));
 
@@ -571,7 +571,7 @@ public class MenuGuiManager {
 
                             if (slotId == 45) { openMainMenu(sp); return; }
                             if (slotId == 49) { sp.closeContainer(); return; }
-                            if (slotId == 20) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "invsee"); return; }
+                            if (slotId == 20) { openPlayerSelectorMenu(sp); return; }
                             if (slotId == 22) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "machine admin list"); return; }
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "craftcorebackup start"); return; }
                         }
@@ -579,5 +579,78 @@ public class MenuGuiManager {
                     @Override
                     public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
                 }, Component.literal("§1🛠️ 管理員 (OP) 控制台")));
+    }
+
+    public static ItemStack createPlayerHead(String username) {
+        ItemStack headStack = new ItemStack(Items.PLAYER_HEAD);
+        if (username != null && !username.isEmpty()) {
+            try {
+                headStack.set(DataComponents.PROFILE, new net.minecraft.world.item.component.ResolvableProfile(
+                    new com.mojang.authlib.GameProfile(null, username)
+                ));
+            } catch (Throwable t) {
+                try {
+                    headStack.set(DataComponents.PROFILE, new net.minecraft.world.item.component.ResolvableProfile(
+                        java.util.Optional.of(username), java.util.Optional.empty(), new com.mojang.authlib.properties.PropertyMap()
+                    ));
+                } catch (Throwable ignored) {}
+            }
+        }
+        return headStack;
+    }
+
+    public static void openPlayerSelectorMenu(ServerPlayer adminPlayer) {
+        if (adminPlayer == null || adminPlayer.level().getServer() == null) return;
+        MinecraftServer server = adminPlayer.level().getServer();
+        List<ServerPlayer> players = new ArrayList<>(server.getPlayerList().getPlayers());
+
+        SimpleContainer container = new SimpleContainer(54);
+        fillBackground(container);
+
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回管理員選單", List.of("§7點擊返回 OP 控制台")));
+        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
+        int slot = 0;
+        List<String> playerNames = new ArrayList<>();
+        for (ServerPlayer p : players) {
+            if (slot >= 45) break;
+            if (slot == 45 || slot == 49) continue;
+            String name = p.getName().getString();
+            playerNames.add(name);
+
+            ItemStack head = createPlayerHead(name);
+            head.set(DataComponents.CUSTOM_NAME, Component.literal("§6" + name));
+            List<Component> lore = List.of(
+                Component.literal("§7點擊左鍵: 查看背包 (/invsee " + name + ")"),
+                Component.literal("§7點擊右鍵: 查看末影箱 (/invsee " + name + " enderchest)"),
+                Component.literal(""),
+                Component.literal("§e[點擊選擇查看]")
+            );
+            head.set(DataComponents.LORE, new ItemLore(lore));
+            container.setItem(slot++, head);
+        }
+
+        adminPlayer.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
+                new ChestMenu(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                    @Override
+                    public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 45) { openAdminMenu(sp); return; }
+                            if (slotId == 49) { sp.closeContainer(); return; }
+
+                            if (slotId >= 0 && slotId < playerNames.size()) {
+                                String targetName = playerNames.get(slotId);
+                                sp.closeContainer();
+                                if (button == 1) {
+                                    server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "invsee " + targetName + " enderchest");
+                                } else {
+                                    server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "invsee " + targetName);
+                                }
+                            }
+                        }
+                    }
+                    @Override
+                    public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
+                }, Component.literal("§1🔍 選擇查看背包玩家 (/invsee)")));
     }
 }

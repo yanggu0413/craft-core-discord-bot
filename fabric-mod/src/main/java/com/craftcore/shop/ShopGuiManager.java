@@ -100,6 +100,24 @@ public class ShopGuiManager {
         ));
     }
 
+    public static ItemStack createPlayerHead(String username) {
+        ItemStack headStack = new ItemStack(Items.PLAYER_HEAD);
+        if (username != null && !username.isEmpty()) {
+            try {
+                headStack.set(DataComponents.PROFILE, new net.minecraft.world.item.component.ResolvableProfile(
+                    new com.mojang.authlib.GameProfile(null, username)
+                ));
+            } catch (Throwable t) {
+                try {
+                    headStack.set(DataComponents.PROFILE, new net.minecraft.world.item.component.ResolvableProfile(
+                        java.util.Optional.of(username), java.util.Optional.empty(), new com.mojang.authlib.properties.PropertyMap()
+                    ));
+                } catch (Throwable ignored) {}
+            }
+        }
+        return headStack;
+    }
+
     public static class ShopListScreenHandler extends ChestMenu {
         private final List<ShopManager.Shop> shops;
         private final ServerPlayer player;
@@ -113,11 +131,14 @@ public class ShopGuiManager {
             for (int slot = 0; slot < 54 && shopIdx < shops.size(); slot++) {
                 if (slot == 45 || slot == 49 || slot == 53) continue;
                 ShopManager.Shop shop = shops.get(shopIdx);
-                Item itemObj = BuiltInRegistries.ITEM.getValue(Identifier.parse(shop.item));
-                ItemStack stack = new ItemStack(itemObj);
-                stack.set(DataComponents.CUSTOM_NAME, Component.literal(shop.customName != null ? "§6" + shop.customName : "§6" + shop.player + " 的商店"));
+                String ownerName = shop.player != null ? shop.player : "Steve";
+                ItemStack stack = createPlayerHead(ownerName);
+                stack.set(DataComponents.CUSTOM_NAME, Component.literal(shop.customName != null ? "§6" + shop.customName : "§6" + ownerName + " 的商店"));
 
                 List<Component> lore = new ArrayList<>();
+                String itemName = TranslationManager.getTranslatedName(shop.item);
+                lore.add(Component.literal("§7店主: §b" + ownerName));
+                lore.add(Component.literal("§7商品: §e" + itemName));
                 lore.add(Component.literal("§7位置: §f" + shop.coords));
                 if (shop.sellPrice > 0 && shop.buyPrice > 0) {
                     lore.add(Component.literal("§7價格: §a售$" + shop.sellPrice + " | 收$" + shop.buyPrice));
