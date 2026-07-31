@@ -444,8 +444,10 @@ public class EconomyManager {
 
     public static synchronized String getActualUsernameCaseInsensitive(String username) {
         if (username == null) return null;
+        String cleanTarget = username.replaceAll("^\\.", "").toLowerCase();
         for (String key : dataMap.keySet()) {
-            if (key.equalsIgnoreCase(username)) {
+            String cleanKey = key.replaceAll("^\\.", "").toLowerCase();
+            if (cleanKey.equals(cleanTarget)) {
                 return key;
             }
         }
@@ -502,18 +504,16 @@ public class EconomyManager {
         if (Double.isNaN(amount) || Double.isInfinite(amount)) {
             return new TransferResult(false, "轉帳金額無效。");
         }
-        if (sender.equalsIgnoreCase(recipient)) {
+        String cleanSender = sender.replaceAll("^\\.", "").toLowerCase();
+        String cleanRecipient = recipient.replaceAll("^\\.", "").toLowerCase();
+        if (cleanSender.equals(cleanRecipient)) {
             return new TransferResult(false, "不能轉帳給自己。");
         }
 
-        String actualSender = getActualUsernameCaseInsensitive(sender);
-        if (actualSender == null) {
-            return new TransferResult(false, "找不到付款者帳戶。");
-        }
-        PlayerData senderData = getOrCreate(actualSender);
+        PlayerData senderData = getOrCreate(sender);
 
         if (senderData.balance < amount) {
-            return new TransferResult(false, "餘額不足。");
+            return new TransferResult(false, "餘額不足 (目前餘額 $" + String.format("%.2f", senderData.balance) + ")。");
         }
 
         String today = getCurrentDate();
@@ -530,7 +530,7 @@ public class EconomyManager {
 
         String actualRecipient = getActualUsernameCaseInsensitive(recipient);
         if (!recipientOnline && actualRecipient == null) {
-            return new TransferResult(false, "找不到收款者帳戶。");
+            return new TransferResult(false, "轉帳失敗：找不到該離線玩家紀錄。");
         }
 
         String recipientKey = actualRecipient != null ? actualRecipient : recipient;
@@ -544,7 +544,7 @@ public class EconomyManager {
             if (recipientData.offlineNotifications == null) {
                 recipientData.offlineNotifications = new java.util.ArrayList<>();
             }
-            recipientData.offlineNotifications.add("§b[Craft-Core] §f您在離線期間收到了來自 §a" + actualSender + " §f的轉帳：§a$" + String.format("%.2f", amount) + "§f！");
+            recipientData.offlineNotifications.add("§b[Craft-Core] §f您在離線期間收到了來自 §a" + sender + " §f的轉帳：§a$" + String.format("%.2f", amount) + "§f！");
         }
 
         save();
