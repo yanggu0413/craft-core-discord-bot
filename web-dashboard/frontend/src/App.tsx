@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Check, AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
-import DashboardLayout from './components/DashboardLayout';
+import DashboardLayout, { type TabType } from './components/DashboardLayout';
 import HomeView from './components/views/HomeView';
 import ExplorerView from './components/views/ExplorerView';
 import MarketView from './components/views/MarketView';
@@ -46,7 +46,7 @@ interface TradeLog {
 }
 
 export default function App() {
-  // 主題設定：預設使用淺色模式
+  // 主題設定
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme_mode');
     return saved ? saved === 'dark' : false;
@@ -84,7 +84,7 @@ export default function App() {
   const [liveTrades, setLiveTrades] = useState<any[]>([]);
 
   // 當前選單分頁
-  const [activeTab, setActiveTab] = useState<'home' | 'tasks' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports' | 'events'>('home');
+  const [activeTab, setActiveTab] = useState<TabType>('home');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   // 全域數據狀態
@@ -654,12 +654,20 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'admin' && isAdmin && (
-            <AdminView
-              token={token}
-              triggerToast={triggerToast}
-              API_URL={API_URL}
-            />
+          {activeTab === 'admin_audit' && isAdmin && (
+            <AdminView token={token} triggerToast={triggerToast} API_URL={API_URL} subTab="audit" />
+          )}
+          {activeTab === 'admin_transactions' && isAdmin && (
+            <AdminView token={token} triggerToast={triggerToast} API_URL={API_URL} subTab="transactions" />
+          )}
+          {activeTab === 'admin_announcements' && isAdmin && (
+            <AdminView token={token} triggerToast={triggerToast} API_URL={API_URL} subTab="announcement" />
+          )}
+          {activeTab === 'admin_backups' && isAdmin && (
+            <AdminView token={token} triggerToast={triggerToast} API_URL={API_URL} subTab="backup" />
+          )}
+          {activeTab === 'admin_tickets' && isAdmin && (
+            <AdminView token={token} triggerToast={triggerToast} API_URL={API_URL} subTab="tickets" />
           )}
 
           {activeTab === 'fakeplayers' && (

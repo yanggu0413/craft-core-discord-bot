@@ -558,7 +558,8 @@ const PRIZE_POOL = [
   { id: 'minecraft:experience_bottle', name: '經驗瓶', count: 32, icon: 'experience_bottle' },
   { id: 'minecraft:totem_of_undying', name: '不死圖騰', count: 1, icon: 'totem_of_undying' },
   { id: 'minecraft:netherite_ingot', name: '獄髓錠', count: 1, icon: 'netherite_ingot' },
-  { id: 'minecraft:emerald', name: '綠寶石', count: 16, icon: 'emerald' }
+  { id: 'minecraft:emerald', name: '綠寶石', count: 16, icon: 'emerald' },
+  { id: 'title:lucky_king', name: '限時稱號：[幸運歐皇] (2天)', count: 1, icon: 'netherite_helmet', is_title: true, title_text: '[幸運歐皇]' }
 ];
 
 router.post('/user/luckydraw', authenticateToken, async (req: CustomRequest, res: Response) => {
@@ -581,6 +582,53 @@ router.post('/user/luckydraw', authenticateToken, async (req: CustomRequest, res
 
     const prizeIndex = Math.floor(Math.random() * PRIZE_POOL.length);
     const prize = PRIZE_POOL[prizeIndex];
+
+    // Handle Title Prizes with 2-day (48-hour) expiration limit
+    if ((prize as any).is_title) {
+      const expiresAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(); // 48 Hours Expiry
+      const titlesMap = loadConfigJson<Record<string, any>>('titles.json') || {};
+      const lowerName = username.toLowerCase();
+      
+      if (!titlesMap[lowerName]) {
+        titlesMap[lowerName] = { activeTitle: '', unlockedTitles: [], titleExpiries: {} };
+      }
+      if (!titlesMap[lowerName].titleExpiries) {
+        titlesMap[lowerName].titleExpiries = {};
+      }
+      
+      const titleText = (prize as any).title_text || '[幸運歐皇]';
+      if (!titlesMap[lowerName].unlockedTitles.includes(titleText)) {
+        titlesMap[lowerName].unlockedTitles.push(titleText);
+      }
+      titlesMap[lowerName].titleExpiries[titleText] = expiresAt;
+      titlesMap[lowerName].activeTitle = titleText;
+      saveConfigJson('titles.json', titlesMap);
+
+      try {
+        db.prepare(`
+          INSERT INTO player_titles (username, title_text, color_code, is_bold, updated_at, expires_at)
+          VALUES (?, ?, '§6', 1, ?, ?)
+          ON CONFLICT(username) DO UPDATE SET 
+            title_text=excluded.title_text, 
+            expires_at=excluded.expires_at, 
+            updated_at=excluded.updated_at
+        `).run(username, titleText, new Date().toISOString(), expiresAt);
+      } catch (e) {}
+
+      try {
+        await sendWsQuery('command_request', {
+          command: `/title set "${username}" "${titleText}"`,
+          admin_username: 'LuckyDraw'
+        }, 1500);
+      } catch (wsErr) {}
+
+      return res.json({
+        success: true,
+        prize,
+        remaining_keys: newKeys,
+        message: `🎉 抽獎大成功！恭喜獲得限定專屬稱號「${titleText}」（有效期限：2 天）！`
+      });
+    }
 
     try {
       await sendWsQuery('deliver_item', { username, item: prize.id, count: prize.count }, 1500);

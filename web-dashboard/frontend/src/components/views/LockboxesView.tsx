@@ -1,7 +1,9 @@
-import { Lock, ShieldAlert, Key } from 'lucide-react';
+import { Lock, Key } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Badge } from '../ui/badge';
+import PageHeader from '../ui/PageHeader';
 
 interface Lockbox {
   id: string;
@@ -16,132 +18,108 @@ interface LockboxesViewProps {
   currentUser: string | null;
 }
 
-export default function LockboxesView({ lockboxes, onUpdateLockbox, currentUser }: LockboxesViewProps) {
+export default function LockboxesView({ lockboxes = [], onUpdateLockbox, currentUser }: LockboxesViewProps) {
+  const myLockboxes = (lockboxes || []).filter(l => l && (l.owner || '').toLowerCase() === (currentUser || '').toLowerCase());
+
   return (
-    <div className="space-y-6">
-      <div className="space-y-1 text-left">
-        <h2 className="text-base font-bold tracking-wider uppercase text-foreground">箱子密碼鎖管理</h2>
-        <p className="text-xs text-muted-foreground">
-          檢視與配置您已安裝密碼鎖的安全密碼箱。您可以授權其他玩家開啟、變更鎖頭密碼，或完全註銷防護。
-        </p>
-      </div>
+    <div className="space-y-6 text-left">
+      <PageHeader
+        icon={Lock}
+        title="密碼鎖保險箱管理"
+        description="管理已安裝保護鎖的實體寶箱，授權好朋友存取權限與更換密碼"
+        badgeText={`${lockboxes.length} 個保險箱`}
+        badgeVariant="outline"
+        kpis={[
+          { label: "全服保險箱", value: `${lockboxes.length} 個`, icon: Lock },
+          { label: "我的保險箱", value: `${myLockboxes.length} 個`, icon: Key },
+        ]}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {lockboxes.map((lockbox) => {
-          const isOwner = currentUser?.toLowerCase() === lockbox.owner.toLowerCase();
-          return (
-            <Card key={lockbox.id} className="flex flex-col justify-between">
-              <div>
-                <CardHeader className="pb-3 flex flex-row items-center space-x-3 space-y-0 border-b border-border">
-                  <div className="bg-muted p-2 rounded-[2px] border border-border">
-                    <Lock className="w-4 h-4 text-foreground" />
-                  </div>
-                  <div className="text-left space-y-0.5">
-                    <CardTitle className="text-xs font-bold font-mono text-primary">位置：{lockbox.location}</CardTitle>
-                    <CardDescription className="text-[10px]">擁有者：{lockbox.owner}</CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-4 text-left space-y-3">
-                  <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                      已授權開啟玩家
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {lockbox.authorized && lockbox.authorized.map((player) => (
-                        <span key={player} className="bg-muted border border-border text-foreground text-[10px] pl-2 pr-1.5 py-0.5 rounded-[2px] font-bold flex items-center">
-                          {player}
-                          {isOwner && (
-                            <button 
-                              onClick={() => onUpdateLockbox(lockbox.id, 'revoke', player)} 
-                              className="hover:text-red-500 font-bold ml-1.5 text-xs focus:outline-none"
-                              title="取消授權"
-                            >
-                              ×
-                            </button>
-                          )}
-                        </span>
-                      ))}
-                      {(!lockbox.authorized || lockbox.authorized.length === 0) && (
-                        <span className="text-[11px] text-muted-foreground italic">僅限擁有者開啟</span>
-                      )}
+      {lockboxes.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {lockboxes.map((lockbox) => {
+            const isOwner = currentUser?.toLowerCase() === lockbox.owner.toLowerCase();
+            return (
+              <Card key={lockbox.id} className="flex flex-col justify-between">
+                <div>
+                  <CardHeader className="pb-3 border-b border-border">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 rounded-md bg-muted text-foreground">
+                          <Lock className="w-4 h-4" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <CardTitle className="text-xs font-mono font-bold">{lockbox.location}</CardTitle>
+                          <CardDescription className="text-[11px]">擁有者：{lockbox.owner}</CardDescription>
+                        </div>
+                      </div>
+                      <Badge variant={isOwner ? "default" : "secondary"}>
+                        {isOwner ? "我的保險箱" : "共享保險箱"}
+                      </Badge>
                     </div>
-                  </div>
+                  </CardHeader>
 
-                  {isOwner && (
-                    <div className="flex gap-2 pt-1.5">
-                      <Input 
-                        type="text" 
-                        placeholder="輸入欲授權的玩家名稱..." 
-                        className="h-7 text-xs flex-1" 
-                        id={`grant-${lockbox.id}`} 
-                      />
-                      <Button 
-                        size="sm" 
-                        className="h-7 text-[10px] px-3 font-bold" 
-                        onClick={() => {
-                          const val = (document.getElementById(`grant-${lockbox.id}`) as HTMLInputElement)?.value;
-                          if (val?.trim()) {
-                            onUpdateLockbox(lockbox.id, 'grant', val.trim());
-                            (document.getElementById(`grant-${lockbox.id}`) as HTMLInputElement).value = "";
-                          }
-                        }}
-                      >
-                        新增授權
-                      </Button>
+                  <CardContent className="pt-4 space-y-3">
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-2">已授權存取成員</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {lockbox.authorized && lockbox.authorized.map((player) => (
+                          <Badge key={player} variant="outline" className="text-[10px]">
+                            {player}
+                            {isOwner && (
+                              <button 
+                                onClick={() => onUpdateLockbox(lockbox.id, 'revoke', player)} 
+                                className="ml-1 text-muted-foreground hover:text-destructive cursor-pointer"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </Badge>
+                        ))}
+                        {(!lockbox.authorized || lockbox.authorized.length === 0) && (
+                          <span className="text-xs text-muted-foreground italic">僅限擁有者開啟</span>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </div>
 
-              {isOwner && (
-                <div className="p-3 border-t border-border mt-3 flex items-center justify-between">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 text-[10px] font-bold" 
-                    onClick={() => {
-                      const pwd = window.prompt("請輸入密碼箱的新密碼：");
-                      if (pwd && pwd.trim()) {
-                        onUpdateLockbox(lockbox.id, 'change_password', undefined, pwd.trim());
-                      }
-                    }}
-                  >
-                    <Key className="w-3 h-3 mr-1" />
-                    修改密碼
-                  </Button>
-
-                  <Button 
-                    variant="destructive" 
-                    size="sm" 
-                    className="h-7 text-[10px] bg-red-500 hover:bg-red-600 text-white font-bold" 
-                    onClick={() => {
-                      if (window.confirm("確定要註銷此安全箱的密碼鎖嗎？遊戲內的密碼鎖箱子將會被完全解除。")) {
-                        onUpdateLockbox(lockbox.id, 'delete');
-                      }
-                    }}
-                  >
-                    註銷密碼鎖
-                  </Button>
+                    {isOwner && (
+                      <div className="flex items-center space-x-2 pt-2">
+                        <Input 
+                          type="text" 
+                          placeholder="授權玩家名稱..." 
+                          className="h-8 text-xs flex-1" 
+                          id={`grant-${lockbox.id}`} 
+                        />
+                        <Button 
+                          size="sm" 
+                          variant="secondary"
+                          className="h-8 text-xs shrink-0" 
+                          onClick={() => {
+                            const val = (document.getElementById(`grant-${lockbox.id}`) as HTMLInputElement)?.value;
+                            if (val?.trim()) {
+                              onUpdateLockbox(lockbox.id, 'grant', val.trim());
+                              (document.getElementById(`grant-${lockbox.id}`) as HTMLInputElement).value = "";
+                            }
+                          }}
+                        >
+                          新增授權
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
                 </div>
-              )}
-            </Card>
-          );
-        })}
-
-        {lockboxes.length === 0 && (
-          <Card className="col-span-full py-12 border-dashed">
-            <CardContent className="flex flex-col items-center justify-center text-center space-y-4">
-              <div className="bg-muted p-3 rounded-full">
-                <ShieldAlert className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <CardTitle className="text-base font-bold">目前沒有偵測到您已加鎖的安全密碼箱</CardTitle>
-              <CardDescription className="max-w-md">
-                請在遊戲中面對箱子輸入指令「/padlock {"<密碼>"}」來為箱子設定安全密碼鎖。設定後，密碼箱的授權狀態將即時同步並可在此進行遠端管理。
-              </CardDescription>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <Card className="py-12">
+          <CardContent className="text-center space-y-2">
+            <Lock className="w-8 h-8 text-muted-foreground mx-auto" />
+            <p className="text-sm font-bold text-foreground">目前無任何安裝密碼鎖的保險箱</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

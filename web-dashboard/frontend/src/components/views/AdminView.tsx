@@ -10,6 +10,7 @@ interface AdminViewProps {
   token: string | null;
   triggerToast: (msg: string, type: 'success' | 'error' | 'info') => void;
   API_URL: string;
+  subTab?: 'audit' | 'announcement' | 'cobrand' | 'transactions' | 'tickets' | 'backup';
 }
 
 interface PlayerProfile {
@@ -45,8 +46,9 @@ const COLOR_MAP: Record<string, string> = {
   '§f': 'text-slate-100',
 };
 
-export default function AdminView({ token, triggerToast, API_URL }: AdminViewProps) {
+export default function AdminView({ token, triggerToast, API_URL, subTab }: AdminViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<'audit' | 'announcement' | 'cobrand' | 'transactions' | 'tickets' | 'backup'>('audit');
+  const currentSubTab = subTab || activeSubTab;
 
   // Ban & Kick States
   const [banPlayer, setBanPlayer] = useState('');
@@ -584,58 +586,54 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
           <button
             onClick={() => {
               setActiveSubTab('transactions');
-              fetchAdminTransactions(1, '');
+              fetchAdminTransactions(1, txSearch);
             }}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-              activeSubTab === 'transactions' 
-                ? 'bg-card text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground'
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+              currentSubTab === 'transactions' 
+                ? 'bg-primary text-primary-foreground shadow-sm font-semibold' 
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
             }`}
           >
-            玩家交易日誌
+            <FileText className="w-3.5 h-3.5" />
+            <span>交易日誌稽核</span>
           </button>
           <button
             onClick={() => {
               setActiveSubTab('tickets');
-              fetchAdminTickets(1, '');
+              fetchAdminTickets(1, ticketSearch);
             }}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-              activeSubTab === 'tickets' 
-                ? 'bg-card text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground'
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+              currentSubTab === 'tickets' 
+                ? 'bg-primary text-primary-foreground shadow-sm font-semibold' 
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
             }`}
           >
-            客服單歷史備份
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>工單對話歸檔</span>
           </button>
           <button
             onClick={() => {
               setActiveSubTab('backup');
               fetchBackupStatus();
             }}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-              activeSubTab === 'backup' 
-                ? 'bg-card text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground'
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+              currentSubTab === 'backup' 
+                ? 'bg-primary text-primary-foreground shadow-sm font-semibold' 
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
             }`}
           >
-            地圖自動備份
+            <HardDrive className="w-3.5 h-3.5" />
+            <span>地圖自動備份</span>
           </button>
         </div>
       </div>
 
-      {/* 1. 子分頁 A: 🛡️ 玩家查核與懲處中心 (Player Moderation & Audit Hub) */}
-      {activeSubTab === 'audit' && (
-        <div className="space-y-6 animate-fade-in">
-          {/* 頂部玩家搜尋列 */}
-          <Card className="bg-card border-border shadow-sm">
+      {currentSubTab === 'audit' && (
+        /* 1. 玩家搜尋、處分與資產發放區塊 */
+        <div className="space-y-6">
+          <Card>
             <CardHeader className="pb-3 border-b border-border">
-              <CardTitle className="text-xs font-bold flex items-center space-x-2">
-                <Search className="w-4 h-4 text-primary" />
-                <span>搜查玩家檔案 (Search Player Passport)</span>
-              </CardTitle>
-              <CardDescription className="text-[11px]">
-                輸入玩家 Minecraft 帳號，以生成管理員直控卡，並進行遠端懲處或實體背包審查。
-              </CardDescription>
+              <CardTitle className="text-sm font-bold">玩家檔案與背包查帳</CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
               <form onSubmit={handlePlayerSearch} className="flex gap-3 max-w-xl">

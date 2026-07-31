@@ -139,9 +139,13 @@ try {
         title_text TEXT NOT NULL,
         color_code TEXT DEFAULT '§c',
         is_bold INTEGER DEFAULT 1,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        expires_at DATETIME
       )
     `);
+    try {
+      db.exec('ALTER TABLE player_titles ADD COLUMN expires_at DATETIME');
+    } catch (e) {}
     try {
       db.prepare(`
         INSERT OR IGNORE INTO player_titles (username, title_text, color_code, is_bold)

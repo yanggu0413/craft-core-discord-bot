@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Package, Send, DollarSign, ShieldAlert, Info, RefreshCw } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Package, DollarSign, Mail } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Badge } from '../ui/badge';
+import PageHeader from '../ui/PageHeader';
 import MinecraftItemIcon from '../ui/MinecraftItemIcon';
 import { apiFetch } from '../../lib/api';
 
@@ -30,21 +32,17 @@ export default function InventoryView({
   fetchData
 }: InventoryViewProps) {
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [sendingMail, setSendingMail] = useState(false);
 
-  // Send Money State
   const [moneyReceiver, setMoneyReceiver] = useState('');
   const [moneyAmount, setMoneyAmount] = useState('');
 
-  // Send Item State
   const [selectedSlot, setSelectedSlot] = useState<InventoryItem | null>(null);
   const [itemReceiver, setItemReceiver] = useState('');
   const [itemQuantity, setItemQuantity] = useState('1');
 
   const fetchInventory = async () => {
     if (!token || !isOnline) return;
-    setLoading(true);
     try {
       const res = await apiFetch('/user/inventory');
       if (res.ok && res.data?.success) {
@@ -54,8 +52,6 @@ export default function InventoryView({
       }
     } catch (err: any) {
       triggerToast('連線 API 錯誤：' + err.message, 'error');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -95,12 +91,12 @@ export default function InventoryView({
         triggerToast('金幣電子匯款成功送出！', 'success');
         setMoneyReceiver('');
         setMoneyAmount('');
-        fetchData(); // Refresh balance
+        fetchData();
       } else {
         triggerToast(res.data?.message || '匯款失敗', 'error');
       }
     } catch (err: any) {
-      triggerToast('傳送失敗：' + err.message, 'error');
+      triggerToast('請求失敗：' + err.message, 'error');
     } finally {
       setSendingMail(false);
     }
@@ -108,9 +104,9 @@ export default function InventoryView({
 
   const handleSendItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedSlot || !itemReceiver.trim() || !itemQuantity) return;
+    if (!selectedSlot || !itemReceiver.trim()) return;
 
-    const qty = parseInt(itemQuantity);
+    const qty = parseInt(itemQuantity, 10);
     if (isNaN(qty) || qty <= 0 || qty > selectedSlot.count) {
       triggerToast('請輸入有效的數量！', 'error');
       return;
@@ -118,264 +114,168 @@ export default function InventoryView({
 
     setSendingMail(true);
     try {
-      const res = await apiFetch('/mail/send', {
+      const res = await apiFetch('/mail/send-item', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           receiver: itemReceiver.trim(),
-          type: 'item',
           slot: selectedSlot.slot,
-          itemId: selectedSlot.itemId,
-          quantity: qty,
-          nbt: selectedSlot.nbt
+          count: qty
         })
       });
       if (res.ok && res.data?.success) {
-        triggerToast('物品快遞包裹成功送出！', 'success');
-        setItemReceiver('');
+        triggerToast('包裹寄送成功！', 'success');
         setSelectedSlot(null);
-        fetchInventory(); // Reload inventory
+        setItemReceiver('');
+        setItemQuantity('1');
+        fetchInventory();
       } else {
-        triggerToast(res.data?.message || '寄送物品失敗', 'error');
+        triggerToast(res.data?.message || '包裹寄送失敗', 'error');
       }
     } catch (err: any) {
-      triggerToast('傳送失敗：' + err.message, 'error');
+      triggerToast('請求失敗：' + err.message, 'error');
     } finally {
       setSendingMail(false);
     }
   };
 
-  // Organize items into a 36-slot array (0-35)
-  const gridSlots = Array.from({ length: 36 }, (_, index) => {
-    return items.find((item) => item.slot === index) || null;
-  });
-
-  const renderSlot = (index: number) => {
-    const item = gridSlots[index];
-    const isSelected = selectedSlot?.slot === index;
-    return (
-      <div
-        key={index}
-        onClick={() => item && setSelectedSlot(item)}
-        className="flex items-center justify-center relative cursor-pointer select-none shrink-0"
-        style={{
-          width: '48px',
-          height: '48px',
-          backgroundColor: '#8b8b8b',
-          borderTop: '3px solid #373737',
-          borderLeft: '3px solid #373737',
-          borderBottom: '3px solid #ffffff',
-          borderRight: '3px solid #ffffff',
-          boxSizing: 'border-box',
-          outline: isSelected ? '3px solid #ffffff' : 'none',
-          zIndex: isSelected ? 20 : 1,
-          boxShadow: 'inset 2px 2px 4px rgba(0, 0, 0, 0.4)'
-        }}
-        title={item ? `${item.displayName}\n(ID: ${item.itemId})` : `第 ${index} 格 (空)`}
-      >
-        {item ? (
-          <>
-            {/* Minecraft Item/Block Icon (Enlarged to 85% of slot to match game scale) */}
-            <MinecraftItemIcon itemId={item.itemId} className="w-[38px] h-[38px] object-contain" />
-            {/* Stack Count (Vanilla Minecraft Style) */}
-            {item.count > 1 && (
-              <span 
-                className="absolute bottom-[2px] right-[4px] font-mono text-[11px] font-black text-white select-none z-10"
-                style={{
-                  textShadow: '1.5px 1.5px 0px #3f3f3f'
-                }}
-              >
-                {item.count}
-              </span>
-            )}
-          </>
-        ) : null}
-      </div>
-    );
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="space-y-1 text-left flex justify-between items-center">
-        <div>
-          <h2 className="text-base font-bold tracking-wider uppercase text-foreground">郵局與個人背包</h2>
-          <p className="text-xs text-muted-foreground">
-            線上實時檢視您的遊戲背包內容，並能直接將物品或金幣匯款寄送快遞給其他玩家。
-          </p>
-        </div>
-        {isOnline && (
-          <Button variant="outline" size="sm" onClick={fetchInventory} disabled={loading} className="h-7 text-xs">
-            <RefreshCw className={`w-3 h-3 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-            重整背包
-          </Button>
-        )}
-      </div>
+    <div className="space-y-6 text-left">
+      <PageHeader
+        icon={Mail}
+        title="郵局與背包快遞"
+        description="遠端匯款轉帳給其他玩家，或將在線背包中的物品郵寄送出"
+        badgeText={isOnline ? "背包連線" : "需要上線"}
+        badgeVariant={isOnline ? "success" : "outline"}
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 左側：個人背包（需要玩家在線） */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-4">
-            <div className="flex items-center space-x-2">
-              <Package className="w-4 h-4 text-primary" />
-              <CardTitle>個人遊戲背包 (36 格)</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            {!isOnline ? (
-              <div className="w-full py-12 flex flex-col items-center justify-center text-center space-y-4 border border-dashed border-border rounded-[4px]">
-                <div className="bg-amber-500/10 p-3 rounded-full">
-                  <ShieldAlert className="w-8 h-8 text-amber-500" />
-                </div>
-                <CardTitle className="text-sm font-bold">目前處於遊戲離線狀態</CardTitle>
-                <CardDescription className="max-w-xs text-xs">
-                  您必須登入遊戲並處於線上狀態，網頁端才能實時讀取並同步您的個人背包數據。
-                </CardDescription>
-              </div>
-            ) : (
-              <div className="space-y-4 w-full flex flex-col items-center">
-                {/* Minecraft Inset GUI Container (1:1 replica of GUI texture colors and borders) */}
-                <div 
-                  className="p-4 shadow-xl max-w-full overflow-x-auto flex justify-center"
-                  style={{
-                    backgroundColor: '#c6c6c6',
-                    borderTop: '3px solid #ffffff',
-                    borderLeft: '3px solid #ffffff',
-                    borderBottom: '3px solid #555555',
-                    borderRight: '3px solid #555555',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <div className="flex flex-col space-y-3">
-                    {/* Main Inventory: 3 rows of 9 (slots 9 to 35) */}
-                    <div className="grid grid-cols-9 gap-[4px]">
-                      {Array.from({ length: 27 }, (_, i) => renderSlot(i + 9))}
-                    </div>
-
-                    {/* Separator Gap (approx. 8px) */}
-                    <div className="h-2" />
-
-                    {/* Hotbar: 1 row of 9 (slots 0 to 8) */}
-                    <div className="grid grid-cols-9 gap-[4px]">
-                      {Array.from({ length: 9 }, (_, i) => renderSlot(i))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-2 text-[10px] text-muted-foreground bg-muted/30 p-2 rounded-[2px] text-left">
-                  <Info className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-                  <p>
-                    點擊背包中有物品的格子即可將其選中，並在下方填寫收件人與數量進行「快遞包裹寄送」。
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* 右側：匯款與快遞面板 */}
-        <div className="space-y-6">
-          {/* 金幣匯款 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-6 space-y-6">
           <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center space-x-2">
-                <DollarSign className="w-4 h-4 text-emerald-500" />
-                <CardTitle className="text-sm font-bold">金幣電子匯款</CardTitle>
+            <CardHeader className="pb-3 border-b border-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <DollarSign className="w-4 h-4 text-foreground" />
+                  <CardTitle className="text-sm font-bold">跨服電子轉帳</CardTitle>
+                </div>
+                <Badge variant="outline">轉帳服務</Badge>
               </div>
-              <CardDescription className="text-[10px]">直接在網頁端扣除您的餘額郵寄金幣給指定玩家（離線可用）</CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSendMoney} className="space-y-3">
-                <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase">收件人玩家名稱</label>
+            <CardContent className="pt-6">
+              <form onSubmit={handleSendMoney} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground">收款玩家 ID</label>
                   <Input
                     type="text"
-                    required
-                    placeholder="例如：Yanggu"
+                    placeholder="輸入對方的 Minecraft 玩家名稱..."
                     value={moneyReceiver}
                     onChange={(e) => setMoneyReceiver(e.target.value)}
-                    className="h-8 text-xs"
+                    className="text-xs"
                   />
                 </div>
-                <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase flex justify-between">
-                    <span>匯款金額 (元)</span>
-                    <span className="text-emerald-500">可用：${Math.floor(userBalance).toLocaleString()}</span>
-                  </label>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground">轉帳金額 ($)</label>
                   <Input
                     type="number"
-                    required
-                    min="1"
                     placeholder="輸入轉帳金額..."
                     value={moneyAmount}
                     onChange={(e) => setMoneyAmount(e.target.value)}
-                    className="h-8 text-xs font-mono"
+                    className="text-xs font-mono"
                   />
+                  <p className="text-[11px] text-muted-foreground">可轉帳金額：${Math.floor(userBalance).toLocaleString()}</p>
                 </div>
-                <Button type="submit" disabled={sendingMail} className="w-full h-8 text-xs font-bold">
-                  <Send className="w-3 h-3 mr-1.5" />
-                  確認電子匯款
+                <Button
+                  type="submit"
+                  disabled={sendingMail || !moneyReceiver.trim() || !moneyAmount}
+                  className="w-full text-xs font-semibold"
+                >
+                  {sendingMail ? '傳送中...' : '確認匯款'}
                 </Button>
               </form>
             </CardContent>
           </Card>
+        </div>
 
-          {/* 物品快遞（僅線上可用） */}
-          {selectedSlot && (
-            <Card className="border-emerald-500/30">
-              <CardHeader className="pb-3">
+        <div className="lg:col-span-6 space-y-6">
+          <Card>
+            <CardHeader className="pb-3 border-b border-border">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Package className="w-4 h-4 text-emerald-500" />
-                  <CardTitle className="text-sm font-bold">寄送物品快遞</CardTitle>
+                  <Package className="w-4 h-4 text-foreground" />
+                  <CardTitle className="text-sm font-bold">背包物品快遞寄送</CardTitle>
                 </div>
-                <div className="text-[10px] text-muted-foreground flex items-center space-x-2 mt-1.5 bg-muted/30 p-2 rounded-[2px]">
-                  <MinecraftItemIcon itemId={selectedSlot.itemId} className="w-8 h-8" />
-                  <div>
-                    將選中的物品 <span className="font-bold text-foreground">{selectedSlot.displayName}</span> 寄送給指定玩家。
-                  </div>
+                <Badge variant={isOnline ? "success" : "secondary"}>
+                  {isOnline ? "背包同步中" : "需在線才能寄送"}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              {!isOnline ? (
+                <div className="p-6 border border-dashed border-border rounded-lg text-center space-y-2">
+                  <p className="text-xs font-semibold text-foreground">請在 Minecraft 伺服器中保持上線</p>
+                  <p className="text-[11px] text-muted-foreground">物品快遞需要即時讀取您的遊戲內背包物品欄。</p>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSendItem} className="space-y-3">
-                  <div className="space-y-1 text-left">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase">收件人玩家名稱</label>
-                    <Input
-                      type="text"
-                      required
-                      placeholder="例如：Yanggu"
-                      value={itemReceiver}
-                      onChange={(e) => setItemReceiver(e.target.value)}
-                      className="h-8 text-xs"
-                    />
+              ) : (
+                <form onSubmit={handleSendItem} className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-foreground">選擇背包物品</label>
+                    <div className="grid grid-cols-6 gap-2 p-2 border border-border bg-muted/20 rounded-lg max-h-48 overflow-y-auto">
+                      {items.map((item) => {
+                        const isSelected = selectedSlot?.slot === item.slot;
+                        return (
+                          <button
+                            type="button"
+                            key={item.slot}
+                            onClick={() => setSelectedSlot(item)}
+                            className={`p-1.5 border rounded-md flex flex-col items-center justify-center cursor-pointer transition-all ${
+                              isSelected ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-border/80'
+                            }`}
+                          >
+                            <MinecraftItemIcon itemId={item.itemId} className="w-6 h-6" />
+                            <span className="text-[9px] font-mono font-bold mt-1">x{item.count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="space-y-1 text-left">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase flex justify-between">
-                      <span>快遞寄送數量</span>
-                      <span className="text-emerald-500">最大數量：{selectedSlot.count}</span>
-                    </label>
-                    <Input
-                      type="number"
-                      required
-                      min="1"
-                      max={selectedSlot.count.toString()}
-                      placeholder="輸入寄件數量..."
-                      value={itemQuantity}
-                      onChange={(e) => setItemQuantity(e.target.value)}
-                      className="h-8 text-xs font-mono"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button type="submit" disabled={sendingMail} className="flex-1 h-8 text-xs font-bold">
-                      <Send className="w-3 h-3 mr-1.5" />
-                      確認快遞寄送
-                    </Button>
-                    <Button variant="outline" type="button" onClick={() => setSelectedSlot(null)} className="h-8 text-xs px-2.5">
-                      取消
-                    </Button>
-                  </div>
+
+                  {selectedSlot && (
+                    <div className="p-3 border border-border bg-card rounded-md space-y-3">
+                      <p className="text-xs font-bold text-foreground">已選擇：{selectedSlot.displayName}</p>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-foreground">收件玩家 ID</label>
+                        <Input
+                          type="text"
+                          placeholder="輸入收件人 ID..."
+                          value={itemReceiver}
+                          onChange={(e) => setItemReceiver(e.target.value)}
+                          className="text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-foreground">寄送數量 (最多 {selectedSlot.count})</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max={selectedSlot.count}
+                          value={itemQuantity}
+                          onChange={(e) => setItemQuantity(e.target.value)}
+                          className="text-xs font-mono"
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={sendingMail || !itemReceiver.trim()}
+                        className="w-full text-xs font-semibold"
+                      >
+                        {sendingMail ? '寄送中...' : '確認寄送包裹'}
+                      </Button>
+                    </div>
+                  )}
                 </form>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
