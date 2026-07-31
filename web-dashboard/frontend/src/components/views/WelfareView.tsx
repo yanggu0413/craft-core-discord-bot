@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { 
-  Gift, Calendar, Flame, Key, Trophy, 
+  Gift, Calendar, Flame, Key, 
   Volume2, VolumeX 
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import PageHeader from '../ui/PageHeader';
 import MinecraftItemIcon from '../ui/MinecraftItemIcon';
 
@@ -26,13 +25,6 @@ interface WelfareViewProps {
   setTotalCheckins: (val: number) => void;
   setLastCheckin: (val: string | null) => void;
   API_URL: string;
-}
-
-interface LeaderboardEntry {
-  mc_username: string;
-  keys_count: number;
-  checkin_streak: number;
-  total_checkins: number;
 }
 
 const PRIZE_POOL = [
@@ -59,9 +51,8 @@ export default function WelfareView({
   setLastCheckin,
   API_URL
 }: WelfareViewProps) {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loadingCheckin, setLoadingCheckin] = useState(false);
-  const [welfareSubTab, setWelfareSubTab] = useState<'checkin' | 'wheel' | 'leaderboard'>('checkin');
+  const [welfareSubTab, setWelfareSubTab] = useState<'checkin' | 'wheel'>('checkin');
 
   const generateInitialReel = () => {
     const list: typeof PRIZE_POOL = [];
@@ -133,22 +124,6 @@ export default function WelfareView({
     }
   };
 
-  const fetchWelfareLeaderboard = async () => {
-    try {
-      const res = await fetch(`${API_URL}/user/leaderboard`);
-      const data = await res.json();
-      if (data.success) {
-        setLeaderboard(data.leaderboard || []);
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch leaderboard:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchWelfareLeaderboard();
-  }, []);
-
   const handleCheckin = async () => {
     if (!token) {
       triggerToast('請先進行安全登入！', 'error');
@@ -168,7 +143,6 @@ export default function WelfareView({
         setTotalCheckins(data.total_checkins);
         setLastCheckin(data.last_checkin);
         fetchData();
-        fetchWelfareLeaderboard();
       } else {
         triggerToast(data.message || '簽到失敗', 'error');
       }
@@ -196,7 +170,6 @@ export default function WelfareView({
         triggerToast(data.message || '購買成功！', 'success');
         setKeysCount(data.keys_count);
         fetchData();
-        fetchWelfareLeaderboard();
       } else {
         triggerToast(data.message || '購買失敗', 'error');
       }
@@ -315,7 +288,6 @@ export default function WelfareView({
           }
           setIsSpinning(false);
           fetchData();
-          fetchWelfareLeaderboard();
         }, 5000);
 
       }, 50);
@@ -366,15 +338,6 @@ export default function WelfareView({
         >
           <Gift className="w-3.5 h-3.5 mr-1 text-amber-500" />
           <span>幸運轉盤大抽獎</span>
-        </Button>
-        <Button
-          variant={welfareSubTab === 'leaderboard' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setWelfareSubTab('leaderboard')}
-          className="text-xs font-semibold rounded-md"
-        >
-          <Trophy className="w-3.5 h-3.5 mr-1 text-amber-400" />
-          <span>簽到排行榜</span>
         </Button>
       </div>
 
@@ -507,59 +470,6 @@ export default function WelfareView({
                 一鍵全抽 ({keysCount} 把)
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {welfareSubTab === 'leaderboard' && (
-        <Card className="rounded-none">
-          <CardHeader className="pb-3 border-b border-border">
-            <CardTitle className="text-sm font-bold">簽到與鑰匙排行榜 (前 10 名)</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16 text-center">排名</TableHead>
-                  <TableHead>玩家</TableHead>
-                  <TableHead className="text-center">擁有的鑰匙</TableHead>
-                  <TableHead className="text-center">連續簽到</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leaderboard.length > 0 ? (
-                  leaderboard.map((player, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell className="text-center font-mono font-bold text-xs">
-                        {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <img 
-                            src={`https://mc-heads.net/avatar/${player.mc_username}/20`} 
-                            alt={player.mc_username}
-                            className="w-5 h-5 rounded-md border border-border"
-                          />
-                          <span className="text-xs font-semibold text-foreground">{player.mc_username}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center font-mono text-xs font-bold text-amber-500">
-                        {player.keys_count || 0} 把
-                      </TableCell>
-                      <TableCell className="text-center font-mono text-xs font-bold text-orange-500">
-                        {player.checkin_streak || 0} 天
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-xs text-muted-foreground py-6">
-                      暫無榜單數據
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
           </CardContent>
         </Card>
       )}
