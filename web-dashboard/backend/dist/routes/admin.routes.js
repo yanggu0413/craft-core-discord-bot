@@ -4,6 +4,11 @@ const express_1 = require("express");
 const configLoader_1 = require("../utils/configLoader");
 const wsClient_1 = require("../websocket/wsClient");
 const router = (0, express_1.Router)();
+function sanitizeCommandArg(val) {
+    if (!val)
+        return '';
+    return String(val).replace(/[\r\n;"]/g, '').trim();
+}
 // Protect all routes with authentication and requireAdmin
 router.use(wsClient_1.authenticateToken, wsClient_1.requireAdmin);
 // GET /api/admin/player/:username
@@ -82,19 +87,20 @@ router.get('/player/:username', async (req, res) => {
 // POST /api/admin/give-money
 router.post('/give-money', async (req, res) => {
     const { username, amount } = req.body;
+    const cleanUsername = sanitizeCommandArg(username);
     const numAmount = typeof amount === 'number' ? amount : parseFloat(amount);
-    if (!username || isNaN(numAmount) || numAmount <= 0) {
+    if (!cleanUsername || isNaN(numAmount) || numAmount <= 0) {
         return res.status(400).json({ success: false, message: '請提供有效的目標玩家名稱與金額' });
     }
     try {
         try {
             await (0, wsClient_1.sendWsQuery)('command_request', {
-                command: `/addmoney "${username}" ${numAmount}`,
+                command: `/addmoney ${cleanUsername} ${numAmount}`,
                 admin_username: req.user?.mc_username || 'Web-Dashboard'
             }, 3000);
         }
         catch (wsErr) { }
-        return res.json({ success: true, message: `已成功給予玩家 ${username} $${numAmount} 金幣！` });
+        return res.json({ success: true, message: `已成功給予玩家 ${cleanUsername} $${numAmount} 金幣！` });
     }
     catch (err) {
         return res.status(500).json({ success: false, message: err.message });
@@ -103,19 +109,20 @@ router.post('/give-money', async (req, res) => {
 // POST /api/admin/give-keys
 router.post('/give-keys', async (req, res) => {
     const { username, amount } = req.body;
+    const cleanUsername = sanitizeCommandArg(username);
     const numAmount = typeof amount === 'number' ? amount : parseInt(amount, 10);
-    if (!username || isNaN(numAmount) || numAmount <= 0) {
+    if (!cleanUsername || isNaN(numAmount) || numAmount <= 0) {
         return res.status(400).json({ success: false, message: '請提供有效的目標玩家名稱與鑰匙數量' });
     }
     try {
         if (wsClient_1.db) {
-            wsClient_1.db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE mc_username = ? COLLATE NOCASE').run(numAmount, username);
+            wsClient_1.db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE mc_username = ? COLLATE NOCASE').run(numAmount, cleanUsername);
         }
         try {
-            await (0, wsClient_1.sendWsQuery)('give_keys', { username, amount: numAmount }, 2000);
+            await (0, wsClient_1.sendWsQuery)('give_keys', { username: cleanUsername, amount: numAmount }, 2000);
         }
         catch (wsErr) { }
-        return res.json({ success: true, message: `已成功給予玩家 ${username} ${numAmount} 把抽獎鑰匙！` });
+        return res.json({ success: true, message: `已成功給予玩家 ${cleanUsername} ${numAmount} 把抽獎鑰匙！` });
     }
     catch (err) {
         return res.status(500).json({ success: false, message: err.message });
@@ -124,16 +131,18 @@ router.post('/give-keys', async (req, res) => {
 // POST /api/admin/ban
 router.post('/ban', async (req, res) => {
     const { player, reason } = req.body;
-    if (!player || !reason) {
+    const cleanPlayer = sanitizeCommandArg(player);
+    const cleanReason = sanitizeCommandArg(reason);
+    if (!cleanPlayer || !cleanReason) {
         return res.status(400).json({ success: false, message: '缺少玩家名稱或原因' });
     }
     try {
         const cmdRes = await (0, wsClient_1.sendWsQuery)('command_request', {
-            command: `/ban ${player} ${reason}`,
+            command: `/ban ${cleanPlayer} ${cleanReason}`,
             admin_username: req.user?.mc_username || 'Web-Dashboard'
         });
         if (cmdRes && cmdRes.success) {
-            return res.json({ success: true, message: `成功封鎖玩家 ${player}：${cmdRes.output || ''}` });
+            return res.json({ success: true, message: `成功封鎖玩家 ${cleanPlayer}：${cmdRes.output || ''}` });
         }
         else {
             return res.status(400).json({ success: false, message: `封鎖失敗：${cmdRes?.output || '未知錯誤'}` });
@@ -146,16 +155,18 @@ router.post('/ban', async (req, res) => {
 // POST /api/admin/kick
 router.post('/kick', async (req, res) => {
     const { player, reason } = req.body;
-    if (!player || !reason) {
+    const cleanPlayer = sanitizeCommandArg(player);
+    const cleanReason = sanitizeCommandArg(reason);
+    if (!cleanPlayer || !cleanReason) {
         return res.status(400).json({ success: false, message: '缺少玩家名稱或原因' });
     }
     try {
         const cmdRes = await (0, wsClient_1.sendWsQuery)('command_request', {
-            command: `/kick ${player} ${reason}`,
+            command: `/kick ${cleanPlayer} ${cleanReason}`,
             admin_username: req.user?.mc_username || 'Web-Dashboard'
         });
         if (cmdRes && cmdRes.success) {
-            return res.json({ success: true, message: `成功踢出玩家 ${player}：${cmdRes.output || ''}` });
+            return res.json({ success: true, message: `成功踢出玩家 ${cleanPlayer}：${cmdRes.output || ''}` });
         }
         else {
             return res.status(400).json({ success: false, message: `踢出失敗：${cmdRes?.output || '未知錯誤'}` });
@@ -168,7 +179,7 @@ router.post('/kick', async (req, res) => {
 // POST /api/admin/co-branding
 router.post('/co-branding', async (req, res) => {
     const { player } = req.body;
-    const target = player || req.body.target;
+    const target = sanitizeCommandArg(player || req.body.target);
     if (!target) {
         return res.status(400).json({ success: false, message: '缺少目標玩家名稱或 Discord ID' });
     }
@@ -185,8 +196,9 @@ router.post('/co-branding', async (req, res) => {
         let gameSuccess = false;
         let gameOutput = '';
         try {
+            const cleanMcName = sanitizeCommandArg(binding.mc_username);
             const cmdRes = await (0, wsClient_1.sendWsQuery)('command_request', {
-                command: `/addmoney ${binding.mc_username} 5000`,
+                command: `/addmoney ${cleanMcName} 5000`,
                 admin_username: req.user?.mc_username || 'Web-Dashboard'
             });
             gameSuccess = cmdRes && cmdRes.success;

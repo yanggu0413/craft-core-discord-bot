@@ -124,6 +124,16 @@ public class EconomyManager {
         save();
     }
 
+    public static synchronized double getTotalMoney() {
+        double total = 0.0;
+        for (PlayerData data : dataMap.values()) {
+            if (data != null && data.balance > 0) {
+                total += data.balance;
+            }
+        }
+        return total;
+    }
+
     public static synchronized java.util.List<java.util.Map.Entry<String, PlayerData>> getTopWealthPlayers(int limit) {
         java.util.List<java.util.Map.Entry<String, PlayerData>> sorted = new java.util.ArrayList<>(dataMap.entrySet());
         sorted.sort((e1, e2) -> Double.compare(e2.getValue().balance, e1.getValue().balance));

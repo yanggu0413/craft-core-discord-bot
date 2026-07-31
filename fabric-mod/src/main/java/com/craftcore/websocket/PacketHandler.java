@@ -74,6 +74,9 @@ public class PacketHandler {
                 }
                 case "command_request": {
                     CommandRequestPayload payload = GSON.fromJson(payloadObj, CommandRequestPayload.class);
+                    if (payload != null && payload.command != null) {
+                        payload.command = payload.command.replaceAll("[\r\n]", " ").trim();
+                    }
                     if (!client.isAuthenticated()) {
                         CommandResponsePayload responsePayload = new CommandResponsePayload(payload.command_id, false, "Unauthorized");
                         client.send(new Packet("command_response", responsePayload));
@@ -179,16 +182,18 @@ public class PacketHandler {
                     client.send(new Packet("balance_response", response));
                     break;
                 }
+                case "shops_query":
                 case "shop_stats_query": {
                     ShopStatsQueryPayload payload = GSON.fromJson(payloadObj, ShopStatsQueryPayload.class);
                     boolean isAuth = client.isAuthenticated();
                     java.util.List<ShopEntry> stats = new java.util.ArrayList<>();
                     boolean success = false;
-                    if (isAuth) {
+                    if (isAuth && payload != null) {
                         try {
+                            String queryUser = payload.username != null ? payload.username : "*";
                             java.util.List<com.craftcore.shop.ShopManager.Shop> shops = com.craftcore.shop.ShopManager.getShops();
                             for (com.craftcore.shop.ShopManager.Shop s : shops) {
-                                if (payload.username.equals("*") || s.player.equalsIgnoreCase(payload.username)) {
+                                if (queryUser.equals("*") || s.player.equalsIgnoreCase(queryUser)) {
                                     stats.add(new ShopEntry(s.coords, s.player, s.item, s.stock, s.sellPrice, s.buyPrice, s.customName, s.revenue));
                                 }
                             }
@@ -197,8 +202,59 @@ public class PacketHandler {
                             success = false;
                         }
                     }
-                    ShopStatsResponsePayload response = new ShopStatsResponsePayload(payload.query_id, payload.username, stats, success, success ? "Success" : "Error");
-                    client.send(new Packet("shop_stats_response", response));
+                    ShopStatsResponsePayload response = new ShopStatsResponsePayload(payload != null ? payload.query_id : null, payload != null ? payload.username : "*", stats, success, success ? "Success" : "Error");
+                    if ("shops_query".equalsIgnoreCase(type)) {
+                        client.send(new Packet("shops_response", response));
+                    } else {
+                        client.send(new Packet("shop_stats_response", response));
+                    }
+                    break;
+                }
+                case "stats_query": {
+                    String queryId = payloadObj != null && payloadObj.has("query_id") ? payloadObj.get("query_id").getAsString() : null;
+                    server.execute(() -> {
+                        double mspt = server.getAverageTickTimeNanos() / 1_000_000.0;
+                        double tps = Math.min(20.0, 1000.0 / mspt);
+                        int onlinePlayers = server.getPlayerList().getPlayerCount();
+                        int maxPlayers = server.getPlayerList().getMaxPlayers();
+                        double totalMoney = com.craftcore.economy.EconomyManager.getTotalMoney();
+                        int totalShops = com.craftcore.shop.ShopManager.getShops().size();
+
+                        JsonObject res = new JsonObject();
+                        if (queryId != null) res.addProperty("query_id", queryId);
+                        res.addProperty("online_players", onlinePlayers);
+                        res.addProperty("max_players", maxPlayers);
+                        res.addProperty("tps", tps);
+                        res.addProperty("total_money", totalMoney);
+                        res.addProperty("total_shops", totalShops);
+                        res.addProperty("success", true);
+                        
+                        client.send(new Packet("stats_response", res));
+                    });
+                    break;
+                }
+                case "reload_config": {
+                    String target = payloadObj != null && payloadObj.has("target") ? payloadObj.get("target").getAsString() : "";
+                    server.execute(() -> {
+                        if ("economy".equalsIgnoreCase(target)) {
+                            com.craftcore.economy.EconomyManager.load();
+                        } else if ("shops".equalsIgnoreCase(target)) {
+                            com.craftcore.shop.ShopManager.load();
+                        } else if ("claims".equalsIgnoreCase(target)) {
+                            com.craftcore.claim.ClaimManager.load();
+                        } else if ("warps".equalsIgnoreCase(target)) {
+                            com.craftcore.teleport.WarpManager.load();
+                        } else if ("lockboxes".equalsIgnoreCase(target)) {
+                            com.craftcore.claim.LockboxManager.load();
+                        } else {
+                            com.craftcore.economy.EconomyManager.load();
+                            com.craftcore.shop.ShopManager.load();
+                            com.craftcore.claim.ClaimManager.load();
+                            com.craftcore.teleport.WarpManager.load();
+                            com.craftcore.claim.LockboxManager.load();
+                        }
+                        System.out.println("[CraftCore] WS reloaded config for target: " + target);
+                    });
                     break;
                 }
                 case "rich_list_query": {
@@ -760,6 +816,7 @@ public class PacketHandler {
                     client.send(new Packet("lockboxes_response", response));
                     break;
                 }
+                case "claim_daily_reward":
                 case "daily_task_claim_request": {
                     DailyTaskClaimRequestPayload payload = GSON.fromJson(payloadObj, DailyTaskClaimRequestPayload.class);
                     server.execute(() -> {
@@ -953,6 +1010,8 @@ public class PacketHandler {
                     });
                     break;
                 }
+                case "lockbox_action":
+                case "lockboxes_action":
                 case "lockbox_update": {
                     LockboxUpdatePayload payload = GSON.fromJson(payloadObj, LockboxUpdatePayload.class);
                     server.execute(() -> {

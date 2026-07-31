@@ -643,6 +643,17 @@ router.post('/user/luckydraw', authenticateToken, async (req: CustomRequest, res
       db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(newKeys, row.id);
     }
 
+    // Sync key deduction to economy.json lotteryKeys to prevent double-spending in-game
+    const ecoMap = loadConfigJson<Record<string, any>>('economy.json') || {};
+    const ecoKey = Object.keys(ecoMap).find(k => k.replace(/^\./, '').toLowerCase() === cleanUsername) || username;
+    if (ecoMap[ecoKey]) {
+      ecoMap[ecoKey].lotteryKeys = newKeys;
+      saveConfigJson('economy.json', ecoMap);
+    }
+    try {
+      await sendWsQuery('player_keys_update', { username, keys: newKeys }, 1000);
+    } catch (e) {}
+
     const prizeIndex = Math.floor(Math.random() * PRIZE_POOL.length);
     const prize = PRIZE_POOL[prizeIndex];
 
@@ -749,52 +760,28 @@ router.post('/user/buy-key-with-money', authenticateToken, async (req: CustomReq
 
   if (!db) return res.status(500).json({ success: false, message: '資料庫連線不可用' });
 
-  // 1. Check player balance
-  let balance = 0;
-  let balanceFetched = false;
+  // 1. Atomically check & deduct money from economy.json
+  const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+  const ecoMap = loadConfigJson<Record<string, any>>('economy.json') || {};
+  const ecoKey = Object.keys(ecoMap).find(k => k.replace(/^\./, '').toLowerCase() === cleanUsername) || username;
+  const pEco = ecoMap[ecoKey] || { username, balance: 0 };
+  const currentBalance = Number(pEco.balance) || 0;
 
-  try {
-    const wsRes = await sendWsQuery('balance_query', { username }, 1500);
-    if (wsRes && wsRes.success && typeof wsRes.balance === 'number') {
-      balance = wsRes.balance;
-      balanceFetched = true;
-    }
-  } catch (e) {}
-
-  if (!balanceFetched) {
-    try {
-      const ecoMap = loadConfigJson<Record<string, any>>('economy.json');
-      if (ecoMap && typeof ecoMap === 'object') {
-        const playerEco = ecoMap[username] || Object.values(ecoMap).find((v: any) =>
-          v.username?.toLowerCase() === username.toLowerCase() || v.name?.toLowerCase() === username.toLowerCase()
-        );
-        if (playerEco && typeof playerEco.balance === 'number') {
-          balance = playerEco.balance;
-          balanceFetched = true;
-        }
-      }
-    } catch (e) {}
-  }
-
-  if (balance < totalCost) {
+  if (currentBalance < totalCost) {
     return res.status(400).json({
       success: false,
-      message: `金幣餘額不足！購買 ${count} 把鑰匙需要 $${totalCost}，您目前僅有 $${balance}`
+      message: `金幣餘額不足！購買 ${count} 把鑰匙需要 $${totalCost}，您目前僅有 $${currentBalance.toFixed(2)}`
     });
   }
 
-  // 2. Deduct money
-  try {
-    await sendWsQuery('command_request', { command: `removemoney "${username}" ${totalCost}` }, 1500);
-  } catch (e) {
-    try {
-      await sendWsQuery('give_money', { username, amount: -totalCost }, 1500);
-    } catch (err) {}
-  }
+  // Deduct money in economy.json
+  const newBalance = Math.max(0, currentBalance - totalCost);
+  ecoMap[ecoKey] = { ...pEco, balance: newBalance };
+  saveConfigJson('economy.json', ecoMap);
 
-  // 3. Update SQLite bindings keys_count
+  // 2. Update SQLite bindings keys_count & sync economy.json lotteryKeys
+  let newKeys = count;
   try {
-    const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
     const userDiscordId = user.discord_id || '';
     const userUuid = user.mc_uuid || '';
     const row = db.prepare(`
@@ -803,13 +790,13 @@ router.post('/user/buy-key-with-money', authenticateToken, async (req: CustomReq
          OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
          OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
     `).get(cleanUsername, userDiscordId, userUuid) as any;
-    const currentKeys = row?.keys_count || 0;
-    const newKeys = currentKeys + count;
+    const currentKeys = Math.max(0, row?.keys_count || 0);
+    newKeys = currentKeys + count;
 
     if (!row) {
       db.prepare('INSERT INTO bindings (discord_id, mc_uuid, mc_username, keys_count) VALUES (?, ?, ?, ?)').run(
         user.discord_id || 'system',
-        user.mc_uuid || `dev-uuid-${username.toLowerCase()}`,
+        user.mc_uuid || `dev-uuid-${cleanUsername}`,
         username,
         newKeys
       );
@@ -817,14 +804,25 @@ router.post('/user/buy-key-with-money', authenticateToken, async (req: CustomReq
       db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(newKeys, row.id);
     }
 
-    return res.json({
-      success: true,
-      message: `成功購買 ${count} 把鑰匙！`,
-      keys_count: newKeys
-    });
+    // Also update lotteryKeys in economy.json
+    ecoMap[ecoKey].lotteryKeys = newKeys;
+    saveConfigJson('economy.json', ecoMap);
   } catch (error: any) {
-    return res.status(500).json({ success: false, message: error.message });
+    console.error('[Buy Key Error]', error);
   }
+
+  // Notify Fabric mod via WS
+  try {
+    await sendWsQuery('player_balance_update', { username, balance: newBalance }, 1000);
+    await sendWsQuery('player_keys_update', { username, keys: newKeys }, 1000);
+    await sendWsQuery('reload_config', { target: 'economy' }, 1000);
+  } catch (e) {}
+
+  return res.json({
+    success: true,
+    message: `成功購買 ${count} 把鑰匙！`,
+    keys_count: newKeys
+  });
 });
 
 // POST /api/user/reminder-subscription - Toggle check-in reminder

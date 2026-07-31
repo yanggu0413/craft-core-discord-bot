@@ -9,16 +9,16 @@ function normalizeShop(raw) {
     if (!raw || typeof raw !== 'object')
         return null;
     const owner = raw.player || raw.owner || raw.username || '伺服器玩家';
-    const buyPrice = Number(raw.price !== undefined ? raw.price : (raw.sellPrice !== undefined ? raw.sellPrice : raw.buy_price)) || 0;
-    const sellPrice = Number(raw.buyPrice !== undefined ? raw.buyPrice : raw.sell_price) || 0;
+    const visitorBuyPrice = Number(raw.sellPrice !== undefined ? raw.sellPrice : (raw.buy_price !== undefined ? raw.buy_price : raw.price)) || 0;
+    const visitorSellPrice = Number(raw.buyPrice !== undefined ? raw.buyPrice : raw.sell_price) || 0;
     const coords = raw.coords || raw.location || raw.id || '0, 64, 0';
     return {
         location: coords,
         owner,
         item: raw.item || 'minecraft:stone',
         stock: Number(raw.stock) || 0,
-        buy_price: buyPrice,
-        sell_price: sellPrice,
+        buy_price: visitorBuyPrice,
+        sell_price: visitorSellPrice,
         custom_name: raw.customName || raw.custom_name || undefined
     };
 }
