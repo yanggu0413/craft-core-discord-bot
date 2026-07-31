@@ -611,15 +611,38 @@ router.post('/user/luckydraw', authenticateToken, async (req: CustomRequest, res
       });
     }
 
-    try {
-      await sendWsQuery('deliver_item', { username, item: prize.id, count: prize.count }, 1500);
-    } catch (wsErr) {
+    const isMoney = prize.id === 'craftcore:money';
+    const amount = prize.count || 1000;
+
+    if (isMoney) {
       try {
-        db.prepare(`
-          INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, status)
-          VALUES ('system', 'System LuckyDraw', ?, ?, ?, 'pending')
-        `).run(username, prize.id, prize.count);
-      } catch (e) {}
+        await sendWsQuery('give_money', { username, amount }, 1500);
+      } catch (wsErr) {
+        try {
+          db.prepare(`
+            INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, status)
+            VALUES ('system', 'System LuckyDraw', ?, 'craftcore:money', ?, 'pending')
+          `).run(username, amount);
+        } catch (e) {}
+      }
+    } else {
+      try {
+        await sendWsQuery('luckydraw_response', {
+          username,
+          item: prize.id,
+          amount,
+          keysCount: newKeys,
+          success: true,
+          message: `🎉 幸運大抽獎獲得 ${prize.name}！`
+        }, 1500);
+      } catch (wsErr) {
+        try {
+          db.prepare(`
+            INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, status)
+            VALUES ('system', 'System LuckyDraw', ?, ?, ?, 'pending')
+          `).run(username, prize.id, amount);
+        } catch (e) {}
+      }
     }
 
     return res.json({

@@ -63,53 +63,73 @@ export default function WelfareView({
   const [loadingCheckin, setLoadingCheckin] = useState(false);
   const [welfareSubTab, setWelfareSubTab] = useState<'checkin' | 'wheel' | 'leaderboard'>('checkin');
 
+  const generateInitialReel = () => {
+    const list: typeof PRIZE_POOL = [];
+    for (let i = 0; i < 100; i++) {
+      list.push(PRIZE_POOL[i % PRIZE_POOL.length]);
+    }
+    return list;
+  };
+
   const [isSpinning, setIsSpinning] = useState(false);
-  const [spinPrizes, setSpinPrizes] = useState<typeof PRIZE_POOL>([]);
+  const [spinPrizes, setSpinPrizes] = useState<typeof PRIZE_POOL>(generateInitialReel);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
   const spinContainerRef = useRef<HTMLDivElement>(null);
   const spinAnimationFrameRef = useRef<number | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const getAudioContext = () => {
+    if (!audioCtxRef.current) {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      audioCtxRef.current = new AudioCtx();
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  };
 
   const playTickSound = () => {
     if (!soundEnabled) return;
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioCtx();
+      const ctx = getAudioContext();
+      if (!ctx) return;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(600, ctx.currentTime);
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.05);
     } catch (e) {
-      console.warn('AudioContext failed:', e);
+      console.warn('AudioContext tick failed:', e);
     }
   };
 
   const playLevelUpSound = () => {
     if (!soundEnabled) return;
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioCtx();
-      const notes = [261.63, 329.63, 392.00, 523.25];
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const notes = [261.63, 329.63, 392.00, 523.25, 659.25];
       notes.forEach((freq, index) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + index * 0.12);
-        gain.gain.setValueAtTime(0.15, ctx.currentTime + index * 0.12);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + index * 0.12 + 0.25);
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + index * 0.1);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + index * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + index * 0.1 + 0.3);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(ctx.currentTime + index * 0.12);
-        osc.stop(ctx.currentTime + index * 0.12 + 0.35);
+        osc.start(ctx.currentTime + index * 0.1);
+        osc.stop(ctx.currentTime + index * 0.1 + 0.35);
       });
     } catch (e) {
-      console.warn('AudioContext failed:', e);
+      console.warn('AudioContext levelup failed:', e);
     }
   };
 
@@ -224,8 +244,10 @@ export default function WelfareView({
 
       const winPrize = PRIZE_POOL.find(p => p.id === wonItem.id) || PRIZE_POOL[5];
       const fullList: typeof PRIZE_POOL = [];
-      for (let i = 0; i < 60; i++) {
-        if (i === 50) {
+      const WIN_INDEX = 70;
+
+      for (let i = 0; i < 100; i++) {
+        if (i === WIN_INDEX) {
           fullList.push({
             ...winPrize,
             name: wonItem.name || winPrize.name
@@ -248,10 +270,13 @@ export default function WelfareView({
         const container = spinContainerRef.current;
         if (!container) return;
 
-        const cardWidth = 112;
+        const cardWidth = 96;
+        const cardGap = 16;
+        const itemStep = cardWidth + cardGap;
         const viewportWidth = container.parentElement?.getBoundingClientRect().width || 500;
-        const insideCardOffset = Math.floor(Math.random() * 40) - 20; 
-        const targetTranslateX = -(50 * cardWidth - (viewportWidth / 2 - cardWidth / 2) + insideCardOffset);
+        
+        // Exact centering: index * step - (viewportCenter - itemCenter)
+        const targetTranslateX = -(WIN_INDEX * itemStep - (viewportWidth / 2 - cardWidth / 2 - 16));
 
         container.style.transition = 'transform 5s cubic-bezier(0.12, 0.8, 0.38, 1)';
         container.style.transform = `translateX(${targetTranslateX}px)`;
@@ -266,9 +291,9 @@ export default function WelfareView({
           if (!parentRect) return;
 
           const currentScroll = parentRect.left - rect.left;
-          const centerCardIndex = Math.floor((currentScroll + centerLineX) / cardWidth);
+          const centerCardIndex = Math.floor((currentScroll + centerLineX) / itemStep);
 
-          if (centerCardIndex !== lastPassedIndex && centerCardIndex >= 0 && centerCardIndex < 60) {
+          if (centerCardIndex !== lastPassedIndex && centerCardIndex >= 0 && centerCardIndex < 100) {
             lastPassedIndex = centerCardIndex;
             playTickSound();
           }

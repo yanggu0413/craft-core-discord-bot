@@ -572,17 +572,42 @@ router.post('/user/luckydraw', auth_1.authenticateToken, async (req, res) => {
                 message: `🎉 抽獎大成功！恭喜獲得限定專屬稱號「${titleText}」（有效期限：2 天）！`
             });
         }
-        try {
-            await (0, wsClient_1.sendWsQuery)('deliver_item', { username, item: prize.id, count: prize.count }, 1500);
-        }
-        catch (wsErr) {
+        const isMoney = prize.id === 'craftcore:money';
+        const amount = prize.count || 1000;
+        if (isMoney) {
             try {
-                wsClient_1.db.prepare(`
-          INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, status)
-          VALUES ('system', 'System LuckyDraw', ?, ?, ?, 'pending')
-        `).run(username, prize.id, prize.count);
+                await (0, wsClient_1.sendWsQuery)('give_money', { username, amount }, 1500);
             }
-            catch (e) { }
+            catch (wsErr) {
+                try {
+                    wsClient_1.db.prepare(`
+            INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, status)
+            VALUES ('system', 'System LuckyDraw', ?, 'craftcore:money', ?, 'pending')
+          `).run(username, amount);
+                }
+                catch (e) { }
+            }
+        }
+        else {
+            try {
+                await (0, wsClient_1.sendWsQuery)('luckydraw_response', {
+                    username,
+                    item: prize.id,
+                    amount,
+                    keysCount: newKeys,
+                    success: true,
+                    message: `🎉 幸運大抽獎獲得 ${prize.name}！`
+                }, 1500);
+            }
+            catch (wsErr) {
+                try {
+                    wsClient_1.db.prepare(`
+            INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, status)
+            VALUES ('system', 'System LuckyDraw', ?, ?, ?, 'pending')
+          `).run(username, prize.id, amount);
+                }
+                catch (e) { }
+            }
         }
         return res.json({
             success: true,
