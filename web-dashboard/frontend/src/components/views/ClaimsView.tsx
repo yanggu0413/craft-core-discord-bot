@@ -141,17 +141,18 @@ export default function ClaimsView({
     <div className="space-y-6 text-left">
       <PageHeader
         icon={Shield}
-        title="領地安全管理"
-        description="查看與設定個人劃分領地邊界、信任夥伴白名單與防護旗幟"
-        badgeText={`${claims.length} 塊劃分領地`}
+        iconColor="text-indigo-500"
+        title="領地管理"
+        description="查看與設定個人領地邊界、信任夥伴白名單與防護旗幟"
+        badgeText={`${claims.length} 塊領地`}
         badgeVariant="outline"
         kpis={[
-          { label: "全服領地數", value: `${claims.length} 區`, icon: Shield },
-          { label: "我的領地", value: `${myClaims.length} 區`, icon: User },
+          { label: "全服領地數", value: `${claims.length} 區`, icon: Shield, iconColor: "text-indigo-500" },
+          { label: "我的領地", value: `${myClaims.length} 區`, icon: User, iconColor: "text-blue-500" },
         ]}
       />
 
-      <Card>
+      <Card className="rounded-none">
         <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="relative w-full sm:w-auto flex-1 max-w-sm">
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
@@ -169,7 +170,7 @@ export default function ClaimsView({
               variant={adminViewMode === 'all' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setAdminViewMode('all')}
-              className="text-xs"
+              className="text-xs rounded-md"
             >
               全部領地
             </Button>
@@ -178,7 +179,7 @@ export default function ClaimsView({
                 variant={adminViewMode === 'mine' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setAdminViewMode('mine')}
-                className="text-xs"
+                className="text-xs rounded-md"
               >
                 我的領地 ({myClaims.length})
               </Button>
@@ -192,13 +193,13 @@ export default function ClaimsView({
           {displayClaims.map((claim) => {
             const isOwner = username && (claim.owner || '').toLowerCase() === username.toLowerCase();
             return (
-              <Card key={claim.id} className="flex flex-col justify-between">
+              <Card key={claim.id} className="flex flex-col justify-between rounded-none">
                 <CardHeader className="pb-3 border-b border-border">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
                       <div className="flex items-center space-x-2">
                         <CardTitle className="text-sm font-bold">{claim.name || claim.id}</CardTitle>
-                        <Badge variant={isOwner ? "default" : "secondary"}>
+                        <Badge variant={isOwner ? "default" : "secondary"} className="rounded-md">
                           {isOwner ? "擁有者" : claim.owner}
                         </Badge>
                       </div>
@@ -211,9 +212,9 @@ export default function ClaimsView({
                         variant="outline"
                         size="sm"
                         onClick={() => openFlagsModal(claim)}
-                        className="text-xs"
+                        className="text-xs rounded-md"
                       >
-                        <Settings className="w-3.5 h-3.5 mr-1" />
+                        <Settings className="w-3.5 h-3.5 mr-1 text-indigo-500" />
                         <span>權限旗幟</span>
                       </Button>
                     )}
@@ -228,7 +229,7 @@ export default function ClaimsView({
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {(claim.permissions?.build || []).map(p => (
-                        <Badge key={p} variant="outline" className="text-[10px]">
+                        <Badge key={p} variant="outline" className="text-[10px] rounded-md">
                           {p}
                           {isOwner && (
                             <button
@@ -254,7 +255,7 @@ export default function ClaimsView({
                           variant="secondary"
                           size="sm"
                           onClick={() => submitGrant(claim.id, 'build')}
-                          className="h-7 text-xs px-2 shrink-0"
+                          className="h-7 text-xs px-2 shrink-0 rounded-md"
                         >
                           <Plus className="w-3 h-3 mr-0.5" /> 新增
                         </Button>
@@ -267,10 +268,10 @@ export default function ClaimsView({
           })}
         </div>
       ) : (
-        <Card className="py-12">
+        <Card className="py-12 rounded-none">
           <CardContent className="text-center space-y-2">
-            <Shield className="w-8 h-8 text-muted-foreground mx-auto" />
-            <p className="text-sm font-bold text-foreground">找不到符合條件的劃分領地</p>
+            <Shield className="w-8 h-8 text-indigo-500 mx-auto" />
+            <p className="text-sm font-bold text-foreground">找不到符合條件的領地</p>
           </CardContent>
         </Card>
       )}
@@ -285,7 +286,7 @@ export default function ClaimsView({
           </DialogHeader>
 
           {msg && (
-            <div className={`p-2.5 rounded text-xs ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
+            <div className={`p-2.5 rounded-none text-xs ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
               {msg.text}
             </div>
           )}
@@ -296,7 +297,7 @@ export default function ClaimsView({
                 type="checkbox"
                 checked={flagsModal.publicContainers}
                 onChange={(e) => setFlagsModal(prev => ({ ...prev, publicContainers: e.target.checked }))}
-                className="rounded border-border"
+                className="rounded-none border-border"
               />
               <span>開放公共箱子存取</span>
             </label>
@@ -305,7 +306,7 @@ export default function ClaimsView({
                 type="checkbox"
                 checked={flagsModal.publicInteract}
                 onChange={(e) => setFlagsModal(prev => ({ ...prev, publicInteract: e.target.checked }))}
-                className="rounded border-border"
+                className="rounded-none border-border"
               />
               <span>開放公共開關與門互動</span>
             </label>
@@ -327,7 +328,7 @@ export default function ClaimsView({
               variant="outline"
               size="sm"
               onClick={() => setFlagsModal(prev => ({ ...prev, show: false }))}
-              className="text-xs"
+              className="text-xs rounded-md"
             >
               取消
             </Button>
@@ -335,7 +336,7 @@ export default function ClaimsView({
               size="sm"
               onClick={handleSaveFlags}
               disabled={savingFlags}
-              className="text-xs"
+              className="text-xs rounded-md"
             >
               {savingFlags ? '儲存中...' : '儲存設定'}
             </Button>

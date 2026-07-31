@@ -35,7 +35,15 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const claimsMap = loadConfigJson<Record<string, any>>('claims.json');
     if (claimsMap && typeof claimsMap === 'object') {
-      const claimsArray = Object.values(claimsMap);
+      const claimsArray = Object.values(claimsMap).map((c: any) => ({
+        ...c,
+        permissions: {
+          build: c.permissions?.build || [],
+          break: c.permissions?.break || c.permissions?.breakBlocks || [],
+          containers: c.permissions?.containers || [],
+          interact: c.permissions?.interact || []
+        }
+      }));
       setCachedData(cacheKey, claimsArray, 10000);
       return res.json({ success: true, claims: claimsArray });
     }
@@ -98,18 +106,26 @@ router.post('/permission', authenticateToken, async (req: CustomRequest, res: Re
     if (claimsMap[claimId]) {
       const claim = claimsMap[claimId];
       if (!claim.permissions) {
-        claim.permissions = { build: [], break: [], containers: [], interact: [] };
+        claim.permissions = { build: [], break: [], breakBlocks: [], containers: [], interact: [] };
       }
-      let key = permissionType === 'break' ? 'break' : permissionType;
-      if (!claim.permissions[key]) {
-        claim.permissions[key] = [];
-      }
+      let targetList = Array.isArray(claim.permissions.break) 
+        ? claim.permissions.break 
+        : (Array.isArray(claim.permissions.breakBlocks) ? claim.permissions.breakBlocks : []);
+
+      let key = permissionType === 'break' || permissionType === 'breakBlocks' ? 'break' : permissionType;
+      let permArray = Array.isArray(claim.permissions[key]) ? claim.permissions[key] : targetList;
+
       if (action === 'grant') {
-        if (!claim.permissions[key].includes(player)) {
-          claim.permissions[key].push(player);
+        if (!permArray.includes(player)) {
+          permArray.push(player);
         }
       } else if (action === 'revoke') {
-        claim.permissions[key] = claim.permissions[key].filter((p: string) => p !== player);
+        permArray = permArray.filter((p: string) => p !== player);
+      }
+      
+      claim.permissions[key] = permArray;
+      if (key === 'break') {
+        claim.permissions.breakBlocks = permArray;
       }
       saveConfigJson('claims.json', claimsMap);
       return res.json({ success: true, message: '權限更新成功 (離線檔案更新)' });

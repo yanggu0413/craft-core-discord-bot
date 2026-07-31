@@ -219,6 +219,20 @@ public class DailyTaskManager {
     public static void completeTask(ServerPlayer player, DailyTaskDef task) {
         String username = player.getName().getString();
         
+        // Prevent double payout exploit
+        boolean alreadyClaimed = (task.type == 1) 
+                ? EconomyManager.getDailyTaskSlayClaimed(username) 
+                : EconomyManager.getDailyTaskGatherClaimed(username);
+        if (alreadyClaimed) {
+            return;
+        }
+
+        if (task.type == 1) {
+            EconomyManager.setDailyTaskSlayClaimed(username, true);
+        } else {
+            EconomyManager.setDailyTaskGatherClaimed(username, true);
+        }
+
         // Award the money reward
         EconomyManager.addMoney(username, task.reward);
 

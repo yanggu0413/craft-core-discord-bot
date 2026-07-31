@@ -240,31 +240,10 @@ const handleWelfareLeaderboard = async (req: Request, res: Response) => {
 router.get('/user/leaderboard', handleWelfareLeaderboard);
 router.get('/welfare/leaderboard', handleWelfareLeaderboard);
 
-// GET /api/market/analytics - Mineral price & volume 7-day trends
+// GET /api/market/analytics - Mineral price & volume 7-day trends (Zero-Mock Policy)
 router.get('/market/analytics', (req: Request, res: Response) => {
   const minerals = ['minecraft:diamond', 'minecraft:netherite_ingot', 'minecraft:iron_ingot'];
   const analytics: Record<string, any[]> = {};
-
-  const dates: string[] = [];
-  const now = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    dates.push(`${month}/${day}`);
-  }
-
-  const basePrices: Record<string, number> = {
-    'minecraft:diamond': 500,
-    'minecraft:netherite_ingot': 2500,
-    'minecraft:iron_ingot': 50
-  };
-
-  const baseVolumes: Record<string, number> = {
-    'minecraft:diamond': 20,
-    'minecraft:netherite_ingot': 5,
-    'minecraft:iron_ingot': 150
-  };
 
   minerals.forEach(item => {
     let itemData: any[] = [];
@@ -280,13 +259,15 @@ router.get('/market/analytics', (req: Request, res: Response) => {
         `).all(item) as any[];
 
         if (rows && rows.length > 0) {
-          itemData = rows.map((r, idx) => ({
-            date: r.trade_date || dates[idx % dates.length],
-            price: Math.round(r.avg_price || basePrices[item]),
-            volume: r.total_vol || baseVolumes[item]
+          itemData = rows.map((r) => ({
+            date: r.trade_date,
+            price: Math.round(r.avg_price || 0),
+            volume: r.total_vol || 0
           }));
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn(`[Market Analytics] DB query failed for ${item}:`, e);
+      }
     }
 
     analytics[item] = itemData;

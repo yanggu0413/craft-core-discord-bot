@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { Check, AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
 import DashboardLayout, { type TabType } from './components/DashboardLayout';
 import HomeView from './components/views/HomeView';
+import LeaderboardView from './components/views/LeaderboardView';
 import ExplorerView from './components/views/ExplorerView';
 import MarketView from './components/views/MarketView';
 import OwnerView from './components/views/OwnerView';
 import ClaimsView from './components/views/ClaimsView';
 import LockboxesView from './components/views/LockboxesView';
 import InventoryView from './components/views/InventoryView';
+import TransferView from './components/views/TransferView';
 import AdminView from './components/views/AdminView';
 import WelfareView from './components/views/WelfareView';
 import EventsView from './components/views/EventsView';
@@ -576,6 +578,14 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'leaderboard' && (
+            <LeaderboardView
+              wealthLeaderboard={leaderboard}
+              isRefreshing={isRefreshing}
+              handleManualRefresh={fetchData}
+            />
+          )}
+
           {activeTab === 'explorer' && (
             <ExplorerView
               shops={shops}
@@ -628,6 +638,15 @@ export default function App() {
             <InventoryView
               token={token}
               isOnline={isOnline}
+              userBalance={userBalance}
+              triggerToast={triggerToast}
+              fetchData={fetchData}
+            />
+          )}
+
+          {activeTab === 'transfer' && (
+            <TransferView
+              token={token}
               userBalance={userBalance}
               triggerToast={triggerToast}
               fetchData={fetchData}

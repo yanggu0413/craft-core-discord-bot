@@ -61,6 +61,7 @@ export default function MarketView({
     <div className="space-y-6 text-left">
       <PageHeader
         icon={TrendingUp}
+        iconColor="text-teal-500"
         title="市場行情與物價分析"
         description="全服熱門大宗物資價格與交易量波動趨勢，幫助店主與買家精準掌控市場"
         badgeText="市場數據"
@@ -74,17 +75,17 @@ export default function MarketView({
             <button
               key={item.id}
               onClick={() => setSelectedMineral(item.id)}
-              className={`flex justify-between items-center p-5 border rounded-xl text-left transition-all cursor-pointer ${
+              className={`flex justify-between items-center p-5 border rounded-none text-left transition-all cursor-pointer ${
                 isSelected 
-                  ? 'border-primary bg-primary/5 text-foreground shadow-sm font-semibold' 
-                  : 'border-border bg-card text-card-foreground hover:border-border/80'
+                  ? 'border-teal-500 bg-teal-500/10 text-foreground shadow-xs font-semibold' 
+                  : 'border-border bg-card text-card-foreground hover:border-teal-500/40'
               }`}
             >
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{item.name}</p>
-                <p className="text-xl font-bold font-mono text-foreground">{item.avgPrice}</p>
+                <p className="text-xl font-bold font-mono text-teal-500">{item.avgPrice}</p>
               </div>
-              <Badge variant={item.trend.startsWith('-') ? "destructive" : item.trend === '—' ? "secondary" : "success"}>
+              <Badge variant={item.trend.startsWith('-') ? "destructive" : item.trend === '—' ? "secondary" : "success"} className="rounded-md">
                 {item.trend}
               </Badge>
             </button>
@@ -92,7 +93,7 @@ export default function MarketView({
         })}
       </div>
 
-      <Card>
+      <Card className="rounded-none">
         <CardHeader className="pb-3 border-b border-border">
           <div className="flex items-center justify-between">
             <div>
@@ -101,7 +102,7 @@ export default function MarketView({
                 當前檢視：{mineralCards.find(m => m.id === selectedMineral)?.name || selectedMineral}
               </CardDescription>
             </div>
-            <Badge variant="outline">趨勢分析</Badge>
+            <Badge variant="outline" className="rounded-md">趨勢分析</Badge>
           </div>
         </CardHeader>
         <CardContent className="pt-6">
@@ -110,8 +111,8 @@ export default function MarketView({
               <AreaChart data={currentChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="marketPriceGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.25}/>
-                    <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.0}/>
+                    <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.35}/>
+                    <stop offset="95%" stopColor="#14b8a6" stopOpacity={0.0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -121,7 +122,7 @@ export default function MarketView({
                   contentStyle={{ 
                     backgroundColor: 'var(--card)', 
                     borderColor: 'var(--border)', 
-                    borderRadius: '8px', 
+                    borderRadius: '4px', 
                     fontSize: '12px',
                     color: 'var(--foreground)'
                   }} 
@@ -129,7 +130,7 @@ export default function MarketView({
                 <Area 
                   type="monotone" 
                   dataKey="price" 
-                  stroke="var(--primary)" 
+                  stroke="#14b8a6" 
                   strokeWidth={2}
                   fillOpacity={1} 
                   fill="url(#marketPriceGrad)" 

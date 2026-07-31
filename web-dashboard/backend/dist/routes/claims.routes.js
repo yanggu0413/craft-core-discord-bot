@@ -32,7 +32,15 @@ router.get('/', async (req, res) => {
     try {
         const claimsMap = (0, configLoader_1.loadConfigJson)('claims.json');
         if (claimsMap && typeof claimsMap === 'object') {
-            const claimsArray = Object.values(claimsMap);
+            const claimsArray = Object.values(claimsMap).map((c) => ({
+                ...c,
+                permissions: {
+                    build: c.permissions?.build || [],
+                    break: c.permissions?.break || c.permissions?.breakBlocks || [],
+                    containers: c.permissions?.containers || [],
+                    interact: c.permissions?.interact || []
+                }
+            }));
             (0, wsClient_1.setCachedData)(cacheKey, claimsArray, 10000);
             return res.json({ success: true, claims: claimsArray });
         }

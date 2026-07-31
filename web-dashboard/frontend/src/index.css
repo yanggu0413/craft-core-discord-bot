@@ -30,63 +30,63 @@
 }
 
 :root {
-  --background: #fafafa;
-  --foreground: #09090b;
+  --background: #f8fafc;
+  --foreground: #0f172a;
 
   --card: #ffffff;
-  --card-foreground: #09090b;
+  --card-foreground: #0f172a;
 
   --popover: #ffffff;
-  --popover-foreground: #09090b;
+  --popover-foreground: #0f172a;
 
-  --primary: #09090b;
-  --primary-foreground: #fafafa;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
 
-  --secondary: #f4f4f5;
-  --secondary-foreground: #09090b;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
 
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
 
-  --accent: #f4f4f5;
-  --accent-foreground: #09090b;
-
-  --destructive: #ef4444;
-  --destructive-foreground: #fafafa;
-
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #09090b;
-}
-
-.dark {
-  --background: #09090b;
-  --foreground: #ffffff;
-
-  --card: #18181b;
-  --card-foreground: #ffffff;
-
-  --popover: #18181b;
-  --popover-foreground: #ffffff;
-
-  --primary: #ffffff;
-  --primary-foreground: #09090b;
-
-  --secondary: #27272a;
-  --secondary-foreground: #ffffff;
-
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-
-  --accent: #27272a;
-  --accent-foreground: #ffffff;
+  --accent: #eff6ff;
+  --accent-foreground: #1e40af;
 
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
 
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #ffffff;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #2563eb;
+}
+
+.dark {
+  --background: #090d16;
+  --foreground: #f8fafc;
+
+  --card: #111827;
+  --card-foreground: #f8fafc;
+
+  --popover: #111827;
+  --popover-foreground: #f8fafc;
+
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+
+  --secondary: #1f2937;
+  --secondary-foreground: #f8fafc;
+
+  --muted: #1f2937;
+  --muted-foreground: #9ca3af;
+
+  --accent: #1f2937;
+  --accent-foreground: #60a5fa;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #1f2937;
+  --input: #1f2937;
+  --ring: #3b82f6;
 }
 
 @layer base {
@@ -111,7 +111,7 @@
 
 ::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 3px;
+  border-radius: 0px;
 }
 
 ::-webkit-scrollbar-thumb:hover {

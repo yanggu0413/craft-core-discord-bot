@@ -120,7 +120,7 @@ export default function TasksView({ API_URL, token, triggerToast }: TasksViewPro
             size="sm"
             onClick={fetchData}
             disabled={loading}
-            className="text-xs flex items-center space-x-1.5"
+            className="text-xs flex items-center space-x-1.5 rounded-none"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>重新整理</span>
@@ -128,19 +128,19 @@ export default function TasksView({ API_URL, token, triggerToast }: TasksViewPro
         }
       />
 
-      <Card>
+      <Card className="rounded-none">
         <CardHeader className="pb-3 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Award className="w-4 h-4 text-foreground" />
+              <Award className="w-4 h-4 text-primary" />
               <CardTitle className="text-sm font-bold">個人每日任務</CardTitle>
             </div>
-            <Badge variant="outline">每日 00:00 重置</Badge>
+            <Badge variant="outline" className="rounded-none">每日 00:00 重置</Badge>
           </div>
         </CardHeader>
         <CardContent className="pt-6">
           {!token ? (
-            <div className="p-8 text-center border border-dashed border-border rounded-lg space-y-2">
+            <div className="p-8 text-center border border-dashed border-border rounded-none space-y-2">
               <Clock className="w-8 h-8 text-muted-foreground mx-auto" />
               <p className="text-sm font-semibold text-foreground">尚未登入帳號</p>
               <p className="text-xs text-muted-foreground">請登入帳號以檢視與領取您的每日任務進度。</p>
@@ -153,13 +153,13 @@ export default function TasksView({ API_URL, token, triggerToast }: TasksViewPro
                 const isClaimed = task.claimed;
 
                 return (
-                  <div key={task.id} className="p-4 border border-border bg-card rounded-lg flex flex-col justify-between space-y-4">
+                  <div key={task.id} className="p-4 border border-border bg-card rounded-none flex flex-col justify-between space-y-4 hover:border-primary/40 transition-all">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-[10px] rounded-none">
                           {task.type === 1 ? '殺怪/冒險' : '挖掘/收集'}
                         </Badge>
-                        <Badge variant={isClaimed ? "outline" : isCompleted ? "success" : "secondary"}>
+                        <Badge variant={isClaimed ? "outline" : isCompleted ? "success" : "secondary"} className="rounded-none">
                           {isClaimed ? '已領取' : isCompleted ? '可領取' : '進行中'}
                         </Badge>
                       </div>
@@ -172,11 +172,11 @@ export default function TasksView({ API_URL, token, triggerToast }: TasksViewPro
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-[11px] font-mono">
                         <span className="text-muted-foreground">達成進度</span>
-                        <span className="font-semibold text-foreground">{task.progress || 0} / {task.count}</span>
+                        <span className="font-semibold text-primary">{task.progress || 0} / {task.count}</span>
                       </div>
-                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div className="h-2 w-full bg-muted rounded-none overflow-hidden">
                         <div 
-                          className="h-full bg-primary transition-all duration-300 rounded-full" 
+                          className="h-full bg-primary transition-all duration-300 rounded-none" 
                           style={{ width: `${progressPct}%` }}
                         />
                       </div>
@@ -187,12 +187,12 @@ export default function TasksView({ API_URL, token, triggerToast }: TasksViewPro
                       variant={isClaimed ? "outline" : isCompleted ? "default" : "secondary"}
                       disabled={!isCompleted || isClaimed || claimingId === task.id}
                       onClick={() => handleClaimTask(task.id)}
-                      className="w-full text-xs font-semibold"
+                      className="w-full text-xs font-semibold rounded-none"
                     >
                       {isClaimed ? (
-                        <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> 已領取</span>
+                        <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> 已領取</span>
                       ) : isCompleted ? (
-                        <span className="flex items-center gap-1"><Gift className="w-3.5 h-3.5" /> 領取獎勵 (+{task.rewardKeys || 1} 鑰匙)</span>
+                        <span className="flex items-center gap-1"><Gift className="w-3.5 h-3.5 text-amber-400" /> 領取獎勵 (+{task.rewardKeys || 1} 鑰匙)</span>
                       ) : (
                         `進行中 (${Math.floor(progressPct)}%)`
                       )}
@@ -208,14 +208,14 @@ export default function TasksView({ API_URL, token, triggerToast }: TasksViewPro
       </Card>
 
       {globalGoal && (
-        <Card>
+        <Card className="rounded-none">
           <CardHeader className="pb-3 border-b border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Trophy className="w-4 h-4 text-foreground" />
+                <Trophy className="w-4 h-4 text-amber-500" />
                 <CardTitle className="text-sm font-bold">全服狂歡里程碑 — {globalGoal.title || '全民合作社'}</CardTitle>
               </div>
-              <Badge variant="outline">全服連動</Badge>
+              <Badge variant="outline" className="rounded-none">全服連動</Badge>
             </div>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
@@ -224,13 +224,13 @@ export default function TasksView({ API_URL, token, triggerToast }: TasksViewPro
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-mono">
                 <span className="text-muted-foreground">累積突破進度</span>
-                <span className="font-bold text-foreground">
+                <span className="font-bold text-amber-500">
                   {globalGoal.currentProgress || 0} / {globalGoal.targetProgress || 100}
                 </span>
               </div>
-              <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
+              <div className="h-3 w-full bg-muted rounded-none overflow-hidden">
                 <div 
-                  className="h-full bg-primary transition-all duration-300 rounded-full" 
+                  className="h-full bg-amber-500 transition-all duration-300 rounded-none" 
                   style={{ width: `${Math.min(100, ((globalGoal.currentProgress || 0) / (globalGoal.targetProgress || 100)) * 100)}%` }}
                 />
               </div>
@@ -240,14 +240,14 @@ export default function TasksView({ API_URL, token, triggerToast }: TasksViewPro
       )}
 
       {token && (
-        <Card>
+        <Card className="rounded-none">
           <CardHeader className="pb-3 border-b border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Clock className="w-4 h-4 text-foreground" />
+                <Clock className="w-4 h-4 text-primary" />
                 <CardTitle className="text-sm font-bold">遊戲時數兌換鑰匙</CardTitle>
               </div>
-              <Badge variant="secondary">5 小時 = 1 鑰匙</Badge>
+              <Badge variant="secondary" className="rounded-none">5 小時 = 1 鑰匙</Badge>
             </div>
           </CardHeader>
           <CardContent className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -260,7 +260,7 @@ export default function TasksView({ API_URL, token, triggerToast }: TasksViewPro
                 size="sm"
                 onClick={() => handlePlaytimeExchange('single')}
                 disabled={exchanging}
-                className="text-xs"
+                className="text-xs rounded-none"
               >
                 兌換 1 把
               </Button>
@@ -269,7 +269,7 @@ export default function TasksView({ API_URL, token, triggerToast }: TasksViewPro
                 size="sm"
                 onClick={() => handlePlaytimeExchange('all')}
                 disabled={exchanging}
-                className="text-xs"
+                className="text-xs rounded-none"
               >
                 一次全領
               </Button>

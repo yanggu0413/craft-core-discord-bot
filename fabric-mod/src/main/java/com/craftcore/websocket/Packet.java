@@ -572,11 +572,15 @@ public class Packet {
         public String name;
         public String coords;
         public String dimension;
+        public String type = "normal";
+        public String desc = "";
 
-        public WarpEntry(String name, String coords, String dimension) {
+        public WarpEntry(String name, String coords, String dimension, String type, String desc) {
             this.name = name != null ? name.replace("\0", "") : "Unnamed";
             this.coords = coords != null ? coords.replace("\0", "") : "0, 0, 0";
             this.dimension = dimension != null ? dimension.replace("\0", "") : "minecraft:overworld";
+            this.type = type != null && !type.trim().isEmpty() ? type : "normal";
+            this.desc = desc != null ? desc : "";
         }
     }
 
@@ -598,6 +602,8 @@ public class Packet {
         public double x, y, z;
         public float yaw, pitch;
         public String dimension;
+        public String type;
+        public String desc;
     }
 
     public static class HomesQueryPayload {

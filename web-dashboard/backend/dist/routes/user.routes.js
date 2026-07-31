@@ -229,28 +229,10 @@ const handleWelfareLeaderboard = async (req, res) => {
 };
 router.get('/user/leaderboard', handleWelfareLeaderboard);
 router.get('/welfare/leaderboard', handleWelfareLeaderboard);
-// GET /api/market/analytics - Mineral price & volume 7-day trends
+// GET /api/market/analytics - Mineral price & volume 7-day trends (Zero-Mock Policy)
 router.get('/market/analytics', (req, res) => {
     const minerals = ['minecraft:diamond', 'minecraft:netherite_ingot', 'minecraft:iron_ingot'];
     const analytics = {};
-    const dates = [];
-    const now = new Date();
-    for (let i = 6; i >= 0; i--) {
-        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        dates.push(`${month}/${day}`);
-    }
-    const basePrices = {
-        'minecraft:diamond': 500,
-        'minecraft:netherite_ingot': 2500,
-        'minecraft:iron_ingot': 50
-    };
-    const baseVolumes = {
-        'minecraft:diamond': 20,
-        'minecraft:netherite_ingot': 5,
-        'minecraft:iron_ingot': 150
-    };
     minerals.forEach(item => {
         let itemData = [];
         if (wsClient_1.db) {
@@ -264,14 +246,16 @@ router.get('/market/analytics', (req, res) => {
           LIMIT 7
         `).all(item);
                 if (rows && rows.length > 0) {
-                    itemData = rows.map((r, idx) => ({
-                        date: r.trade_date || dates[idx % dates.length],
-                        price: Math.round(r.avg_price || basePrices[item]),
-                        volume: r.total_vol || baseVolumes[item]
+                    itemData = rows.map((r) => ({
+                        date: r.trade_date,
+                        price: Math.round(r.avg_price || 0),
+                        volume: r.total_vol || 0
                     }));
                 }
             }
-            catch (e) { }
+            catch (e) {
+                console.warn(`[Market Analytics] DB query failed for ${item}:`, e);
+            }
         }
         analytics[item] = itemData;
     });
@@ -525,7 +509,8 @@ const PRIZE_POOL = [
     { id: 'minecraft:experience_bottle', name: '經驗瓶', count: 32, icon: 'experience_bottle' },
     { id: 'minecraft:totem_of_undying', name: '不死圖騰', count: 1, icon: 'totem_of_undying' },
     { id: 'minecraft:netherite_ingot', name: '獄髓錠', count: 1, icon: 'netherite_ingot' },
-    { id: 'minecraft:emerald', name: '綠寶石', count: 16, icon: 'emerald' }
+    { id: 'minecraft:emerald', name: '綠寶石', count: 16, icon: 'emerald' },
+    { id: 'title:lucky_king', name: '限時稱號：[幸運歐皇] (2天)', count: 1, icon: 'netherite_helmet', is_title: true, title_text: '[幸運歐皇]' }
 ];
 router.post('/user/luckydraw', auth_1.authenticateToken, async (req, res) => {
     const user = req.user;
@@ -544,6 +529,49 @@ router.post('/user/luckydraw', auth_1.authenticateToken, async (req, res) => {
         wsClient_1.db.prepare('UPDATE bindings SET keys_count = ? WHERE mc_username = ? COLLATE NOCASE').run(newKeys, username);
         const prizeIndex = Math.floor(Math.random() * PRIZE_POOL.length);
         const prize = PRIZE_POOL[prizeIndex];
+        // Handle Title Prizes with 2-day (48-hour) expiration limit
+        if (prize.is_title) {
+            const expiresAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(); // 48 Hours Expiry
+            const titlesMap = (0, configLoader_1.loadConfigJson)('titles.json') || {};
+            const lowerName = username.toLowerCase();
+            if (!titlesMap[lowerName]) {
+                titlesMap[lowerName] = { activeTitle: '', unlockedTitles: [], titleExpiries: {} };
+            }
+            if (!titlesMap[lowerName].titleExpiries) {
+                titlesMap[lowerName].titleExpiries = {};
+            }
+            const titleText = prize.title_text || '[幸運歐皇]';
+            if (!titlesMap[lowerName].unlockedTitles.includes(titleText)) {
+                titlesMap[lowerName].unlockedTitles.push(titleText);
+            }
+            titlesMap[lowerName].titleExpiries[titleText] = expiresAt;
+            titlesMap[lowerName].activeTitle = titleText;
+            (0, configLoader_1.saveConfigJson)('titles.json', titlesMap);
+            try {
+                wsClient_1.db.prepare(`
+          INSERT INTO player_titles (username, title_text, color_code, is_bold, updated_at, expires_at)
+          VALUES (?, ?, '§6', 1, ?, ?)
+          ON CONFLICT(username) DO UPDATE SET 
+            title_text=excluded.title_text, 
+            expires_at=excluded.expires_at, 
+            updated_at=excluded.updated_at
+        `).run(username, titleText, new Date().toISOString(), expiresAt);
+            }
+            catch (e) { }
+            try {
+                await (0, wsClient_1.sendWsQuery)('command_request', {
+                    command: `/title set "${username}" "${titleText}"`,
+                    admin_username: 'LuckyDraw'
+                }, 1500);
+            }
+            catch (wsErr) { }
+            return res.json({
+                success: true,
+                prize,
+                remaining_keys: newKeys,
+                message: `🎉 抽獎大成功！恭喜獲得限定專屬稱號「${titleText}」（有效期限：2 天）！`
+            });
+        }
         try {
             await (0, wsClient_1.sendWsQuery)('deliver_item', { username, item: prize.id, count: prize.count }, 1500);
         }

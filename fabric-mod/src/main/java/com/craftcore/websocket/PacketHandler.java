@@ -316,6 +316,16 @@ public class PacketHandler {
                             shop.customName = customName.trim();
                             com.craftcore.shop.ShopManager.save();
                             client.send(new Packet("shop_action_response", new GenericActionResponsePayload(queryId, true, "商店名稱已更新為: " + customName, 0.0)));
+                        } else if ("rate".equalsIgnoreCase(action)) {
+                            int rating = payloadObj.has("rating") ? payloadObj.get("rating").getAsInt() : 5;
+                            if (rating < 1) rating = 1;
+                            if (rating > 5) rating = 5;
+                            if (shop.ratings == null) {
+                                shop.ratings = new java.util.ArrayList<>();
+                            }
+                            shop.ratings.add(rating);
+                            com.craftcore.shop.ShopManager.save();
+                            client.send(new Packet("shop_action_response", new GenericActionResponsePayload(queryId, true, "感謝您的評分！已成功給予 " + rating + " 星評價。", 0.0)));
                         } else {
                             client.send(new Packet("shop_action_response", new GenericActionResponsePayload(queryId, false, "未知的商店動作", 0.0)));
                         }
@@ -419,7 +429,6 @@ public class PacketHandler {
                                 return;
                             }
                             com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
-                            com.craftcore.economy.EconomyManager.addMoney(payload.username, 150.0);
                             net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
                                 net.minecraft.resources.Identifier.parse(payload.item)
                             ).map(net.minecraft.core.Holder::value).orElse(net.minecraft.world.item.Items.AIR);
@@ -430,7 +439,7 @@ public class PacketHandler {
                             player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                                 net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
                             String trans = com.craftcore.shop.TranslationManager.getTranslatedName(payload.item);
-                            player.sendSystemMessage(Component.literal("§b[Craft-Core] §a幸運大抽獎成功！獲得 $150 元與 " + trans + " x" + payload.amount + "！"));
+                            player.sendSystemMessage(Component.literal("§b[Craft-Core] §a幸運大抽獎成功！恭喜獲得 " + trans + " x" + payload.amount + "！"));
                         } else {
                             com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
                             player.sendSystemMessage(Component.literal(payload.message));
@@ -842,7 +851,9 @@ public class PacketHandler {
                                 String name = w.name != null ? w.name.replace("\0", "") : "Unnamed";
                                 String dim = w.dimension != null ? w.dimension.replace("\0", "") : "minecraft:overworld";
                                 String coordsStr = (int)w.x + ", " + (int)w.y + ", " + (int)w.z;
-                                list.add(new Packet.WarpEntry(name, coordsStr, dim));
+                                String typeStr = w.type != null ? w.type : "normal";
+                                String descStr = w.desc != null ? w.desc : "";
+                                list.add(new Packet.WarpEntry(name, coordsStr, dim, typeStr, descStr));
                             }
                             client.send(new Packet("warps_response", new Packet.WarpsResponsePayload(payload.query_id, list, true)));
                         } catch (Throwable t) {
@@ -861,7 +872,8 @@ public class PacketHandler {
                                     payload.name.trim(), payload.x, payload.y, payload.z,
                                     payload.yaw, payload.pitch,
                                     payload.dimension == null || payload.dimension.isBlank()
-                                            ? "minecraft:overworld" : payload.dimension
+                                            ? "minecraft:overworld" : payload.dimension,
+                                    payload.type, payload.desc
                             );
                             client.send(new Packet("warps_changed", null));
                         }

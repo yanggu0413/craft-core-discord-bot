@@ -311,14 +311,15 @@ export default function WelfareView({
     <div className="space-y-6 text-left">
       <PageHeader
         icon={Gift}
+        iconColor="text-amber-500"
         title="福利與簽到大抽獎"
         description="每日登入累積連簽天數領取抽獎鑰匙，參與幸運輪盤大抽獎獲得珍貴物資"
         badgeText={`${keysCount} 把鑰匙`}
         badgeVariant="outline"
         kpis={[
-          { label: "抽獎鑰匙", value: `${keysCount} 把`, icon: Key },
-          { label: "連續簽到", value: `${checkinStreak} 天`, icon: Flame },
-          { label: "總簽到天數", value: `${totalCheckins} 天`, icon: Calendar }
+          { label: "抽獎鑰匙", value: `${keysCount} 把`, icon: Key, iconColor: "text-amber-500" },
+          { label: "連續簽到", value: `${checkinStreak} 天`, icon: Flame, iconColor: "text-orange-500" },
+          { label: "總簽到天數", value: `${totalCheckins} 天`, icon: Calendar, iconColor: "text-cyan-500" }
         ]}
       />
 
@@ -327,34 +328,34 @@ export default function WelfareView({
           variant={welfareSubTab === 'checkin' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setWelfareSubTab('checkin')}
-          className="text-xs font-semibold"
+          className="text-xs font-semibold rounded-md"
         >
-          <Calendar className="w-3.5 h-3.5 mr-1" />
+          <Calendar className="w-3.5 h-3.5 mr-1 text-cyan-500" />
           <span>每日簽到與領取</span>
         </Button>
         <Button
           variant={welfareSubTab === 'wheel' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setWelfareSubTab('wheel')}
-          className="text-xs font-semibold"
+          className="text-xs font-semibold rounded-md"
         >
-          <Gift className="w-3.5 h-3.5 mr-1" />
+          <Gift className="w-3.5 h-3.5 mr-1 text-amber-500" />
           <span>幸運轉盤大抽獎</span>
         </Button>
         <Button
           variant={welfareSubTab === 'leaderboard' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setWelfareSubTab('leaderboard')}
-          className="text-xs font-semibold"
+          className="text-xs font-semibold rounded-md"
         >
-          <Trophy className="w-3.5 h-3.5 mr-1" />
+          <Trophy className="w-3.5 h-3.5 mr-1 text-amber-400" />
           <span>簽到排行榜</span>
         </Button>
       </div>
 
       {welfareSubTab === 'checkin' && (
         <div className="space-y-6">
-          <Card>
+          <Card className="rounded-none">
             <CardHeader className="pb-3 border-b border-border">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
@@ -363,13 +364,13 @@ export default function WelfareView({
                     每日 00:00 重置，連續簽到天數越高可獲得更多加碼鑰匙。
                   </CardDescription>
                 </div>
-                <Badge variant={isCheckedInToday() ? "success" : "secondary"}>
+                <Badge variant={isCheckedInToday() ? "success" : "secondary"} className="rounded-md">
                   {isCheckedInToday() ? "今日已簽到" : "今日未簽到"}
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border border-border bg-card rounded-lg">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border border-border bg-card rounded-none">
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-foreground">點擊完成今日簽到</p>
                   <p className="text-xs text-muted-foreground font-mono">上次簽到日期：{lastCheckin || '無紀錄'}</p>
@@ -378,13 +379,13 @@ export default function WelfareView({
                   size="sm"
                   disabled={isCheckedInToday() || loadingCheckin || !token}
                   onClick={handleCheckin}
-                  className="text-xs font-semibold"
+                  className="text-xs font-semibold rounded-md"
                 >
                   {isCheckedInToday() ? '今日已完成簽到' : '立即簽到領取 (+1 鑰匙)'}
                 </Button>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border border-border bg-card rounded-lg">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border border-border bg-card rounded-none">
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-foreground">使用遊戲金幣購買鑰匙</p>
                   <p className="text-xs text-muted-foreground">單價：$10,000 遊戲幣 / 1 把鑰匙</p>
@@ -394,7 +395,7 @@ export default function WelfareView({
                   size="sm"
                   disabled={loadingBuyKey || !token}
                   onClick={handleBuyKeyWithMoney}
-                  className="text-xs font-semibold"
+                  className="text-xs font-semibold rounded-md"
                 >
                   購買 1 把鑰匙 ($10,000)
                 </Button>
@@ -405,27 +406,27 @@ export default function WelfareView({
       )}
 
       {welfareSubTab === 'wheel' && (
-        <Card>
+        <Card className="rounded-none">
           <CardHeader className="pb-3 border-b border-border">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-sm font-bold">幸運大輪盤抽獎</CardTitle>
-                <CardDescription className="text-xs">消耗抽獎鑰匙獲得豐富實體物資與遊戲金幣獎勵</CardDescription>
+                <CardDescription className="text-xs">消耗抽獎鑰匙獲得豐富遊戲物資與金幣獎勵</CardDescription>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSoundEnabled(!soundEnabled)}
-                className="text-xs"
+                className="text-xs rounded-md"
               >
-                {soundEnabled ? <Volume2 className="w-4 h-4 mr-1" /> : <VolumeX className="w-4 h-4 mr-1" />}
+                {soundEnabled ? <Volume2 className="w-4 h-4 mr-1 text-amber-500" /> : <VolumeX className="w-4 h-4 mr-1 text-muted-foreground" />}
                 <span>音效</span>
               </Button>
             </div>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
-            <div className="relative w-full h-24 border border-border bg-muted/30 rounded-lg overflow-hidden flex items-center justify-center">
-              <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-primary z-20" />
+            <div className="relative w-full h-24 border border-border bg-muted/20 rounded-none overflow-hidden flex items-center justify-center">
+              <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-amber-500 z-20" />
               
               <div 
                 ref={spinContainerRef}
@@ -436,7 +437,7 @@ export default function WelfareView({
                   spinPrizes.map((prize, idx) => (
                     <div 
                       key={idx}
-                      className="w-24 h-20 border border-border bg-card rounded-md flex flex-col items-center justify-center shrink-0 p-1"
+                      className="w-24 h-20 border border-border bg-card rounded-none flex flex-col items-center justify-center shrink-0 p-1"
                     >
                       <MinecraftItemIcon itemId={prize.id} className="w-8 h-8 object-contain" />
                       <span className="text-[10px] font-bold mt-1 text-foreground truncate max-w-full">{prize.name}</span>
@@ -446,7 +447,7 @@ export default function WelfareView({
                   PRIZE_POOL.concat(PRIZE_POOL).map((prize, idx) => (
                     <div 
                       key={idx}
-                      className="w-24 h-20 border border-border bg-card rounded-md flex flex-col items-center justify-center shrink-0 p-1 opacity-50"
+                      className="w-24 h-20 border border-border bg-card rounded-none flex flex-col items-center justify-center shrink-0 p-1 opacity-50"
                     >
                       <MinecraftItemIcon itemId={prize.id} className="w-8 h-8 object-contain" />
                       <span className="text-[10px] font-bold mt-1 text-foreground truncate max-w-full">{prize.name}</span>
@@ -460,7 +461,7 @@ export default function WelfareView({
               <Button
                 onClick={() => handleLuckyDraw(1)}
                 disabled={isSpinning || keysCount < 1 || !token}
-                className="text-xs font-semibold"
+                className="text-xs font-semibold rounded-md"
               >
                 1 抽 (1 鑰匙)
               </Button>
@@ -468,7 +469,7 @@ export default function WelfareView({
                 onClick={() => handleLuckyDraw(10)}
                 disabled={isSpinning || keysCount < 10 || !token}
                 variant="secondary"
-                className="text-xs font-semibold"
+                className="text-xs font-semibold rounded-md"
               >
                 10 連抽
               </Button>
@@ -476,7 +477,7 @@ export default function WelfareView({
                 onClick={() => handleLuckyDraw('all')}
                 disabled={isSpinning || keysCount < 1 || !token}
                 variant="outline"
-                className="text-xs font-semibold"
+                className="text-xs font-semibold rounded-md"
               >
                 一鍵全抽 ({keysCount} 把)
               </Button>
@@ -486,7 +487,7 @@ export default function WelfareView({
       )}
 
       {welfareSubTab === 'leaderboard' && (
-        <Card>
+        <Card className="rounded-none">
           <CardHeader className="pb-3 border-b border-border">
             <CardTitle className="text-sm font-bold">簽到與鑰匙排行榜 (前 10 名)</CardTitle>
           </CardHeader>
@@ -512,15 +513,15 @@ export default function WelfareView({
                           <img 
                             src={`https://mc-heads.net/avatar/${player.mc_username}/20`} 
                             alt={player.mc_username}
-                            className="w-5 h-5 rounded border border-border"
+                            className="w-5 h-5 rounded-md border border-border"
                           />
                           <span className="text-xs font-semibold text-foreground">{player.mc_username}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-center font-mono text-xs font-bold text-foreground">
+                      <TableCell className="text-center font-mono text-xs font-bold text-amber-500">
                         {player.keys_count || 0} 把
                       </TableCell>
-                      <TableCell className="text-center font-mono text-xs font-bold text-foreground">
+                      <TableCell className="text-center font-mono text-xs font-bold text-orange-500">
                         {player.checkin_streak || 0} 天
                       </TableCell>
                     </TableRow>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { 
-  BarChart3, ShoppingBag, TrendingUp, User, Shield, 
+  BarChart3, ShoppingBag, TrendingUp, User, Shield, Trophy,
   Settings, LogOut, Sun, Moon, Menu, X, Compass, Mail, Gift,
   Cpu, MapPin, Sparkles, BookOpen, CheckSquare, Coins, Key, FileText, Megaphone, HardDrive, MessageSquare, Search
 } from 'lucide-react';
@@ -8,11 +8,11 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 
 export type TabType = 
-  | 'home' | 'tasks' | 'events' 
-  | 'explorer' | 'market' | 'owner' 
+  | 'home' | 'leaderboard' 
+  | 'explorer' | 'market' | 'owner' | 'transfer'
+  | 'welfare' | 'tasks' | 'events' 
   | 'claims' | 'lockboxes' 
-  | 'welfare' | 'inventory' 
-  | 'teleports' | 'fakeplayers' 
+  | 'inventory' | 'teleports' | 'fakeplayers' 
   | 'admin_audit' | 'admin_transactions' | 'admin_announcements' | 'admin_backups' | 'admin_tickets';
 
 interface DashboardLayoutProps {
@@ -48,42 +48,44 @@ export default function DashboardLayout({
 
   const navigationCategories = [
     {
-      title: '核心與動態',
+      title: '伺服器動態',
       items: [
         { id: 'home' as TabType, label: '數據總覽', icon: BarChart3 },
+        { id: 'leaderboard' as TabType, label: '全服排行榜', icon: Trophy }
+      ]
+    },
+    {
+      title: '經濟與金融',
+      items: [
+        { id: 'explorer' as TabType, label: '商店導航', icon: ShoppingBag },
+        { id: 'market' as TabType, label: '市場行情', icon: TrendingUp },
+        { id: 'owner' as TabType, label: '店主遙控', icon: User },
+        { id: 'transfer' as TabType, label: '電子轉帳', icon: Coins }
+      ]
+    },
+    {
+      title: '福利與任務',
+      items: [
+        { id: 'welfare' as TabType, label: '簽到與抽獎', icon: Gift },
         { id: 'tasks' as TabType, label: '每日任務', icon: CheckSquare },
         { id: 'events' as TabType, label: '限時活動', icon: Sparkles }
       ]
     },
     {
-      title: '經濟與市場',
-      items: [
-        { id: 'explorer' as TabType, label: '商店導航', icon: ShoppingBag },
-        { id: 'market' as TabType, label: '市場行情', icon: TrendingUp },
-        { id: 'owner' as TabType, label: '店主遙控', icon: User }
-      ]
-    },
-    {
       title: '領地與安全',
       items: [
-        { id: 'claims' as TabType, label: '領地劃分', icon: Shield },
-        { id: 'lockboxes' as TabType, label: '密碼保險箱', icon: Settings }
+        { id: 'claims' as TabType, label: '領地管理', icon: Shield },
+        { id: 'lockboxes' as TabType, label: '鎖箱管理', icon: Settings }
       ]
     },
     {
-      title: '福利與郵件',
+      title: '快捷與工具',
       items: [
-        { id: 'welfare' as TabType, label: '簽到與抽獎', icon: Gift },
-        { id: 'inventory' as TabType, label: '郵局與背包', icon: Mail }
-      ]
-    },
-    ...(token ? [{
-      title: '遊戲快捷',
-      items: [
+        { id: 'inventory' as TabType, label: '背包郵寄', icon: Mail },
         { id: 'teleports' as TabType, label: '傳送與地標', icon: MapPin },
         { id: 'fakeplayers' as TabType, label: '假人控制', icon: Cpu }
       ]
-    }] : []),
+    },
     ...(isAdmin ? [{
       title: '系統管理專區',
       items: [
@@ -118,7 +120,7 @@ export default function DashboardLayout({
               <button
                 key={item.id}
                 onClick={() => handleTabClick(item)}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   isActive 
                     ? 'bg-primary text-primary-foreground shadow-xs font-semibold' 
                     : 'text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -149,7 +151,7 @@ export default function DashboardLayout({
                 CRAFT-CORE
               </h1>
               <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-tight">
-                伺服器管理網頁
+                原味生存伺服器
               </span>
             </div>
           </div>
@@ -163,9 +165,9 @@ export default function DashboardLayout({
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
           >
-            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-500" />}
           </Button>
         </div>
       </aside>
@@ -180,7 +182,7 @@ export default function DashboardLayout({
               variant="ghost"
               size="icon"
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden h-9 w-9 text-foreground"
+              className="md:hidden h-9 w-9 rounded-md text-foreground"
             >
               <Menu className="w-5 h-5" />
             </Button>
@@ -196,7 +198,7 @@ export default function DashboardLayout({
 
           <div className="flex items-center space-x-3">
             {token && username ? (
-              <div className="flex items-center space-x-3 bg-muted/40 border border-border py-1 px-3 rounded-lg">
+              <div className="flex items-center space-x-3 bg-card border border-border py-1 px-3 rounded-md">
                 <img 
                   src={`https://mc-heads.net/avatar/${username}/24`} 
                   alt={username}
@@ -205,12 +207,12 @@ export default function DashboardLayout({
                 <div className="text-left hidden sm:flex items-center space-x-3 text-xs font-mono">
                   <span className="font-bold text-foreground">{username}</span>
                   <span className="text-border">|</span>
-                  <span className="flex items-center text-foreground font-semibold">
-                    <Coins className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+                  <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <Coins className="w-3.5 h-3.5 mr-1 text-emerald-500" />
                     ${Math.floor(userBalance).toLocaleString()}
                   </span>
-                  <span className="flex items-center text-foreground font-semibold">
-                    <Key className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+                  <span className="flex items-center text-amber-600 dark:text-amber-400 font-semibold">
+                    <Key className="w-3.5 h-3.5 mr-1 text-amber-500" />
                     {keysCount}
                   </span>
                 </div>
@@ -218,7 +220,7 @@ export default function DashboardLayout({
                   variant="ghost"
                   size="icon"
                   onClick={handleLogout}
-                  className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  className="h-7 w-7 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   title="登出系統"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -242,15 +244,15 @@ export default function DashboardLayout({
             {children}
           </div>
           <footer className="mt-12 pt-6 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground max-w-7xl w-full mx-auto">
-            <p>© 2026 Craft-Core Minecraft 伺服器生態系統 版權所有</p>
+            <p>© 2026 Craft-Core 原味生存伺服器 版權所有</p>
             <div className="flex items-center space-x-4">
               <a 
-                href="/docs/" 
+                href="https://docs.craft-core.xyz" 
                 target="_blank" 
                 rel="noreferrer"
-                className="flex items-center space-x-1.5 hover:text-foreground transition-colors font-medium"
+                className="flex items-center space-x-1.5 hover:text-primary transition-colors font-medium"
               >
-                <BookOpen className="w-3.5 h-3.5" />
+                <BookOpen className="w-3.5 h-3.5 text-primary" />
                 <span>官方說明文檔</span>
               </a>
             </div>
@@ -276,7 +278,7 @@ export default function DashboardLayout({
                   variant="ghost"
                   size="icon"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="h-8 w-8 text-foreground"
+                  className="h-8 w-8 rounded-md text-foreground"
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -291,9 +293,9 @@ export default function DashboardLayout({
                 variant="ghost"
                 size="icon"
                 onClick={toggleTheme}
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
               >
-                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-500" />}
               </Button>
             </div>
           </div>

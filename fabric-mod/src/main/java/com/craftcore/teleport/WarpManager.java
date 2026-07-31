@@ -23,6 +23,8 @@ public class WarpManager {
         public double x, y, z;
         public float yaw, pitch;
         public String dimension;
+        public String type = "normal";
+        public String desc = "";
 
         public Warp(String name, double x, double y, double z, float yaw, float pitch, String dimension) {
             this.name = name;
@@ -32,6 +34,20 @@ public class WarpManager {
             this.yaw = yaw;
             this.pitch = pitch;
             this.dimension = dimension;
+            this.type = "normal";
+            this.desc = "";
+        }
+
+        public Warp(String name, double x, double y, double z, float yaw, float pitch, String dimension, String type, String desc) {
+            this.name = name;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.yaw = yaw;
+            this.pitch = pitch;
+            this.dimension = dimension;
+            this.type = type != null && !type.trim().isEmpty() ? type : "normal";
+            this.desc = desc != null ? desc : "";
         }
     }
 
@@ -55,7 +71,12 @@ public class WarpManager {
                 Map<String, Warp> loaded = GSON.fromJson(reader, new TypeToken<Map<String, Warp>>(){}.getType());
                 if (loaded != null) {
                     warps.clear();
-                    warps.putAll(loaded);
+                    for (Map.Entry<String, Warp> entry : loaded.entrySet()) {
+                        Warp w = entry.getValue();
+                        if (w.type == null || w.type.trim().isEmpty()) w.type = "normal";
+                        if (w.desc == null) w.desc = "";
+                        warps.put(entry.getKey().toLowerCase(), w);
+                    }
                 }
             } catch (IOException e) {
                 System.err.println("[CraftCore] Failed to load warps: " + e.getMessage());
@@ -77,7 +98,11 @@ public class WarpManager {
     }
 
     public static synchronized boolean addWarp(String name, double x, double y, double z, float yaw, float pitch, String dimension) {
-        warps.put(name.toLowerCase(), new Warp(name, x, y, z, yaw, pitch, dimension));
+        return addWarp(name, x, y, z, yaw, pitch, dimension, "normal", "");
+    }
+
+    public static synchronized boolean addWarp(String name, double x, double y, double z, float yaw, float pitch, String dimension, String type, String desc) {
+        warps.put(name.toLowerCase(), new Warp(name, x, y, z, yaw, pitch, dimension, type, desc));
         com.craftcore.util.AsyncSaveExecutor.submit(WarpManager::save);
         return true;
     }

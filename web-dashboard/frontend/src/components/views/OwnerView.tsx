@@ -44,14 +44,15 @@ export default function OwnerView({
       <div className="space-y-6 text-left">
         <PageHeader
           icon={User}
+          iconColor="text-blue-500"
           title="店主遙控中心"
-          description="請先登入帳號以遠端管理您名下的實體箱子商店。"
+          description="請先登入帳號以遠端管理您名下的箱子商店。"
           badgeText="需要登入"
           badgeVariant="outline"
         />
-        <Card className="py-12">
+        <Card className="py-12 rounded-none">
           <CardContent className="flex flex-col items-center justify-center text-center space-y-3">
-            <div className="p-3 rounded-full bg-muted text-muted-foreground">
+            <div className="p-3 bg-muted text-muted-foreground border border-border">
               <Lock className="w-6 h-6" />
             </div>
             <CardTitle className="text-sm font-bold">尚未驗證帳號</CardTitle>
@@ -87,6 +88,7 @@ export default function OwnerView({
     <div className="space-y-6 text-left">
       <PageHeader
         icon={User}
+        iconColor="text-blue-500"
         title="店主遙控中心"
         description="遠端調整旗下箱子商店名稱、查看即時庫存剩餘數量與營收提領"
         badgeText={`${myShops.length} 間商店`}
@@ -96,7 +98,7 @@ export default function OwnerView({
             variant="default"
             size="sm"
             onClick={handleUpgradeSlots}
-            className="text-xs"
+            className="text-xs rounded-md"
           >
             升級商店容量上限
           </Button>
@@ -108,7 +110,7 @@ export default function OwnerView({
           {myShops.map((shop, idx) => {
             const cleanItem = (shop.item || '').replace('minecraft:', '');
             return (
-              <Card key={idx} className="flex flex-col justify-between">
+              <Card key={idx} className="flex flex-col justify-between rounded-none">
                 <CardHeader className="pb-3 border-b border-border">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center space-x-3">
@@ -116,11 +118,11 @@ export default function OwnerView({
                       <div className="space-y-0.5">
                         <CardTitle className="text-sm font-bold">{shop.custom_name || cleanItem}</CardTitle>
                         <CardDescription className="font-mono text-[11px] flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> {shop.location}
+                          <MapPin className="w-3 h-3 text-rose-500" /> {shop.location}
                         </CardDescription>
                       </div>
                     </div>
-                    <Badge variant={shop.stock > 0 ? "secondary" : "destructive"}>
+                    <Badge variant={shop.stock > 0 ? "secondary" : "destructive"} className="rounded-md">
                       {shop.stock > 0 ? `庫存: ${shop.stock}` : '無庫存'}
                     </Badge>
                   </div>
@@ -129,7 +131,7 @@ export default function OwnerView({
                 <CardContent className="pt-4 space-y-2 text-xs font-mono">
                   <div className="flex justify-between py-1 border-b border-border/50">
                     <span className="text-muted-foreground">出售價格 (買入):</span>
-                    <span className="font-bold text-foreground">{shop.buy_price > 0 ? `$${shop.buy_price}` : '不販售'}</span>
+                    <span className="font-bold text-emerald-500">{shop.buy_price > 0 ? `$${shop.buy_price}` : '不販售'}</span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-muted-foreground">回收價格 (賣出):</span>
@@ -142,18 +144,18 @@ export default function OwnerView({
                     variant="outline"
                     size="sm"
                     onClick={() => handleOpenRename(shop.location, shop.custom_name || '')}
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs rounded-md"
                   >
-                    <Edit3 className="w-3.5 h-3.5 mr-1" />
+                    <Edit3 className="w-3.5 h-3.5 mr-1 text-blue-500" />
                     <span>變更店名</span>
                   </Button>
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => handleWithdrawRevenue(shop.location)}
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs rounded-md"
                   >
-                    <DollarSign className="w-3.5 h-3.5 mr-1" />
+                    <DollarSign className="w-3.5 h-3.5 mr-1 text-emerald-500" />
                     <span>提領營收</span>
                   </Button>
                 </CardFooter>
@@ -162,9 +164,9 @@ export default function OwnerView({
           })}
         </div>
       ) : (
-        <Card className="py-12">
+        <Card className="py-12 rounded-none">
           <CardContent className="text-center space-y-2">
-            <Store className="w-8 h-8 text-muted-foreground mx-auto" />
+            <Store className="w-8 h-8 text-blue-500 mx-auto" />
             <p className="text-sm font-bold text-foreground">您目前名下沒有任何箱子商店</p>
             <p className="text-xs text-muted-foreground">在伺服器中使用告示牌與箱子擺放商品即可自動建立商店。</p>
           </CardContent>
@@ -194,7 +196,7 @@ export default function OwnerView({
                 variant="outline"
                 size="sm"
                 onClick={() => setRenameCoords(null)}
-                className="text-xs"
+                className="text-xs rounded-md"
               >
                 取消
               </Button>
@@ -202,7 +204,7 @@ export default function OwnerView({
                 type="submit"
                 size="sm"
                 disabled={isSubmitting || !newNameInput.trim()}
-                className="text-xs"
+                className="text-xs rounded-md"
               >
                 {isSubmitting ? '儲存中...' : '確認變更 ($5,000)'}
               </Button>

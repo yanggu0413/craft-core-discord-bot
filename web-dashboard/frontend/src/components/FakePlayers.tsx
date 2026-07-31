@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Cpu, Swords, Hand, Power, RefreshCw } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import { Cpu, Swords, Hand, Power, RefreshCw, Lock } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import PageHeader from './ui/PageHeader';
@@ -41,6 +41,32 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
     fetchFakePlayers();
   }, [token]);
 
+  if (!token) {
+    return (
+      <div className="space-y-6 text-left">
+        <PageHeader
+          icon={Cpu}
+          iconColor="text-violet-500"
+          title="假人控制中心"
+          description="請先登入帳號以連線遠端控制您在伺服器中生成的挂機假人。"
+          badgeText="需要登入"
+          badgeVariant="outline"
+        />
+        <Card className="py-12 rounded-none">
+          <CardContent className="flex flex-col items-center justify-center text-center space-y-3">
+            <div className="p-3 bg-muted text-muted-foreground border border-border">
+              <Lock className="w-6 h-6" />
+            </div>
+            <CardTitle className="text-sm font-bold">尚未登入帳號</CardTitle>
+            <CardDescription className="max-w-md text-xs">
+              請點擊右上角「帳號登入」按鈕，同步您的身份解鎖假人召喚、攻擊與掛機遙控功能。
+            </CardDescription>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const handleAction = async (botName: string, action: string) => {
     if (!token) return;
     setSubmitting(true);
@@ -58,7 +84,7 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
         setMsg({ type: 'error', text: res.data?.message || '操作失敗' });
       }
     } catch (err: any) {
-      setMsg({ type: 'error', text: '網路請求失敗' });
+      setMsg({ type: 'error', text: err.message || '連線錯誤' });
     } finally {
       setSubmitting(false);
     }
@@ -68,9 +94,10 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
     <div className="space-y-6 text-left">
       <PageHeader
         icon={Cpu}
-        title="假人控制與掛機面板"
-        description="遠端遙控遊戲內個人 Carpet Bot 假人行為動作，支援自動連點與下線"
-        badgeText={`${fakeplayers.length} / 3 隻假人`}
+        iconColor="text-violet-500"
+        title="假人控制中心"
+        description="遠端控制伺服器內的個人掛機假人（Bot），支援自動連點與持續攻擊"
+        badgeText={`${fakeplayers.length} 個假人`}
         badgeVariant="outline"
         actions={
           <Button
@@ -78,91 +105,83 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
             size="sm"
             onClick={fetchFakePlayers}
             disabled={loading}
-            className="text-xs"
+            className="text-xs flex items-center space-x-1.5 rounded-md"
           >
-            <RefreshCw className={`w-3.5 h-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>重新整理</span>
           </Button>
         }
       />
 
       {msg && (
-        <div className={`p-3 rounded-md text-xs font-semibold ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
+        <div className={`p-3 rounded-none text-xs ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
           {msg.text}
         </div>
       )}
 
       {fakeplayers.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {fakeplayers.map((bot) => (
-            <Card key={bot.name} className="flex flex-col justify-between">
+            <Card key={bot.name} className="rounded-none">
               <CardHeader className="pb-3 border-b border-border">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <img
-                      src={`https://mc-heads.net/avatar/${bot.name}/24`}
+                  <div className="flex items-center space-x-3">
+                    <img 
+                      src={`https://mc-heads.net/avatar/${bot.name}/24`} 
                       alt={bot.name}
-                      className="w-6 h-6 rounded border border-border"
+                      className="w-6 h-6 rounded-md border border-border shrink-0"
                     />
-                    <CardTitle className="text-xs font-bold font-mono">{bot.name}</CardTitle>
+                    <CardTitle className="text-sm font-bold">{bot.name}</CardTitle>
                   </div>
-                  <Badge variant={bot.online ? "success" : "secondary"}>
-                    {bot.online ? '在線掛機' : '離線'}
+                  <Badge variant={bot.online ? "success" : "secondary"} className="rounded-md">
+                    {bot.online ? "在線掛機" : "離線"}
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="pt-4 space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={submitting}
-                    onClick={() => handleAction(bot.name, 'attack_interval')}
-                    className="text-xs"
-                  >
-                    <Swords className="w-3.5 h-3.5 mr-1" /> 自動攻擊
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={submitting}
-                    onClick={() => handleAction(bot.name, 'use_interval')}
-                    className="text-xs"
-                  >
-                    <Hand className="w-3.5 h-3.5 mr-1" /> 自動右鍵
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={submitting}
-                    onClick={() => handleAction(bot.name, 'stop')}
-                    className="text-xs"
-                  >
-                    停止動作
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={submitting}
-                    onClick={() => handleAction(bot.name, 'kill')}
-                    className="text-xs"
-                  >
-                    <Power className="w-3.5 h-3.5 mr-1" /> 下線召回
-                  </Button>
-                </div>
+              <CardContent className="pt-4 flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={submitting}
+                  onClick={() => handleAction(bot.name, 'use')}
+                  className="text-xs rounded-md"
+                >
+                  <Hand className="w-3.5 h-3.5 mr-1 text-emerald-500" />
+                  <span>右鍵使用 (Use)</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={submitting}
+                  onClick={() => handleAction(bot.name, 'attack')}
+                  className="text-xs rounded-md"
+                >
+                  <Swords className="w-3.5 h-3.5 mr-1 text-rose-500" />
+                  <span>持續攻擊 (Attack)</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={submitting}
+                  onClick={() => handleAction(bot.name, 'stop')}
+                  className="text-xs rounded-md ml-auto"
+                >
+                  <Power className="w-3.5 h-3.5 mr-1" />
+                  <span>召回/下線 (Stop)</span>
+                </Button>
               </CardContent>
             </Card>
           ))}
         </div>
       ) : (
-        <Card className="py-12">
+        <Card className="py-12 rounded-none">
           <CardContent className="text-center space-y-2">
-            <Cpu className="w-8 h-8 text-muted-foreground mx-auto" />
-            <p className="text-sm font-bold text-foreground">您目前沒有啟動任何假人 (Carpet Bot)</p>
-            <p className="text-xs text-muted-foreground">在遊戲中站在目的地輸入 `/fp &lt;名稱&gt;` 即可召喚假人。</p>
+            <Cpu className="w-8 h-8 text-violet-500 mx-auto" />
+            <p className="text-sm font-bold text-foreground">您目前沒有名下的假人</p>
+            <p className="text-xs text-muted-foreground">在遊戲內使用 <code className="bg-muted px-1 py-0.5 font-mono text-[11px] rounded-xs">/player spawn &lt;名字&gt;</code> 即可生成專屬假人。</p>
           </CardContent>
         </Card>
       )}
     </div>
   );
-};
+}

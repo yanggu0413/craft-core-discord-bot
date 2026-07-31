@@ -16,6 +16,7 @@ public class TitleManager {
     public static class PlayerTitleData {
         public String activeTitle = "";
         public Set<String> unlockedTitles = new HashSet<>();
+        public Map<String, String> titleExpiries = new HashMap<>();
 
         public PlayerTitleData() {}
     }
@@ -34,6 +35,36 @@ public class TitleManager {
         load();
     }
 
+    public static synchronized void checkExpiries(String username) {
+        if (username == null) return;
+        String key = username.toLowerCase();
+        PlayerTitleData data = playerTitles.get(key);
+        if (data == null || data.titleExpiries == null || data.titleExpiries.isEmpty()) return;
+
+        String nowIso = java.time.Instant.now().toString();
+        List<String> expired = new ArrayList<>();
+        for (Map.Entry<String, String> entry : data.titleExpiries.entrySet()) {
+            if (entry.getValue() != null && entry.getValue().compareTo(nowIso) <= 0) {
+                expired.add(entry.getKey());
+            }
+        }
+
+        if (!expired.isEmpty()) {
+            boolean modified = false;
+            for (String title : expired) {
+                data.unlockedTitles.remove(title);
+                data.titleExpiries.remove(title);
+                if (title.equals(data.activeTitle)) {
+                    data.activeTitle = "";
+                }
+                modified = true;
+            }
+            if (modified) {
+                save();
+            }
+        }
+    }
+
     public static synchronized void load() {
         if (configPath != null && Files.exists(configPath)) {
             try (BufferedReader reader = Files.newBufferedReader(configPath)) {
@@ -41,7 +72,11 @@ public class TitleManager {
                 if (loaded != null) {
                     playerTitles.clear();
                     for (Map.Entry<String, PlayerTitleData> entry : loaded.entrySet()) {
-                        playerTitles.put(entry.getKey().toLowerCase(), entry.getValue());
+                        PlayerTitleData data = entry.getValue();
+                        if (data.titleExpiries == null) {
+                            data.titleExpiries = new HashMap<>();
+                        }
+                        playerTitles.put(entry.getKey().toLowerCase(), data);
                     }
                 }
             } catch (Exception e) {
@@ -67,6 +102,7 @@ public class TitleManager {
         if (username == null || title == null) return;
         String key = username.toLowerCase();
         PlayerTitleData data = playerTitles.computeIfAbsent(key, k -> new PlayerTitleData());
+        checkExpiries(username);
         if (data.unlockedTitles.add(title)) {
             if (data.activeTitle == null || data.activeTitle.isEmpty()) {
                 data.activeTitle = title;
@@ -77,6 +113,7 @@ public class TitleManager {
 
     public static synchronized String getActiveTitle(String username) {
         if (username == null) return "";
+        checkExpiries(username);
         PlayerTitleData data = playerTitles.get(username.toLowerCase());
         return data != null && data.activeTitle != null ? data.activeTitle : "";
     }
@@ -84,6 +121,7 @@ public class TitleManager {
     public static synchronized boolean setActiveTitle(String username, String title) {
         if (username == null) return false;
         String key = username.toLowerCase();
+        checkExpiries(username);
         PlayerTitleData data = playerTitles.get(key);
         if (data != null && (title.isEmpty() || data.unlockedTitles.contains(title))) {
             data.activeTitle = title;
@@ -95,6 +133,7 @@ public class TitleManager {
 
     public static synchronized Set<String> getUnlockedTitles(String username) {
         if (username == null) return Collections.emptySet();
+        checkExpiries(username);
         PlayerTitleData data = playerTitles.get(username.toLowerCase());
         return data != null ? new HashSet<>(data.unlockedTitles) : Collections.emptySet();
     }
