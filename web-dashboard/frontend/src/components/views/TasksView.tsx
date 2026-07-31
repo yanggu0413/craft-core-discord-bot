@@ -170,22 +170,23 @@ export default function TasksView({ API_URL, token, triggerToast }: TasksViewPro
               <Gift className="w-5 h-5 text-amber-500 shrink-0" />
               <div>
                 <p className="text-[11px] text-muted-foreground font-bold">目標達成獎勵</p>
-                <p className="text-xs font-black text-foreground">$2,000 金幣 + 🔑 鑰匙 x2</p>
+                <p className="text-xs font-black text-foreground">$2,000 金幣 + 鑰匙 x2</p>
               </div>
             </div>
             <div className="bg-background/60 border border-border rounded-lg p-3 flex items-center gap-3">
               <Trophy className="w-5 h-5 text-emerald-500 shrink-0" />
               <div>
                 <p className="text-[11px] text-muted-foreground font-bold">解鎖全服稱號</p>
-                <p className="text-xs font-black text-foreground">[⚔️ 怪物獵人] 限定稱號</p>
+                <p className="text-xs font-black text-foreground">[怪物獵人] 限定稱號</p>
               </div>
             </div>
             <div className="bg-background/60 border border-border rounded-lg p-3 flex items-center gap-3">
               <Award className="w-5 h-5 text-purple-500 shrink-0" />
               <div>
                 <p className="text-[11px] text-muted-foreground font-bold">活動狀態</p>
-                <p className="text-xs font-black text-foreground">
-                  {(globalGoal?.current_progress || 0) >= (globalGoal?.target_goal || 3000) ? '🎉 目標已達成！' : '⚡ 熱血進行中'}
+                <p className="text-xs font-black text-foreground flex items-center gap-1.5 mt-0.5">
+                  <span className={`w-2 h-2 rounded-full ${(globalGoal?.current_progress || 0) >= (globalGoal?.target_goal || 3000) ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                  <span>{(globalGoal?.current_progress || 0) >= (globalGoal?.target_goal || 3000) ? '目標已達成' : '熱血進行中'}</span>
                 </p>
               </div>
             </div>
@@ -231,8 +232,8 @@ export default function TasksView({ API_URL, token, triggerToast }: TasksViewPro
                       </div>
                       <p className="text-xs text-muted-foreground">{task.desc || task.description}</p>
                       <div className="flex items-center gap-3 pt-1 text-xs text-primary font-bold">
-                        <span>💰 獎勵: ${task.reward_money || 500} 元</span>
-                        {task.reward_keys > 0 && <span>🔑 鑰匙 x{task.reward_keys}</span>}
+                        <span>獎勵: ${task.reward_money || 500} 元</span>
+                        {task.reward_keys > 0 && <span>鑰匙 x{task.reward_keys}</span>}
                       </div>
                     </div>
 

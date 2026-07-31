@@ -183,7 +183,7 @@ export default function EventsView({ token, isAdmin, triggerToast, API_URL }: Ev
         <div>
           <div className="flex items-center space-x-2">
             <Sparkles className="w-5 h-5 text-amber-500" />
-            <h2 className="text-base font-bold tracking-wider uppercase text-foreground">🎪 伺服器熱門活動 (Server Events)</h2>
+            <h2 className="text-base font-bold tracking-wider uppercase text-foreground">伺服器熱門活動 (Server Events)</h2>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             發掘 Craft-Core 最新的限時節慶、雙倍經驗、採礦競賽與福利抽獎活動！
@@ -214,13 +214,13 @@ export default function EventsView({ token, isAdmin, triggerToast, API_URL }: Ev
           onClick={() => setFilter('active')}
           className={`px-3 py-1.5 rounded-[4px] border transition-colors ${filter === 'active' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-muted/40 text-muted-foreground border-border hover:text-foreground'}`}
         >
-          🟢 限時進行中 ({events.filter(e => e.status === 'active').length})
+          限時進行中 ({events.filter(e => e.status === 'active').length})
         </button>
         <button
           onClick={() => setFilter('completed')}
           className={`px-3 py-1.5 rounded-[4px] border transition-colors ${filter === 'completed' ? 'bg-slate-700 text-white border-slate-700' : 'bg-muted/40 text-muted-foreground border-border hover:text-foreground'}`}
         >
-          ⚪ 暫停/已結束 ({events.filter(e => e.status !== 'active').length})
+          暫停/已結束 ({events.filter(e => e.status !== 'active').length})
         </button>
       </div>
 
@@ -241,12 +241,17 @@ export default function EventsView({ token, isAdmin, triggerToast, API_URL }: Ev
                     <CardTitle className="text-sm font-bold text-foreground flex items-center space-x-2">
                       <span>{ev.title}</span>
                     </CardTitle>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-[3px] border shrink-0 ${
+                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-[3px] border shrink-0 ${
                       isActive ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
                       isPaused ? 'bg-amber-500/10 text-amber-500 border-amber-500/30' :
                       'bg-muted text-muted-foreground border-border'
                     }`}>
-                      {isActive ? '🟢 限時進行中' : isPaused ? '⏸️ 暫停中' : '⚪ 已結束'}
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        isActive ? 'bg-emerald-500 animate-pulse' :
+                        isPaused ? 'bg-amber-500' :
+                        'bg-muted-foreground'
+                      }`} />
+                      <span>{isActive ? '限時進行中' : isPaused ? '暫停中' : '已結束'}</span>
                     </span>
                   </div>
                   <CardDescription className="text-[10px] text-muted-foreground flex items-center space-x-3 mt-1">
@@ -268,7 +273,7 @@ export default function EventsView({ token, isAdmin, triggerToast, API_URL }: Ev
                     <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-[4px] flex items-start space-x-2 text-xs">
                       <Gift className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold text-amber-500 block text-[11px]">🎁 活動豐厚獎勵：</span>
+                        <span className="font-bold text-amber-500 block text-[11px]">活動豐厚獎勵：</span>
                         <span className="text-foreground/90 text-[11px]">{ev.reward_info}</span>
                       </div>
                     </div>

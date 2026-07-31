@@ -18,12 +18,12 @@ export default function MarketView({
   setSelectedMineral,
   isDarkMode
 }: MarketViewProps) {
-  const getMineralStats = (id: string, name: string, icon: string) => {
+  const getMineralStats = (id: string, name: string) => {
     const data = analytics[id] || [];
     if (data.length === 0) {
       return {
         id,
-        name: `${icon} ${name}`,
+        name,
         avgPrice: '無交易',
         trend: '—'
       };
@@ -44,16 +44,16 @@ export default function MarketView({
     
     return {
       id,
-      name: `${icon} ${name}`,
+      name,
       avgPrice: avgPriceText,
       trend: trendText
     };
   };
 
   const mineralCards = [
-    getMineralStats('minecraft:diamond', '鑽石', '💎'),
-    getMineralStats('minecraft:netherite_ingot', '獄髓合金', '🔥'),
-    getMineralStats('minecraft:iron_ingot', '鐵錠', '⚙️')
+    getMineralStats('minecraft:diamond', '鑽石 (Diamond)'),
+    getMineralStats('minecraft:netherite_ingot', '獄髓合金 (Netherite)'),
+    getMineralStats('minecraft:iron_ingot', '鐵錠 (Iron Ingot)')
   ];
 
   return (

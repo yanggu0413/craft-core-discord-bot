@@ -143,7 +143,7 @@ export default function ClaimsView({
         <div className="space-y-1">
           <h2 className="text-base font-bold tracking-wider uppercase text-foreground flex items-center space-x-2">
             <Shield className="w-5 h-5 text-primary" />
-            <span>領地管理系統 {isAdmin && <span className="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-bold ml-2">🛡️ 管理員檢視模式</span>}</span>
+            <span>領地管理系統 {isAdmin && <span className="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-bold ml-2">管理員檢視模式</span>}</span>
           </h2>
           <p className="text-xs text-muted-foreground">
             檢視並設定保護領地內的權限，包含建造、破壞、容器開啟、方塊互動與全域權限標籤。{isAdmin && '（管理員可檢視與維護全服所有玩家之領地）'}
@@ -162,7 +162,7 @@ export default function ClaimsView({
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                🌐 全服所有領地 ({claims.length})
+                全服所有領地 ({claims.length})
               </button>
               <button
                 onClick={() => setAdminViewMode('mine')}
@@ -172,7 +172,7 @@ export default function ClaimsView({
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                👤 我的領地 ({claims.filter(c => c.owner.toLowerCase() === username?.toLowerCase()).length})
+                我的領地 ({claims.filter(c => c.owner.toLowerCase() === username?.toLowerCase()).length})
               </button>
             </div>
           )}
@@ -275,10 +275,10 @@ export default function ClaimsView({
                           <div key={permType} className="bg-muted/20 border border-border p-3 rounded-lg space-y-2">
                             <div className="flex items-center justify-between text-xs font-bold">
                               <span className="text-foreground">
-                                {permType === 'build' && '🏗️ 建造權限'}
-                                {permType === 'break' && '⛏️ 破壞權限'}
-                                {permType === 'containers' && '📦 容器開關'}
-                                {permType === 'interact' && '🔘 方塊互動'}
+                                {permType === 'build' && '建造權限'}
+                                {permType === 'break' && '破壞權限'}
+                                {permType === 'containers' && '容器開關'}
+                                {permType === 'interact' && '方塊互動'}
                               </span>
                               <span className="text-[9px] text-muted-foreground font-mono">{permPlayers.length} 位玩家</span>
                             </div>

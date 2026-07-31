@@ -107,7 +107,7 @@ export default function ExplorerView({
           className="font-bold text-xs gap-1.5"
         >
           <Cpu className="w-3.5 h-3.5 text-amber-500" />
-          🏭 認證機器設施
+          認證機器設施
         </Button>
         <Button
           variant={activeTab === 'treasure' ? 'default' : 'ghost'}
@@ -116,7 +116,7 @@ export default function ExplorerView({
           className="font-bold text-xs gap-1.5"
         >
           <Sparkles className="w-3.5 h-3.5 text-purple-500" />
-          🗺️ 野外藏寶線索
+          野外藏寶線索
         </Button>
       </div>
 
