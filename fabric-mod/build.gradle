@@ -53,7 +53,7 @@ java {
 
 test {
     useJUnitPlatform()
-    jvmArgs '-XX:+EnableDynamicAgentLoading'
+    jvmArgs '-XX:+EnableDynamicAgentLoading', '-Dnet.bytebuddy.experimental=true'
     systemProperty 'net.bytebuddy.experimental', 'true'
 }
 

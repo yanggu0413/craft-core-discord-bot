@@ -140,6 +140,11 @@ public class ShopGuiManager {
                 shopIdx++;
             }
 
+            ItemStack backBtn = new ItemStack(Items.ARROW);
+            backBtn.set(DataComponents.CUSTOM_NAME, Component.literal("§a⬅️ 返回主選單"));
+            backBtn.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("§7點擊返回 /menu 大廳"))));
+            this.getContainer().setItem(45, backBtn);
+
             ItemStack instBook = new ItemStack(Items.BOOK);
             instBook.set(DataComponents.CUSTOM_NAME, Component.literal("§e[ 商店系統說明 ]"));
             List<Component> instLore = List.of(
@@ -150,7 +155,7 @@ public class ShopGuiManager {
                 Component.literal("§7- 限制：每個玩家最多建立 15 個商店 (可付費升級)。")
             );
             instBook.set(DataComponents.LORE, new ItemLore(instLore));
-            this.getContainer().setItem(45, instBook);
+            this.getContainer().setItem(46, instBook);
 
             ItemStack addShopBtn = new ItemStack(Items.CHEST);
             addShopBtn.set(DataComponents.CUSTOM_NAME, Component.literal("§a新增商店"));
@@ -177,6 +182,9 @@ public class ShopGuiManager {
         @Override
         public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
             if (slotId == 45) {
+                if (player instanceof ServerPlayer spe) {
+                    com.craftcore.menu.MenuGuiManager.openMainMenu(spe);
+                }
                 return;
             }
             if (slotId == 49) {

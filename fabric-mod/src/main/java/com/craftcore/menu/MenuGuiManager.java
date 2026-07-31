@@ -173,7 +173,7 @@ public class MenuGuiManager {
     }
 
     // =========================================================
-    // 2. 傳送與家園 GUI (Teleport & Homes) - 精美整齊版面
+    // 2. 傳送與家園 GUI (Teleport & Homes) - 精美整齊版面 (統一 Slot 45 返回)
     // =========================================================
     public static void openTeleportMenu(ServerPlayer player) {
         if (player == null) return;
@@ -185,7 +185,6 @@ public class MenuGuiManager {
         // 頂部快捷動作 (Row 1)
         container.setItem(0, createGuiItem(Items.FEATHER, "§a🎲 隨機傳送 (/rtp)", List.of("§7隨機傳送至野外安全地點", "", "§e[點擊執行 /rtp]")));
         container.setItem(1, createGuiItem(getItem("minecraft:red_bed"), "§c💀 返回死亡點 (/back)", List.of("§7傳送回上次死亡地點", "", "§e[點擊執行 /back]")));
-        container.setItem(8, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
 
         // 家園清單 (Homes: Slots 10-16, 19-25)
         Map<String, HomeManager.Home> homes = HomeManager.getPlayerHomes(username);
@@ -220,7 +219,8 @@ public class MenuGuiManager {
             )));
         }
 
-        // 底部關閉按鈕
+        // 底部導航按鈕 (Slot 45 返回主選單, Slot 49 關閉選單)
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -231,7 +231,7 @@ public class MenuGuiManager {
                             MinecraftServer server = sp.level().getServer();
                             if (server == null) return;
 
-                            if (slotId == 8) { openMainMenu(sp); return; }
+                            if (slotId == 45) { openMainMenu(sp); return; }
                             if (slotId == 49) { sp.closeContainer(); return; }
                             if (slotId == 0) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "rtp"); return; }
                             if (slotId == 1) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "back"); return; }
@@ -257,7 +257,7 @@ public class MenuGuiManager {
     }
 
     // =========================================================
-    // 3. 假人控制 GUI (Fake Player Hub) - 精美整齊版面
+    // 3. 假人控制 GUI (Fake Player Hub) - 精美整齊版面 (統一 Slot 45 返回)
     // =========================================================
     public static void openFakePlayerMenu(ServerPlayer player) {
         if (player == null) return;
@@ -272,7 +272,6 @@ public class MenuGuiManager {
                 "",
                 "§e[點擊執行召喚]"
         )));
-        container.setItem(8, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
 
         // 假人清單 (Slots 10-16, 19-25, 28-34)
         Map<String, String> allBots = FakePlayerManager.getAllFakePlayers();
@@ -300,6 +299,8 @@ public class MenuGuiManager {
             }
         }
 
+        // 底部導航按鈕 (Slot 45 返回主選單, Slot 49 關閉選單)
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -310,7 +311,7 @@ public class MenuGuiManager {
                             MinecraftServer server = sp.level().getServer();
                             if (server == null) return;
 
-                            if (slotId == 8) { openMainMenu(sp); return; }
+                            if (slotId == 45) { openMainMenu(sp); return; }
                             if (slotId == 49) { sp.closeContainer(); return; }
                             if (slotId == 4) {
                                 sp.closeContainer();
@@ -352,6 +353,7 @@ public class MenuGuiManager {
         fillBackground(container);
 
         container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         container.setItem(20, createGuiItem(Items.BOOK, "§a⚔️ 每日任務 (/tasks)", List.of(
                 "§7查看今日擊殺與挖掘任務",
@@ -394,6 +396,7 @@ public class MenuGuiManager {
                             if (server == null) return;
 
                             if (slotId == 45) { openMainMenu(sp); return; }
+                            if (slotId == 49) { sp.closeContainer(); return; }
                             if (slotId == 20) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "tasks"); return; }
                             if (slotId == 22) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "bounty"); return; }
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "treasure"); return; }
@@ -415,6 +418,7 @@ public class MenuGuiManager {
         fillBackground(container);
 
         container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         Set<String> unlocked = TitleManager.getUnlockedTitles(username);
         String active = TitleManager.getActiveTitle(username);
@@ -441,6 +445,7 @@ public class MenuGuiManager {
                     public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             if (slotId == 45) { openMainMenu(sp); return; }
+                            if (slotId == 49) { sp.closeContainer(); return; }
 
                             ItemStack clickedStack = container.getItem(slotId);
                             if (clickedStack != null && clickedStack.has(DataComponents.CUSTOM_NAME)) {
@@ -469,6 +474,7 @@ public class MenuGuiManager {
         fillBackground(container);
 
         container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         container.setItem(20, createGuiItem(Items.WOODEN_HOE, "§6🪄 領地劃分神杖 (/claim tool)", List.of(
                 "§7點擊一鍵免費領取領地圈地神杖 (木鋤)",
@@ -499,6 +505,7 @@ public class MenuGuiManager {
                             if (server == null) return;
 
                             if (slotId == 45) { openMainMenu(sp); return; }
+                            if (slotId == 49) { sp.closeContainer(); return; }
                             if (slotId == 20) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim tool"); return; }
                             if (slotId == 22) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim list"); return; }
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim"); return; }
@@ -515,6 +522,8 @@ public class MenuGuiManager {
         fillBackground(container);
 
         container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
         container.setItem(22, createGuiItem(Items.REDSTONE_LAMP, "§a🏭 提交機器審核 (/machine apply)", List.of(
                 "§7站在您的機器領地內點擊提交審核",
                 "§7管理員認證 T2/T3 後可享受 100% 免領地費！",
@@ -528,6 +537,7 @@ public class MenuGuiManager {
                     public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             if (slotId == 45) { openMainMenu(sp); return; }
+                            if (slotId == 49) { sp.closeContainer(); return; }
                             if (slotId == 22) {
                                 sp.closeContainer();
                                 sp.sendSystemMessage(Component.literal("§b請輸入 /machine apply <機器名稱> 提交機器認證！"));
@@ -545,6 +555,8 @@ public class MenuGuiManager {
         fillBackground(container);
 
         container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
         container.setItem(20, createGuiItem(Items.CHEST, "§4全服玩家 /invsee 背包管理", List.of("§7點擊開啟選擇器", "", "§e[點擊開啟]")));
         container.setItem(22, createGuiItem(Items.REPEATER, "§4機器認證審核列表", List.of("§7點擊查看待審核機器", "", "§e[點擊開啟]")));
         container.setItem(24, createGuiItem(Items.COMMAND_BLOCK, "§4手動觸發 7z 地圖備份", List.of("§7一鍵觸發全服地圖增量備份", "", "§e[點擊執行]")));
@@ -558,6 +570,7 @@ public class MenuGuiManager {
                             if (server == null) return;
 
                             if (slotId == 45) { openMainMenu(sp); return; }
+                            if (slotId == 49) { sp.closeContainer(); return; }
                             if (slotId == 20) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "invsee"); return; }
                             if (slotId == 22) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "machine admin list"); return; }
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "craftcorebackup start"); return; }
