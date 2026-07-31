@@ -776,7 +776,7 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                           className="h-9 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
                         >
                           <Coins className="w-3.5 h-3.5 mr-1" />
-                          {isGivingMoney ? '發送中...' : '💰 給予金幣'}
+                          {isGivingMoney ? '發送中...' : '給予金幣'}
                         </Button>
                       </div>
                     </div>
@@ -799,14 +799,14 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                           className="h-9 px-4 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shrink-0"
                         >
                           <Key className="w-3.5 h-3.5 mr-1" />
-                          {isGivingKeys ? '發送中...' : '🔑 給予鑰匙'}
+                          {isGivingKeys ? '發送中...' : '給予鑰匙'}
                         </Button>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* 👑 專屬頭銜與顏色管理專區 */}
+                {/* 專屬頭銜與顏色管理專區 */}
                 <div className="mt-6 border-t border-border pt-4">
                   <div className="flex items-center space-x-2 mb-3">
                     <Sparkles className="w-4 h-4 text-amber-500" />
@@ -1364,8 +1364,8 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
-                    <span>📦 已歸檔備份檔總數：<strong className="text-foreground font-mono">{backupStats.count}</strong> 個檔案</span>
-                    <span>⏳ 定期循環：每 3 小時 (180 分鐘)</span>
+                    <span>已歸檔備份檔總數：<strong className="text-foreground font-mono">{backupStats.count}</strong> 個檔案</span>
+                    <span>定期循環：每 3 小時 (180 分鐘)</span>
                   </div>
                 </div>
               )}

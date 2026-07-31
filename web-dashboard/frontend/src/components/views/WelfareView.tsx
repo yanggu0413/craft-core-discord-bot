@@ -673,7 +673,7 @@ export default function WelfareView({
                 </div>
 
                 <div className="text-[10px] text-muted-foreground pt-1">
-                  目前剩餘 🔑 <span className="font-bold text-foreground">{keysCount}</span> 把鑰匙
+                  目前剩餘 <span className="font-bold text-foreground">{keysCount}</span> 把鑰匙
                 </div>
               </div>
             </CardContent>
@@ -691,7 +691,7 @@ export default function WelfareView({
                 <span>遊戲時數兌換</span>
               </CardTitle>
               <CardDescription className="text-left text-[11px]">
-                兌換比率為 ⏳ <span className="font-black text-purple-500">5 小時</span> (360,000 tick) 可換取 🔑 <span className="font-black text-yellow-500">1 把</span> 鑰匙。
+                兌換比率為 <span className="font-black text-purple-500">5 小時</span> (360,000 tick) 可換取 <span className="font-black text-yellow-500">1 把</span> 鑰匙。
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -740,7 +740,7 @@ export default function WelfareView({
               >
                 {loadingExchange ? (
                   <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
-                ) : '⏳ 執行時數兌換'}
+                ) : '執行時數兌換'}
               </Button>
             </CardContent>
           </Card>
@@ -776,7 +776,7 @@ export default function WelfareView({
               >
                 {loadingBuyKey ? (
                   <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
-                ) : '💰 花費 $10,000 購買 1 把鑰匙'}
+                ) : '花費 $10,000 購買 1 把鑰匙'}
               </Button>
             </CardContent>
           </Card>
