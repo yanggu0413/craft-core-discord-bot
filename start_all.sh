@@ -67,7 +67,10 @@ cp -r web-dashboard/frontend/dist/* /var/www/craft-core/ 2>/dev/null || true
 # Adjust permissions so caddy user can read them
 chown -R caddy:caddy /var/www/craft-core 2>/dev/null || true
 chmod -R 755 /var/www/craft-core 2>/dev/null || true
-echo -e "${GREEN}Deployment to /var/www/craft-core completed.${NC}"
+
+# Reload Caddy to serve fresh static assets immediately
+systemctl reload caddy >/dev/null 2>&1 || systemctl restart caddy >/dev/null 2>&1 || true
+echo -e "${GREEN}Deployment & Caddy reload to /var/www/craft-core completed.${NC}"
 echo
 
 # 5. Start PM2 services
