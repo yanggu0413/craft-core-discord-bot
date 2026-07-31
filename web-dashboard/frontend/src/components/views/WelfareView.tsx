@@ -453,133 +453,271 @@ export default function WelfareView({
     };
   }, []);
 
+  const [welfareSubTab, setWelfareSubTab] = useState<'checkin' | 'lottery' | 'leaderboard'>('checkin');
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-left">
       
-      {/* 頂部引言 */}
-      <div className="text-left space-y-2">
-        <h1 className="text-lg font-black text-foreground">福利中心</h1>
-        <p className="text-xs text-muted-foreground">每日簽到領取鑰匙、時數兌換、參與抽獎，祝你幸運抱回不死圖騰與鑽石！</p>
+      {/* 頂部引言與分頁導航 */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-4">
+        <div>
+          <h1 className="text-lg font-black text-foreground flex items-center gap-2">
+            <Gift className="w-5 h-5 text-primary" />
+            <span>福利中心</span>
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1">每日簽到領取鑰匙、遊戲時數兌換、幸運抽獎與榮譽榜單。</p>
+        </div>
+
+        {/* 福利中心選單頁籤 */}
+        <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg border border-border shrink-0 text-xs font-bold">
+          <button
+            onClick={() => setWelfareSubTab('checkin')}
+            className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              welfareSubTab === 'checkin' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            每日簽到與兌換
+          </button>
+          <button
+            onClick={() => setWelfareSubTab('lottery')}
+            className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              welfareSubTab === 'lottery' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            幸運大抽獎
+          </button>
+          <button
+            onClick={() => setWelfareSubTab('leaderboard')}
+            className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              welfareSubTab === 'leaderboard' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            簽到榮譽榜
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* 左側：每日簽到與提醒設定 */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border bg-card">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-sm font-bold flex items-center space-x-2">
-                  <Calendar className="w-4 h-4 text-emerald-500" />
-                  <span>每日簽到福利</span>
-                </CardTitle>
+      {/* 分頁 1: 每日簽到與時數金幣兌換 */}
+      {welfareSubTab === 'checkin' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+          {/* 左側：每日簽到 */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="border-border bg-card">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-sm font-bold flex items-center space-x-2">
+                    <Calendar className="w-4 h-4 text-emerald-500" />
+                    <span>每日簽到福利</span>
+                  </CardTitle>
+                  
+                  {/* 提醒設定切換按鈕 */}
+                  {token && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={handleToggleReminder}
+                      disabled={loadingReminder}
+                      className="h-8 px-2 text-[10px] font-bold border border-border"
+                    >
+                      {subscribeReminder === 1 ? (
+                        <>
+                          <Bell className="w-3.5 h-3.5 mr-1 text-emerald-500 animate-wiggle" />
+                          <span className="text-emerald-500">已開啟提醒</span>
+                        </>
+                      ) : (
+                        <>
+                          <BellOff className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+                          <span className="text-muted-foreground">提醒已關閉</span>
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+                <CardDescription className="text-left text-[11px]">
+                  每日簽到可獲得鑰匙 +1。連續簽到滿 7 天可加碼獲得鑰匙 +3 並重新計算！
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
                 
-                {/* 提醒設定切換按鈕 */}
-                {token && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={handleToggleReminder}
-                    disabled={loadingReminder}
-                    className="h-8 px-2 text-[10px] font-bold border border-border"
-                  >
-                    {subscribeReminder === 1 ? (
-                      <>
-                        <Bell className="w-3.5 h-3.5 mr-1 text-emerald-500 animate-wiggle" />
-                        <span className="text-emerald-500">已開啟提醒</span>
-                      </>
-                    ) : (
-                      <>
-                        <BellOff className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
-                        <span className="text-muted-foreground">提醒已關閉</span>
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-              <CardDescription className="text-left text-[11px]">
-                每日簽到可獲得鑰匙 +1。連續簽到滿 7 天可加碼獲得鑰匙 +3 並重新計算！
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              
-              {/* 簽到統計數據格 */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="border border-border p-3 rounded-[4px] text-center bg-muted/20">
-                  <Flame className="w-5 h-5 text-red-500 mx-auto mb-1.5" />
-                  <span className="text-[10px] text-muted-foreground font-bold">連續簽到</span>
-                  <p className="text-lg font-black text-foreground mt-0.5">{checkinStreak} 天</p>
+                {/* 簽到統計數據格 */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="border border-border p-3 rounded-[4px] text-center bg-muted/20">
+                    <Flame className="w-5 h-5 text-red-500 mx-auto mb-1.5" />
+                    <span className="text-[10px] text-muted-foreground font-bold">連續簽到</span>
+                    <p className="text-lg font-black text-foreground mt-0.5">{checkinStreak} 天</p>
+                  </div>
+                  <div className="border border-border p-3 rounded-[4px] text-center bg-muted/20">
+                    <Calendar className="w-5 h-5 text-emerald-500 mx-auto mb-1.5" />
+                    <span className="text-[10px] text-muted-foreground font-bold">累計簽到</span>
+                    <p className="text-lg font-black text-foreground mt-0.5">{totalCheckins} 次</p>
+                  </div>
+                  <div className="border border-border p-3 rounded-[4px] text-center bg-muted/20">
+                    <Key className="w-5 h-5 text-amber-500 mx-auto mb-1.5" />
+                    <span className="text-[10px] text-muted-foreground font-bold">鑰匙餘額</span>
+                    <p className="text-lg font-black text-foreground mt-0.5">{keysCount} 把</p>
+                  </div>
+                  <div className="border border-border p-3 rounded-[4px] text-center bg-muted/20">
+                    <Clock className="w-5 h-5 text-blue-500 mx-auto mb-1.5" />
+                    <span className="text-[10px] text-muted-foreground font-bold">上次簽到</span>
+                    <p className="text-[11px] font-black text-foreground mt-2 truncate">
+                      {lastCheckin || '無紀錄'}
+                    </p>
+                  </div>
                 </div>
-                <div className="border border-border p-3 rounded-[4px] text-center bg-muted/20">
-                  <Calendar className="w-5 h-5 text-emerald-500 mx-auto mb-1.5" />
-                  <span className="text-[10px] text-muted-foreground font-bold">累計簽到</span>
-                  <p className="text-lg font-black text-foreground mt-0.5">{totalCheckins} 次</p>
-                </div>
-                <div className="border border-border p-3 rounded-[4px] text-center bg-muted/20">
-                  <Key className="w-5 h-5 text-yellow-500 mx-auto mb-1.5" />
-                  <span className="text-[10px] text-muted-foreground font-bold">鑰匙餘額</span>
-                  <p className="text-lg font-black text-foreground mt-0.5">{keysCount} 把</p>
-                </div>
-                <div className="border border-border p-3 rounded-[4px] text-center bg-muted/20">
-                  <Clock className="w-5 h-5 text-blue-500 mx-auto mb-1.5" />
-                  <span className="text-[10px] text-muted-foreground font-bold">上次簽到</span>
-                  <p className="text-[11px] font-black text-foreground mt-2 truncate">
-                    {lastCheckin || '無紀錄'}
-                  </p>
-                </div>
-              </div>
 
-              {/* 簽到動作按鈕 */}
-              <div className="flex flex-col items-center">
-                {alreadyCheckedInToday ? (
-                  <Button disabled className="w-full md:w-64 h-11 text-xs font-bold bg-muted text-muted-foreground">
-                    今日已完成簽到
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={handleCheckin} 
-                    disabled={loadingCheckin || !token}
-                    className="w-full md:w-64 h-11 text-xs font-bold gap-2"
-                  >
-                    {loadingCheckin ? (
-                      <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
-                    ) : (
-                      <>
-                        <Calendar className="w-4 h-4" />
-                        <span>點擊進行今日簽到</span>
-                      </>
-                    )}
-                  </Button>
-                )}
-                {!token && (
-                  <p className="text-[10px] text-red-500 mt-2 font-bold">請先點擊右上角「Discord 帳號登入」驗證後再進行簽到</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                {/* 簽到動作按鈕 */}
+                <div className="flex flex-col items-center">
+                  {alreadyCheckedInToday ? (
+                    <Button disabled className="w-full md:w-64 h-11 text-xs font-bold bg-muted text-muted-foreground">
+                      今日已完成簽到
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={handleCheckin} 
+                      disabled={loadingCheckin || !token}
+                      className="w-full md:w-64 h-11 text-xs font-bold gap-2"
+                    >
+                      {loadingCheckin ? (
+                        <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
+                      ) : (
+                        <>
+                          <Calendar className="w-4 h-4" />
+                          <span>點擊進行今日簽到</span>
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  {!token && (
+                    <p className="text-[10px] text-red-500 mt-2 font-bold">請先點擊右上角「Discord 帳號登入」驗證後再進行簽到</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-          {/* 幸運大抽獎 (開箱輪盤) */}
+          {/* 右側：時數與金幣購買鑰匙 */}
+          <div className="space-y-6">
+            {/* 遊戲時數兌換 */}
+            <Card className="border-border bg-card">
+              <CardHeader>
+                <CardTitle className="text-sm font-bold flex items-center space-x-2">
+                  <Clock className="w-4 h-4 text-purple-500" />
+                  <span>遊戲時數兌換鑰匙</span>
+                </CardTitle>
+                <CardDescription className="text-left text-[11px]">
+                  兌換比率為 <span className="font-black text-purple-500">5 小時</span> (360,000 tick) 可換取 <span className="font-black text-amber-500">1 把</span> 鑰匙。
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-2 border border-border p-1 bg-muted/20 rounded-[4px]">
+                  <button 
+                    onClick={() => setExchangeMode('single')}
+                    className={`flex-1 py-1.5 text-[10px] font-bold rounded-[2px] transition-colors cursor-pointer ${
+                      exchangeMode === 'single' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    單把兌換 (5hr)
+                  </button>
+                  <button 
+                    onClick={() => setExchangeMode('all')}
+                    className={`flex-1 py-1.5 text-[10px] font-bold rounded-[2px] transition-colors cursor-pointer ${
+                      exchangeMode === 'all' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    兌換所有可能鑰匙
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between px-3 py-2 bg-muted/10 border border-border rounded-[4px]">
+                  <div className="text-left">
+                    <span className="text-[9px] text-muted-foreground block leading-none font-bold">消耗時數</span>
+                    <span className="text-xs font-black text-purple-400">
+                      {exchangeMode === 'single' ? '5 小時' : '所有可用時數'}
+                    </span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  <div className="text-right">
+                    <span className="text-[9px] text-muted-foreground block leading-none font-bold">獲得獎勵</span>
+                    <span className="text-xs font-black text-amber-500">
+                      {exchangeMode === 'single' ? '+1 鑰匙' : '加算鑰匙'}
+                    </span>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleExchangePlaytime}
+                  disabled={loadingExchange || !token}
+                  className="w-full h-10 text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 disabled:bg-muted"
+                >
+                  {loadingExchange ? (
+                    <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
+                  ) : '執行時數兌換'}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* 金幣購買抽獎鑰匙 */}
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-bold flex items-center space-x-2">
+                  <Key className="w-4 h-4 text-emerald-500" />
+                  <span>金幣購買鑰匙 ($10,000 / 把)</span>
+                </CardTitle>
+                <CardDescription className="text-left text-[11px]">
+                  將遊戲內積攢的金幣向系統兌換大理石抽獎鑰匙！
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between px-3 py-2 bg-muted/10 border border-border rounded-[4px]">
+                  <div className="text-left">
+                    <span className="text-[9px] text-muted-foreground block leading-none font-bold">花費金幣</span>
+                    <span className="text-xs font-black text-emerald-500">$10,000 元</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  <div className="text-right">
+                    <span className="text-[9px] text-muted-foreground block leading-none font-bold">獲得鑰匙</span>
+                    <span className="text-xs font-black text-amber-500">+1 鑰匙</span>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleBuyKeyWithMoney}
+                  disabled={loadingBuyKey || !token}
+                  className="w-full h-10 text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-muted"
+                >
+                  {loadingBuyKey ? (
+                    <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
+                  ) : '花費 $10,000 購買 1 把鑰匙'}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* 分頁 2: 幸運大抽獎 (開箱輪盤) */}
+      {welfareSubTab === 'lottery' && (
+        <div className="space-y-6 animate-fade-in">
           <Card className="border-border bg-card">
             <CardHeader className="pb-4">
               <div className="flex justify-between items-center">
                 <CardTitle className="text-sm font-bold flex items-center space-x-2">
-                  <Gift className="w-4 h-4 text-yellow-500" />
+                  <Gift className="w-4 h-4 text-amber-500" />
                   <span>幸運大抽獎 (消耗 1 把鑰匙)</span>
                 </CardTitle>
                 
-                {/* 聲音切換按鈕 */}
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   onClick={() => setSoundEnabled(!soundEnabled)} 
                   className="h-8 w-8 text-muted-foreground hover:text-foreground border border-border"
-                  title={soundEnabled ? '點擊關閉音效' : '點擊啟用音效'}
+                  title={soundEnabled ? '關閉音效' : '開啟音效'}
                 >
-                  {soundEnabled ? <Volume2 className="w-4 h-4 text-yellow-500" /> : <VolumeX className="w-4 h-4" />}
+                  {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-500" /> : <VolumeX className="w-4 h-4" />}
                 </Button>
               </div>
               <CardDescription className="text-left text-[11px]">
-                點擊抽獎後，輪盤將快速旋轉並慢慢減速。本系統與遊戲音效同步！抽中後若玩家在線，直接發送至背包，若離線則以快遞郵件發送。
+                點擊抽獎後，輪盤將快速旋轉並慢慢減速。抽中獎品若玩家在線，直接發送至背包，若離線則以快遞郵件發送！
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -588,9 +726,9 @@ export default function WelfareView({
               <div className="relative border border-border bg-muted/30 rounded-[4px] py-4 overflow-hidden h-28 flex items-center">
                 
                 {/* 中心指標線 */}
-                <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-red-500 z-10 shadow-[0_0_8px_rgba(239,68,68,0.8)]">
-                  <div className="absolute top-0 -left-1 w-2.5 h-2.5 bg-red-500 rotate-45"></div>
-                  <div className="absolute bottom-0 -left-1 w-2.5 h-2.5 bg-red-500 rotate-45"></div>
+                <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-rose-500 z-10 shadow-[0_0_8px_rgba(244,63,94,0.8)]">
+                  <div className="absolute top-0 -left-1 w-2.5 h-2.5 bg-rose-500 rotate-45"></div>
+                  <div className="absolute bottom-0 -left-1 w-2.5 h-2.5 bg-rose-500 rotate-45"></div>
                 </div>
 
                 {/* 卡片滑動軌道 */}
@@ -610,7 +748,6 @@ export default function WelfareView({
                       </div>
                     ))
                   ) : (
-                    // 預設靜態顯示一些獎品
                     PRIZE_POOL.concat(PRIZE_POOL).map((prize, idx) => (
                       <div 
                         key={idx}
@@ -624,27 +761,27 @@ export default function WelfareView({
                 </div>
               </div>
 
-              {/* 抽獎動作按鈕與批量輸入 */}
+              {/* 抽獎動作按鈕 */}
               <div className="flex flex-col items-center space-y-3">
                 <div className="flex flex-wrap items-center justify-center gap-2 w-full">
                   <Button 
                     onClick={() => handleLuckyDraw(1)} 
                     disabled={isSpinning || keysCount < 1 || !token}
-                    className="h-10 px-4 text-xs font-bold bg-yellow-500 text-black hover:bg-yellow-600 disabled:bg-muted"
+                    className="h-10 px-4 text-xs font-bold bg-amber-500 text-slate-950 hover:bg-amber-600 disabled:bg-muted"
                   >
                     {isSpinning ? '旋轉中...' : '1 抽 (消耗 1 鑰匙)'}
                   </Button>
                   <Button 
                     onClick={() => handleLuckyDraw(10)} 
                     disabled={isSpinning || keysCount < 10 || !token}
-                    className="h-10 px-4 text-xs font-bold bg-amber-500 text-black hover:bg-amber-600 disabled:bg-muted"
+                    className="h-10 px-4 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted"
                   >
                     10 連抽
                   </Button>
                   <Button 
                     onClick={() => handleLuckyDraw('all')} 
                     disabled={isSpinning || keysCount < 1 || !token}
-                    className="h-10 px-4 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted"
+                    className="h-10 px-4 text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 disabled:bg-muted"
                   >
                     一鍵全抽 ({keysCount} 把)
                   </Button>
@@ -679,188 +816,88 @@ export default function WelfareView({
             </CardContent>
           </Card>
         </div>
+      )}
 
-        {/* 右側：時數兌換與簽到排行榜 */}
-        <div className="space-y-6">
-          
-          {/* 遊戲時數兌換 */}
+      {/* 分頁 3: 簽到與鑰匙榮譽榜 */}
+      {welfareSubTab === 'leaderboard' && (
+        <div className="space-y-6 animate-fade-in">
           <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="text-sm font-bold flex items-center space-x-2">
-                <Clock className="w-4 h-4 text-purple-500" />
-                <span>遊戲時數兌換</span>
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <span>簽到與鑰匙榮譽榜 (Check-in & Key Leaderboard Top 10)</span>
               </CardTitle>
               <CardDescription className="text-left text-[11px]">
-                兌換比率為 <span className="font-black text-purple-500">5 小時</span> (360,000 tick) 可換取 <span className="font-black text-yellow-500">1 把</span> 鑰匙。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              
-              {/* 兌換選項 widget */}
-              <div className="flex items-center space-x-2 border border-border p-1 bg-muted/20 rounded-[4px]">
-                <button 
-                  onClick={() => setExchangeMode('single')}
-                  className={`flex-1 py-1.5 text-[10px] font-bold rounded-[2px] transition-colors cursor-pointer ${
-                    exchangeMode === 'single' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  單把兌換 (5hr)
-                </button>
-                <button 
-                  onClick={() => setExchangeMode('all')}
-                  className={`flex-1 py-1.5 text-[10px] font-bold rounded-[2px] transition-colors cursor-pointer ${
-                    exchangeMode === 'all' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  兌換所有可能鑰匙
-                </button>
-              </div>
-
-              {/* 兌換資訊流程示意 */}
-              <div className="flex items-center justify-between px-3 py-2 bg-muted/10 border border-border rounded-[4px]">
-                <div className="text-left">
-                  <span className="text-[9px] text-muted-foreground block leading-none font-bold">消耗</span>
-                  <span className="text-xs font-black text-purple-400">
-                    {exchangeMode === 'single' ? '5 小時' : '所有可用時數'}
-                  </span>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                <div className="text-right">
-                  <span className="text-[9px] text-muted-foreground block leading-none font-bold">獲得</span>
-                  <span className="text-xs font-black text-yellow-500">
-                    {exchangeMode === 'single' ? '+1 鑰匙' : '加算鑰匙'}
-                  </span>
-                </div>
-              </div>
-
-              <Button 
-                onClick={handleExchangePlaytime}
-                disabled={loadingExchange || !token}
-                className="w-full h-10 text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 disabled:bg-muted"
-              >
-                {loadingExchange ? (
-                  <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
-                ) : '執行時數兌換'}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* 金幣購買抽獎鑰匙 ($10,000 / 把) */}
-          <Card className="border-border bg-card">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-sm font-bold flex items-center space-x-2">
-                <Key className="w-4 h-4 text-emerald-500" />
-                <span>金幣購買抽獎鑰匙 ($10,000 / 把)</span>
-              </CardTitle>
-              <CardDescription className="text-left text-[11px]">
-                將遊戲內積攢的金幣直接向系統兌換大理石抽獎鑰匙，消耗過剩流動資金！
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between px-3 py-2 bg-muted/10 border border-border rounded-[4px]">
-                <div className="text-left">
-                  <span className="text-[9px] text-muted-foreground block leading-none font-bold">花費金幣</span>
-                  <span className="text-xs font-black text-emerald-500">$10,000 元</span>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                <div className="text-right">
-                  <span className="text-[9px] text-muted-foreground block leading-none font-bold">獲得</span>
-                  <span className="text-xs font-black text-yellow-500">+1 鑰匙</span>
-                </div>
-              </div>
-
-              <Button 
-                onClick={handleBuyKeyWithMoney}
-                disabled={loadingBuyKey || !token}
-                className="w-full h-10 text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-muted"
-              >
-                {loadingBuyKey ? (
-                  <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
-                ) : '花費 $10,000 購買 1 把鑰匙'}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* 簽到排行榜 (Top 10) */}
-          <Card className="border-border bg-card">
-            <CardHeader>
-              <CardTitle className="text-sm font-bold flex items-center space-x-2">
-                <Trophy className="w-4 h-4 text-yellow-500 animate-pulse" />
-                <span>簽到與鑰匙排行榜 (Top 10)</span>
-              </CardTitle>
-              <CardDescription className="text-left text-[11px]">
-                本伺服器最活躍、累積鑰匙數最多之頂尖冒險者名單。
+                全伺服器累積鑰匙數最多、簽到最勤奮之冒險者榮譽榜單。
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="max-h-72 overflow-y-auto">
-                <Table className="border-t border-border">
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-12 text-center text-[10px] font-black h-8">排名</TableHead>
-                      <TableHead className="text-left text-[10px] font-black h-8">玩家</TableHead>
-                      <TableHead className="text-center text-[10px] font-black h-8">鑰匙</TableHead>
-                      <TableHead className="text-center text-[10px] font-black h-8">連續</TableHead>
+              <Table className="border-t border-border">
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-16 text-center text-[10px] font-black h-8">排名</TableHead>
+                    <TableHead className="text-left text-[10px] font-black h-8">玩家</TableHead>
+                    <TableHead className="text-center text-[10px] font-black h-8">擁有的鑰匙</TableHead>
+                    <TableHead className="text-center text-[10px] font-black h-8">連續簽到天數</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leaderboard.length > 0 ? (
+                    leaderboard.map((player: any, idx: number) => {
+                      let rankBadge = (
+                        <span className="w-5 h-5 rounded-full bg-muted border border-border inline-flex items-center justify-center font-mono text-[9px] font-bold text-muted-foreground">
+                          {idx + 1}
+                        </span>
+                      );
+                      if (idx === 0) rankBadge = (
+                        <span className="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-500 inline-flex items-center justify-center font-mono text-[10px] font-black">
+                          1
+                        </span>
+                      );
+                      else if (idx === 1) rankBadge = (
+                        <span className="w-5 h-5 rounded-full bg-slate-300/20 border border-slate-300/40 text-slate-300 inline-flex items-center justify-center font-mono text-[10px] font-black">
+                          2
+                        </span>
+                      );
+                      else if (idx === 2) rankBadge = (
+                        <span className="w-5 h-5 rounded-full bg-amber-700/20 border border-amber-700/40 text-amber-600 inline-flex items-center justify-center font-mono text-[10px] font-black">
+                          3
+                        </span>
+                      );
+                      const name = player.mc_username || player.username || '匿名玩家';
+                      return (
+                        <TableRow key={idx} className="hover:bg-muted/30">
+                          <TableCell className="text-center text-xs py-2 font-bold h-9">
+                            {rankBadge}
+                          </TableCell>
+                          <TableCell className="text-left text-xs py-2 font-bold truncate h-9">
+                            <div className="flex items-center space-x-2">
+                              <img 
+                                src={`https://mc-heads.net/avatar/${name}/20`} 
+                                alt={name}
+                                className="w-5 h-5 rounded border border-border shrink-0"
+                              />
+                              <span className="font-bold text-xs">{name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center text-xs py-2 font-black text-amber-500 font-mono h-9">
+                            {player.keys_count || 0} 把
+                          </TableCell>
+                          <TableCell className="text-center text-xs py-2 font-bold text-red-400 font-mono h-9">
+                            {player.checkin_streak || 0} 天
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-xs text-muted-foreground py-6">
+                        暫無榜單數據
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {leaderboard.length > 0 ? (
-                      leaderboard.map((player: any, idx: number) => {
-                        let rankBadge = (
-                          <span className="w-4 h-4 rounded-full bg-muted border border-border inline-flex items-center justify-center font-mono text-[9px] font-bold text-muted-foreground">
-                            {idx + 1}
-                          </span>
-                        );
-                        if (idx === 0) rankBadge = (
-                          <span className="w-4 h-4 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-500 inline-flex items-center justify-center font-mono text-[10px] font-black">
-                            1
-                          </span>
-                        );
-                        else if (idx === 1) rankBadge = (
-                          <span className="w-4 h-4 rounded-full bg-slate-300/20 border border-slate-300/40 text-slate-300 inline-flex items-center justify-center font-mono text-[10px] font-black">
-                            2
-                          </span>
-                        );
-                        else if (idx === 2) rankBadge = (
-                          <span className="w-4 h-4 rounded-full bg-amber-700/20 border border-amber-700/40 text-amber-600 inline-flex items-center justify-center font-mono text-[10px] font-black">
-                            3
-                          </span>
-                        );
-                        const name = player.mc_username || player.username || '匿名玩家';
-                        return (
-                          <TableRow key={idx} className="hover:bg-muted/30">
-                            <TableCell className="text-center text-xs py-1.5 font-bold h-8">
-                              {rankBadge}
-                            </TableCell>
-                            <TableCell className="text-left text-xs py-1.5 font-bold truncate h-8 max-w-[120px]">
-                              <div className="flex items-center space-x-1.5">
-                                <img 
-                                  src={`https://mc-heads.net/avatar/${name}/16`} 
-                                  alt={name}
-                                  className="w-4 h-4 rounded-[2px] border border-border shrink-0"
-                                />
-                                <span className="truncate">{name}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center text-xs py-1.5 font-black text-amber-500 font-mono h-8">
-                              {player.keys_count || 0} 把
-                            </TableCell>
-                            <TableCell className="text-center text-xs py-1.5 font-bold text-red-400 font-mono h-8">
-                              {player.checkin_streak || 0} 天
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-[10px] text-muted-foreground py-4">
-                          尚無排行榜數據
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
 
@@ -923,11 +960,8 @@ export default function WelfareView({
               )}
             </CardContent>
           </Card>
-
         </div>
-
-      </div>
-
+      )}
     </div>
   );
 }
