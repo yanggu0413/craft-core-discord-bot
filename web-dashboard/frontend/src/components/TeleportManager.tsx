@@ -217,33 +217,53 @@ export function TeleportManager({ token, isAdmin = false }: TeleportManagerProps
 
       {activeTab === 'warps' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {warps.map((warp) => (
-            <Card key={warp.name} className="flex flex-col justify-between">
-              <CardHeader className="pb-3 border-b border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Flag className="w-4 h-4 text-foreground" />
-                    <CardTitle className="text-xs font-bold">{warp.name}</CardTitle>
+          {warps.map((warp) => {
+            const rawDim = (warp.dimension || '').toLowerCase();
+            let dimBadge = '主世界';
+            let dimClass = 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30';
+            if (rawDim.includes('nether')) {
+              dimBadge = '地獄';
+              dimClass = 'bg-red-500/10 text-red-500 border-red-500/30';
+            } else if (rawDim.includes('end')) {
+              dimBadge = '終界';
+              dimClass = 'bg-purple-500/10 text-purple-500 border-purple-500/30';
+            }
+
+            return (
+              <Card key={warp.name} className="flex flex-col justify-between shadow-sm">
+                <CardHeader className="pb-3 border-b border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Flag className="w-4 h-4 text-emerald-500" />
+                      <CardTitle className="text-xs font-bold">{warp.name}</CardTitle>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      <Badge className={`text-[10px] font-bold border ${dimClass}`}>
+                        {dimBadge}
+                      </Badge>
+                      {warp.type === 'machine' && (
+                        <Badge variant="secondary" className="text-[10px]">認證設施</Badge>
+                      )}
+                    </div>
                   </div>
-                  {warp.type === 'machine' && (
-                    <Badge variant="secondary" className="text-[10px]">認證設施</Badge>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-2 text-xs font-mono">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground font-sans text-[11px]">座標:</span>
+                    <span className="font-bold text-foreground bg-muted/40 px-2 py-0.5 rounded border border-border">
+                      📍 {warp.coords || '無座標'}
+                    </span>
+                  </div>
+                  {warp.owner && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground font-sans text-[11px]">建立者:</span>
+                      <span className="font-semibold text-foreground">{warp.owner}</span>
+                    </div>
                   )}
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-2 text-xs font-mono">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">座標:</span>
-                  <span className="font-bold text-foreground">{warp.coords}</span>
-                </div>
-                {warp.owner && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">建立者:</span>
-                    <span>{warp.owner}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

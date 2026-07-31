@@ -207,6 +207,54 @@ router.post('/co-branding', async (req: CustomRequest, res: Response) => {
   }
 });
 
+// GET /api/admin/transactions - Paginated transaction logs for admin audit
+router.get('/transactions', (req: CustomRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
+
+  const page = Math.max(1, parseInt(String(req.query.page || '1'), 10));
+  const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50'), 10)));
+  const offset = (page - 1) * limit;
+  const search = String(req.query.search || '').trim();
+
+  if (!db) {
+    return res.json({ success: true, transactions: [], total: 0, page, limit });
+  }
+
+  try {
+    let whereClause = '';
+    let params: any[] = [];
+
+    if (search) {
+      whereClause = 'WHERE (sender LIKE ? OR receiver LIKE ? OR buyer LIKE ? OR seller LIKE ? OR item LIKE ? OR shop_coords LIKE ?)';
+      const term = `%${search}%`;
+      params = [term, term, term, term, term, term];
+    }
+
+    const countRow = db.prepare(`SELECT COUNT(*) as cnt FROM transactions ${whereClause}`).get(...params) as any;
+    const total = countRow?.cnt || 0;
+
+    const rows = db.prepare(`
+      SELECT id, timestamp, shop_coords as coords, buyer, seller, sender, receiver, item, quantity, unit_price as price, tax_deducted as tax, net_profit, total_price, type
+      FROM transactions
+      ${whereClause}
+      ORDER BY id DESC
+      LIMIT ? OFFSET ?
+    `).all(...params, limit, offset) as any[];
+
+    return res.json({
+      success: true,
+      transactions: rows || [],
+      total,
+      page,
+      limit
+    });
+  } catch (error: any) {
+    console.warn('[Admin Transactions] Query error:', error);
+    return res.json({ success: true, transactions: [], total: 0, page, limit });
+  }
+});
+
 // GET /api/admin/tickets
 router.get('/tickets', (req: CustomRequest, res: Response) => {
   if (!db) return res.status(500).json({ success: false, message: '資料庫未連結' });

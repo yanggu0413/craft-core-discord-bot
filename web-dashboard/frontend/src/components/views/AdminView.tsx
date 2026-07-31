@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle, Eye, Shield, Sparkles, Send, FileText, DollarSign, Key, Coins, LifeBuoy, MessageSquare, HardDrive, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle, Eye, Shield, Sparkles, Send, FileText, DollarSign, Key, Coins, HardDrive, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -231,53 +231,6 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
       triggerToast('載入交易日誌失敗：' + e.message, 'error');
     } finally {
       setIsLoadingTx(false);
-    }
-  };
-
-  // Ticket Backup Archive States
-  const [ticketSearch, setTicketSearch] = useState('');
-  const [ticketList, setTicketList] = useState<any[]>([]);
-  const [ticketTotal, setTicketTotal] = useState(0);
-  const [ticketPage, setTicketPage] = useState(1);
-  const [isLoadingTickets, setIsLoadingTickets] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
-  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
-
-  const fetchAdminTickets = async (page = 1, search = '') => {
-    if (!token) return;
-    setIsLoadingTickets(true);
-    try {
-      const res = await fetch(`${API_URL}/admin/tickets?page=${page}&limit=50&search=${encodeURIComponent(search)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setTicketList(data.tickets || []);
-        setTicketTotal(data.total || 0);
-        setTicketPage(data.page || 1);
-      }
-    } catch (e: any) {
-      triggerToast('載入客服單歷史紀錄失敗：' + e.message, 'error');
-    } finally {
-      setIsLoadingTickets(false);
-    }
-  };
-
-  const fetchTicketDetails = async (ticketId: string) => {
-    if (!token) return;
-    try {
-      const res = await fetch(`${API_URL}/admin/tickets/${encodeURIComponent(ticketId)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success && data.ticket) {
-        setSelectedTicket(data.ticket);
-        setIsTicketModalOpen(true);
-      } else {
-        triggerToast(data.message || '無法讀取該客服單詳情', 'error');
-      }
-    } catch (e: any) {
-      triggerToast('讀取客服單對話失敗：' + e.message, 'error');
     }
   };
 
@@ -625,7 +578,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                       className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10 font-bold text-xs h-9"
                     >
                       <LogOut className="w-4 h-4 mr-1" />
-                      <span>踢出 (Kick)</span>
+                      <span>踢出</span>
                     </Button>
                     <Button 
                       onClick={() => { setBanPlayer(searchedProfile.mc_username); setIsBanDialogOpen(true); }} 
@@ -634,7 +587,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                       className="font-bold text-xs h-9"
                     >
                       <Hammer className="w-4 h-4 mr-1" />
-                      <span>封鎖 (Ban)</span>
+                      <span>封鎖</span>
                     </Button>
                   </div>
 
@@ -873,7 +826,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase mb-1 block">影響範圍 (Scope)</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase mb-1 block">影響範圍</label>
                     <Input 
                       placeholder="例如: 全體伺服器分流" 
                       className="h-9 text-xs"
@@ -882,7 +835,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase mb-1 block">重要影響 (Impact)</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase mb-1 block">重要影響</label>
                     <Input 
                       placeholder="例如: TPS 提升 30%，無卡頓" 
                       className="h-9 text-xs"
@@ -1105,118 +1058,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
         </Card>
       )}
 
-      {/* 5. 子分頁 E: 🎫 客服單歷史備份 (Ticket Archives) */}
-      {currentSubTab === 'tickets' && (
-        <Card className="bg-card border-border shadow-sm animate-fade-in">
-          <CardHeader className="pb-3 border-b border-border">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <CardTitle className="text-xs font-bold flex items-center space-x-2">
-                  <LifeBuoy className="w-4 h-4 text-indigo-400" />
-                  <span>客服單歷史備份與對話稽核 (Ticket Transcript Archives)</span>
-                </CardTitle>
-                <CardDescription className="text-[11px] mt-1">
-                  僅提供管理員查核已關閉 (Closed) 之客服單歷史紀錄，點選客服單即可開窗閱讀完整對話內容。
-                </CardDescription>
-              </div>
-              <form onSubmit={(e) => { e.preventDefault(); fetchAdminTickets(1, ticketSearch); }} className="flex gap-2">
-                <Input 
-                  placeholder="搜尋單號 / 玩家 / 結單管理員..." 
-                  value={ticketSearch}
-                  onChange={(e) => setTicketSearch(e.target.value)}
-                  className="h-9 text-xs w-64 font-bold"
-                />
-                <Button type="submit" size="sm" className="h-9 px-4 text-xs font-bold shrink-0">
-                  <Search className="w-3.5 h-3.5 mr-1" />
-                  搜尋
-                </Button>
-              </form>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-4 space-y-4">
-            <div className="rounded-lg border border-border overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-muted/50 border-b border-border text-[11px] font-bold text-muted-foreground uppercase">
-                      <th className="p-3">客服單號</th>
-                      <th className="p-3">頻道名稱</th>
-                      <th className="p-3">開單玩家</th>
-                      <th className="p-3">結單管理員</th>
-                      <th className="p-3">關閉時間</th>
-                      <th className="p-3 text-center font-sans">對話檔案動作</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border text-xs font-sans">
-                    {isLoadingTickets ? (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-muted-foreground text-xs">
-                          載入客服單紀錄中...
-                        </td>
-                      </tr>
-                    ) : ticketList.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-muted-foreground text-xs">
-                          尚無已關閉的客服單紀錄。
-                        </td>
-                      </tr>
-                    ) : (
-                      ticketList.map((tk: any) => (
-                        <tr key={tk.ticket_id} className="hover:bg-muted/30 transition-colors">
-                          <td className="p-3 font-mono font-bold text-indigo-400">#{tk.ticket_id}</td>
-                          <td className="p-3 font-mono text-[11px] text-muted-foreground">{tk.channel_name || tk.channel_id}</td>
-                          <td className="p-3 font-bold text-foreground">{tk.creator_username || tk.creator_id}</td>
-                          <td className="p-3 font-bold text-emerald-400">{tk.closed_by || '系統關閉'}</td>
-                          <td className="p-3 font-mono text-[11px] text-muted-foreground">{tk.closed_at || tk.created_at}</td>
-                          <td className="p-3 text-center">
-                            <Button
-                              onClick={() => fetchTicketDetails(tk.ticket_id)}
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-3 text-xs font-bold border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5 mr-1" />
-                              查看對話內容
-                            </Button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
 
-            {/* 分頁列 */}
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-[11px] text-muted-foreground font-mono">
-                顯示第 {(ticketPage - 1) * 50 + 1} ~ {Math.min(ticketPage * 50, ticketTotal)} 筆，共 {ticketTotal} 筆
-              </span>
-              <div className="flex items-center space-x-2">
-                <Button
-                  onClick={() => fetchAdminTickets(ticketPage - 1, ticketSearch)}
-                  disabled={ticketPage <= 1 || isLoadingTickets}
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs font-bold"
-                >
-                  ◀ 上一頁
-                </Button>
-                <span className="text-xs font-bold px-2">第 {ticketPage} 頁</span>
-                <Button
-                  onClick={() => fetchAdminTickets(ticketPage + 1, ticketSearch)}
-                  disabled={ticketPage * 50 >= ticketTotal || isLoadingTickets}
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs font-bold"
-                >
-                  下一頁 ▶
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* 6. 子分頁 F: 💾 地圖自動備份與 100GB 容量防護 */}
       {currentSubTab === 'backup' && (
@@ -1307,7 +1149,9 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                         </div>
 
                         <div className="text-right font-mono text-xs font-bold text-foreground">
-                          {(file.size_bytes / (1024 * 1024)).toFixed(1)} MB
+                          {(file.size_bytes / (1024 * 1024 * 1024)) >= 1.0 
+                            ? `${(file.size_bytes / (1024 * 1024 * 1024)).toFixed(2)} GB` 
+                            : `${(file.size_bytes / (1024 * 1024)).toFixed(1)} MB`}
                         </div>
                       </div>
                     ))}
@@ -1322,72 +1166,6 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
           </Card>
         </div>
       )}
-
-      {/* 客服單對話歷史美化對話框 (Ticket Transcript Modal) */}
-      <Dialog open={isTicketModalOpen} onOpenChange={setIsTicketModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col bg-card border-border text-foreground p-0 overflow-hidden shadow-2xl rounded-xl">
-          <DialogHeader className="p-4 border-b border-border bg-muted/40 text-left">
-            <DialogTitle className="text-sm font-black flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-indigo-400">
-                <MessageSquare className="w-4 h-4" />
-                <span>客服單對話紀錄 #{selectedTicket?.ticket_id}</span>
-              </div>
-              <span className="text-xs font-normal text-muted-foreground font-mono">
-                頻道: {selectedTicket?.channel_name || selectedTicket?.channel_id}
-              </span>
-            </DialogTitle>
-            <DialogDescription className="text-[11px] text-muted-foreground flex flex-wrap gap-4 mt-2 font-sans">
-              <span>開單玩家: <strong className="text-indigo-400">{selectedTicket?.creator_username || selectedTicket?.creator_id}</strong></span>
-              <span>結單管理員: <strong className="text-emerald-400">{selectedTicket?.closed_by || '系統關閉'}</strong></span>
-              <span>關閉時間: <strong className="font-mono">{selectedTicket?.closed_at}</strong></span>
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="p-4 overflow-y-auto space-y-3 max-h-[60vh] bg-muted/10 font-sans text-left">
-            {selectedTicket?.transcript_json && selectedTicket.transcript_json.length > 0 ? (
-              selectedTicket.transcript_json.map((msg: any, idx: number) => (
-                <div key={msg.id || idx} className="flex items-start space-x-3 p-3 rounded-lg bg-card border border-border/60 shadow-sm">
-                  <img 
-                    src={msg.author_avatar || `https://mc-heads.net/avatar/${msg.author_name}/40`} 
-                    alt={msg.author_name} 
-                    className="w-8 h-8 rounded-full border border-border shrink-0 bg-muted"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs font-bold text-foreground">{msg.author_name}</span>
-                      <span className="text-[10px] text-muted-foreground font-mono">
-                        {new Date(msg.timestamp).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="text-xs text-foreground/90 whitespace-pre-wrap mt-1 leading-relaxed">
-                      {msg.content}
-                    </p>
-                    {msg.attachments && msg.attachments.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {msg.attachments.map((att: any, aIdx: number) => (
-                          <a key={aIdx} href={att.url} target="_blank" rel="noreferrer" className="block group">
-                            {att.contentType?.startsWith('image/') ? (
-                              <img src={att.url} alt={att.name} className="max-w-xs max-h-48 rounded border border-border hover:opacity-90 transition-all shadow-sm" />
-                            ) : (
-                              <span className="inline-flex items-center text-xs text-indigo-400 underline font-bold bg-indigo-500/10 px-2 py-1 rounded">
-                                📎 {att.name || '檢視附件'}
-                              </span>
-                            )}
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="p-4 text-xs text-muted-foreground whitespace-pre-wrap font-mono bg-muted/40 rounded border border-border">
-                {selectedTicket?.transcript_text || '無對話記錄內容'}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* 4. Ban 對話框 (Ban Dialog) */}
       <Dialog open={isBanDialogOpen} onOpenChange={setIsBanDialogOpen}>

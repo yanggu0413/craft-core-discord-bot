@@ -1115,17 +1115,56 @@ router.post('/warp-submissions', authenticateToken, (req: CustomRequest, res: Re
 });
 
 // GET /api/warps & GET /api/public/warps - Public landmark warps
-const handleGetWarps = (req: Request, res: Response) => {
+const handleGetWarps = async (req: Request, res: Response) => {
   const cached = getCachedData<any>('warps_cache');
   if (cached) return res.json(cached);
 
-  let warps: any[] = [];
+  let rawList: any[] = [];
   const warpsConfig = loadConfigJson<any>('warps.json');
   if (Array.isArray(warpsConfig)) {
-    warps = warpsConfig;
+    rawList = warpsConfig;
   } else if (warpsConfig && typeof warpsConfig === 'object') {
-    warps = Object.values(warpsConfig);
+    rawList = Object.entries(warpsConfig).map(([key, val]: [string, any]) => {
+      let name = key;
+      let coords = '';
+      let dimension = 'minecraft:overworld';
+      let owner = undefined;
+      let type = undefined;
+
+      if (typeof val === 'string') {
+        coords = val;
+      } else if (typeof val === 'object' && val !== null) {
+        name = val.name || key;
+        owner = val.owner;
+        type = val.type;
+        dimension = val.dimension || val.world || val.dimensionName || 'minecraft:overworld';
+        if (val.coords) {
+          coords = val.coords;
+        } else if (val.location) {
+          coords = val.location;
+        } else if (val.x !== undefined && val.y !== undefined && val.z !== undefined) {
+          coords = `${Math.floor(val.x)}, ${Math.floor(val.y)}, ${Math.floor(val.z)}`;
+        }
+      }
+      return { name, coords, dimension, owner, type };
+    });
   }
+
+  const warps = rawList.map(w => {
+    let rawDim = String(w.dimension || 'minecraft:overworld').toLowerCase();
+    let dimDisplay = '主世界';
+    if (rawDim.includes('nether')) dimDisplay = '地獄';
+    else if (rawDim.includes('end')) dimDisplay = '終界';
+
+    return {
+      name: w.name || '未命名地標',
+      coords: w.coords || (w.x !== undefined ? `${Math.floor(w.x)}, ${Math.floor(w.y)}, ${Math.floor(w.z)}` : '未提供座標'),
+      dimension: rawDim,
+      dimensionDisplay: dimDisplay,
+      owner: w.owner,
+      type: w.type
+    };
+  });
 
   const result = { success: true, warps };
   setCachedData('warps_cache', result, 5000);

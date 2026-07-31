@@ -204,6 +204,48 @@ router.post('/co-branding', async (req, res) => {
         return res.status(500).json({ success: false, message: err.message });
     }
 });
+// GET /api/admin/transactions - Paginated transaction logs for admin audit
+router.get('/transactions', (req, res) => {
+    const user = req.user;
+    if (!user)
+        return res.status(401).json({ success: false, message: '尚未登入' });
+    const page = Math.max(1, parseInt(String(req.query.page || '1'), 10));
+    const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || '50'), 10)));
+    const offset = (page - 1) * limit;
+    const search = String(req.query.search || '').trim();
+    if (!wsClient_1.db) {
+        return res.json({ success: true, transactions: [], total: 0, page, limit });
+    }
+    try {
+        let whereClause = '';
+        let params = [];
+        if (search) {
+            whereClause = 'WHERE (sender LIKE ? OR receiver LIKE ? OR buyer LIKE ? OR seller LIKE ? OR item LIKE ? OR shop_coords LIKE ?)';
+            const term = `%${search}%`;
+            params = [term, term, term, term, term, term];
+        }
+        const countRow = wsClient_1.db.prepare(`SELECT COUNT(*) as cnt FROM transactions ${whereClause}`).get(...params);
+        const total = countRow?.cnt || 0;
+        const rows = wsClient_1.db.prepare(`
+      SELECT id, timestamp, shop_coords as coords, buyer, seller, sender, receiver, item, quantity, unit_price as price, tax_deducted as tax, net_profit, total_price, type
+      FROM transactions
+      ${whereClause}
+      ORDER BY id DESC
+      LIMIT ? OFFSET ?
+    `).all(...params, limit, offset);
+        return res.json({
+            success: true,
+            transactions: rows || [],
+            total,
+            page,
+            limit
+        });
+    }
+    catch (error) {
+        console.warn('[Admin Transactions] Query error:', error);
+        return res.json({ success: true, transactions: [], total: 0, page, limit });
+    }
+});
 // GET /api/admin/tickets
 router.get('/tickets', (req, res) => {
     if (!wsClient_1.db)

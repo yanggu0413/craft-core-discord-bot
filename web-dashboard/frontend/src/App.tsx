@@ -685,9 +685,6 @@ export default function App() {
           {activeTab === 'admin_backups' && isAdmin && (
             <AdminView token={token} triggerToast={triggerToast} API_URL={API_URL} subTab="backup" />
           )}
-          {activeTab === 'admin_tickets' && isAdmin && (
-            <AdminView token={token} triggerToast={triggerToast} API_URL={API_URL} subTab="tickets" />
-          )}
 
           {activeTab === 'fakeplayers' && (
             <FakePlayers token={token} />

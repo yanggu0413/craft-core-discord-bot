@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   BarChart3, ShoppingBag, TrendingUp, User, Shield, Trophy,
   Settings, LogOut, Sun, Moon, Menu, X, Compass, Mail, Gift,
-  Cpu, MapPin, Sparkles, BookOpen, CheckSquare, Coins, Key, FileText, Megaphone, HardDrive, MessageSquare, Search
+  Cpu, MapPin, Sparkles, BookOpen, CheckSquare, Coins, Key, FileText, Megaphone, HardDrive, Search
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -13,7 +13,7 @@ export type TabType =
   | 'welfare' | 'tasks' | 'events' 
   | 'claims' | 'lockboxes' 
   | 'inventory' | 'teleports' | 'fakeplayers' 
-  | 'admin_audit' | 'admin_transactions' | 'admin_announcements' | 'admin_backups' | 'admin_tickets';
+  | 'admin_audit' | 'admin_transactions' | 'admin_announcements' | 'admin_backups';
 
 interface DashboardLayoutProps {
   activeTab: TabType;
@@ -92,8 +92,7 @@ export default function DashboardLayout({
         { id: 'admin_audit' as TabType, label: '玩家查帳與處分', icon: Search },
         { id: 'admin_transactions' as TabType, label: '交易日誌稽核', icon: FileText },
         { id: 'admin_announcements' as TabType, label: '全服公告發送', icon: Megaphone },
-        { id: 'admin_backups' as TabType, label: '地圖備份管理', icon: HardDrive },
-        { id: 'admin_tickets' as TabType, label: '工單對話歸檔', icon: MessageSquare }
+        { id: 'admin_backups' as TabType, label: '地圖備份管理', icon: HardDrive }
       ]
     }] : [])
   ];
