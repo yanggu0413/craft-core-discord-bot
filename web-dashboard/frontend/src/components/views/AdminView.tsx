@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle, Eye, Shield, Sparkles, Send, FileText, DollarSign, Key, Coins, LifeBuoy, MessageSquare, HardDrive, RefreshCw } from 'lucide-react';
+import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle, Eye, Shield, Sparkles, Send, FileText, DollarSign, Key, Coins, LifeBuoy, MessageSquare, HardDrive, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -641,7 +641,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                 </div>
 
                 {/* 檔案數據矩陣 */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mt-6 border-t border-border pt-4 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-6 border-t border-border pt-4 text-xs">
                   <div className="p-2.5 bg-muted/30 border border-border rounded-md">
                     <p className="text-[9px] uppercase font-bold text-muted-foreground">帳戶金幣餘額</p>
                     <p className="text-sm font-bold text-emerald-500 font-mono mt-0.5">${Math.floor(searchedProfile.balance).toLocaleString()} 元</p>
@@ -649,10 +649,6 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                   <div className="p-2.5 bg-muted/30 border border-border rounded-md">
                     <p className="text-[9px] uppercase font-bold text-muted-foreground">遊戲內座標</p>
                     <p className="text-sm font-bold font-mono mt-0.5">{searchedProfile.coords}</p>
-                  </div>
-                  <div className="p-2.5 bg-muted/30 border border-border rounded-md">
-                    <p className="text-[9px] uppercase font-bold text-muted-foreground">伺服器 TPS</p>
-                    <p className="text-sm font-bold mt-0.5 text-primary">{searchedProfile.tps.toFixed(2)}</p>
                   </div>
                   <div className="p-2.5 bg-muted/30 border border-border rounded-md">
                     <p className="text-[9px] uppercase font-bold text-muted-foreground">抽獎鑰匙</p>
@@ -668,11 +664,11 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                   </div>
                 </div>
 
-                {/* 💵 管理員直充發放金幣與鑰匙專區 */}
+                {/* 管理員直充發放金幣與鑰匙專區 */}
                 <div className="mt-6 border-t border-border pt-4">
                   <div className="flex items-center space-x-2 mb-3">
                     <DollarSign className="w-4 h-4 text-emerald-500" />
-                    <h4 className="text-xs font-bold text-foreground">💵 管理員發送金幣與抽獎鑰匙 (Direct Top-up: Money & Keys)</h4>
+                    <h4 className="text-xs font-bold text-foreground">管理員發送金幣與抽獎鑰匙</h4>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 border border-border p-4 rounded-lg">
@@ -728,7 +724,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                 <div className="mt-6 border-t border-border pt-4">
                   <div className="flex items-center space-x-2 mb-3">
                     <Sparkles className="w-4 h-4 text-amber-500" />
-                    <h4 className="text-xs font-bold text-foreground">👑 專屬頭銜與色彩管理 (Title & Color Customizer)</h4>
+                    <h4 className="text-xs font-bold text-foreground">專屬頭銜與色彩管理</h4>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 border border-border p-4 rounded-lg">
@@ -745,7 +741,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                       </div>
 
                       <div>
-                        <label className="text-[10px] font-bold text-muted-foreground block mb-1 font-sans">選擇顯示色彩 (Color Code)</label>
+                        <label className="text-[10px] font-bold text-muted-foreground block mb-1 font-sans">選擇顯示色彩</label>
                         <div className="flex flex-wrap gap-1.5">
                           {[
                             { code: '§c', label: '鮮紅', bg: 'bg-red-500' },
@@ -790,7 +786,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                     {/* 即時視覺預覽與按鈕 */}
                     <div className="flex flex-col justify-between space-y-3 border-t md:border-t-0 md:border-l border-border pt-3 md:pt-0 md:pl-4">
                       <div>
-                        <span className="text-[10px] font-bold text-muted-foreground block mb-1">🎮 遊戲內與網頁即時渲染預覽</span>
+                        <span className="text-[10px] font-bold text-muted-foreground block mb-1">遊戲內與網頁即時渲染預覽</span>
                         <div className="p-3 bg-slate-950 border border-slate-800 rounded-md font-mono text-sm flex items-center space-x-2">
                           <span className={`${COLOR_MAP[titleColor] || 'text-red-500'} ${titleBold ? 'font-bold' : 'font-normal'}`}>
                             {titleText ? (titleText.startsWith('[') ? titleText : `[${titleText}]`) : '[頭銜]'}
@@ -809,7 +805,8 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                           size="sm"
                           className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs h-9"
                         >
-                          {isSavingTitle ? '儲存中...' : '💾 儲存並發送稱號'}
+                          <Save className="w-3.5 h-3.5 mr-1" />
+                          <span>{isSavingTitle ? '儲存中...' : '儲存並發送稱號'}</span>
                         </Button>
                         <Button
                           onClick={handleClearTitle}
@@ -818,7 +815,8 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
                           variant="outline"
                           className="border-red-500/30 text-red-500 hover:bg-red-500/10 font-bold text-xs h-9"
                         >
-                          🗑️ 清除稱號
+                          <Trash2 className="w-3.5 h-3.5 mr-1" />
+                          <span>清除稱號</span>
                         </Button>
                       </div>
                     </div>
@@ -842,7 +840,7 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
           <CardHeader className="pb-3 border-b border-border">
             <CardTitle className="text-xs font-bold flex items-center space-x-2 text-indigo-500">
               <Megaphone className="w-4 h-4" />
-              <span>📢 伺服器全服公告發布器 (Discord Embed Publisher)</span>
+              <span>伺服器全服公告發布器</span>
             </CardTitle>
             <CardDescription className="text-[11px]">
               填寫維護或改版公告，發布後會自動同步推送至 Discord 官方公告頻道與遊戲內。
@@ -944,13 +942,13 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
         </Card>
       )}
 
-      {/* 3. 子分頁 C: 🤝 聯名加值與禮包發放 (Co-Branding Distribution) */}
+      {/* 3. 子分頁 C: 聯名加值與禮包發放 */}
       {currentSubTab === 'cobrand' && (
         <Card className="bg-card border-border shadow-sm max-w-xl animate-fade-in">
           <CardHeader className="pb-3 border-b border-border">
             <CardTitle className="text-xs font-bold flex items-center space-x-2 text-emerald-500">
               <UserCheck className="w-4 h-4" />
-              <span>🤝 聯名加值禮包手動發放 (Co-branding Reward)</span>
+              <span>聯名加值禮包手動發放</span>
             </CardTitle>
             <CardDescription className="text-[11px]">
               為指定玩家發放合作聯名禮包：包含 6 把大理石抽獎鑰匙與 $5,000 元金幣。
@@ -980,14 +978,14 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
         </Card>
       )}
 
-      {/* 4. 子分頁 D: 📜 玩家交易日誌查詢器 (Transaction Log Inspector) */}
+      {/* 4. 子分頁 D: 玩家交易日誌查詢器 */}
       {currentSubTab === 'transactions' && (
         <Card className="bg-card border-border shadow-sm animate-fade-in">
           <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-xs font-bold flex items-center space-x-2 text-emerald-500">
                 <FileText className="w-4 h-4" />
-                <span>📜 玩家交易日誌與商業流水查詢器 (Transaction Inspector)</span>
+                <span>玩家交易日誌與商業流水查詢器</span>
               </CardTitle>
               <CardDescription className="text-[11px]">
                 即時調閱全服 ChestShop 商店交易、玩家間轉帳與市場購買日誌。
@@ -1451,22 +1449,22 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
         </DialogContent>
       </Dialog>
 
-      {/* 6. 1:1 實體背包對話框 (Inventory Inspection Dialog) */}
+      {/* 6. 實體背包對話框 (Inventory Inspection Dialog) */}
       {searchedProfile && (
         <Dialog open={isInventoryOpen} onOpenChange={setIsInventoryOpen}>
-          <DialogContent className="max-w-xl p-6 bg-slate-900 border-slate-800 text-white rounded-xl shadow-2xl">
-            <DialogHeader className="text-center pb-2 border-b border-slate-800">
-              <DialogTitle className="text-base font-bold flex items-center justify-center space-x-2 text-emerald-400">
-                <span>🎒</span>
-                <span>{searchedProfile.mc_username} 的背包與裝備即時審查</span>
+          <DialogContent className="max-w-xl p-6 bg-card border-border text-card-foreground rounded-none shadow-xl">
+            <DialogHeader className="text-center pb-2 border-b border-border">
+              <DialogTitle className="text-sm font-bold flex items-center justify-center space-x-2 text-foreground">
+                <Eye className="w-4 h-4 text-emerald-500" />
+                <span>{searchedProfile.mc_username} 的實體背包與裝備審查</span>
               </DialogTitle>
-              <DialogDescription className="text-xs text-slate-400">
-                1:1 遊戲 UI 樣式展示盔甲、主角 Skin 3D 渲染圖與 9x3 物品欄插槽。
+              <DialogDescription className="text-xs text-muted-foreground">
+                遊戲 UI 樣式展示玩家裝備、Skin 渲染圖與 9x3 物品欄插槽。
               </DialogDescription>
             </DialogHeader>
 
-            <div className="py-4 flex justify-center">
-              <div className="flex flex-col items-center bg-[#c6c6c6] border-4 border-t-[#ffffff] border-l-[#ffffff] border-b-[#555555] border-r-[#555555] p-5 space-y-4 rounded-[4px] shadow-2xl scale-105">
+            <div className="py-2 flex justify-center">
+              <div className="flex flex-col items-center bg-[#c6c6c6] border-4 border-t-[#ffffff] border-l-[#ffffff] border-b-[#555555] border-r-[#555555] p-4 space-y-3 rounded-none shadow-lg">
                 {/* Top Section: Armor, Body Render & Offhand */}
                 <div className="w-full flex items-center justify-between">
                   {/* Left: Armor Slots */}
