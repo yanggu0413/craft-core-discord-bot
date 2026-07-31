@@ -56,17 +56,13 @@ fi
 cd ../..
 echo
 
-# 4.5. Deploy Static Files to /var/www/craft-core (for Caddy)
-echo -e "${YELLOW}[3.5/4] Deploying static assets for Caddy...${NC}"
+# Deploy Dashboard Frontend
 mkdir -p /var/www/craft-core/dashboard
 rm -rf /var/www/craft-core/dashboard/*
 cp -r web-dashboard/frontend/dist/* /var/www/craft-core/dashboard/
 
-# Build & Deploy Vitepress Docs
-npx vitepress build docs
-mkdir -p /var/www/craft-core/docs
-rm -rf /var/www/craft-core/docs/*
-cp -r docs/.vitepress/dist/* /var/www/craft-core/docs/
+# Also sync frontend build to /var/www/craft-core root for root fallback
+cp -r web-dashboard/frontend/dist/* /var/www/craft-core/ 2>/dev/null || true
 
 # Adjust permissions so caddy user can read them
 chown -R caddy:caddy /var/www/craft-core 2>/dev/null || true
