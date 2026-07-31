@@ -343,26 +343,46 @@ router.get('/user/profile', authenticateToken, async (req: CustomRequest, res: R
   }
 
   let dbStats: any = {};
+  const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+  const ecoMap = loadConfigJson<Record<string, any>>('economy.json') || {};
+  const ecoKey = Object.keys(ecoMap).find(k => k.replace(/^\./, '').toLowerCase() === cleanUsername) || username;
+  const pEco = ecoMap[ecoKey] || {};
+  const ecoKeys = Number(pEco.lotteryKeys) || 0;
+
   if (db) {
     try {
-      const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
       const userDiscordId = user.discord_id || '';
       const userUuid = user.mc_uuid || '';
       const row = db.prepare(`
-        SELECT keys_count, checkin_streak, total_checkins, last_checkin, subscribe_reminder, discord_id
+        SELECT id, keys_count, checkin_streak, total_checkins, last_checkin, subscribe_reminder, discord_id
         FROM bindings
         WHERE lower(replace(mc_username, '.', '')) = ?
            OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
            OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
       `).get(cleanUsername, userDiscordId, userUuid) as any;
       if (row) {
+        const totalKeys = Math.max(Number(row.keys_count) || 0, ecoKeys);
+        if (totalKeys > (row.keys_count || 0)) {
+          try {
+            db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(totalKeys, row.id);
+          } catch (e) {}
+        }
         dbStats = {
-          keys_count: row.keys_count || 0,
+          keys_count: totalKeys,
           checkin_streak: row.checkin_streak || 0,
           total_checkins: row.total_checkins || 0,
           last_checkin: row.last_checkin || null,
           subscribe_reminder: Boolean(row.subscribe_reminder),
           discord_id: row.discord_id || null
+        };
+      } else {
+        dbStats = {
+          keys_count: ecoKeys,
+          checkin_streak: 0,
+          total_checkins: 0,
+          last_checkin: null,
+          subscribe_reminder: false,
+          discord_id: userDiscordId
         };
       }
     } catch (dbErr) {
@@ -411,7 +431,23 @@ router.post('/user/checkin', authenticateToken, async (req: CustomRequest, res: 
     `).get(cleanUsername, userDiscordId, userUuid) as any;
 
     if (!row) {
-      return res.status(404).json({ success: false, message: '找不到玩家綁定紀錄' });
+      db.prepare(`
+        INSERT INTO bindings (discord_id, mc_uuid, mc_username, keys_count, last_checkin, checkin_streak, total_checkins)
+        VALUES (?, ?, ?, 1, ?, 1, 1)
+      `).run(
+        userDiscordId || 'system',
+        userUuid || `uuid-${cleanUsername}`,
+        username,
+        todayStr
+      );
+      return res.json({
+        success: true,
+        message: '首次簽到成功！獲得抽獎鑰匙 x1（連續簽到 1 天，累計 1 天）',
+        keys_count: 1,
+        checkin_streak: 1,
+        total_checkins: 1,
+        last_checkin: todayStr
+      });
     }
 
     if (row.last_checkin === todayStr) {
