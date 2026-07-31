@@ -559,7 +559,7 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            🛡️ 玩家查核與懲處
+            玩家查核與懲處
           </button>
           <button
             onClick={() => setActiveSubTab('announcement')}
@@ -569,7 +569,7 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            📢 公告發布器
+            公告發布器
           </button>
           <button
             onClick={() => setActiveSubTab('cobrand')}
@@ -579,7 +579,7 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            🤝 聯名加值禮包
+            聯名加值禮包
           </button>
           <button
             onClick={() => {
@@ -592,7 +592,7 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            📜 玩家交易日誌
+            玩家交易日誌
           </button>
           <button
             onClick={() => {
@@ -605,7 +605,7 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            🎫 客服單歷史備份
+            客服單歷史備份
           </button>
           <button
             onClick={() => {
@@ -618,7 +618,7 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            💾 地圖自動備份
+            地圖自動備份
           </button>
         </div>
       </div>
@@ -669,8 +669,9 @@ export default function AdminView({ token, triggerToast, API_URL }: AdminViewPro
                     <div className="space-y-1">
                       <div className="flex items-center space-x-2">
                         <h3 className="text-xl font-black text-foreground">{searchedProfile.mc_username}</h3>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${searchedProfile.online ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
-                          {searchedProfile.online ? '🟢 線上' : '🔴 離線'}
+                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border ${searchedProfile.online ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${searchedProfile.online ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground'}`} />
+                          <span>{searchedProfile.online ? '遊戲線上' : '遊戲離線'}</span>
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">

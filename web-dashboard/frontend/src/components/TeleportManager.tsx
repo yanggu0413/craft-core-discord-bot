@@ -263,9 +263,9 @@ export function TeleportManager({ token, isAdmin = false }: TeleportManagerProps
   };
 
   const formatDimension = (dim: string) => {
-    if (dim.includes('nether')) return '🔥 地獄';
-    if (dim.includes('end')) return '🌌 終界';
-    return '🌿 主世界';
+    if (dim.includes('nether')) return '地獄 (Nether)';
+    if (dim.includes('end')) return '終界 (End)';
+    return '主世界 (Overworld)';
   };
 
   return (
@@ -318,7 +318,7 @@ export function TeleportManager({ token, isAdmin = false }: TeleportManagerProps
           className="text-xs font-bold gap-1.5"
         >
           <Cpu className="h-3.5 w-3.5 text-amber-500" />
-          🏭 機器與設施審核 ({submissions.length})
+          機器與設施審核 ({submissions.length})
         </Button>
       </div>
 
@@ -392,10 +392,11 @@ export function TeleportManager({ token, isAdmin = false }: TeleportManagerProps
                         <CardTitle className="normal-case text-base font-bold">{warp.name}</CardTitle>
                       </div>
                       <div className="flex items-center gap-1">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
                           warp.type === 'machine' ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30' : 'bg-indigo-500/15 text-indigo-500 border border-indigo-500/30'
                         }`}>
-                          {warp.type === 'machine' ? '🏭 認證機器' : '📍 公共地標'}
+                          {warp.type === 'machine' ? <Cpu className="w-3 h-3 text-amber-500" /> : <Flag className="w-3 h-3 text-indigo-500" />}
+                          <span>{warp.type === 'machine' ? '認證機器' : '公共地標'}</span>
                         </span>
                       </div>
                     </div>
@@ -448,7 +449,10 @@ export function TeleportManager({ token, isAdmin = false }: TeleportManagerProps
         /* Submissions Tab */
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-foreground">🏭 認證機器設施審核紀錄與申請列表</h3>
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-amber-500" />
+              <span>認證機器設施審核紀錄與申請列表</span>
+            </h3>
             <Button
               onClick={() => setIsSubmitModalOpen(true)}
               size="sm"
@@ -473,12 +477,17 @@ export function TeleportManager({ token, isAdmin = false }: TeleportManagerProps
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-foreground">{sub.facility_name}</span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          sub.status === 'approved' ? 'bg-emerald-500/15 text-emerald-500' :
-                          sub.status === 'rejected' ? 'bg-red-500/15 text-red-500' :
-                          'bg-amber-500/15 text-amber-500'
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                          sub.status === 'approved' ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30' :
+                          sub.status === 'rejected' ? 'bg-rose-500/15 text-rose-500 border-rose-500/30' :
+                          'bg-amber-500/15 text-amber-500 border-amber-500/30'
                         }`}>
-                          {sub.status === 'approved' ? '🟢 已核准 (地標: ' + (sub.warp_name || sub.facility_name) + ')' : sub.status === 'rejected' ? '🔴 已駁回' : '🟡 審核中'}
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            sub.status === 'approved' ? 'bg-emerald-500' :
+                            sub.status === 'rejected' ? 'bg-rose-500' :
+                            'bg-amber-500 animate-pulse'
+                          }`} />
+                          {sub.status === 'approved' ? '已核准 (地標: ' + (sub.warp_name || sub.facility_name) + ')' : sub.status === 'rejected' ? '已駁回' : '審核中'}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">{sub.function_desc}</p>

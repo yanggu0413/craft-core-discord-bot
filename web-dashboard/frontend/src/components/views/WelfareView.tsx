@@ -498,7 +498,7 @@ export default function WelfareView({
                 )}
               </div>
               <CardDescription className="text-left text-[11px]">
-                每日簽到可獲得 🔑 +1 鑰匙。連續簽到達 🔥 7 天可加碼獲得 🔑 +3 鑰匙並重新計算！
+                每日簽到可獲得鑰匙 +1。連續簽到滿 7 天可加碼獲得鑰匙 +3 並重新計算！
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -533,17 +533,22 @@ export default function WelfareView({
               <div className="flex flex-col items-center">
                 {alreadyCheckedInToday ? (
                   <Button disabled className="w-full md:w-64 h-11 text-xs font-bold bg-muted text-muted-foreground">
-                    📅 今日已完成簽到
+                    今日已完成簽到
                   </Button>
                 ) : (
                   <Button 
                     onClick={handleCheckin} 
                     disabled={loadingCheckin || !token}
-                    className="w-full md:w-64 h-11 text-xs font-bold"
+                    className="w-full md:w-64 h-11 text-xs font-bold gap-2"
                   >
                     {loadingCheckin ? (
                       <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
-                    ) : '📅 點擊進行今日簽到'}
+                    ) : (
+                      <>
+                        <Calendar className="w-4 h-4" />
+                        <span>點擊進行今日簽到</span>
+                      </>
+                    )}
                   </Button>
                 )}
                 {!token && (
@@ -627,21 +632,21 @@ export default function WelfareView({
                     disabled={isSpinning || keysCount < 1 || !token}
                     className="h-10 px-4 text-xs font-bold bg-yellow-500 text-black hover:bg-yellow-600 disabled:bg-muted"
                   >
-                    {isSpinning ? '🎰 旋轉中...' : '🔑 1 抽'}
+                    {isSpinning ? '旋轉中...' : '1 抽 (消耗 1 鑰匙)'}
                   </Button>
                   <Button 
                     onClick={() => handleLuckyDraw(10)} 
                     disabled={isSpinning || keysCount < 10 || !token}
                     className="h-10 px-4 text-xs font-bold bg-amber-500 text-black hover:bg-amber-600 disabled:bg-muted"
                   >
-                    🎰 10 連抽
+                    10 連抽
                   </Button>
                   <Button 
                     onClick={() => handleLuckyDraw('all')} 
                     disabled={isSpinning || keysCount < 1 || !token}
-                    className="h-10 px-4 text-xs font-bold bg-red-500 text-white hover:bg-red-600 disabled:bg-muted"
+                    className="h-10 px-4 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted"
                   >
-                    💥 全部抽完 ({keysCount})
+                    一鍵全抽 ({keysCount} 把)
                   </Button>
                 </div>
 
@@ -801,15 +806,31 @@ export default function WelfareView({
                   <TableBody>
                     {leaderboard.length > 0 ? (
                       leaderboard.map((player: any, idx: number) => {
-                        let rankBadge = '👤';
-                        if (idx === 0) rankBadge = '🥇';
-                        else if (idx === 1) rankBadge = '🥈';
-                        else if (idx === 2) rankBadge = '🥉';
+                        let rankBadge = (
+                          <span className="w-4 h-4 rounded-full bg-muted border border-border inline-flex items-center justify-center font-mono text-[9px] font-bold text-muted-foreground">
+                            {idx + 1}
+                          </span>
+                        );
+                        if (idx === 0) rankBadge = (
+                          <span className="w-4 h-4 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-500 inline-flex items-center justify-center font-mono text-[10px] font-black">
+                            1
+                          </span>
+                        );
+                        else if (idx === 1) rankBadge = (
+                          <span className="w-4 h-4 rounded-full bg-slate-300/20 border border-slate-300/40 text-slate-300 inline-flex items-center justify-center font-mono text-[10px] font-black">
+                            2
+                          </span>
+                        );
+                        else if (idx === 2) rankBadge = (
+                          <span className="w-4 h-4 rounded-full bg-amber-700/20 border border-amber-700/40 text-amber-600 inline-flex items-center justify-center font-mono text-[10px] font-black">
+                            3
+                          </span>
+                        );
                         const name = player.mc_username || player.username || '匿名玩家';
                         return (
                           <TableRow key={idx} className="hover:bg-muted/30">
                             <TableCell className="text-center text-xs py-1.5 font-bold h-8">
-                              {idx < 3 ? rankBadge : idx + 1}
+                              {rankBadge}
                             </TableCell>
                             <TableCell className="text-left text-xs py-1.5 font-bold truncate h-8 max-w-[120px]">
                               <div className="flex items-center space-x-1.5">
@@ -821,11 +842,11 @@ export default function WelfareView({
                                 <span className="truncate">{name}</span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-center text-xs py-1.5 font-black text-yellow-500 h-8">
-                              🔑 {player.keys_count || 0}
+                            <TableCell className="text-center text-xs py-1.5 font-black text-amber-500 font-mono h-8">
+                              {player.keys_count || 0} 把
                             </TableCell>
-                            <TableCell className="text-center text-xs py-1.5 font-bold text-red-400 h-8">
-                              🔥 {player.checkin_streak || 0}
+                            <TableCell className="text-center text-xs py-1.5 font-bold text-red-400 font-mono h-8">
+                              {player.checkin_streak || 0} 天
                             </TableCell>
                           </TableRow>
                         );

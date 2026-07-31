@@ -1,4 +1,4 @@
-import { Award, Gift, Mail, RefreshCw, TrendingUp, MapPin, Sparkles, ArrowRight, Compass } from 'lucide-react';
+import { Award, Gift, Mail, RefreshCw, TrendingUp, MapPin, Sparkles, ArrowRight, Compass, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Button } from '../ui/button';
@@ -14,8 +14,8 @@ interface HomeViewProps {
     accumulatedSalesTax: number;
     totalShopsCount: number;
   };
-  dailyTasks: any[];
-  dailyTasksDate: string;
+  dailyTasks?: any[];
+  dailyTasksDate?: string;
   activeEvents?: any[];
   onNavigateToEvents?: () => void;
   onNavigateToTab?: (tab: string) => void;
@@ -26,21 +26,22 @@ interface HomeViewProps {
   totalCheckins?: number;
   keysCount: number;
   lastCheckin?: string | null;
-  mails: any[];
-  leaderboard: LeaderboardEntry[];
-  liveTrades: any[];
-  fetchData: () => Promise<void>;
-  isRefreshing: boolean;
   isOnline: boolean;
   playerCoords: string;
   serverTps: number;
-  onClaimReward: () => Promise<void>;
+  mails: any[];
+  leaderboard: LeaderboardEntry[];
+  isRefreshing: boolean;
+  handleManualRefresh?: () => void;
+  fetchData?: () => Promise<void>;
+  onClaimReward?: () => Promise<void>;
+  liveTrades: any[];
 }
 
 export default function HomeView({
   stats = { totalCirculation: 0, accumulatedSalesTax: 0, totalShopsCount: 0 },
   dailyTasks = [],
-  dailyTasksDate,
+  dailyTasksDate = '',
   activeEvents = [],
   onNavigateToEvents,
   onNavigateToTab,
@@ -49,52 +50,52 @@ export default function HomeView({
   userBalance,
   checkinStreak,
   keysCount,
-  mails,
-  leaderboard,
-  liveTrades,
-  fetchData,
-  isRefreshing,
   isOnline,
   playerCoords,
   serverTps,
-  onClaimReward
+  mails,
+  leaderboard,
+  isRefreshing,
+  handleManualRefresh,
+  fetchData,
+  onClaimReward,
+  liveTrades
 }: HomeViewProps) {
   return (
     <div className="space-y-6">
-      {/* 1. 頂部「玩家個人英雄名片 Hero Profile Banner」 */}
+      {/* 個人狀態與快捷 Banner */}
       {token && username ? (
-        <Card className="bg-gradient-to-r from-card via-card to-primary/5 border-primary/20 shadow-md relative overflow-hidden">
-          <div className="absolute -right-10 -bottom-10 opacity-5 pointer-events-none">
-            <Compass className="w-64 h-64 text-primary" />
-          </div>
+        <Card className="bg-gradient-to-r from-card via-card to-primary/5 border-primary/20">
           <CardContent className="p-6">
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
               
-              {/* 玩家個人資訊區 */}
+              {/* 頭像與基本資訊 */}
               <div className="flex items-center space-x-4">
-                <div className="relative">
+                <div className="relative shrink-0">
                   <img 
-                    src={`https://mc-heads.net/avatar/${username}/64`} 
+                    src={`https://mc-heads.net/avatar/${username}/56`} 
                     alt={username}
-                    className="w-16 h-16 rounded-xl border-2 border-primary/30 bg-muted shadow-sm"
+                    className="w-14 h-14 rounded-lg border-2 border-border shadow-sm"
                   />
                   <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-card ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
                 </div>
                 <div className="text-left space-y-1">
                   <div className="flex items-center space-x-2">
                     <h2 className="text-xl font-black tracking-tight text-foreground">{username}</h2>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${isOnline ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
-                      {isOnline ? '🟢 遊戲線上' : '🔴 遊戲離線'}
+                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${isOnline ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground'}`} />
+                      <span>{isOnline ? '遊戲線上' : '遊戲離線'}</span>
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center text-emerald-500 font-bold font-mono">
-                      💰 ${Math.floor(userBalance).toLocaleString()} 元
+                      <DollarSign className="w-3.5 h-3.5 mr-0.5 shrink-0" />
+                      ${Math.floor(userBalance).toLocaleString()} 元
                     </span>
                     <span>•</span>
                     <span className="flex items-center font-mono">
                       <MapPin className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
-                      {playerCoords || '世界 (0, 64, 0)'}
+                      {playerCoords || '離線'}
                     </span>
                     <span>•</span>
                     <span className={`font-bold ${serverTps > 18 ? 'text-emerald-500' : 'text-amber-500'}`}>
@@ -133,14 +134,17 @@ export default function HomeView({
         <Card className="bg-gradient-to-r from-card to-primary/5 border-primary/20">
           <CardContent className="p-6 text-left flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="space-y-1">
-              <h2 className="text-lg font-black text-foreground">👋 歡迎來到 Craft-Core 官方伺服器儀表板</h2>
+              <h2 className="text-lg font-black text-foreground flex items-center gap-2">
+                <Compass className="w-5 h-5 text-primary" />
+                <span>歡迎來到 Craft-Core 官方伺服器儀表板</span>
+              </h2>
               <p className="text-xs text-muted-foreground">登入帳號後可同步您的個人遊戲資產、每日任務進度、離線信箱與個人福利！</p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* 🎪 熱門伺服器活動 Banner */}
+      {/* 熱門伺服器活動 Banner */}
       {activeEvents && activeEvents.length > 0 && (
         <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-amber-500/10 border border-amber-500/30 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left shadow-sm">
           <div className="flex items-start space-x-3">
@@ -149,7 +153,10 @@ export default function HomeView({
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">🎪 熱門限時活動進行中</span>
+                <span className="text-xs font-bold text-amber-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>熱門限時活動進行中</span>
+                </span>
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 px-1.5 py-0.2 rounded font-bold">
                   {activeEvents.length} 個活動開放中
                 </span>
@@ -271,7 +278,7 @@ export default function HomeView({
                         {token && isCompleted && !isClaimed && (
                           <Button 
                             size="sm" 
-                            onClick={() => onClaimReward()} 
+                            onClick={() => onClaimReward && onClaimReward()} 
                             className="w-full h-8 text-[11px] font-bold mt-2 bg-emerald-500 hover:bg-emerald-600 text-white"
                           >
                             領取任務獎勵 ${task.reward}
@@ -366,7 +373,10 @@ export default function HomeView({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={fetchData}
+                onClick={() => {
+                  if (handleManualRefresh) handleManualRefresh();
+                  else if (fetchData) fetchData();
+                }}
                 disabled={isRefreshing}
                 className="h-7 text-[10px] px-2"
               >
@@ -385,10 +395,26 @@ export default function HomeView({
                 </TableHeader>
                 <TableBody>
                   {leaderboard.slice(0, 7).map((player, idx) => {
-                    let medal = <span className="font-mono text-muted-foreground">{idx + 1}</span>;
-                    if (idx === 0) medal = <span className="text-base">🥇</span>;
-                    else if (idx === 1) medal = <span className="text-base">🥈</span>;
-                    else if (idx === 2) medal = <span className="text-base">🥉</span>;
+                    let medal = (
+                      <span className="w-5 h-5 rounded-full bg-muted border border-border flex items-center justify-center font-mono text-[10px] font-bold text-muted-foreground">
+                        {idx + 1}
+                      </span>
+                    );
+                    if (idx === 0) medal = (
+                      <span className="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-500 flex items-center justify-center font-mono text-[11px] font-black">
+                        1
+                      </span>
+                    );
+                    else if (idx === 1) medal = (
+                      <span className="w-5 h-5 rounded-full bg-slate-300/20 border border-slate-300/40 text-slate-300 flex items-center justify-center font-mono text-[11px] font-black">
+                        2
+                      </span>
+                    );
+                    else if (idx === 2) medal = (
+                      <span className="w-5 h-5 rounded-full bg-amber-700/20 border border-amber-700/40 text-amber-600 flex items-center justify-center font-mono text-[11px] font-black">
+                        3
+                      </span>
+                    );
 
                     return (
                       <TableRow key={idx}>
