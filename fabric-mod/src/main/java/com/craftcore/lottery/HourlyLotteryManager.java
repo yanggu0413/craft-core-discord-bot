@@ -1,5 +1,6 @@
 package com.craftcore.lottery;
 
+import com.craftcore.fakeplayer.FakePlayerManager;
 import com.craftcore.title.TitleManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -7,6 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Executors;
@@ -37,19 +39,29 @@ public class HourlyLotteryManager {
     }
 
     public static void runHourlyLottery(MinecraftServer server) {
-        List<ServerPlayer> players = server.getPlayerList().getPlayers();
-        if (players.isEmpty()) return;
+        List<ServerPlayer> allPlayers = server.getPlayerList().getPlayers();
+        if (allPlayers.isEmpty()) return;
 
-        // 1. Give hourly gift to all online players
-        for (ServerPlayer p : players) {
+        // Filter out fake players
+        List<ServerPlayer> realPlayers = new ArrayList<>();
+        for (ServerPlayer p : allPlayers) {
+            if (!FakePlayerManager.isFakePlayer(p)) {
+                realPlayers.add(p);
+            }
+        }
+
+        if (realPlayers.isEmpty()) return;
+
+        // 1. Give hourly gift to all real online players
+        for (ServerPlayer p : realPlayers) {
             String name = p.getName().getString();
             com.craftcore.economy.EconomyManager.addMoney(name, 200.0);
             p.getInventory().add(new ItemStack(Items.EXPERIENCE_BOTTLE, 4));
             p.sendSystemMessage(Component.literal("§a[整點禮包] 感謝您持續在線！獲得 §d$200 元金幣 + 4 瓶經驗瓶§a！"));
         }
 
-        // 2. Pick a random Lucky Koi
-        ServerPlayer luckyKoi = players.get(random.nextInt(players.size()));
+        // 2. Pick a random Lucky Koi from real players only
+        ServerPlayer luckyKoi = realPlayers.get(random.nextInt(realPlayers.size()));
         String koiName = luckyKoi.getName().getString();
 
         int currentKeys = com.craftcore.economy.EconomyManager.getLotteryKeys(koiName);

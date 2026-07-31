@@ -215,6 +215,14 @@ public class FakePlayerManager {
         }, 1, 1, TimeUnit.MINUTES);
     }
 
+    public static boolean isFakePlayer(ServerPlayer player) {
+        if (player == null) return false;
+        String name = player.getName().getString().toLowerCase();
+        if (fakePlayers.containsKey(name)) return true;
+        String className = player.getClass().getName();
+        return className.contains("FakePlayer") || className.contains("EntityPlayerMPFake");
+    }
+
     public static void scheduleAutoReconnect(MinecraftServer server) {
         startPositionRecorder(server);
         System.out.println("[CraftCore] Fake player auto-reconnect on server startup is disabled.");
