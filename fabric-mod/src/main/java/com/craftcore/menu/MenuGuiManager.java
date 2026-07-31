@@ -478,16 +478,16 @@ public class MenuGuiManager {
                 "§a[點擊直接領取神杖]"
         )));
 
-        container.setItem(22, createGuiItem(Items.PAPER, "§b📜 創建與查看領地 (/claim)", List.of(
-                "§7圈選完成後，點擊創建並購買此領地",
+        container.setItem(22, createGuiItem(Items.PAPER, "§b📜 我的領地列表 (/claim list)", List.of(
+                "§7查看您目前擁有的所有領地與座標",
                 "",
-                "§a[點擊執行 /claim]"
+                "§e[點擊查看清單 (/claim list)]"
         )));
 
-        container.setItem(24, createGuiItem(Items.EMERALD, "§a💰 領地權限設定 (/claim flag)", List.of(
-                "§7公開容器、設施或進入權限設定",
+        container.setItem(24, createGuiItem(Items.EMERALD, "§a💰 購買圈選領地 (/claim)", List.of(
+                "§7圈選完成後，點擊創建並購買此領地",
                 "",
-                "§e[點擊查看設定指引]"
+                "§a[點擊購買領地 (/claim)]"
         )));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -500,8 +500,8 @@ public class MenuGuiManager {
 
                             if (slotId == 45) { openMainMenu(sp); return; }
                             if (slotId == 20) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim tool"); return; }
-                            if (slotId == 22) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim"); return; }
-                            if (slotId == 24) { sp.closeContainer(); sp.sendSystemMessage(Component.literal("§b請使用 /claim flag container <true/false> 或 /claim flag interact <true/false> 修改領地標籤！")); }
+                            if (slotId == 22) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim list"); return; }
+                            if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim"); return; }
                         }
                     }
                     @Override

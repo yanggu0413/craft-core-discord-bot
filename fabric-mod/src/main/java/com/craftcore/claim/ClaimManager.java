@@ -108,6 +108,16 @@ public class ClaimManager {
         return new ArrayList<>(claims.values());
     }
 
+    public static synchronized List<Claim> getPlayerClaims(String username) {
+        List<Claim> list = new ArrayList<>();
+        for (Claim c : claims.values()) {
+            if (c.owner != null && c.owner.equalsIgnoreCase(username)) {
+                list.add(c);
+            }
+        }
+        return list;
+    }
+
     public static synchronized Claim getClaim(String id) {
         return claims.get(id);
     }

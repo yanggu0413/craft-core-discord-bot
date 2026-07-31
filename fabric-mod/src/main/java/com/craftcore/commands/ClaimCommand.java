@@ -1,24 +1,16 @@
 package com.craftcore.commands;
 
-import com.craftcore.CraftCoreMod;
-import com.craftcore.config.ConfigManager;
-import com.craftcore.websocket.CraftCoreWSClient;
-import com.craftcore.websocket.Packet;
+import com.craftcore.claim.ClaimManager;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
-import com.mojang.brigadier.arguments.DoubleArgumentType;
-import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemLore;
@@ -35,8 +27,11 @@ public class ClaimCommand {
                             context.getSource().sendSystemMessage(Component.literal("此指令只能由遊戲內玩家執行。"));
                             return 0;
                         }
-                        return com.craftcore.claim.ClaimManager.purchaseClaim(player);
+                        return ClaimManager.purchaseClaim(player);
                     })
+                    .then(Commands.literal("list")
+                            .executes(ClaimCommand::listClaims)
+                    )
                     .then(Commands.literal("tool")
                             .executes(ClaimCommand::giveClaimTool)
                     )
@@ -56,7 +51,7 @@ public class ClaimCommand {
                                                 String type = StringArgumentType.getString(context, "type");
                                                 boolean val = BoolArgumentType.getBool(context, "value");
                                                 
-                                                com.craftcore.claim.ClaimManager.Claim claim = com.craftcore.claim.ClaimManager.getClaimAt(player.blockPosition(), player.level());
+                                                ClaimManager.Claim claim = ClaimManager.getClaimAt(player.blockPosition(), player.level());
                                                 if (claim == null) {
                                                     player.sendSystemMessage(Component.literal("§c[領地] 你目前不在任何領地範圍內。"));
                                                     return 0;
@@ -76,7 +71,7 @@ public class ClaimCommand {
                                                     claim.public_entry = val;
                                                     player.sendSystemMessage(Component.literal("§a[領地] 已將領地公開進入權限設置為: " + (val ? "§e[開啟 - 所有人可進入]" : "§c[關閉 - 僅限成員/未被Ban玩家]")));
                                                 }
-                                                com.craftcore.claim.ClaimManager.save();
+                                                ClaimManager.save();
                                                 return 1;
                                             })
                                     )
@@ -90,7 +85,7 @@ public class ClaimCommand {
                                         if (player == null) return 0;
                                         String target = StringArgumentType.getString(context, "target");
                                         
-                                        com.craftcore.claim.ClaimManager.Claim claim = com.craftcore.claim.ClaimManager.getClaimAt(player.blockPosition(), player.level());
+                                        ClaimManager.Claim claim = ClaimManager.getClaimAt(player.blockPosition(), player.level());
                                         if (claim == null) {
                                             player.sendSystemMessage(Component.literal("§c[領地] 你目前不在任何領地範圍內。"));
                                             return 0;
@@ -104,7 +99,7 @@ public class ClaimCommand {
                                         if (!claim.banned_players.contains(target)) {
                                             claim.banned_players.add(target);
                                         }
-                                        com.craftcore.claim.ClaimManager.save();
+                                        ClaimManager.save();
                                         player.sendSystemMessage(Component.literal("§a[領地] 已成功將玩家 §e" + target + " §a加入此領地的黑名單 (禁止進入)！"));
                                         return 1;
                                     })
@@ -117,7 +112,7 @@ public class ClaimCommand {
                                         if (player == null) return 0;
                                         String target = StringArgumentType.getString(context, "target");
                                         
-                                        com.craftcore.claim.ClaimManager.Claim claim = com.craftcore.claim.ClaimManager.getClaimAt(player.blockPosition(), player.level());
+                                        ClaimManager.Claim claim = ClaimManager.getClaimAt(player.blockPosition(), player.level());
                                         if (claim == null) {
                                             player.sendSystemMessage(Component.literal("§c[領地] 你目前不在任何領地範圍內。"));
                                             return 0;
@@ -130,13 +125,37 @@ public class ClaimCommand {
                                         if (claim.banned_players != null) {
                                             claim.banned_players.remove(target);
                                         }
-                                        com.craftcore.claim.ClaimManager.save();
+                                        ClaimManager.save();
                                         player.sendSystemMessage(Component.literal("§a[領地] 已成功將玩家 §e" + target + " §a自黑名單解封！"));
                                         return 1;
                                     })
                             )
                     )
             );
+    }
+
+    private static int listClaims(CommandContext<CommandSourceStack> context) {
+        ServerPlayer player = context.getSource().getPlayer();
+        if (player == null) return 0;
+
+        String username = player.getName().getString();
+        List<ClaimManager.Claim> myClaims = ClaimManager.getPlayerClaims(username);
+
+        player.sendSystemMessage(Component.literal("§6=================== 我的領地清單 ==================="));
+        if (myClaims.isEmpty()) {
+            player.sendSystemMessage(Component.literal("§7您目前尚未擁有任何劃分領地。"));
+            player.sendSystemMessage(Component.literal("§e提示: 輸入 /claim tool 免費領取木鋤圈選對角點後，輸入 /claim 即可購買！"));
+        } else {
+            for (ClaimManager.Claim c : myClaims) {
+                String c1 = (c.corners != null && c.corners.length > 0) ? c.corners[0] : "未知";
+                String c2 = (c.corners != null && c.corners.length > 1) ? c.corners[1] : "未知";
+                player.sendSystemMessage(Component.literal("§e★ 領地名稱: §f" + (c.name != null ? c.name : c.id) + " §7(大小: §a" + c.chunks + " §7區塊)"));
+                player.sendSystemMessage(Component.literal("§7  維度: §b" + c.dimension + " §7| 對角座標: §f" + c1 + " ~ " + c2));
+                player.sendSystemMessage(Component.literal("§7  標籤: 公開容器[" + (c.public_containers ? "§a開啟" : "§c關閉") + "§7], 設施[" + (c.public_interact ? "§a開啟" : "§c關閉") + "§7], 允許進入[" + (c.public_entry ? "§a開啟" : "§c關閉") + "§7]"));
+            }
+        }
+        player.sendSystemMessage(Component.literal("§6=================================================="));
+        return 1;
     }
 
     private static int giveClaimTool(CommandContext<CommandSourceStack> context) {
