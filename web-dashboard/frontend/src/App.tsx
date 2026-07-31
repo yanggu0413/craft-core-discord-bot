@@ -520,6 +520,7 @@ export default function App() {
       token={token}
       username={username}
       userBalance={userBalance}
+      keysCount={keysCount}
       handleLogout={handleLogout}
       handleLoginTrigger={handleLoginTrigger}
       isAdmin={isAdmin}
