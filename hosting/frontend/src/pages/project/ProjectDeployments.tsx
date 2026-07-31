@@ -65,7 +65,7 @@ export const ProjectDeployments: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <GitBranch className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base font-bold">過往 GitHub 部署紀錄 (Deployment History)</CardTitle>
+              <CardTitle className="text-base font-bold">過往部署紀錄</CardTitle>
             </div>
             <div className="flex items-center gap-2">
               <Button size="icon" variant="outline" className="h-7 w-7" onClick={fetchDeployments} title="Refresh">

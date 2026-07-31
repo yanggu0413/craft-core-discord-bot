@@ -110,4 +110,9 @@ export function recordAuditLog(userId: string, username: string, action: string,
     INSERT INTO audit_logs (id, user_id, username, action, details, ip_address, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(logId, userId, username, action, details || '', ipAddress || '127.0.0.1', new Date().toISOString());
+  try {
+    db.exec(`ALTER TABLE instances ADD COLUMN docker_image TEXT;`);
+  } catch (e) {
+    // column already exists
+  }
 }

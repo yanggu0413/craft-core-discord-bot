@@ -14,15 +14,21 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.ItemLore;
+
+import java.util.List;
 
 public class ClaimCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-dispatcher.register(Commands.literal("claim")
+        dispatcher.register(Commands.literal("claim")
                     .executes(context -> {
                         ServerPlayer player = context.getSource().getPlayer();
                         if (player == null) {
@@ -31,6 +37,15 @@ dispatcher.register(Commands.literal("claim")
                         }
                         return com.craftcore.claim.ClaimManager.purchaseClaim(player);
                     })
+                    .then(Commands.literal("tool")
+                            .executes(ClaimCommand::giveClaimTool)
+                    )
+                    .then(Commands.literal("tools")
+                            .executes(ClaimCommand::giveClaimTool)
+                    )
+                    .then(Commands.literal("wand")
+                            .executes(ClaimCommand::giveClaimTool)
+                    )
                     .then(Commands.literal("flag")
                             .then(Commands.argument("type", StringArgumentType.string())
                                     .suggests((context, builder) -> SharedSuggestionProvider.suggest(new String[]{"container", "interact", "entry"}, builder))
@@ -122,5 +137,28 @@ dispatcher.register(Commands.literal("claim")
                             )
                     )
             );
+    }
+
+    private static int giveClaimTool(CommandContext<CommandSourceStack> context) {
+        ServerPlayer player = context.getSource().getPlayer();
+        if (player == null) {
+            context.getSource().sendSystemMessage(Component.literal("此指令只能由遊戲內玩家執行。"));
+            return 0;
+        }
+
+        ItemStack tool = new ItemStack(Items.WOODEN_HOE);
+        tool.set(DataComponents.CUSTOM_NAME, Component.literal("§6[🛡️ 領地圈地神杖]"));
+        tool.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§7手持此神杖可用於劃分領地範圍"),
+                Component.literal("§e- 左鍵點擊方塊: 設置對角點 1 (Pos1)"),
+                Component.literal("§e- 右鍵點擊方塊: 設置對角點 2 (Pos2)"),
+                Component.literal("§a- 選擇完成後輸入 /claim 創建劃分領地！")
+        )));
+
+        if (!player.getInventory().add(tool)) {
+            player.drop(tool, false);
+        }
+        player.sendSystemMessage(Component.literal("§a[Craft-Core] 成功發放 §6[🛡️ 領地圈地神杖]§a！手持木鋤左鍵/右鍵點擊方塊即可選擇領地對角點。"));
+        return 1;
     }
 }

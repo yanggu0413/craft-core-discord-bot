@@ -12,7 +12,7 @@ export interface User {
   apiToken?: string;
 }
 
-export type RuntimeType = 'nodejs' | 'python';
+export type RuntimeType = 'nodejs' | 'python' | 'mongodb' | 'postgres' | 'mysql' | 'redis' | 'docker';
 export type InstanceStatus = 'running' | 'stopped' | 'building' | 'error';
 
 export interface EnvVariable {
@@ -45,6 +45,7 @@ export interface Instance {
   healthCheckEndpoint?: string;
   customDomain?: string;
   subdomain?: string;
+  dockerImage?: string;
   ownerUsername?: string;
   createdAt: string;
 }

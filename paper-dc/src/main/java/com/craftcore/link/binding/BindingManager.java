@@ -18,18 +18,28 @@ public class BindingManager {
         private String mcUuid;
         private String mcUsername;
         private long boundAt;
+        private Boolean dmDeathEnabled = true;
 
         public UserBinding(String discordId, String mcUuid, String mcUsername, long boundAt) {
             this.discordId = discordId;
             this.mcUuid = mcUuid;
             this.mcUsername = mcUsername;
             this.boundAt = boundAt;
+            this.dmDeathEnabled = true;
         }
 
         public String getDiscordId() { return discordId; }
         public String getMcUuid() { return mcUuid; }
         public String getMcUsername() { return mcUsername; }
         public long getBoundAt() { return boundAt; }
+
+        public boolean isDmDeathEnabled() {
+            return dmDeathEnabled == null || dmDeathEnabled;
+        }
+
+        public void setDmDeathEnabled(boolean dmDeathEnabled) {
+            this.dmDeathEnabled = dmDeathEnabled;
+        }
     }
 
     public static class TempCode {
@@ -154,6 +164,24 @@ public class BindingManager {
         bindingsByMcUuid.put(mcUuid, binding);
         saveBindings();
         return binding;
+    }
+
+    public synchronized UserBinding unbindUserByMcUuid(String mcUuid) {
+        UserBinding binding = bindingsByMcUuid.remove(mcUuid);
+        if (binding != null) {
+            bindingsByDiscordId.remove(binding.getDiscordId());
+            saveBindings();
+        }
+        return binding;
+    }
+
+    public synchronized boolean toggleDeathDm(String mcUuid) {
+        UserBinding binding = bindingsByMcUuid.get(mcUuid);
+        if (binding == null) return false;
+        boolean newStatus = !binding.isDmDeathEnabled();
+        binding.setDmDeathEnabled(newStatus);
+        saveBindings();
+        return newStatus;
     }
 
     public UserBinding getBindingByDiscordId(String discordId) {

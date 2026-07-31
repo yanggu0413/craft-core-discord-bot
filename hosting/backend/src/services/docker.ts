@@ -7,7 +7,8 @@ const docker = new Docker(); // connects via local socket or pipe
 
 export interface CreateContainerOptions {
   instanceId: string;
-  runtime: 'nodejs' | 'python';
+  runtime: string;
+  dockerImage?: string;
   appDir: string;
   startCommand: string;
   buildCommand?: string;
@@ -19,20 +20,81 @@ export interface CreateContainerOptions {
   envVars?: { key: string; value: string; isSecret?: boolean }[];
 }
 
+// Helper: Safely demux Docker multiplexed stream header bytes (8 bytes header per frame)
+function cleanDockerStreamBuffer(buffer: Buffer): string {
+  if (!Buffer.isBuffer(buffer)) return String(buffer || '');
+  let offset = 0;
+  let result = '';
+  while (offset < buffer.length) {
+    if (offset + 8 > buffer.length) {
+      result += buffer.toString('utf-8', offset);
+      break;
+    }
+    const streamType = buffer[offset];
+    if (streamType === 1 || streamType === 2) {
+      const size = buffer.readUInt32BE(offset + 4);
+      const chunk = buffer.toString('utf-8', offset + 8, Math.min(buffer.length, offset + 8 + size));
+      result += chunk;
+      offset += 8 + size;
+    } else {
+      result += buffer.toString('utf-8', offset);
+      break;
+    }
+  }
+  return result;
+}
+
+export const pullingStatusMap = new Map<string, string>();
+
 export class DockerService {
-  private static async ensureImageExists(imageName: string) {
+  public static async ensureImageExists(imageName: string) {
     try {
       await docker.getImage(imageName).inspect();
     } catch (err) {
-      console.log(`[DockerService] Image ${imageName} not found locally. Pulling image...`);
+      console.log(`[DockerService] Image ${imageName} not found locally. Pulling image from Docker Hub...`);
+      pullingStatusMap.set(imageName, `準備拉取 Docker 鏡像 [${imageName}]...`);
+
+      const layerProgressMap: Record<string, { current: number; total: number; status: string }> = {};
+
       await new Promise((resolve, reject) => {
         docker.pull(imageName, (pullErr: any, stream: any) => {
-          if (pullErr) return reject(pullErr);
-          docker.modem.followProgress(stream, (onFinishedErr: any) => {
-            if (onFinishedErr) return reject(onFinishedErr);
-            console.log(`[DockerService] Image ${imageName} pulled successfully.`);
-            resolve(true);
-          });
+          if (pullErr) {
+            pullingStatusMap.delete(imageName);
+            return reject(pullErr);
+          }
+
+          docker.modem.followProgress(
+            stream,
+            (onFinishedErr: any) => {
+              pullingStatusMap.delete(imageName);
+              if (onFinishedErr) return reject(onFinishedErr);
+              console.log(`[DockerService] Image ${imageName} pulled successfully.`);
+              resolve(true);
+            },
+            (event: any) => {
+              if (!event) return;
+              let statusText = `正在拉取鏡像 [${imageName}]...`;
+
+              if (event.id && event.progressDetail && event.progressDetail.total > 0) {
+                const { current, total } = event.progressDetail;
+                layerProgressMap[event.id] = { current, total, status: event.status || '' };
+
+                const totalCurrent = Object.values(layerProgressMap).reduce((s, l) => s + (l.current || 0), 0);
+                const totalMax = Object.values(layerProgressMap).reduce((s, l) => s + (l.total || 0), 0);
+
+                if (totalMax > 0) {
+                  const pct = Math.round((totalCurrent / totalMax) * 100);
+                  const currentMB = (totalCurrent / (1024 * 1024)).toFixed(1);
+                  const totalMB = (totalMax / (1024 * 1024)).toFixed(1);
+                  statusText = `下載鏡像分層 [${event.id}]: ${pct}% (${currentMB} MB / ${totalMB} MB)`;
+                }
+              } else if (event.status) {
+                statusText = `鏡像處理狀態 [${event.id || 'system'}]: ${event.status}`;
+              }
+
+              pullingStatusMap.set(imageName, statusText);
+            }
+          );
         });
       });
     }
@@ -40,9 +102,39 @@ export class DockerService {
 
   static async createContainer(opts: CreateContainerOptions) {
     const containerName = `craft-hosting-${opts.instanceId}`;
-    const image = opts.runtime === 'nodejs' ? 'node:22-slim' : 'python:3.11-slim';
+
+    let image = 'node:22-slim';
+    if (opts.dockerImage && opts.dockerImage.trim()) {
+      image = opts.dockerImage.trim();
+    } else if (opts.runtime === 'nodejs') {
+      try {
+        await docker.getImage('craft-core-node:22').inspect();
+        image = 'craft-core-node:22';
+      } catch (e) {
+        image = 'node:22-slim';
+      }
+    } else if (opts.runtime === 'python') {
+      image = 'python:3.11-slim';
+    } else if (opts.runtime === 'mongodb') {
+      image = 'mongo:7.0';
+    } else if (opts.runtime === 'postgres') {
+      image = 'postgres:16-alpine';
+    } else if (opts.runtime === 'mysql') {
+      image = 'mysql:8.0';
+    } else if (opts.runtime === 'redis') {
+      image = 'redis:7.2-alpine';
+    } else {
+      image = 'node:22-slim';
+    }
 
     await this.ensureImageExists(image);
+
+    if (!fs.existsSync(opts.appDir)) {
+      fs.mkdirSync(opts.appDir, { recursive: true });
+    }
+    try {
+      fs.chmodSync(opts.appDir, 0o777);
+    } catch (e) {}
 
     const nanoCpus = Math.floor(opts.cpuLimit * 1e7);
     const memoryBytes = opts.memoryLimit * 1024 * 1024;
@@ -57,6 +149,10 @@ export class DockerService {
     }
 
     const envList: string[] = [`PORT=${opts.internalPort}`];
+    if (opts.dockerImage && opts.dockerImage.includes('ghost')) {
+      envList.push(`url=http://localhost:${opts.internalPort}`);
+      envList.push('NODE_ENV=development');
+    }
     if (Array.isArray(opts.envVars)) {
       opts.envVars.forEach((item) => {
         if (item.key && item.key.trim()) {
@@ -65,33 +161,87 @@ export class DockerService {
       });
     }
 
-    // Support optional buildCommand preceding startCommand
-    const fullCmdStr = opts.buildCommand && opts.buildCommand.trim()
-      ? `${opts.buildCommand.trim()} && ${opts.startCommand}`
-      : opts.startCommand;
+    const isCustomContainer = opts.dockerImage || ['mongodb', 'postgres', 'mysql', 'redis', 'docker'].includes(opts.runtime);
+    let cmdArray: string[] | undefined = undefined;
 
-    const cmdArray = ['sh', '-c', fullCmdStr];
+    if (!isCustomContainer || (opts.startCommand && opts.startCommand.trim() && opts.startCommand !== 'none')) {
+      let buildCmd = opts.buildCommand ? opts.buildCommand.trim() : '';
 
-    // Compute working directory from rootDir
-    const safeRootDir = (opts.rootDir || '/').replace(/^[/\\]+/, '');
-    const workingDir = safeRootDir ? `/app/${safeRootDir}` : '/app';
+      // Auto-fallback build command if empty but package.json or requirements.txt exists
+      if (!buildCmd) {
+        if (opts.runtime === 'nodejs' && fs.existsSync(path.join(opts.appDir, 'package.json'))) {
+          buildCmd = 'npm install';
+        } else if (opts.runtime === 'python' && fs.existsSync(path.join(opts.appDir, 'requirements.txt'))) {
+          buildCmd = 'pip install -r requirements.txt';
+        }
+      }
 
-    const container = await docker.createContainer({
+      const startCmd = opts.startCommand ? opts.startCommand.trim() : (opts.runtime === 'python' ? 'python main.py' : 'node index.js');
+
+      if (buildCmd) {
+        cmdArray = ['sh', '-c', `${buildCmd} && ${startCmd}`];
+      } else {
+        cmdArray = ['sh', '-c', startCmd];
+      }
+    }
+
+    // Compute volume binds and working dir
+    const binds: string[] = [];
+    if (opts.dockerImage) {
+      if (opts.dockerImage.includes('uptime-kuma')) {
+        binds.push(`${path.resolve(opts.appDir)}:/app/data`);
+      } else if (opts.dockerImage.includes('n8n')) {
+        binds.push(`${path.resolve(opts.appDir)}:/home/node/.n8n`);
+      } else if (opts.dockerImage.includes('pocketbase')) {
+        binds.push(`${path.resolve(opts.appDir)}:/pb_data`);
+      } else if (opts.dockerImage.includes('ghost')) {
+        binds.push(`${path.resolve(opts.appDir)}:/var/lib/ghost/content`);
+      } else if (opts.dockerImage.includes('alist')) {
+        binds.push(`${path.resolve(opts.appDir)}:/opt/alist/data`);
+      } else if (opts.dockerImage.includes('s-pdf') || opts.dockerImage.includes('stirling')) {
+        binds.push(`${path.resolve(opts.appDir)}:/configs`);
+      } else if (opts.dockerImage.includes('code-server')) {
+        binds.push(`${path.resolve(opts.appDir)}:/home/coder`);
+      } else {
+        binds.push(`${path.resolve(opts.appDir)}:/data`);
+      }
+    } else {
+      binds.push(`${path.resolve(opts.appDir)}:/app`);
+    }
+
+    const securityOpts: string[] = [];
+    if (!opts.dockerImage || !opts.dockerImage.includes('code-server')) {
+      securityOpts.push('no-new-privileges:true');
+    }
+
+    const containerConfig: any = {
       Image: image,
       name: containerName,
-      Cmd: cmdArray,
       Env: envList,
       ExposedPorts: exposedPorts,
       HostConfig: {
         PortBindings: portBindings,
         NanoCPUs: nanoCpus,
         Memory: memoryBytes,
+        MemorySwap: memoryBytes,
+        MemoryReservation: Math.min(memoryBytes, 128 * 1024 * 1024),
         PidsLimit: 100,
-        Binds: [`${path.resolve(opts.appDir)}:/app`],
+        SecurityOpt: securityOpts,
+        Binds: binds,
         AutoRemove: false,
       },
-      WorkingDir: workingDir,
-    });
+    };
+
+    if (!opts.dockerImage) {
+      const safeRootDir = (opts.rootDir || '/').replace(/^[/\\]+/, '');
+      containerConfig.WorkingDir = safeRootDir ? `/app/${safeRootDir}` : '/app';
+    }
+
+    if (cmdArray) {
+      containerConfig.Cmd = cmdArray;
+    }
+
+    const container = await docker.createContainer(containerConfig);
 
     return container;
   }
@@ -121,6 +271,7 @@ export class DockerService {
     await this.createContainer({
       instanceId: inst.id,
       runtime: inst.runtime,
+      dockerImage: inst.docker_image,
       appDir,
       startCommand: inst.start_command,
       buildCommand: inst.build_command,
@@ -129,7 +280,6 @@ export class DockerService {
       assignedHostPort: inst.assigned_host_port,
       cpuLimit: inst.cpu_limit,
       memoryLimit: inst.memory_limit,
-      envVars,
     });
 
     if (isRunning) {
@@ -137,13 +287,148 @@ export class DockerService {
     }
   }
 
+  static async pullLatestImage(imageName: string) {
+    console.log(`[DockerService] Force pulling latest image ${imageName}...`);
+    pullingStatusMap.set(imageName, `準備拉取最新 Docker 鏡像 [${imageName}]...`);
+
+    const layerProgressMap: Record<string, { current: number; total: number; status: string }> = {};
+
+    await new Promise((resolve, reject) => {
+      docker.pull(imageName, (pullErr: any, stream: any) => {
+        if (pullErr) {
+          pullingStatusMap.delete(imageName);
+          return reject(pullErr);
+        }
+
+        docker.modem.followProgress(
+          stream,
+          (onFinishedErr: any) => {
+            pullingStatusMap.delete(imageName);
+            if (onFinishedErr) return reject(onFinishedErr);
+            console.log(`[DockerService] Image ${imageName} updated to latest version successfully.`);
+            resolve(true);
+          },
+          (event: any) => {
+            if (!event) return;
+            let statusText = `正在拉取最新鏡像 [${imageName}]...`;
+
+            if (event.id && event.progressDetail && event.progressDetail.total > 0) {
+              const { current, total } = event.progressDetail;
+              layerProgressMap[event.id] = { current, total, status: event.status || '' };
+
+              const totalCurrent = Object.values(layerProgressMap).reduce((s, l) => s + (l.current || 0), 0);
+              const totalMax = Object.values(layerProgressMap).reduce((s, l) => s + (l.total || 0), 0);
+
+              if (totalMax > 0) {
+                const pct = Math.round((totalCurrent / totalMax) * 100);
+                const currentMB = (totalCurrent / (1024 * 1024)).toFixed(1);
+                const totalMB = (totalMax / (1024 * 1024)).toFixed(1);
+                statusText = `下載鏡像分層 [${event.id}]: ${pct}% (${currentMB} MB / ${totalMB} MB)`;
+              }
+            } else if (event.status) {
+              statusText = `鏡像處理狀態 [${event.id || 'system'}]: ${event.status}`;
+            }
+
+            pullingStatusMap.set(imageName, statusText);
+          }
+        );
+      });
+    });
+  }
+
+  static async upgradeContainer(instanceId: string) {
+    const inst = db.prepare('SELECT * FROM instances WHERE id = ?').get(instanceId) as any;
+    if (!inst) throw new Error('專案不存在');
+
+    let image = 'node:22-slim';
+    if (inst.docker_image && inst.docker_image.trim()) {
+      image = inst.docker_image.trim();
+    } else if (inst.runtime === 'mongodb') image = 'mongo:7.0';
+    else if (inst.runtime === 'postgres') image = 'postgres:16-alpine';
+    else if (inst.runtime === 'mysql') image = 'mysql:8.0';
+    else if (inst.runtime === 'redis') image = 'redis:7.2-alpine';
+
+    await this.pullLatestImage(image);
+    await this.recreateContainer(instanceId);
+  }
+
+  static async execInContainer(instanceId: string, command: string): Promise<{ exitCode: number; output: string }> {
+    const containerName = `craft-hosting-${instanceId}`;
+    let container = docker.getContainer(containerName);
+
+    try {
+      const inspectData = await container.inspect();
+      if (!inspectData.State.Running) {
+        await container.start();
+      }
+    } catch (err: any) {
+      await this.startContainer(instanceId);
+      container = docker.getContainer(containerName);
+    }
+
+    const exec = await container.exec({
+      Cmd: ['sh', '-c', command],
+      AttachStdout: true,
+      AttachStderr: true,
+      Tty: false,
+    });
+
+    const stream = await exec.start({ Hijack: false, stdin: false });
+
+    let output = '';
+    await new Promise<void>((resolve, reject) => {
+      docker.modem.demuxStream(
+        stream,
+        {
+          write: (chunk: Buffer | string) => {
+            output += chunk.toString();
+          },
+        },
+        {
+          write: (chunk: Buffer | string) => {
+            output += chunk.toString();
+          },
+        }
+      );
+      stream.on('end', () => resolve());
+      stream.on('error', (e: any) => reject(e));
+    });
+
+    const inspectExec = await exec.inspect();
+    return {
+      exitCode: inspectExec.ExitCode ?? 0,
+      output: output.trim() || '(指令執行完畢，無輸出內容)',
+    };
+  }
+
   static async startContainer(instanceId: string) {
     const containerName = `craft-hosting-${instanceId}`;
     const container = docker.getContainer(containerName);
 
+    let needsRecreate = false;
     try {
-      await container.inspect();
+      const inspectData = await container.inspect();
+      const inst = db.prepare('SELECT docker_image, runtime FROM instances WHERE id = ?').get(instanceId) as any;
+      if (inst) {
+        let expectedImage = inst.docker_image;
+        if (!expectedImage) {
+          if (inst.runtime === 'mongodb') expectedImage = 'mongo:7.0';
+          else if (inst.runtime === 'postgres') expectedImage = 'postgres:16-alpine';
+          else if (inst.runtime === 'mysql') expectedImage = 'mysql:8.0';
+          else if (inst.runtime === 'redis') expectedImage = 'redis:7.2-alpine';
+          else if (inst.runtime === 'python') expectedImage = 'python:3.11-slim';
+          else expectedImage = 'craft-core-node:22';
+        }
+        if (inspectData.Config.Image !== expectedImage) {
+          needsRecreate = true;
+        }
+      }
     } catch (err) {
+      needsRecreate = true;
+    }
+
+    if (needsRecreate) {
+      await this.removeContainer(instanceId).catch(() => {});
       const inst = db.prepare('SELECT * FROM instances WHERE id = ?').get(instanceId) as any;
       if (inst) {
         const appDir = path.join(process.cwd(), 'data', 'apps', instanceId);
@@ -151,6 +436,7 @@ export class DockerService {
         await this.createContainer({
           instanceId: inst.id,
           runtime: inst.runtime,
+          dockerImage: inst.docker_image,
           appDir,
           startCommand: inst.start_command,
           buildCommand: inst.build_command,
@@ -180,9 +466,28 @@ export class DockerService {
   }
 
   static async restartContainer(instanceId: string) {
-    const containerName = `craft-hosting-${instanceId}`;
-    const container = docker.getContainer(containerName);
-    await container.restart();
+    await this.removeContainer(instanceId).catch(() => {});
+    const inst = db.prepare('SELECT * FROM instances WHERE id = ?').get(instanceId) as any;
+    if (inst) {
+      const appDir = path.join(process.cwd(), 'data', 'apps', instanceId);
+      const envVars = inst.env_vars ? JSON.parse(inst.env_vars) : [];
+      await this.createContainer({
+        instanceId: inst.id,
+        runtime: inst.runtime,
+        dockerImage: inst.docker_image,
+        appDir,
+        startCommand: inst.start_command,
+        buildCommand: inst.build_command,
+        rootDir: inst.root_dir,
+        internalPort: inst.internal_port,
+        assignedHostPort: inst.assigned_host_port,
+        cpuLimit: inst.cpu_limit,
+        memoryLimit: inst.memory_limit,
+        envVars,
+      });
+      await this.startContainer(instanceId);
+    }
+    db.prepare("UPDATE instances SET status = 'running' WHERE id = ?").run(instanceId);
   }
 
   static async removeContainer(instanceId: string) {
@@ -210,16 +515,14 @@ export class DockerService {
         timestamps: true,
       });
 
-      const rawLogs = logsBuffer.toString('utf-8');
+      const rawLogs = cleanDockerStreamBuffer(logsBuffer);
       if (!logsClearedAt) return rawLogs;
 
       const lines = rawLogs.split('\n');
       const filtered = lines.filter((line: string) => {
-        // Strip docker stream header bytes if present
-        const cleanLine = line.replace(/^[\u0000-\u001f]+/, '');
-        const spaceIdx = cleanLine.indexOf(' ');
+        const spaceIdx = line.indexOf(' ');
         if (spaceIdx > 0) {
-          const timeStr = cleanLine.substring(0, spaceIdx);
+          const timeStr = line.substring(0, spaceIdx);
           const lineTime = new Date(timeStr).getTime();
           if (!isNaN(lineTime) && lineTime < logsClearedAt) {
             return false;
@@ -230,7 +533,7 @@ export class DockerService {
 
       return filtered.join('\n');
     } catch (err) {
-      return 'Container not running or no log output emitted yet.';
+      return '容器未啟動或尚無日誌輸出';
     }
   }
 
@@ -273,16 +576,29 @@ export class DockerService {
         memoryLimitMB = Math.round((stats.memory_stats.limit || 536870912) / (1024 * 1024));
       }
 
+      let rxBytes = 0;
+      let txBytes = 0;
+      if (stats.networks) {
+        Object.values(stats.networks).forEach((net: any) => {
+          rxBytes += net.rx_bytes || 0;
+          txBytes += net.tx_bytes || 0;
+        });
+      }
+
       return {
         cpuPercent: Number(cpuPercent.toFixed(1)),
         memoryUsageMB,
         memoryLimitMB,
+        rxBytes,
+        txBytes,
       };
     } catch (err) {
       return {
         cpuPercent: 0,
         memoryUsageMB: 0,
         memoryLimitMB: 512,
+        rxBytes: 0,
+        txBytes: 0,
       };
     }
   }

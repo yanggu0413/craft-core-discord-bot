@@ -432,8 +432,49 @@ public class MenuGuiManager {
     }
 
     public static void openClaimMenu(ServerPlayer player) {
-        if (player == null || player.level().getServer() == null) return;
-        player.level().getServer().getCommands().performPrefixedCommand(player.createCommandSourceStack(), "claim list");
+        if (player == null) return;
+        SimpleContainer container = new SimpleContainer(54);
+        fillBackground(container);
+
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+
+        container.setItem(20, createGuiItem(Items.WOODEN_HOE, "§6🪄 領地劃分神杖 (/claim tool)", List.of(
+                "§7點擊一鍵免費領取領地圈地神杖 (木鋤)",
+                "§e- 左鍵點擊方塊: 設置點 1 (Pos1)",
+                "§e- 右鍵點擊方塊: 設置點 2 (Pos2)",
+                "",
+                "§a[點擊直接領取神杖]"
+        )));
+
+        container.setItem(22, createGuiItem(Items.PAPER, "§b📜 我的領地列表 (/claim list)", List.of(
+                "§7查看您目前擁有的所有領地與座標",
+                "",
+                "§e[點擊開啟清單]"
+        )));
+
+        container.setItem(24, createGuiItem(Items.EMERALD, "§a💰 購買當前劃分領地 (/claim)", List.of(
+                "§7圈選完成後，點擊創建並購買此領地",
+                "",
+                "§a[點擊購買領地]"
+        )));
+
+        player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
+                new ChestMenu(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                    @Override
+                    public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            MinecraftServer server = sp.level().getServer();
+                            if (server == null) return;
+
+                            if (slotId == 45) { openMainMenu(sp); return; }
+                            if (slotId == 20) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim tool"); return; }
+                            if (slotId == 22) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim list"); return; }
+                            if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim"); return; }
+                        }
+                    }
+                    @Override
+                    public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
+                }, Component.literal("§1🛡️ 領地與保險箱選單")));
     }
 
     public static void openMachineMenu(ServerPlayer player) {

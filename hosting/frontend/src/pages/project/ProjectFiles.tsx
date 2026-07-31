@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { FileItem, Instance } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
-import { Folder, FileCode, Plus, Save, ChevronRight, ArrowLeft, Check, Trash2 } from 'lucide-react';
+import { Folder, FileCode, Plus, Save, ChevronRight, ArrowLeft, Check, Trash2, Upload } from 'lucide-react';
 
 function getLanguageFromFileName(filename: string): string {
   if (filename.endsWith('.js') || filename.endsWith('.jsx')) return 'javascript';
@@ -33,6 +33,7 @@ export const ProjectFiles: React.FC = () => {
   const [newFileName, setNewFileName] = useState('');
   const [isCreatingFile, setIsCreatingFile] = useState(false);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const getHeaders = (): Record<string, string> => {
     const storedToken = localStorage.getItem('cc_token');
@@ -132,10 +133,39 @@ export const ProjectFiles: React.FC = () => {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('targetDir', currentDir);
+
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/instances/${instance.id}/files/upload`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: formData,
+      });
+
+      if (res.ok) {
+        fetchDirectoryFiles(currentDir);
+      }
+    } catch (err) {
+      console.error('File upload failed:', err);
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
-    <Card className="h-[75vh] flex overflow-hidden border shadow-sm">
-      {/* File Tree Sidebar */}
-      <div className="w-64 border-r bg-muted/20 flex flex-col">
+    <Card className="h-[calc(100vh-12rem)] flex flex-col md:flex-row overflow-hidden border shadow-sm">
+      <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+
+      {/* Left File Tree Panel */}
+      <div className="w-full md:w-64 border-r flex flex-col bg-muted/10">
         <div className="p-3 border-b flex items-center justify-between">
           <div className="flex items-center gap-1 text-xs font-semibold">
             {currentDir !== '/' && (
@@ -146,9 +176,14 @@ export const ProjectFiles: React.FC = () => {
             <span className="font-mono truncate">{currentDir}</span>
           </div>
 
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsCreatingFile(true)} title="New File">
-            <Plus className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fileInputRef.current?.click()} title="上傳檔案">
+              <Upload className="h-3.5 w-3.5 text-primary" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsCreatingFile(true)} title="新增檔案">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {isCreatingFile && (

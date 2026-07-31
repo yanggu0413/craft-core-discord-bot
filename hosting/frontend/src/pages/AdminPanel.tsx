@@ -4,35 +4,28 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { PortRequest, Instance, User } from '../types';
-import { ShieldCheck, Server, UserCheck, RefreshCw, Check, X, ArrowUpRight, FileText, Globe, Clock } from 'lucide-react';
+import { Instance, User } from '../types';
+import { ShieldCheck, Server, UserCheck, RefreshCw, ArrowUpRight, FileText, Globe, Clock, AlertTriangle, Check, X } from 'lucide-react';
 
 interface AdminPanelProps {
   pendingUsers: User[];
   allUsers: User[];
-  portRequests: PortRequest[];
   allInstances: Instance[];
   onApproveUser: (userId: string) => Promise<void>;
   onRejectUser: (userId: string) => Promise<void>;
-  onApprovePortRequest: (requestId: string, hostPort: number) => Promise<void>;
-  onRejectPortRequest: (requestId: string) => Promise<void>;
   onRefreshData: () => void;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   pendingUsers,
   allUsers,
-  portRequests,
   allInstances,
   onApproveUser,
   onRejectUser,
-  onApprovePortRequest,
-  onRejectPortRequest,
   onRefreshData,
 }) => {
   const navigate = useNavigate();
-  const [allocatedPorts, setAllocatedPorts] = useState<Record<string, number>>({});
-  const [globalInstances, setGlobalInstances] = useState<Instance[]>(allInstances);
+  const [globalInstances, setGlobalInstances] = useState<any[]>(allInstances);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -69,7 +62,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     onRefreshData();
   };
 
-  const pendingPortRequests = portRequests.filter((pr) => pr.status === 'PENDING');
+  const handleWarnInstance = async (inst: any) => {
+    const ownerName = inst.ownerUsername || inst.ownerName || '該使用者';
+    const reason = window.prompt(
+      `確定要向擁有者 @${ownerName} 發送【入侵安全警告】並強制切斷容器服務嗎？\n請輸入警告與違例原因:`,
+      `管理員偵測到您的容器 (${inst.name}) 存在異常權限越界或入侵行為，已強制停止服務！`
+    );
+    if (!reason) return;
+
+    const storedToken = localStorage.getItem('cc_token');
+    const headers: Record<string, string> = storedToken ? { Authorization: `Bearer ${storedToken}` } : {};
+    try {
+      const res = await fetch(`/api/admin/instances/${inst.id}/warn`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`🚨 ${data.message || '入侵警告發送成功！'}`);
+        fetchGlobalData();
+        onRefreshData();
+      } else {
+        alert(`❌ 發送警告失敗: ${data.error || '未知錯誤'}`);
+      }
+    } catch (e: any) {
+      alert(`❌ 發送警告失敗: ${e.message}`);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto p-6 md:p-8 space-y-6 w-full">
@@ -83,7 +103,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div>
               <h1 className="text-xl font-bold tracking-tight">管理員主控台</h1>
               <p className="text-xs text-muted-foreground mt-0.5">
-                全服機器鏡像操控、檔案與日誌巡檢、Port 派發審核與安全審計
+                全服機器鏡像操控、檔案與日誌巡檢、使用者開權審核與安全審計
               </p>
             </div>
           </div>
@@ -102,7 +122,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       </Card>
 
-      {/* Modern High-End Tabs */}
+      {/* Tabs */}
       <Tabs defaultValue="machines" className="space-y-6">
         <TabsList className="flex items-center justify-start gap-2 bg-card border border-border p-1.5 rounded-xl h-auto w-full md:w-auto overflow-x-auto shadow-sm">
           <TabsTrigger
@@ -113,16 +133,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <span>全服機器</span>
             <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-muted-foreground/20">
               {globalInstances.length || allInstances.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="ports"
-            className="px-4 py-2.5 text-xs font-bold gap-2 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span>Port 審核</span>
-            <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold">
-              {pendingPortRequests.length}
             </span>
           </TabsTrigger>
           <TabsTrigger
@@ -152,7 +162,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="flex items-center gap-2">
                   <Server className="h-4 w-4 text-primary" /> 全服所有使用者機器清單
                 </div>
-                <span className="text-xs font-normal text-muted-foreground">點擊可直接進入該機器之檔案、日誌與部署管理介面</span>
+                <span className="text-xs font-normal text-muted-foreground">點擊可進入機器進行巡檢或發送入侵警告</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0 divide-y">
@@ -167,26 +177,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <Badge variant={inst.status === 'running' ? 'success' : 'outline'} className="capitalize text-[10px]">
                           {inst.status}
                         </Badge>
-                        <span className="text-[11px] font-mono text-muted-foreground">({inst.runtime})</span>
+                        <Badge variant="outline" className="text-[10px] uppercase font-mono border-primary/20 bg-primary/5 text-primary">
+                          {inst.runtime}
+                        </Badge>
                       </div>
                       <div className="text-xs text-muted-foreground flex items-center gap-3 font-mono">
                         <span>ID: {inst.id}</span>
-                        <span>擁有者: {inst.ownerUsername || 'User'}</span>
-                        <span> Port: {inst.assignedHostPort || '無 (僅內部)'}</span>
+                        <span className="font-bold text-foreground">擁有者: @{inst.ownerUsername || inst.ownerName || 'User'}</span>
+                        <span>對外連線: {inst.assignedHostPort ? `已開啟 (${inst.assignedHostPort})` : '關閉'}</span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       {inst.assignedHostPort && (
                         <Button variant="ghost" size="sm" asChild className="h-8 text-xs gap-1 font-mono">
-                          <a href={`https://app-${inst.assignedHostPort}.hosting.craft-core.xyz`} target="_blank" rel="noreferrer">
+                          <a href={`https://app-${inst.subdomain || inst.assignedHostPort}.hosting.craft-core.xyz`} target="_blank" rel="noreferrer">
                             <Globe className="h-3.5 w-3.5" /> 開啟網頁
                           </a>
                         </Button>
                       )}
+
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleWarnInstance(inst)}
+                        className="h-8 text-xs gap-1 font-bold bg-rose-600 hover:bg-rose-700"
+                        title="向服主警報此機器存在入侵行為並斷開連線"
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5" /> 發送入侵警告
+                      </Button>
+
                       {inst.status === 'running' && (
                         <Button
-                          variant="destructive"
+                          variant="outline"
                           size="sm"
                           onClick={() => handleAdminStopInstance(inst.id)}
                           className="h-8 text-xs font-bold"
@@ -194,6 +217,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           強制停止
                         </Button>
                       )}
+
                       <Button
                         size="sm"
                         onClick={() => navigate(`/project/${inst.id}/overview`)}
@@ -209,64 +233,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </Card>
         </TabsContent>
 
-        {/* Tab 2: Port Requests */}
-        <TabsContent value="ports">
-          <Card className="border shadow-sm">
-            <CardHeader className="py-4 border-b">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 text-emerald-500" /> 待審核對外 Port 申請項目
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 divide-y">
-              {pendingPortRequests.length === 0 ? (
-                <div className="p-8 text-center text-xs text-muted-foreground">尚無未處理的 Port 申請</div>
-              ) : (
-                pendingPortRequests.map((pr) => (
-                  <div key={pr.id} className="p-4 flex items-center justify-between hover:bg-muted/20 transition-colors">
-                    <div className="space-y-1">
-                      <div className="font-bold text-sm flex items-center gap-2">
-                        專案 ID: <code className="font-mono text-primary">{pr.instanceId}</code>
-                      </div>
-                      <div className="text-xs text-muted-foreground font-mono flex items-center gap-3">
-                        <span>申請人: {pr.username}</span>
-                        <span>內部Port: {pr.internalPort}</span>
-                        <span>申請時間: {new Date(pr.createdAt).toLocaleString()}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        placeholder="分配 Host Port (例如 3001)"
-                        value={allocatedPorts[pr.id] || ''}
-                        onChange={(e) => setAllocatedPorts({ ...allocatedPorts, [pr.id]: Number(e.target.value) })}
-                        className="h-9 px-3 w-48 rounded-md border text-xs font-mono bg-background"
-                      />
-                      <Button
-                        size="sm"
-                        disabled={!allocatedPorts[pr.id]}
-                        onClick={() => onApprovePortRequest(pr.id, allocatedPorts[pr.id])}
-                        className="h-9 gap-1 text-xs font-bold"
-                      >
-                        <Check className="h-4 w-4" /> 核准並派發
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => onRejectPortRequest(pr.id)}
-                        className="h-9 text-xs text-destructive hover:bg-destructive/10"
-                      >
-                        <X className="h-4 w-4" /> 駁回
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab 3: Pending Users */}
+        {/* Tab 2: User Approval */}
         <TabsContent value="users">
           <Card className="border shadow-sm">
             <CardHeader className="py-4 border-b">
@@ -289,7 +256,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       )}
                       <div>
-                        <div className="font-bold text-sm">{u.username}</div>
+                        <div className="font-bold text-sm">@{u.username}</div>
                         <div className="text-xs text-muted-foreground font-mono">Discord ID: {u.discordId}</div>
                       </div>
                     </div>
@@ -298,7 +265,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <Button size="sm" onClick={() => onApproveUser(u.id)} className="h-8 gap-1 text-xs font-bold">
                         <Check className="h-3.5 w-3.5" /> 開放權限
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => onRejectUser(u.id)} className="h-8 text-xs text-destructive">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onRejectUser(u.id)}
+                        className="h-8 text-xs text-destructive"
+                      >
                         <X className="h-3.5 w-3.5" /> 拒絕
                       </Button>
                     </div>
@@ -328,7 +300,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <Badge variant="outline" className="text-[10px] uppercase font-bold">
                           {log.action}
                         </Badge>
-                        <span className="font-bold text-foreground">{log.username}</span>
+                        <span className="font-bold text-foreground">@{log.username}</span>
                         <span className="text-muted-foreground font-sans">{log.details}</span>
                       </div>
                       <div className="text-[11px] text-muted-foreground flex items-center gap-3">

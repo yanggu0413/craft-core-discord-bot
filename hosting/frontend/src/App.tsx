@@ -16,11 +16,13 @@ import { ProjectDeployments } from './pages/project/ProjectDeployments';
 import { ProjectSettings } from './pages/project/ProjectSettings';
 import { AccountSettings } from './pages/AccountSettings';
 import { Wiki } from './pages/Wiki';
+import { TermsModal } from './components/TermsModal';
 import { User, Instance, PortRequest } from './types';
 import { Loader2 } from 'lucide-react';
 
 export const AppContent: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [instances, setInstances] = useState<Instance[]>([]);
   const [instancesLoaded, setInstancesLoaded] = useState(false);
   const [portRequests, setPortRequests] = useState<PortRequest[]>([]);
@@ -122,18 +124,96 @@ export const AppContent: React.FC = () => {
     });
   };
 
-  const handleCreateInstance = async (data: any): Promise<string> => {
+  const handleCreateInstance = async (data: any, onProgress?: (pct: number, loadedMB: number, totalMB: number) => void): Promise<string> => {
     const storedToken = localStorage.getItem('cc_token');
     const headers: Record<string, string> = storedToken ? { Authorization: `Bearer ${storedToken}` } : {};
 
+    let chunkedZipKey: string | undefined = undefined;
+
+    // If uploading a ZIP file, use 5MB chunked slice upload for 100% network stability
+    if (data.sourceType === 'zip' && data.zipFile) {
+      const file: File = data.zipFile;
+      const chunkSize = 5 * 1024 * 1024; // 5MB per slice
+      const totalChunks = Math.ceil(file.size / chunkSize);
+      const uploadId = `up_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const totalMB = parseFloat((file.size / (1024 * 1024)).toFixed(1));
+
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * chunkSize;
+        const end = Math.min(file.size, start + chunkSize);
+        const blobSlice = file.slice(start, end);
+
+        const chunkFormData = new FormData();
+        chunkFormData.append('uploadId', uploadId);
+        chunkFormData.append('chunkIndex', String(i));
+        chunkFormData.append('totalChunks', String(totalChunks));
+        chunkFormData.append('chunk', blobSlice, `chunk_${i}`);
+
+        // Upload chunk with automatic 3x retry on network error
+        let success = false;
+        let lastErr: any = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const chunkRes = await fetch('/api/upload/chunk', {
+              method: 'POST',
+              headers,
+              body: chunkFormData,
+            });
+            if (chunkRes.ok) {
+              success = true;
+              break;
+            } else {
+              const errData = await chunkRes.json().catch(() => ({}));
+              lastErr = new Error(errData.error || `Chunk ${i + 1}/${totalChunks} upload failed`);
+            }
+          } catch (e) {
+            lastErr = e;
+            await new Promise((r) => setTimeout(r, 1000));
+          }
+        }
+
+        if (!success) {
+          throw lastErr || new Error(`網絡傳輸中斷，上傳分片 ${i + 1}/${totalChunks} 失敗`);
+        }
+
+        if (onProgress) {
+          const currentLoadedBytes = end;
+          const pct = Math.round((currentLoadedBytes / file.size) * 100);
+          const loadedMB = parseFloat((currentLoadedBytes / (1024 * 1024)).toFixed(1));
+          onProgress(pct, loadedMB, totalMB);
+        }
+      }
+
+      // Merge chunks into single ZIP file
+      const mergeRes = await fetch('/api/upload/merge', {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ uploadId, totalChunks }),
+      });
+
+      if (!mergeRes.ok) {
+        const mergeErr = await mergeRes.json().catch(() => ({}));
+        throw new Error(mergeErr.error || '伺服器合併 ZIP 檔案失敗');
+      }
+
+      const mergeData = await mergeRes.json();
+      chunkedZipKey = mergeData.chunkedZipKey;
+    }
+
+    // Submit instance creation request
     const formData = new FormData();
     formData.append('name', data.name);
     formData.append('runtime', data.runtime);
     formData.append('sourceType', data.sourceType);
     if (data.gitUrl) formData.append('gitUrl', data.gitUrl);
-    if (data.zipFile) formData.append('zipFile', data.zipFile);
+    if (chunkedZipKey) formData.append('chunkedZipKey', chunkedZipKey);
     if (data.rootDir) formData.append('rootDir', data.rootDir);
-    if (data.buildCommand) formData.append('buildCommand', data.buildCommand);
+    if (data.dockerImage) formData.append('dockerImage', data.dockerImage);
+    if (data.dockerRunCmd) formData.append('dockerRunCmd', data.dockerRunCmd);
+    if (data.envVars && data.envVars.length > 0) formData.append('envVars', JSON.stringify(data.envVars));
     formData.append('startCommand', data.startCommand);
     formData.append('internalPort', String(data.internalPort));
     formData.append('cpuLimit', String(data.cpuLimit));
@@ -221,9 +301,14 @@ export const AppContent: React.FC = () => {
 
   const pendingUsers = allUsers.filter((u) => u.status === 'PENDING');
 
-  const usedCpu = instances.reduce((acc, curr) => acc + curr.cpuLimit, 0);
-  const usedMemory = instances.reduce((acc, curr) => acc + curr.memoryLimit, 0);
-  const usedDisk = instances.reduce((acc, curr) => acc + (curr.diskLimit || 2048), 0);
+  // Filter instances strictly belonging to the currently logged in user
+  const myInstances = currentUser
+    ? instances.filter((i) => i.userId === currentUser.id)
+    : [];
+
+  const usedCpu = myInstances.reduce((acc, curr) => acc + curr.cpuLimit, 0);
+  const usedMemory = myInstances.reduce((acc, curr) => acc + curr.memoryLimit, 0);
+  const usedDisk = myInstances.reduce((acc, curr) => acc + (curr.diskLimit || 2048), 0);
 
   const TOTAL_CPU_QUOTA = 100;
   const TOTAL_MEMORY_QUOTA = 1024;
@@ -263,7 +348,7 @@ export const AppContent: React.FC = () => {
                 element={
                   <UserDashboard
                     user={currentUser}
-                    instances={instances}
+                    instances={myInstances}
                     portRequests={portRequests}
                     onCreateInstance={handleCreateInstance}
                     onRefreshData={refreshInstances}
@@ -300,6 +385,7 @@ export const AppContent: React.FC = () => {
                 <Route index element={<Navigate to="overview" replace />} />
                 <Route path="overview" element={<ProjectOverview />} />
                 <Route path="logs" element={<ProjectLogs />} />
+                <Route path="terminal" element={<ProjectLogs />} />
                 <Route path="files" element={<ProjectFiles />} />
                 <Route path="deployments" element={<ProjectDeployments />} />
                 <Route path="settings" element={<ProjectSettings />} />
@@ -314,12 +400,9 @@ export const AppContent: React.FC = () => {
                     <AdminPanel
                       pendingUsers={pendingUsers}
                       allUsers={allUsers}
-                      portRequests={portRequests}
                       allInstances={instances}
                       onApproveUser={handleApproveUser}
                       onRejectUser={handleRejectUser}
-                      onApprovePortRequest={handleApprovePortRequest}
-                      onRejectPortRequest={handleRejectPortRequest}
                       onRefreshData={() => {
                         refreshAdminData();
                         refreshInstances();
@@ -337,6 +420,7 @@ export const AppContent: React.FC = () => {
         </Routes>
         <Footer />
       </main>
+      <TermsModal isOpen={!termsAccepted} onAccept={() => setTermsAccepted(true)} />
     </div>
   );
 };

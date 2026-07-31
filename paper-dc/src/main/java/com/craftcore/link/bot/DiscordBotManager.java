@@ -11,8 +11,18 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
+import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.title.Title;
+import org.bukkit.Bukkit;
+import org.bukkit.Sound;
+import org.bukkit.entity.Player;
 
 import java.awt.Color;
 import java.net.URI;
@@ -59,6 +69,22 @@ public class DiscordBotManager {
 
                 jda.awaitReady();
                 plugin.getLogger().info("Successfully logged into Discord Bot as " + jda.getSelfUser().getAsTag() + "!");
+
+                // Register Slash Commands
+                String guildId = plugin.getConfigManager().getGuildId();
+                if (!guildId.isEmpty()) {
+                    Guild guild = jda.getGuildById(guildId);
+                    if (guild != null) {
+                        guild.upsertCommand("mc-title", "在 Minecraft 遊戲內發送大型 Title 螢幕字幕廣播")
+                                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MANAGE_SERVER))
+                                .addOption(OptionType.STRING, "title", "主標題文字", true)
+                                .addOption(OptionType.STRING, "subtitle", "副標題文字", false)
+                                .queue(
+                                        cmd -> plugin.getLogger().info("Successfully registered /mc-title slash command!"),
+                                        err -> plugin.getLogger().warning("Failed to register /mc-title slash command: " + err.getMessage())
+                                );
+                    }
+                }
 
                 String channelId = plugin.getConfigManager().getChatSyncChannelId();
                 plugin.getLogger().info("Configured Chat Sync Channel ID: '" + channelId + "'");
@@ -354,6 +380,58 @@ public class DiscordBotManager {
                 }, err -> plugin.getLogger().warning("Could not find Discord member " + discordId + ": " + err.getMessage()));
             } catch (Exception e) {
                 plugin.getLogger().warning("Error removing role from user: " + e.getMessage());
+            }
+        });
+    }
+
+    public void broadcastTitle(String titleText, String subtitleText) {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            Component titleComp = LegacyComponentSerializer.legacyAmpersand().deserialize(titleText.replace("&", "§"));
+            Component subtitleComp = subtitleText != null && !subtitleText.isEmpty()
+                    ? LegacyComponentSerializer.legacyAmpersand().deserialize(subtitleText.replace("&", "§"))
+                    : Component.empty();
+
+            Title title = Title.title(
+                    titleComp,
+                    subtitleComp,
+                    Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3500), Duration.ofMillis(1000))
+            );
+
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                player.showTitle(title);
+                player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+            }
+        });
+    }
+
+    public void sendDeathDm(String discordId, String username, String uuid, String worldName, int x, int y, int z, String deathMessage) {
+        if (jda == null || discordId == null || discordId.isEmpty()) return;
+        asyncExecutor.submit(() -> {
+            try {
+                jda.retrieveUserById(discordId).flatMap(User::openPrivateChannel).queue(channel -> {
+                    String avatarUrl = plugin.getConfigManager().getAvatarUrl(uuid);
+                    String titleText = plugin.getConfigManager().getMessage("discord.dm.death-embed.title");
+                    String descTemplate = plugin.getConfigManager().getMessage("discord.dm.death-embed.description");
+                    String description = descTemplate
+                            .replace("{x}", String.valueOf(x))
+                            .replace("{y}", String.valueOf(y))
+                            .replace("{z}", String.valueOf(z))
+                            .replace("{world}", worldName)
+                            .replace("{death_message}", deathMessage);
+
+                    EmbedBuilder embed = new EmbedBuilder()
+                            .setColor(new Color(0xFF, 0x55, 0x55))
+                            .setTitle(titleText)
+                            .setDescription(description)
+                            .setThumbnail(avatarUrl);
+
+                    channel.sendMessageEmbeds(embed.build()).queue(
+                            v -> plugin.getLogger().info("Successfully sent death DM to Discord user " + discordId),
+                            err -> plugin.getLogger().warning("Failed to send death DM to user " + discordId + ": " + err.getMessage())
+                    );
+                }, err -> plugin.getLogger().warning("Could not open private channel to user " + discordId + ": " + err.getMessage()));
+            } catch (Exception e) {
+                plugin.getLogger().warning("Error sending death DM: " + e.getMessage());
             }
         });
     }

@@ -1,12 +1,14 @@
 package com.craftcore.link.listener;
 
 import com.craftcore.link.CraftCoreLink;
+import com.craftcore.link.binding.BindingManager;
 import com.craftcore.link.util.DeathTranslationUtil;
 
 import io.papermc.paper.advancement.AdvancementDisplay;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -75,6 +77,34 @@ public class MinecraftEventListener implements Listener {
 
         String translatedMsg = DeathTranslationUtil.translate(rawDeathMsg, username);
         plugin.getDiscordBotManager().sendDeathEmbed(username, uuid, translatedMsg);
+
+        // Send Death DM with coordinates if player bound and enabled
+        BindingManager.UserBinding binding = plugin.getBindingManager().getBindingByMcUuid(uuid);
+        if (binding != null && binding.isDmDeathEnabled()) {
+            Location loc = player.getLocation();
+            String worldRaw = loc.getWorld() != null ? loc.getWorld().getName() : "world";
+            String worldDisplayName;
+            if (worldRaw.endsWith("_nether") || worldRaw.equals("world_nether")) {
+                worldDisplayName = "地底界 (下界)";
+            } else if (worldRaw.endsWith("_the_end") || worldRaw.equals("world_the_end")) {
+                worldDisplayName = "終界";
+            } else if (worldRaw.equals("world") || worldRaw.contains("overworld")) {
+                worldDisplayName = "主世界";
+            } else {
+                worldDisplayName = worldRaw;
+            }
+
+            plugin.getDiscordBotManager().sendDeathDm(
+                    binding.getDiscordId(),
+                    username,
+                    uuid,
+                    worldDisplayName,
+                    loc.getBlockX(),
+                    loc.getBlockY(),
+                    loc.getBlockZ(),
+                    translatedMsg
+            );
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

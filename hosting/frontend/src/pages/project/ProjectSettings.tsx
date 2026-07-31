@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Instance, EnvVariable } from '../../types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Trash2, Save, GitBranch, Copy, Check, ShieldAlert, Bell, Eye, EyeOff, Loader2, FolderTree, Hammer, Play, Network, AlertCircle, RotateCw } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Plus, Trash2, Save, GitBranch, Copy, Check, ShieldAlert, Bell, Eye, EyeOff, Loader2, FolderTree, Hammer, Play, Network, AlertCircle, RotateCw, FileCode, FileText, Globe } from 'lucide-react';
 
 export const ProjectSettings: React.FC = () => {
   const { instance, onRefreshData } = useOutletContext<{ instance: Instance; onRefreshData?: () => void }>();
@@ -33,6 +34,43 @@ export const ProjectSettings: React.FC = () => {
   const [saveError, setSaveError] = useState('');
   const [requestingPort, setRequestingPort] = useState(false);
   const [portMsg, setPortMsg] = useState('');
+  const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
+  const [bulkEnvText, setBulkEnvText] = useState('');
+  const [copiedEnvText, setCopiedEnvText] = useState(false);
+
+  const handleOpenBulkEnvModal = () => {
+    const text = envVars.map((e) => `${e.key}=${e.value}`).join('\n');
+    setBulkEnvText(text);
+    setIsEnvModalOpen(true);
+  };
+
+  const handleParseBulkEnv = () => {
+    const lines = bulkEnvText.split('\n');
+    const newVars: EnvVariable[] = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx > 0) {
+        const key = trimmed.substring(0, eqIdx).trim().toUpperCase();
+        let val = trimmed.substring(eqIdx + 1).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.substring(1, val.length - 1);
+        }
+        newVars.push({ key, value: val });
+      }
+    }
+    if (newVars.length > 0) {
+      setEnvVars(newVars);
+      setIsEnvModalOpen(false);
+    }
+  };
+
+  const handleCopyBulkEnvText = () => {
+    navigator.clipboard.writeText(bulkEnvText);
+    setCopiedEnvText(true);
+    setTimeout(() => setCopiedEnvText(false), 2000);
+  };
 
   const handleApplyPort = async () => {
     setRequestingPort(true);
@@ -54,11 +92,11 @@ export const ProjectSettings: React.FC = () => {
       });
 
       if (res.ok) {
-        setPortMsg('Port 與專屬域名已由系統自動核發成功！');
+        setPortMsg('對外連線通道與專屬域名已由系統自動開通！');
         onRefreshData?.();
       } else {
         const err = await res.json().catch(() => ({}));
-        setSaveError(err.error || 'Port 申請失敗');
+        setSaveError(err.error || '對外連線開啟失敗');
       }
     } catch (err) {
       setSaveError('網路錯誤，請稍後再試');
@@ -80,11 +118,11 @@ export const ProjectSettings: React.FC = () => {
       });
 
       if (res.ok) {
-        setPortMsg('對外 Port 與專屬域名已成功移除。');
+        setPortMsg('對外連線通道與專屬域名已成功關閉。');
         onRefreshData?.();
       } else {
         const err = await res.json().catch(() => ({}));
-        setSaveError(err.error || '移除 Port 失敗');
+        setSaveError(err.error || '關閉對外連線失敗');
       }
     } catch (err) {
       setSaveError('網路錯誤，請稍後再試');
@@ -107,11 +145,11 @@ export const ProjectSettings: React.FC = () => {
 
       if (res.ok) {
         const data = await res.json();
-        setPortMsg(`已成功重新核發全新 Port: ${data.assignedHostPort} 與 8 位子域名 app-${data.subdomain}`);
+        setPortMsg(`已成功重新核發對外通道: ${data.assignedHostPort} 與專屬域名`);
         onRefreshData?.();
       } else {
         const err = await res.json().catch(() => ({}));
-        setSaveError(err.error || '重新核發 Port 失敗');
+        setSaveError(err.error || '重新核發通道失敗');
       }
     } catch (err) {
       setSaveError('網路錯誤，請稍後再試');
@@ -266,22 +304,22 @@ export const ProjectSettings: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Public Port Request Banner */}
+        {/* Public Connection Request & Custom Domain Card */}
         <Card className="border shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
             <div>
               <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Network className="h-4 w-4 text-emerald-500" /> 對外 Port 與專屬域名核發
+                <Network className="h-4 w-4 text-emerald-500" /> 對外連線與專屬域名
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">
-                系統自動即時核發獨立 Port 與 8 位英數隨機專屬域名 (`app-XXXXXXXX.hosting.craft-core.xyz`)
+                開啟對外連線後，系統會自動分配專屬通道與 8 位英數專屬域名，並解除自訂域名綁定限制
               </p>
             </div>
             {instance.assignedHostPort ? (
               <div className="flex items-center gap-2">
                 <div className="flex flex-col items-end gap-1 mr-2">
                   <span className="font-mono text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded font-bold">
-                    已映射 Port: {instance.assignedHostPort}
+                    對外連線已開啟 (通道: {instance.assignedHostPort})
                   </span>
                   {instance.subdomain && (
                     <span className="font-mono text-[11px] text-primary">
@@ -297,10 +335,10 @@ export const ProjectSettings: React.FC = () => {
                   onClick={handleReissuePort}
                   disabled={requestingPort}
                   className="gap-1.5 text-xs font-bold shadow-sm"
-                  title="重新生成 8 位隨機域名與全新的對外 Port"
+                  title="重新生成專屬域名與對外連線通道"
                 >
                   {requestingPort ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}
-                  重新核發
+                  重新核發域名
                 </Button>
 
                 <Button
@@ -310,27 +348,51 @@ export const ProjectSettings: React.FC = () => {
                   onClick={handleDeletePort}
                   disabled={requestingPort}
                   className="gap-1.5 text-xs font-bold shadow-sm"
-                  title="關閉並關聯釋放此 Port 與域名"
+                  title="關閉專屬域名與對外連線通道"
                 >
                   {requestingPort ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  刪除 Port
+                  關閉對外連線
                 </Button>
               </div>
             ) : (
               <Button type="button" size="sm" onClick={handleApplyPort} disabled={requestingPort} className="gap-1.5 text-xs font-bold shadow-sm">
                 {requestingPort ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Network className="h-3.5 w-3.5 text-emerald-400" />}
-                {requestingPort ? '核發中...' : '自動開啟對外 Port'}
+                {requestingPort ? '開啟中...' : '自動開啟對外連線'}
               </Button>
             )}
           </CardHeader>
-          {portMsg && (
-            <CardContent className="pt-0">
+
+          <CardContent className="p-4 space-y-4">
+            {portMsg && (
               <div className="p-3 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
                 <Check className="h-4 w-4 shrink-0" />
                 <span>{portMsg}</span>
               </div>
-            </CardContent>
-          )}
+            )}
+
+            {/* Custom Domain Binding - Unlocked only after assignedHostPort exists */}
+            {instance.assignedHostPort ? (
+              <div className="space-y-1.5 pt-1">
+                <Label className="text-xs font-semibold flex items-center gap-2">
+                  <Globe className="h-3.5 w-3.5 text-primary" /> 自訂獨立域名
+                </Label>
+                <Input
+                  placeholder="bot.yourdomain.com"
+                  value={customDomain}
+                  onChange={(e) => setCustomDomain(e.target.value)}
+                  className="font-mono text-xs h-10"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  請登入您的 DNS 託管商 (Cloudflare)，將域名 CNAME 指向 <code className="font-mono bg-muted px-1 rounded text-primary">hosting.craft-core.xyz</code>
+                </p>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-lg bg-muted/40 border border-border text-xs text-muted-foreground flex items-center gap-2.5">
+                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                <span>請先點擊右上角「自動開啟對外連線」開放連線，即可解鎖並填入自訂獨立域名設定。</span>
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         {/* Discord Notification & Healthcheck */}
@@ -360,17 +422,6 @@ export const ProjectSettings: React.FC = () => {
                 className="font-mono text-xs"
               />
             </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">自訂獨立域名</Label>
-              <Input
-                placeholder="bot.yourdomain.com"
-                value={customDomain}
-                onChange={(e) => setCustomDomain(e.target.value)}
-                className="font-mono text-xs"
-              />
-              <p className="text-[11px] text-muted-foreground">請將您的域名 CNAME 指向 <code className="font-mono bg-muted px-1 rounded">hosting.craft-core.xyz</code></p>
-            </div>
           </CardContent>
         </Card>
 
@@ -378,9 +429,14 @@ export const ProjectSettings: React.FC = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base font-bold">環境變數</CardTitle>
-            <Button type="button" size="sm" variant="outline" onClick={handleAddEnv} className="gap-1 text-xs">
-              <Plus className="h-3.5 w-3.5" /> 新增變數
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={handleOpenBulkEnvModal} className="gap-1 text-xs font-mono">
+                <FileText className="h-3.5 w-3.5 text-primary" /> 批次匯入 / 匯出 .env
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={handleAddEnv} className="gap-1 text-xs font-bold">
+                <Plus className="h-3.5 w-3.5" /> 新增變數
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             {envVars.length === 0 ? (
@@ -556,6 +612,44 @@ export const ProjectSettings: React.FC = () => {
               {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
               {isDeleting ? '正在刪除專案...' : '確認永久刪除'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Bulk .env Modal */}
+      <Dialog open={isEnvModalOpen} onOpenChange={setIsEnvModalOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" /> 批次匯入 / 匯出 .env 檔案內容
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              您可以直接貼上本地 `.env` 檔案全文（例如 <code className="bg-muted px-1 rounded font-mono">KEY=VALUE</code> 格式），系統將自動解析為環境變數清單；亦可一鍵複製當前變數至剪貼簿。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-3">
+            <Textarea
+              placeholder={`# 貼上您的 .env 內容:\nDISCORD_TOKEN=MTE5...\nPORT=3000\nDATABASE_URL=mongodb://localhost:27017/mydb`}
+              value={bulkEnvText}
+              onChange={(e) => setBulkEnvText(e.target.value)}
+              className="font-mono text-xs min-h-[220px] leading-relaxed"
+            />
+          </div>
+
+          <DialogFooter className="flex items-center justify-between gap-2 border-t pt-4">
+            <Button type="button" variant="outline" onClick={handleCopyBulkEnvText} className="gap-1.5 text-xs font-mono">
+              {copiedEnvText ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              {copiedEnvText ? '已複製 .env 文字' : '一鍵複製 .env 內容'}
+            </Button>
+
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => setIsEnvModalOpen(false)}>
+                取消
+              </Button>
+              <Button type="button" onClick={handleParseBulkEnv} className="font-bold text-xs gap-1.5">
+                <Check className="h-4 w-4" /> 解析並套用
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

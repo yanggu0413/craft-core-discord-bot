@@ -112,7 +112,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ user, onLogout, activePr
                   }`}
                 >
                   <Terminal className="h-4 w-4" />
-                  <span>即時日誌</span>
+                  <span>控制台與日誌</span>
                 </Link>
 
                 <Link
@@ -122,7 +122,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ user, onLogout, activePr
                   }`}
                 >
                   <Folder className="h-4 w-4" />
-                  <span>工作區檔案</span>
+                  <span>檔案管理</span>
                 </Link>
 
                 <Link

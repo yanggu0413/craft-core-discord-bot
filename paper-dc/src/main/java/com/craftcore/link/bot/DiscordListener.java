@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleRemoveEvent;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.bukkit.Bukkit;
@@ -18,6 +19,17 @@ public class DiscordListener extends ListenerAdapter {
 
     public DiscordListener(CraftCoreLink plugin) {
         this.plugin = plugin;
+    }
+
+    @Override
+    public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        if (event.getName().equals("mc-title")) {
+            String title = event.getOption("title") != null ? event.getOption("title").getAsString() : "";
+            String subtitle = event.getOption("subtitle") != null ? event.getOption("subtitle").getAsString() : "";
+
+            plugin.getDiscordBotManager().broadcastTitle(title, subtitle);
+            event.reply("✅ 已成功在遊戲內向所有玩家發送 Title 廣播！").setEphemeral(true).queue();
+        }
     }
 
     @Override
@@ -95,9 +107,12 @@ public class DiscordListener extends ListenerAdapter {
             bindingManager.removeTempCode(content);
             bindingManager.removeRateLimit(discordId);
 
-            // Grant verified role
+            // Grant verified role & remove unverified role
             String verifiedRoleId = plugin.getConfigManager().getVerifiedRoleId();
             plugin.getDiscordBotManager().addRoleToUser(discordId, verifiedRoleId);
+
+            String unverifiedRoleId = plugin.getConfigManager().getUnverifiedRoleId();
+            plugin.getDiscordBotManager().removeRoleFromUser(discordId, unverifiedRoleId);
 
             // Sync LuckPerms VIP if player already has VIP group on MC
             if (plugin.getLuckPermsSyncManager().isEnabled()) {

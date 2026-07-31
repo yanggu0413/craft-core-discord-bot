@@ -92,6 +92,10 @@ public class ConfigManager {
         return getRawString("discord.invite-url", "https://discord.gg");
     }
 
+    public String getUnverifiedRoleId() {
+        return getRawString("roles.unverified-role-id", "1532341810922393680");
+    }
+
     public String getVerifiedRoleId() {
         return getRawString("roles.verified-role-id", "1521767183326249100");
     }

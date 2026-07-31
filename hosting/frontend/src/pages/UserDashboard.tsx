@@ -26,21 +26,24 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const navigate = useNavigate();
 
+  // Filter instances strictly belonging to the current user
+  const myInstances = instances.filter((inst) => inst.userId === user.id);
+
   // Quotas
   const MAX_INSTANCES = 2;
   const TOTAL_CPU_QUOTA = 100;
   const TOTAL_MEM_QUOTA = 1024;
   const TOTAL_DISK_QUOTA = 4096;
 
-  const usedCpu = instances.reduce((sum, inst) => sum + (inst.cpuLimit || 0), 0);
-  const usedMem = instances.reduce((sum, inst) => sum + (inst.memoryLimit || 0), 0);
-  const usedDisk = instances.reduce((sum, inst) => sum + (inst.diskLimit || 2048), 0);
+  const usedCpu = myInstances.reduce((sum, inst) => sum + (inst.cpuLimit || 0), 0);
+  const usedMem = myInstances.reduce((sum, inst) => sum + (inst.memoryLimit || 0), 0);
+  const usedDisk = myInstances.reduce((sum, inst) => sum + (inst.diskLimit || 2048), 0);
 
   const remainingCpu = Math.max(0, TOTAL_CPU_QUOTA - usedCpu);
   const remainingMem = Math.max(0, TOTAL_MEM_QUOTA - usedMem);
   const remainingDisk = Math.max(0, TOTAL_DISK_QUOTA - usedDisk);
 
-  const canCreate = instances.length < MAX_INSTANCES && remainingCpu >= 10 && remainingMem >= 64 && remainingDisk >= 256;
+  const canCreate = myInstances.length < MAX_INSTANCES && remainingCpu >= 10 && remainingMem >= 64 && remainingDisk >= 256;
 
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-6xl mx-auto w-full">
@@ -120,11 +123,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold flex items-center gap-2">
-            <Server className="h-4 w-4 text-primary" /> 託管機器專案 (Projects)
+            <Server className="h-4 w-4 text-primary" /> 託管機器專案
           </h2>
         </div>
 
-        {instances.length === 0 ? (
+        {myInstances.length === 0 ? (
           <Card className="p-12 text-center border-dashed space-y-2">
             <Server className="h-10 w-10 text-muted-foreground mx-auto" />
             <h3 className="text-base font-bold">目前尚未建立任何機器專案</h3>
@@ -134,7 +137,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {instances.map((inst) => {
+            {myInstances.map((inst) => {
               const isRunning = inst.status === 'running';
               return (
                 <Card
@@ -156,8 +159,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                           <CardTitle className="text-base font-bold flex items-center gap-2 hover:text-primary transition-colors">
                             {inst.name}
                           </CardTitle>
-                          <CardDescription className="text-xs font-mono mt-0.5">
-                            {inst.sourceType === 'git' ? inst.gitUrl || 'GitHub Repository' : 'ZIP Deployment'}
+                          <CardDescription className="text-xs font-mono mt-0.5 truncate">
+                            {inst.dockerImage || (inst.runtime === 'docker' ? 'Docker Container' : (inst.sourceType === 'git' ? inst.gitUrl || 'GitHub Repository' : 'ZIP Deployment'))}
                           </CardDescription>
                         </div>
                       </div>
@@ -180,7 +183,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                     {inst.assignedHostPort && (
                       <div className="flex items-center gap-1.5 text-xs text-primary font-mono pt-1">
                         <Globe className="h-3.5 w-3.5" />
-                        <span>app-{inst.assignedHostPort}.hosting.craft-core.xyz</span>
+                        <span>app-{inst.subdomain || inst.assignedHostPort}.hosting.craft-core.xyz</span>
                       </div>
                     )}
                   </CardContent>

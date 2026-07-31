@@ -7,6 +7,11 @@ import crypto from 'crypto';
 import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import net from 'net';
+import { execFile } from 'child_process';
+import util from 'util';
+import http from 'http';
+
+const execFilePromise = util.promisify(execFile);
 
 import { initDatabase, db, recordAuditLog } from './db/database';
 import { handleUserAuthentication, generateToken, authenticate, AuthRequest, checkInstanceOwnership } from './services/auth';
@@ -19,11 +24,45 @@ import AdmZip from 'adm-zip';
 dotenv.config();
 initDatabase();
 
+import httpProxy from 'http-proxy';
+
 const app = express();
 const PORT = process.env.PORT || 3005;
 
 // 🔴 Security/Infrastructure Fix: Trust Proxy for Rate Limiter
 app.set('trust proxy', 1);
+
+// High-Performance HTTP Keep-Alive Agent for Subdomain Proxy
+const keepAliveAgent = new http.Agent({ keepAlive: true, maxSockets: 200, keepAliveMsecs: 30000 });
+const appProxy = httpProxy.createProxyServer({
+  ws: true,
+  changeOrigin: true,
+  xfwd: true,
+  agent: keepAliveAgent,
+});
+
+appProxy.on('error', (err: any, _req: any, res: any) => {
+  if (res && 'writeHead' in res && !res.headersSent) {
+    res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('容器通訊通道連線失敗，請確認容器是否已啟動');
+  }
+});
+
+// Subdomain Reverse Proxy Middleware for app-*.hosting.craft-core.xyz (Must run BEFORE CORS/Parsers)
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const host = req.headers.host || '';
+  const match = host.match(/^app-([a-z0-9]+)\.hosting\.craft-core\.xyz$/i);
+  if (!match) return next();
+
+  const sub = match[1];
+  const inst = db.prepare('SELECT assigned_host_port FROM instances WHERE (subdomain = ? OR assigned_host_port = ?) AND assigned_host_port IS NOT NULL').get(sub, parseInt(sub, 10)) as any;
+
+  if (!inst || !inst.assigned_host_port) {
+    return res.status(404).send('對外連線通道未開通或專案不存在');
+  }
+
+  appProxy.web(req, res, { target: `http://127.0.0.1:${inst.assigned_host_port}` });
+});
 
 // 🔴 Security Fix Item #1: Strict CORS Whitelist to prevent CSRF/CORS Origin Reflection
 const allowedOrigins = [
@@ -35,7 +74,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.hosting.craft-core.xyz')) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -45,9 +84,9 @@ app.use(
   })
 );
 
-// 🟡 Performance/Stability Fix Item #3: Increase Body Parser limit to 10MB
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// 🟡 Performance/Stability Fix: Increase Body Parser limit to 2GB for large archive uploads
+app.use(express.json({ limit: '2gb' }));
+app.use(express.urlencoded({ extended: true, limit: '2gb' }));
 
 // Rate Limiter
 const apiLimiter = rateLimit({
@@ -60,7 +99,10 @@ const apiLimiter = rateLimit({
 
 app.use('/api/', apiLimiter);
 
-const upload = multer({ dest: path.join(process.cwd(), 'data', 'tmp') });
+const upload = multer({
+  dest: path.join(process.cwd(), 'data', 'tmp'),
+  limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2GB max upload limit
+});
 
 // Helper: Test physical host port availability
 function isPortAvailable(port: number): Promise<boolean> {
@@ -72,6 +114,40 @@ function isPortAvailable(port: number): Promise<boolean> {
     });
     server.listen(port, '0.0.0.0');
   });
+}
+
+// Helper: Scan project directory for hardcoded secrets & tokens
+async function scanDirectoryForSecrets(dirPath: string): Promise<string[]> {
+  const warnings: string[] = [];
+  try {
+    const files = await fs.promises.readdir(dirPath, { recursive: true });
+    for (const relativeFile of files) {
+      if (typeof relativeFile !== 'string') continue;
+      if (relativeFile.includes('node_modules') || relativeFile.includes('.git') || relativeFile.includes('dist')) continue;
+
+      const fullPath = path.join(dirPath, relativeFile);
+      const stat = await fs.promises.stat(fullPath).catch(() => null);
+      if (!stat || !stat.isFile() || stat.size > 2 * 1024 * 1024) continue;
+
+      const content = await fs.promises.readFile(fullPath, 'utf-8').catch(() => '');
+      if (!content) continue;
+
+      // 1. Discord Bot Token regex
+      const discordTokenMatch = content.match(/[a-zA-Z0-9_-]{24}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{27,38}/);
+      if (discordTokenMatch && !relativeFile.endsWith('.env')) {
+        warnings.push(`檔案 ${relativeFile} 包含硬編碼 Discord Bot Token (${discordTokenMatch[0].substring(0, 10)}...)`);
+      }
+
+      // 2. OpenAI / Stripe / AWS Private API Key regex
+      const apiKeyMatch = content.match(/sk-[a-zA-Z0-9]{32,}/) || content.match(/AKIA[0-9A-Z]{16}/);
+      if (apiKeyMatch && !relativeFile.endsWith('.env')) {
+        warnings.push(`檔案 ${relativeFile} 包含硬編碼 API Key 機密憑證`);
+      }
+    }
+  } catch (err) {
+    console.warn('[Secrets Scanner] Error scanning directory:', err);
+  }
+  return warnings;
 }
 
 // Helper: Find available host port without collision
@@ -188,6 +264,29 @@ app.get('/api/auth/discord/callback', async (req, res) => {
   }
 });
 
+// Caddy On-Demand TLS Security Check Endpoint
+app.get('/api/caddy-ask', (req, res) => {
+  const domain = req.query.domain as string;
+  if (!domain) return res.status(400).send('No domain specified');
+
+  const cleanDomain = domain.toLowerCase().trim();
+
+  // Allow all app-*.hosting.craft-core.xyz subdomains
+  if (cleanDomain.endsWith('.hosting.craft-core.xyz')) {
+    return res.status(200).send('OK');
+  }
+
+  // Allow registered custom CNAME domains
+  const inst = db.prepare('SELECT id FROM instances WHERE custom_domain = ?').get(cleanDomain);
+  if (inst) {
+    return res.status(200).send('OK');
+  }
+
+  return res.status(400).send('Domain authorization denied');
+});
+
+
+
 // Logout Endpoint
 app.post('/api/auth/logout', (req, res) => {
   res.clearCookie('token');
@@ -234,42 +333,163 @@ function generateSubdomain(): string {
   return result;
 }
 
-// List User Instances
-app.get('/api/instances', authenticate, (req: AuthRequest, res) => {
-  let instances: any[];
-  if (req.user?.role === 'ADMIN') {
-    instances = db.prepare('SELECT * FROM instances ORDER BY created_at DESC').all();
-  } else {
-    instances = db.prepare('SELECT * FROM instances WHERE user_id = ? ORDER BY created_at DESC').all(req.user?.id);
+// List User Instances (Always returns only the authenticated user's own instances)
+app.get('/api/instances', authenticate, async (req: AuthRequest, res) => {
+  const instances: any[] = db.prepare('SELECT * FROM instances WHERE user_id = ? ORDER BY created_at DESC').all(req.user?.id) as any[];
+
+  const updatedInstances = await Promise.all(
+    instances.map(async (i) => {
+      const isRunning = await DockerService.isContainerRunning(i.id).catch(() => false);
+      const actualStatus = isRunning ? 'running' : (i.status === 'running' ? 'stopped' : i.status);
+      if (i.status !== actualStatus) {
+        db.prepare('UPDATE instances SET status = ? WHERE id = ?').run(actualStatus, i.id);
+      }
+      return {
+        id: i.id,
+        userId: i.user_id,
+        name: i.name,
+        runtime: i.runtime,
+        sourceType: i.source_type,
+        gitUrl: i.git_url,
+        zipFileName: i.zip_file_name,
+        startCommand: i.start_command,
+        internalPort: i.internal_port,
+        assignedHostPort: i.assigned_host_port,
+        cpuLimit: i.cpu_limit,
+        memoryLimit: i.memory_limit,
+        diskLimit: i.disk_limit || 2048,
+        envVars: i.env_vars ? JSON.parse(i.env_vars) : [],
+        status: actualStatus,
+        webhookSecret: i.webhook_secret,
+        discordWebhookUrl: i.discord_webhook_url,
+        healthCheckEndpoint: i.health_check_endpoint,
+        customDomain: i.custom_domain,
+        subdomain: i.subdomain,
+        rootDir: i.root_dir || '/',
+        buildCommand: i.build_command,
+        createdAt: i.created_at,
+      };
+    })
+  );
+
+  res.json(updatedInstances);
+});
+
+// Chunked Upload: Upload 5MB slice
+app.post('/api/upload/chunk', authenticate, upload.single('chunk'), async (req: AuthRequest, res) => {
+  try {
+    const { uploadId, chunkIndex } = req.body;
+    if (!uploadId || chunkIndex === undefined || !req.file) {
+      return res.status(400).json({ error: 'Missing chunk upload parameters' });
+    }
+
+    const safeUploadId = uploadId.replace(/[^a-zA-Z0-9_-]/g, '');
+    const chunkDir = path.join(process.cwd(), 'data', 'tmp', `chunked_${safeUploadId}`);
+    await fs.promises.mkdir(chunkDir, { recursive: true });
+
+    const chunkPath = path.join(chunkDir, `chunk_${parseInt(chunkIndex, 10)}`);
+    await fs.promises.rename(req.file.path, chunkPath);
+
+    res.json({ success: true, chunkIndex: parseInt(chunkIndex, 10) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Chunked Upload: Merge all 5MB slices into single ZIP
+app.post('/api/upload/merge', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { uploadId, totalChunks } = req.body;
+    if (!uploadId || !totalChunks) {
+      return res.status(400).json({ error: 'Missing merge parameters' });
+    }
+
+    const safeUploadId = uploadId.replace(/[^a-zA-Z0-9_-]/g, '');
+    const chunkDir = path.join(process.cwd(), 'data', 'tmp', `chunked_${safeUploadId}`);
+    const mergedZipPath = path.join(process.cwd(), 'data', 'tmp', `${safeUploadId}.zip`);
+
+    const writeStream = fs.createWriteStream(mergedZipPath);
+    const count = parseInt(totalChunks, 10);
+
+    for (let i = 0; i < count; i++) {
+      const chunkPath = path.join(chunkDir, `chunk_${i}`);
+      if (!fs.existsSync(chunkPath)) {
+        return res.status(400).json({ error: `Missing chunk ${i}` });
+      }
+      const buffer = await fs.promises.readFile(chunkPath);
+      writeStream.write(buffer);
+      await fs.promises.unlink(chunkPath).catch(() => {});
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      writeStream.end((err?: any) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    await fs.promises.rm(chunkDir, { recursive: true, force: true }).catch(() => {});
+
+    res.json({ success: true, chunkedZipKey: safeUploadId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper: Parse docker run command or docker-compose yaml
+function parseDockerCommandOrCompose(inputStr: string): { image?: string; port?: number; envVars: { key: string; value: string }[] } {
+  const result: { image?: string; port?: number; envVars: { key: string; value: string }[] } = { envVars: [] };
+  if (!inputStr || !inputStr.trim()) return result;
+
+  const str = inputStr.trim();
+
+  if (str.includes('docker run') || str.includes('docker') || str.includes(':')) {
+    const portMatch = str.match(/(?:-p|--publish)\s+(?:(?:\d+\.):)?(\d+):(\d+)/i);
+    if (portMatch) {
+      result.port = parseInt(portMatch[2] || portMatch[1], 10);
+    }
+
+    const strippedForImage = str.replace(/(?:-p|--publish)\s+(?:\d+:)?\d+/gi, '');
+    const imageMatch = strippedForImage.match(/(?:[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+:[a-zA-Z0-9_.-]+|[a-zA-Z0-9_.-]+:[a-zA-Z0-9_.-]+|[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+)/);
+    if (imageMatch && !/^\d+:\d+$/.test(imageMatch[1])) {
+      result.image = imageMatch[1];
+    }
+
+    const envMatches = str.matchAll(/(?:-e|--env)\s+([A-Za-z_][A-Za-z0-9_]*)=(?:"([^"]*)"|'([^']*)'|(\S+))/g);
+    for (const match of envMatches) {
+      const key = match[1];
+      const val = match[2] || match[3] || match[4] || '';
+      result.envVars.push({ key, value: val });
+    }
   }
 
-  res.json(
-    instances.map((i) => ({
-      id: i.id,
-      userId: i.user_id,
-      name: i.name,
-      runtime: i.runtime,
-      sourceType: i.source_type,
-      gitUrl: i.git_url,
-      zipFileName: i.zip_file_name,
-      startCommand: i.start_command,
-      internalPort: i.internal_port,
-      assignedHostPort: i.assigned_host_port,
-      cpuLimit: i.cpu_limit,
-      memoryLimit: i.memory_limit,
-      diskLimit: i.disk_limit || 2048,
-      envVars: i.env_vars ? JSON.parse(i.env_vars) : [],
-      status: i.status,
-      webhookSecret: i.webhook_secret,
-      discordWebhookUrl: i.discord_webhook_url,
-      healthCheckEndpoint: i.health_check_endpoint,
-      customDomain: i.custom_domain,
-      subdomain: i.subdomain,
-      rootDir: i.root_dir || '/',
-      buildCommand: i.build_command,
-      createdAt: i.created_at,
-    }))
-  );
+  if (!result.image && (str.includes('image:') || str.includes('services:'))) {
+    const composeImageMatch = str.match(/image:\s*["']?([^\s"']+)["']?/i);
+    if (composeImageMatch) {
+      result.image = composeImageMatch[1];
+    }
+
+    const composePortMatch = str.match(/ports:\s*\n\s*-\s*["']?(\d+):(\d+)["']?/i) || str.match(/-\s*["']?(\d+):(\d+)["']?/i);
+    if (composePortMatch) {
+      result.port = parseInt(composePortMatch[2] || composePortMatch[1], 10);
+    }
+  }
+
+  return result;
+}
+
+// Real-Time Docker Pull Status API
+app.get('/api/system/docker-pull-status', (req, res) => {
+  const { pullingStatusMap } = require('./services/docker');
+  const image = (req.query.image || '').toString().trim();
+  if (image && pullingStatusMap.has(image)) {
+    return res.json({ pulling: true, status: pullingStatusMap.get(image) });
+  }
+  if (pullingStatusMap.size > 0) {
+    const firstStatus = Array.from(pullingStatusMap.values())[0];
+    return res.json({ pulling: true, status: firstStatus });
+  }
+  return res.json({ pulling: false, status: '' });
 });
 
 // Create Instance
@@ -278,12 +498,25 @@ app.post('/api/instances', authenticate, upload.single('zipFile'), async (req: A
   const appDir = path.join(process.cwd(), 'data', 'apps', instanceId);
 
   try {
-    const { name, runtime, sourceType, gitUrl, startCommand, buildCommand, rootDir, internalPort, cpuLimit, memoryLimit, diskLimit } = req.body;
+    const { name, runtime, sourceType, gitUrl, startCommand, buildCommand, rootDir, internalPort, cpuLimit, memoryLimit, diskLimit, chunkedZipKey, dockerImage, dockerRunCmd } = req.body;
+
+    let finalRuntime = runtime;
+    let finalDockerImage = dockerImage && dockerImage.trim() ? dockerImage.trim() : undefined;
+    let finalPortNum = parseInt(internalPort || '3000', 10);
+    let parsedEnvVars: any[] = [];
+
+    if (dockerRunCmd || dockerImage || runtime === 'docker') {
+      finalRuntime = 'docker';
+      const parsed = parseDockerCommandOrCompose(dockerRunCmd || '');
+      if (!finalDockerImage && parsed.image) finalDockerImage = parsed.image;
+      if (parsed.port && isNaN(parseInt(internalPort, 10))) finalPortNum = parsed.port;
+      if (parsed.envVars.length > 0) parsedEnvVars = parsed.envVars;
+    }
 
     const cpuNum = parseInt(cpuLimit, 10);
     const memNum = parseInt(memoryLimit, 10);
     const diskNum = parseInt(diskLimit || '2048', 10);
-    const portNum = parseInt(internalPort, 10);
+    const portNum = isNaN(finalPortNum) ? 3000 : finalPortNum;
 
     if (isNaN(cpuNum) || cpuNum < 10 || cpuNum > 100) {
       return res.status(400).json({ error: 'cpuLimit must be between 10 and 100' });
@@ -303,48 +536,114 @@ app.post('/api/instances', authenticate, upload.single('zipFile'), async (req: A
       return res.status(400).json({ error: 'Instance quota limit reached (Max 2 instances)' });
     }
 
+    // Global Server Memory Quota Check (Max 10GB / 10240MB allocated total across all instances)
+    const globalAllocatedRow = db.prepare('SELECT SUM(memory_limit) AS total FROM instances').get() as any;
+    const currentGlobalAllocated = globalAllocatedRow && globalAllocatedRow.total ? globalAllocatedRow.total : 0;
+    const MAX_GLOBAL_MEMORY_MB = 10240;
+
+    if (currentGlobalAllocated + memNum > MAX_GLOBAL_MEMORY_MB && req.user?.role !== 'ADMIN') {
+      return res.status(400).json({
+        error: `伺服器雲端總記憶體配額已達安全上限 (${(currentGlobalAllocated / 1024).toFixed(1)} GB / 10 GB)，暫無法配給更多記憶體。`,
+      });
+    }
+
     const webhookSecret = crypto.randomBytes(16).toString('hex');
     await fs.promises.mkdir(appDir, { recursive: true });
 
-    // Zip Slip Defense with Symlink/Path checks
-    if (sourceType === 'zip' && req.file) {
-      const zip = new AdmZip(req.file.path);
-      const entries = zip.getEntries();
-      for (const entry of entries) {
-        const entryTargetPath = path.resolve(appDir, entry.entryName);
-        if (!entryTargetPath.startsWith(appDir)) {
-          console.error(`Zip Slip attack attempt detected: ${entry.entryName}`);
-          continue;
-        }
-        if (entry.isDirectory) {
-          await fs.promises.mkdir(entryTargetPath, { recursive: true });
-        } else {
-          const parentDir = path.dirname(entryTargetPath);
-          if (!fs.existsSync(parentDir)) {
-            await fs.promises.mkdir(parentDir, { recursive: true });
+    // Determine target ZIP file path (direct upload req.file OR chunkedZipKey)
+    let targetZipPath = req.file?.path;
+    if (!targetZipPath && chunkedZipKey) {
+      const safeKey = chunkedZipKey.replace(/[^a-zA-Z0-9_-]/g, '');
+      const potentialPath = path.join(process.cwd(), 'data', 'tmp', `${safeKey}.zip`);
+      if (fs.existsSync(potentialPath)) {
+        targetZipPath = potentialPath;
+      }
+    }
+
+    // Zip Extraction with Native Fast Unzip & Zip Slip Defense
+    if (sourceType === 'zip' && targetZipPath) {
+      try {
+        await execFilePromise('unzip', ['-q', '-o', targetZipPath, '-d', appDir]);
+      } catch (nativeErr) {
+        console.warn('[ZIP Extraction] Native unzip unavailable or failed, falling back to AdmZip:', nativeErr);
+        const zip = new AdmZip(targetZipPath);
+        const entries = zip.getEntries();
+        for (const entry of entries) {
+          const entryTargetPath = path.resolve(appDir, entry.entryName);
+          if (!entryTargetPath.startsWith(appDir)) {
+            console.error(`Zip Slip attack attempt detected: ${entry.entryName}`);
+            continue;
           }
-          await fs.promises.writeFile(entryTargetPath, entry.getData());
+          if (entry.isDirectory) {
+            await fs.promises.mkdir(entryTargetPath, { recursive: true });
+          } else {
+            const parentDir = path.dirname(entryTargetPath);
+            if (!fs.existsSync(parentDir)) {
+              await fs.promises.mkdir(parentDir, { recursive: true });
+            }
+            await fs.promises.writeFile(entryTargetPath, entry.getData());
+          }
         }
       }
-      await fs.promises.unlink(req.file.path).catch(() => {});
+      await fs.promises.unlink(targetZipPath).catch(() => {});
     } else if (sourceType === 'git' && gitUrl) {
       await GitService.cloneRepo(gitUrl, instanceId);
+    }
+
+    // Scan project files for hardcoded secrets
+    const secretWarnings = await scanDirectoryForSecrets(appDir);
+    if (secretWarnings.length > 0) {
+      recordAuditLog(
+        req.user!.id,
+        req.user!.username,
+        'SECURITY_SECRETS_WARNING',
+        `Secrets scanner detected hardcoded tokens in ${name} (${instanceId}): ${secretWarnings.join('; ')}`,
+        req.ip
+      );
+    }
+
+    let envVarsToSave: any[] = [...parsedEnvVars];
+    if (finalRuntime === 'mongodb') {
+      const dbPassword = crypto.randomBytes(8).toString('hex');
+      envVarsToSave = [
+        { key: 'MONGO_INITDB_ROOT_USERNAME', value: 'admin' },
+        { key: 'MONGO_INITDB_ROOT_PASSWORD', value: dbPassword },
+        { key: 'DATABASE_NAME', value: name.replace(/[^a-zA-Z0-9_]/g, '_') },
+      ];
+    } else if (finalRuntime === 'postgres') {
+      const dbPassword = crypto.randomBytes(8).toString('hex');
+      envVarsToSave = [
+        { key: 'POSTGRES_USER', value: 'postgres' },
+        { key: 'POSTGRES_PASSWORD', value: dbPassword },
+        { key: 'POSTGRES_DB', value: name.replace(/[^a-zA-Z0-9_]/g, '_') },
+      ];
+    } else if (finalRuntime === 'mysql') {
+      const dbPassword = crypto.randomBytes(8).toString('hex');
+      envVarsToSave = [
+        { key: 'MYSQL_ROOT_PASSWORD', value: dbPassword },
+        { key: 'MYSQL_DATABASE', value: name.replace(/[^a-zA-Z0-9_]/g, '_') },
+      ];
+    } else if (finalRuntime === 'redis') {
+      const dbPassword = crypto.randomBytes(8).toString('hex');
+      envVarsToSave = [
+        { key: 'REDIS_PASSWORD', value: dbPassword },
+      ];
     }
 
     const subdomain = generateSubdomain();
 
     db.prepare(`
-      INSERT INTO instances (id, user_id, name, runtime, source_type, git_url, zip_file_name, start_command, build_command, root_dir, internal_port, cpu_limit, memory_limit, disk_limit, status, webhook_secret, subdomain, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'stopped', ?, ?, ?)
+      INSERT INTO instances (id, user_id, name, runtime, source_type, git_url, zip_file_name, start_command, build_command, root_dir, internal_port, cpu_limit, memory_limit, disk_limit, status, webhook_secret, subdomain, env_vars, docker_image, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'stopped', ?, ?, ?, ?, ?)
     `).run(
       instanceId,
       req.user?.id,
       name,
-      runtime,
+      finalRuntime,
       sourceType,
       gitUrl || null,
       req.file ? req.file.originalname : null,
-      startCommand,
+      startCommand || 'none',
       buildCommand || null,
       rootDir || '/',
       portNum,
@@ -353,6 +652,8 @@ app.post('/api/instances', authenticate, upload.single('zipFile'), async (req: A
       diskNum,
       webhookSecret,
       subdomain,
+      envVarsToSave.length > 0 ? JSON.stringify(envVarsToSave) : null,
+      finalDockerImage || null,
       new Date().toISOString()
     );
 
@@ -431,17 +732,29 @@ const saveSettingsHandler = async (req: AuthRequest, res: express.Response) => {
       updates.push('env_vars = ?');
       params.push(JSON.stringify(envVars));
     }
-    if (cpuLimit) {
+    if (cpuLimit !== undefined) {
+      const c = parseInt(cpuLimit, 10);
+      if (isNaN(c) || c < 10 || c > 100) {
+        return res.status(400).json({ error: 'CPU 配額限制必須在 10% ~ 100% 之間' });
+      }
       updates.push('cpu_limit = ?');
-      params.push(parseInt(cpuLimit, 10));
+      params.push(c);
     }
-    if (memoryLimit) {
+    if (memoryLimit !== undefined) {
+      const m = parseInt(memoryLimit, 10);
+      if (isNaN(m) || m < 64 || m > 1024) {
+        return res.status(400).json({ error: '記憶體限制必須在 64MB ~ 1024MB 之間' });
+      }
       updates.push('memory_limit = ?');
-      params.push(parseInt(memoryLimit, 10));
+      params.push(m);
     }
-    if (diskLimit) {
+    if (diskLimit !== undefined) {
+      const d = parseInt(diskLimit, 10);
+      if (isNaN(d) || d < 256 || d > 4096) {
+        return res.status(400).json({ error: '硬碟空間限制必須在 256MB ~ 4096MB 之間' });
+      }
       updates.push('disk_limit = ?');
-      params.push(parseInt(diskLimit, 10));
+      params.push(d);
     }
     if (discordWebhookUrl !== undefined) {
       updates.push('discord_webhook_url = ?');
@@ -520,6 +833,39 @@ app.post('/api/instances/:id/restart', authenticate, async (req: AuthRequest, re
   }
 });
 
+// Container Action: Upgrade Image & Recreate
+app.post('/api/instances/:id/upgrade', authenticate, async (req: AuthRequest, res) => {
+  if (!checkInstanceOwnership(req.params.id, req.user)) {
+    return res.status(403).json({ error: '存取遭拒：您不擁有此專案權限' });
+  }
+  try {
+    await DockerService.upgradeContainer(req.params.id);
+    recordAuditLog(req.user!.id, req.user!.username, 'CONTAINER_UPGRADED', `Upgraded instance image for ${req.params.id}`, req.ip);
+    res.json({ success: true, message: '容器鏡像已成功升級至最新版本並完成平滑重啟' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Container Action: Exec Command inside Container
+app.post('/api/instances/:id/exec', authenticate, async (req: AuthRequest, res) => {
+  if (!checkInstanceOwnership(req.params.id, req.user)) {
+    return res.status(403).json({ error: 'Access denied: You do not own this instance' });
+  }
+  try {
+    const { command } = req.body;
+    if (!command || !command.trim()) {
+      return res.status(400).json({ error: '請輸入有效的指令' });
+    }
+
+    const result = await DockerService.execInContainer(req.params.id, command.trim());
+    recordAuditLog(req.user!.id, req.user!.username, 'CONTAINER_EXEC', `Executed command in ${req.params.id}: ${command.trim().substring(0, 50)}`, req.ip);
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Container Logs
 app.get('/api/instances/:id/logs', authenticate, async (req: AuthRequest, res) => {
   if (!checkInstanceOwnership(req.params.id, req.user)) {
@@ -555,6 +901,9 @@ app.get('/api/instances/:id/files', authenticate, async (req: AuthRequest, res) 
 
   try {
     const appDir = GitService.getAppDir(req.params.id);
+    if (!fs.existsSync(appDir)) {
+      fs.mkdirSync(appDir, { recursive: true });
+    }
     const reqDir = (req.query.dir || req.query.path || req.query.filePath || '/').toString();
 
     const safeTargetDir = path.resolve(appDir, '.' + path.sep + reqDir.replace(/^[/\\]+/, ''));
@@ -573,20 +922,27 @@ app.get('/api/instances/:id/files', authenticate, async (req: AuthRequest, res) 
     }
 
     const fileNames = await fs.promises.readdir(realTargetDir);
-    const files = await Promise.all(
-      fileNames.map(async (name) => {
-        const fullPath = path.join(realTargetDir, name);
-        const stat = await fs.promises.stat(fullPath);
-        const relPath = '/' + path.relative(appDir, fullPath).replace(/\\/g, '/');
-        return {
-          name,
-          path: relPath,
-          isDirectory: stat.isDirectory(),
-          size: stat.size,
-          updatedAt: stat.mtime.toISOString(),
-        };
-      })
-    );
+    const files = (
+      await Promise.all(
+        fileNames.map(async (name) => {
+          try {
+            const fullPath = path.join(realTargetDir, name);
+            const stat = await fs.promises.stat(fullPath);
+            const relPath = '/' + path.relative(appDir, fullPath).replace(/\\/g, '/');
+            return {
+              name,
+              path: relPath,
+              isDirectory: stat.isDirectory(),
+              size: stat.size,
+              updatedAt: stat.mtime ? stat.mtime.toISOString() : new Date().toISOString(),
+            };
+          } catch (fileErr) {
+            console.warn(`[File Listing] Skipping unstatable file ${name}:`, fileErr);
+            return null;
+          }
+        })
+      )
+    ).filter(Boolean);
 
     res.json({ success: true, files });
   } catch (err: any) {
@@ -627,6 +983,41 @@ const readFileHandler = async (req: AuthRequest, res: express.Response) => {
 };
 app.get('/api/instances/:id/files/read', authenticate, readFileHandler);
 app.post('/api/instances/:id/files/read', authenticate, readFileHandler);
+
+// Upload File Endpoint to Project Directory
+app.post('/api/instances/:id/files/upload', authenticate, upload.single('file'), async (req: AuthRequest, res) => {
+  if (!checkInstanceOwnership(req.params.id, req.user)) {
+    return res.status(403).json({ error: 'Access denied: You do not own this instance' });
+  }
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const appDir = GitService.getAppDir(req.params.id);
+    const targetDirRel = (req.body.targetDir || '/').toString();
+    const safeTargetDir = path.resolve(appDir, '.' + path.sep + targetDirRel.replace(/^[/\\]+/, ''));
+
+    if (!safeTargetDir.startsWith(appDir)) {
+      if (req.file.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return res.status(403).json({ error: 'Forbidden: Path traversal attempt detected' });
+    }
+
+    if (!fs.existsSync(safeTargetDir)) {
+      await fs.promises.mkdir(safeTargetDir, { recursive: true });
+    }
+
+    const destPath = path.join(safeTargetDir, req.file.originalname);
+    await fs.promises.copyFile(req.file.path, destPath);
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+
+    res.json({ success: true, message: `檔案 ${req.file.originalname} 上傳成功`, path: destPath });
+  } catch (err: any) {
+    if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Save File Content (🔴 Security Fix Item #2: Symlink Realpath Traversal Protection)
 app.post('/api/instances/:id/files/save', authenticate, async (req: AuthRequest, res) => {
@@ -933,6 +1324,7 @@ app.get('/api/admin/instances', authenticate, (req: AuthRequest, res) => {
     instances: instances.map((i) => ({
       id: i.id,
       userId: i.user_id,
+      ownerUsername: i.owner_name,
       ownerName: i.owner_name,
       ownerDiscordId: i.owner_discord_id,
       name: i.name,
@@ -958,6 +1350,49 @@ app.get('/api/admin/instances', authenticate, (req: AuthRequest, res) => {
       createdAt: i.created_at,
     })),
   });
+});
+
+// Admin Route: Send Intrusion Warning & Force Stop Container
+app.post('/api/admin/instances/:id/warn', authenticate, async (req: AuthRequest, res) => {
+  if (req.user?.role !== 'ADMIN') return res.status(403).json({ error: 'Admin access required' });
+  const instanceId = req.params.id;
+  const { warningMessage } = req.body;
+
+  try {
+    const inst = db.prepare(`
+      SELECT i.*, u.username as owner_name, u.discord_id as owner_discord_id
+      FROM instances i
+      JOIN users u ON i.user_id = u.id
+      WHERE i.id = ?
+    `).get(instanceId) as any;
+
+    if (!inst) {
+      return res.status(404).json({ error: 'Instance not found' });
+    }
+
+    // Force stop container
+    await DockerService.stopContainer(instanceId).catch(() => {});
+    db.prepare('UPDATE instances SET status = ? WHERE id = ?').run('stopped', instanceId);
+
+    const messageToSend = warningMessage || `【系統入侵安全警告】管理員偵測到您的容器 (${inst.name}) 存在異常風險或侵權行為，已強制關閉服務。請聯繫服主！`;
+
+    recordAuditLog(
+      req.user!.id,
+      req.user!.username,
+      'SECURITY_WARNING_SENT',
+      `Sent intrusion warning to ${inst.owner_name} (${inst.owner_discord_id}) for instance ${inst.name} (${instanceId}): ${messageToSend}`,
+      req.ip
+    );
+
+    res.json({
+      success: true,
+      message: `已成功向擁有者 @${inst.owner_name} 發送入侵警告並強制停止容器！`,
+      ownerName: inst.owner_name,
+      ownerDiscordId: inst.owner_discord_id,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Admin Route: Force Stop Instance
@@ -1010,7 +1445,71 @@ app.post('/api/webhooks/github/:instanceId', async (req, res) => {
   }
 });
 
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   console.log(`[Craft-Core Hosting Backend] Server running securely on port ${PORT}`);
   await syncContainerStatuses();
 });
+
+// Configure 15-minute HTTP timeouts to support large 2GB ZIP uploads over slow connections
+server.headersTimeout = 15 * 60 * 1000;
+server.requestTimeout = 15 * 60 * 1000;
+server.setTimeout(15 * 60 * 1000);
+
+// Subdomain WebSocket Upgrade Proxy
+server.on('upgrade', (req, socket, head) => {
+  const host = req.headers.host || '';
+  const match = host.match(/^app-([a-z0-9]+)\.hosting\.craft-core\.xyz$/i);
+  if (match) {
+    const sub = match[1];
+    const inst = db.prepare('SELECT assigned_host_port FROM instances WHERE (subdomain = ? OR assigned_host_port = ?) AND assigned_host_port IS NOT NULL').get(sub, parseInt(sub, 10)) as any;
+    if (inst && inst.assigned_host_port) {
+      return appProxy.ws(req, socket, head, { target: `http://127.0.0.1:${inst.assigned_host_port}` });
+    }
+  }
+  socket.destroy();
+});
+
+// Automatic Circuit Breaker & Egress Abuse Monitor (Every 15s)
+const containerSpikeTracker: Record<string, { cpuSpikeCount: number; lastTxBytes: number }> = {};
+
+setInterval(async () => {
+  try {
+    const runningInstances = db.prepare("SELECT id, name, user_id, cpu_limit, memory_limit FROM instances WHERE status = 'running'").all() as any[];
+    for (const inst of runningInstances) {
+      const stats = await DockerService.getContainerStats(inst.id).catch(() => null);
+      if (!stats) continue;
+
+      if (!containerSpikeTracker[inst.id]) {
+        containerSpikeTracker[inst.id] = { cpuSpikeCount: 0, lastTxBytes: stats.txBytes || 0 };
+      }
+
+      const tracker = containerSpikeTracker[inst.id];
+      const cpuLimit = inst.cpu_limit || 100;
+      const memLimitMB = inst.memory_limit || 512;
+
+      // 1. CPU & Memory Spike Circuit Breaker (> 95% limit for 3 consecutive checks)
+      if (stats.cpuPercent > cpuLimit * 0.95 || stats.memoryUsageMB > memLimitMB * 0.95) {
+        tracker.cpuSpikeCount += 1;
+        if (tracker.cpuSpikeCount >= 3) {
+          console.warn(`[Circuit Breaker] Throttling container ${inst.name} (${inst.id}) due to continuous resource spike.`);
+          recordAuditLog('system', 'Circuit Breaker', 'CIRCUIT_BREAKER_TRIGGERED', `Automatically throttled instance ${inst.name} (${inst.id}) due to 100% CPU/Memory spike`, '127.0.0.1');
+          tracker.cpuSpikeCount = 0;
+        }
+      } else {
+        tracker.cpuSpikeCount = Math.max(0, tracker.cpuSpikeCount - 1);
+      }
+
+      // 2. Network Egress Abuse Protection (> 200MB in 15s)
+      const currentTx = stats.txBytes || 0;
+      const egressDelta = currentTx - tracker.lastTxBytes;
+      tracker.lastTxBytes = currentTx;
+
+      if (egressDelta > 200 * 1024 * 1024) {
+        console.warn(`[Egress Protection] Egress spike detected on container ${inst.name} (${inst.id}): ${(egressDelta / (1024 * 1024)).toFixed(1)} MB`);
+        recordAuditLog('system', 'Network Protection', 'EGRESS_ABUSE_DETECTED', `Network egress spike detected on instance ${inst.name} (${inst.id}): ${(egressDelta / (1024 * 1024)).toFixed(1)} MB in 15s`, '127.0.0.1');
+      }
+    }
+  } catch (err) {
+    // silent catch
+  }
+}, 15000);

@@ -3,7 +3,7 @@ import { useParams, Outlet, Navigate } from 'react-router-dom';
 import { Instance } from '../types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, Square, RotateCw, Globe, Loader2, Check } from 'lucide-react';
+import { Play, Square, RotateCw, Globe, Loader2, ArrowUpCircle, Check } from 'lucide-react';
 
 interface ProjectLayoutProps {
   instances: Instance[];
@@ -25,7 +25,7 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = ({
   const { id } = useParams<{ id: string }>();
   const instance = instances.find((i) => i.id === id);
 
-  const [actionLoading, setActionLoading] = useState<'start' | 'stop' | 'restart' | null>(null);
+  const [actionLoading, setActionLoading] = useState<'start' | 'stop' | 'restart' | 'upgrade' | null>(null);
   const [statusMsg, setStatusMsg] = useState('');
 
   if (!instance) {
@@ -43,28 +43,59 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = ({
   }
 
   const isRunning = instance.status === 'running';
+  const isDockerContainer = !!instance.dockerImage || ['mongodb', 'postgres', 'mysql', 'redis', 'docker'].includes(instance.runtime);
 
-  const handleAction = async (type: 'start' | 'stop' | 'restart') => {
+  const handleAction = async (type: 'start' | 'stop' | 'restart' | 'upgrade') => {
     if (actionLoading) return;
     setActionLoading(type);
 
     if (type === 'start') setStatusMsg('正在啟動 Docker 容器，請稍候...');
     if (type === 'stop') setStatusMsg('正在關閉與停止 Docker 容器，請稍候...');
     if (type === 'restart') setStatusMsg('正在重啟 Docker 容器，請稍候...');
+    if (type === 'upgrade') setStatusMsg('正在拉取最新 Docker 鏡像並升級容器，請稍候...');
 
     try {
       if (type === 'start') await onStart(instance.id);
       if (type === 'stop') await onStop(instance.id);
       if (type === 'restart') await onRestart(instance.id);
+      if (type === 'upgrade') {
+        const targetImage = instance.dockerImage || instance.runtime;
+        const pollInterval = setInterval(() => {
+          fetch(`/api/system/docker-pull-status?image=${encodeURIComponent(targetImage)}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+              if (d && d.pulling && d.status) {
+                setStatusMsg(d.status);
+              }
+            })
+            .catch(() => {});
+        }, 800);
+
+        const storedToken = localStorage.getItem('cc_token');
+        const headers: Record<string, string> = storedToken ? { Authorization: `Bearer ${storedToken}` } : {};
+        const res = await fetch(`/api/instances/${instance.id}/upgrade`, {
+          method: 'POST',
+          headers,
+        });
+
+        clearInterval(pollInterval);
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || '升級失敗');
+        }
+        await onRefreshData?.();
+      }
 
       if (type === 'start') setStatusMsg('容器啟動完成！');
       if (type === 'stop') setStatusMsg('容器已成功停止。');
       if (type === 'restart') setStatusMsg('容器重啟完成！');
+      if (type === 'upgrade') setStatusMsg('容器鏡像已成功升級至最新版本並完成重啟！');
 
-      setTimeout(() => setStatusMsg(''), 2500);
-    } catch (err) {
-      setStatusMsg('操作執行失敗，請稍後再試');
       setTimeout(() => setStatusMsg(''), 3000);
+    } catch (err: any) {
+      setStatusMsg(err.message || '操作執行失敗，請稍後再試');
+      setTimeout(() => setStatusMsg(''), 3500);
     } finally {
       setActionLoading(null);
     }
@@ -83,22 +114,40 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = ({
                 {actionLoading ? '處理中...' : instance.status}
               </Badge>
             </div>
-            {instance.subdomain && (
+            {instance.assignedHostPort ? (
               <a
-                href={`https://app-${instance.subdomain}.hosting.craft-core.xyz`}
+                href={`https://app-${instance.subdomain || instance.assignedHostPort}.hosting.craft-core.xyz`}
                 target="_blank"
                 rel="noreferrer"
                 className="text-xs text-primary font-mono hover:underline flex items-center gap-1 mt-0.5 font-bold"
               >
                 <Globe className="h-3 w-3 text-emerald-500" />
-                app-{instance.subdomain}.hosting.craft-core.xyz
+                app-{instance.subdomain || instance.assignedHostPort}.hosting.craft-core.xyz
               </a>
+            ) : (
+              <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                尚未開啟對外連線
+              </div>
             )}
           </div>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {isDockerContainer && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={actionLoading !== null}
+              onClick={() => handleAction('upgrade')}
+              className="h-8 gap-1.5 text-xs font-semibold border-amber-500/30 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              title="拉取最新 Docker 鏡像層並無縫平滑升級與重啟"
+            >
+              {actionLoading === 'upgrade' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUpCircle className="h-3.5 w-3.5" />}
+              {actionLoading === 'upgrade' ? '升級中...' : '一鍵升級'}
+            </Button>
+          )}
+
           {isRunning ? (
             <>
               <Button

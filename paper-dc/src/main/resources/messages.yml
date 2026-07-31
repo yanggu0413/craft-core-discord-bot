@@ -1,20 +1,24 @@
-# Craft-Core Link Messages & Embed Customization File
+# 雲海之森 Link Messages & Embed Customization File
 
 in-game:
-  prefix: "§b[Craft-Core] "
-  invite-link: "§b[Craft-Core] §fDiscord 邀請連結：§a§n{url}"
+  prefix: "§b[雲海之森] "
+  invite-link: "§b[雲海之森] §fDiscord 邀請連結：§a§n{url}"
   invite-hover: "點擊在此瀏覽器開啟 Discord 邀請"
-  requesting-code: "§b[Craft-Core] §f正在向 Discord 申請綁定驗證碼..."
-  code-generated: "§b[Craft-Core] §f申請成功！請在 5 分鐘內私訊 [機器人] 傳送驗證碼：§a{code}§f 以完成帳號綁定。"
-  already-bound: "§c[Craft-Core] 您已經綁定過 Discord 帳號！綁定帳號：{username}"
+  requesting-code: "§b[雲海之森] §f正在向 Discord 申請綁定驗證碼..."
+  code-generated: "§b[雲海之森] §f申請成功！請在 5 分鐘內私訊 [機器人] 傳送驗證碼：§a{code}§f 以完成帳號綁定。"
+  already-bound: "§c[雲海之森] 您已經綁定過 Discord 帳號！綁定帳號：{username}"
+  not-bound: "§c[雲海之森] 您尚未綁定 Discord 帳號！"
+  unlinked-success: "§b[雲海之森] §a您已成功解除 Discord 帳號綁定！"
+  deathdm-enabled: "§b[雲海之森] §a已【開啟】死亡地點 Discord 私訊提醒！"
+  deathdm-disabled: "§b[雲海之森] §c已【關閉】死亡地點 Discord 私訊提醒！"
   discord-chat-format: "§8[§bDiscord§8] §f{sender}: {message}"
   only-player: "此指令只能由遊戲內玩家執行。"
 
-  rtp-cooldown: "§c[Craft-Core] RTP 冷卻中，請等待 {seconds} 秒！"
-  rtp-success: "§b[Craft-Core] §a已隨機傳送至：X: {x}, Y: {y}, Z: {z}"
-  rtp-searching: "§b[Craft-Core] §e正在尋找安全的隨機傳送位置..."
-  rtp-failed: "§c[Craft-Core] 找不到安全的傳送位置，請再試一次！"
-  rtp-disabled: "§c[Craft-Core] 隨機傳送功能已被管理員停用。"
+  rtp-cooldown: "§c[雲海之森] RTP 冷卻中，請等待 {seconds} 秒！"
+  rtp-success: "§b[雲海之森] §a已隨機傳送至：X: {x}, Y: {y}, Z: {z}"
+  rtp-searching: "§b[雲海之森] §e正在尋找安全的隨機傳送位置..."
+  rtp-failed: "§c[雲海之森] 找不到安全的傳送位置，請再試一次！"
+  rtp-disabled: "§c[雲海之森] 隨機傳送功能已被管理員停用。"
 
 discord:
   server-start: "✅ 伺服器已開啟"
@@ -29,6 +33,9 @@ discord:
     expired-code: "❌ 驗證碼已過期！請在遊戲內輸入 `/discord link` 重新取得 6 位數驗證碼。"
     success: "✅ 帳號綁定成功！\n- 遊戲名稱：`{username}`\n已為您賦予身份組，祝您遊戲愉快！"
     help: "💡 請私訊輸入遊戲中 `/discord link` 獲得的 6 位數驗證碼來完成帳號綁定。"
+    death-embed:
+      title: "💀 死亡地點提醒"
+      description: "📍 **死亡座標**：X: {x}, Y: {y}, Z: {z}\n🗺️ **所在世界**：{world}\n💬 **死亡原因**：{death_message}"
 
   embeds:
     join:

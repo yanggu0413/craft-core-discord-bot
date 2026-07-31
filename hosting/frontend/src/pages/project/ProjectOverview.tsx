@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Instance } from '../../types';
-import { Cpu, HardDrive, Database, Globe, Terminal, ExternalLink, GitCommit, GitBranch, Clock, ArrowRight, RefreshCw } from 'lucide-react';
+import { Cpu, HardDrive, Database, Globe, Terminal, ExternalLink, GitCommit, GitBranch, Clock, ArrowRight, RefreshCw, Copy, Check, Activity, ShieldAlert, Key, Lock, HelpCircle } from 'lucide-react';
 
 export const ProjectOverview: React.FC = () => {
   const { instance } = useOutletContext<{ instance: Instance; onRefreshData?: () => void }>();
 
   const [stats, setStats] = useState<{ cpuPercent: number; memoryUsageMB: number; memoryLimitMB: number } | null>(null);
+  const [historyStats, setHistoryStats] = useState<{ time: string; cpu: number; memory: number }[]>([]);
   const [logs, setLogs] = useState<string>('載入 Log 串流中...');
   const [latestCommit, setLatestCommit] = useState<{ hash?: string; message?: string; author?: string; branch?: string; timestamp?: string } | null>(null);
 
@@ -24,7 +25,17 @@ export const ProjectOverview: React.FC = () => {
     fetch(`/api/instances/${instance.id}/stats`, { headers })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data && data.stats) setStats(data.stats);
+        if (data && data.stats) {
+          setStats(data.stats);
+          setHistoryStats((prev) => [
+            ...prev.slice(-14),
+            {
+              time: new Date().toLocaleTimeString(),
+              cpu: data.stats.cpuPercent || 0,
+              memory: data.stats.memoryUsageMB || 0,
+            },
+          ]);
+        }
       })
       .catch(() => {});
 
@@ -130,28 +141,119 @@ export const ProjectOverview: React.FC = () => {
               </Badge>
             </div>
             <div className="pt-1 min-w-0">
-              {instance.subdomain ? (
+              {instance.assignedHostPort ? (
                 <a
-                  href={`https://app-${instance.subdomain}.hosting.craft-core.xyz`}
+                  href={`https://app-${instance.subdomain || instance.assignedHostPort}.hosting.craft-core.xyz`}
                   target="_blank"
                   rel="noreferrer"
-                  title={`https://app-${instance.subdomain}.hosting.craft-core.xyz`}
+                  title={`https://app-${instance.subdomain || instance.assignedHostPort}.hosting.craft-core.xyz`}
                   className="font-mono text-[11px] sm:text-xs font-bold text-primary hover:underline flex items-center gap-1 truncate w-full"
                 >
-                  <span className="truncate">app-{instance.subdomain}.hosting.craft-core.xyz</span>
+                  <span className="truncate">app-{instance.subdomain || instance.assignedHostPort}.hosting.craft-core.xyz</span>
                   <ExternalLink className="h-3 w-3 shrink-0" />
                 </a>
               ) : (
-                <span className="text-xs text-muted-foreground">尚未啟用對外域名</span>
+                <span className="text-xs text-muted-foreground font-mono">尚未開啟對外連線</span>
               )}
             </div>
             <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-2 pt-0.5">
-              <span>內部 Port: {instance.internalPort}</span>
-              {instance.assignedHostPort && <span>• 宿主 Port: {instance.assignedHostPort}</span>}
+              <span>內部通道: {instance.internalPort}</span>
+              {instance.assignedHostPort && <span>• 對外通道: {instance.assignedHostPort}</span>}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Live Metric Trend Chart */}
+      <Card className="border shadow-sm">
+        <CardHeader className="py-3 px-5 border-b flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-bold flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" /> 實時資源用量趨勢曲線圖
+          </CardTitle>
+          <Badge variant="outline" className="font-mono text-[10px]">
+            即時採樣 (5s 刷新)
+          </Badge>
+        </CardHeader>
+        <CardContent className="p-5 space-y-4">
+          <div className="h-32 w-full flex items-end gap-1.5 pt-4 px-2 border-b relative">
+            {historyStats.length === 0 ? (
+              <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground font-mono">
+                採樣數據採集中...
+              </div>
+            ) : (
+              historyStats.map((h, i) => {
+                const cpuHeight = Math.min(100, Math.max(5, (h.cpu / cpuQuotaLimit) * 100));
+                const memHeight = Math.min(100, Math.max(5, (h.memory / memoryLimitMB) * 100));
+                return (
+                  <div key={i} className="flex-1 flex flex-col justify-end items-center h-full gap-0.5 group relative">
+                    <div className="w-full bg-cyan-500/40 rounded-t transition-all" style={{ height: `${memHeight}%` }} title={`RAM: ${h.memory}MB`} />
+                    <div className="w-full bg-emerald-500 rounded-t transition-all" style={{ height: `${cpuHeight}%` }} title={`CPU: ${h.cpu}%`} />
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-emerald-500" /> CPU 使用率 (%)</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-cyan-500/40" /> 記憶體使用量 (MB)</span>
+            </div>
+            <span>最近 15 次採樣記錄</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Database Connection Credentials Card (Shown if database instance) */}
+      {['mongodb', 'postgres', 'mysql', 'redis'].includes(instance.runtime) && (
+        <Card className="border-2 border-emerald-500/30 bg-emerald-500/5 shadow-md">
+          <CardHeader className="py-3 px-5 border-b border-emerald-500/20 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+              <Database className="h-4 w-4" /> 資料庫連線憑證與字串
+            </CardTitle>
+            <Badge className="bg-emerald-500 text-white font-mono text-[10px]">
+              {instance.runtime.toUpperCase()} ONLINE
+            </Badge>
+          </CardHeader>
+
+          <CardContent className="p-5 space-y-4 font-mono text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <span className="text-muted-foreground text-[11px]">資料庫主機 Host & Port:</span>
+                <div className="p-2.5 rounded bg-background border font-bold flex items-center justify-between">
+                  <span>100.92.190.117:{instance.assignedHostPort || instance.internalPort}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 text-[10px] gap-1"
+                    onClick={() => navigator.clipboard.writeText(`100.92.190.117:${instance.assignedHostPort || instance.internalPort}`)}
+                  >
+                    <Copy className="h-3 w-3" /> 複製
+                  </Button>
+                </div>
+              </div>
+
+              {Array.isArray(instance.envVars) && instance.envVars.map((env) => (
+                <div key={env.key} className="space-y-1">
+                  <span className="text-muted-foreground text-[11px]">{env.key}:</span>
+                  <div className="p-2.5 rounded bg-background border font-bold flex items-center justify-between">
+                    <span className="text-emerald-600 dark:text-emerald-400 select-all">{env.value}</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 text-[10px] gap-1"
+                      onClick={() => navigator.clipboard.writeText(env.value)}
+                    >
+                      <Copy className="h-3 w-3" /> 複製
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+
 
       {/* Middle Grid: Latest Git Commit & Container Metadata */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -231,7 +333,7 @@ export const ProjectOverview: React.FC = () => {
       <Card className="border shadow-sm">
         <CardHeader className="py-3 px-5 border-b flex flex-row items-center justify-between">
           <CardTitle className="text-sm font-bold flex items-center gap-2">
-            <Terminal className="h-4 w-4 text-emerald-400" /> 即時控制台 Log 串流 (Console Snapshot)
+            <Terminal className="h-4 w-4 text-emerald-400" /> 即時控制台日誌串流
           </CardTitle>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" onClick={fetchOverviewData} className="h-7 text-xs gap-1">

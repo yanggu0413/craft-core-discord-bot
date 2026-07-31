@@ -15,6 +15,8 @@ discord:
   invite-url: "https://discord.gg/yourserver"
 
 roles:
+  # Discord Role ID removed when linked and added when unlinked
+  unverified-role-id: "1532341810922393680"
   # Discord Role ID granted automatically when a player links their MC account
   verified-role-id: "1521767183326249100"
   # Discord Role ID synchronized bidirectionally with LuckPerms VIP group
