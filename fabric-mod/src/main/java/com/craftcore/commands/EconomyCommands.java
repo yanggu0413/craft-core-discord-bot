@@ -45,7 +45,7 @@ dispatcher.register(Commands.literal("luckydraw")
                     .executes(context -> {
                         ServerPlayer player = context.getSource().getPlayer();
                         if (player == null) return 0;
-                        return executeBatchLotteryInGame(player, 1);
+                        return handleLuckyDrawCommand(player, 1);
                     })
                     .then(Commands.argument("count", com.mojang.brigadier.arguments.StringArgumentType.string())
                             .executes(context -> {
@@ -62,7 +62,7 @@ dispatcher.register(Commands.literal("luckydraw")
                                         count = 1;
                                     }
                                 }
-                                return executeBatchLotteryInGame(player, count);
+                                return handleLuckyDrawCommand(player, count);
                             }))
             );
 
@@ -254,45 +254,6 @@ dispatcher.register(Commands.literal("checkin")
 
             );
 
-dispatcher.register(Commands.literal("luckydraw")
-
-                    .executes(context -> {
-
-                        ServerPlayer player = context.getSource().getPlayer();
-
-                        if (player == null) {
-
-                            context.getSource().sendSystemMessage(Component.literal("此指令只能由遊戲內玩家執行。"));
-
-                            return 0;
-
-                        }
-
-                        CraftCoreWSClient client = CraftCoreMod.getWSClient();
-
-                        if (client == null || !client.isAuthenticated()) {
-
-                            context.getSource().sendSystemMessage(Component.literal("§c[Craft-Core] §f機器人連線已中斷，請稍後再試！"));
-
-                            return 0;
-
-                        }
-
-                        if (player.getInventory().getFreeSlot() == -1) {
-                            context.getSource().sendSystemMessage(Component.literal("§c[Craft-Core] 抽獎失敗：您的背包已滿，請先清出至少 1 格空間後再進行抽獎！"));
-                            return 0;
-                        }
-
-                        String username = player.getName().getString();
-                        String uuid = player.getStringUUID();
-
-                        int modKeys = com.craftcore.economy.EconomyManager.getLotteryKeys(username);
-                        client.send(new Packet("luckydraw_request", new Packet.LuckydrawRequestPayload(username, uuid, modKeys)));
-
-                        context.getSource().sendSystemMessage(Component.literal("§b[Craft-Core] §f正在送出抽獎請求..."));
-                        return 1;
-                    })
-            );
 
         dispatcher.register(Commands.literal("task")
                 .executes(context -> handleTasksCommand(context.getSource().getPlayer()))
@@ -433,18 +394,39 @@ dispatcher.register(Commands.literal("pay")
 
                                          }
 
-                                     })
-
-                             )
-
-                     )
-
+                                      })
+                              )
+                      )
              );
+    }
+
+    public static int handleLuckyDrawCommand(ServerPlayer player, int count) {
+        if (player == null) return 0;
+        if (player.getInventory().getFreeSlot() == -1) {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 抽獎失敗：您的背包已滿，請先清出至少 1 格空間後再進行抽獎！"));
+            return 0;
+        }
+        String username = player.getName().getString();
+        int currentKeys = Math.max(0, com.craftcore.economy.EconomyManager.getLotteryKeys(username));
+        if (currentKeys <= 0) {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您的抽獎鑰匙不足（目前擁有 0 把）！可完成每日簽到 /checkin 或於 Discord 領取。"));
+            return 0;
+        }
+
+        CraftCoreWSClient client = CraftCoreMod.getWSClient();
+        if (client != null && client.isAuthenticated()) {
+            String uuid = player.getStringUUID();
+            client.send(new Packet("luckydraw_request", new Packet.LuckydrawRequestPayload(username, uuid, currentKeys)));
+            player.sendSystemMessage(Component.literal("§b[Craft-Core] §f正在送出抽獎請求..."));
+            return 1;
+        } else {
+            return executeBatchLotteryInGame(player, count);
+        }
     }
 
     public static int executeBatchLotteryInGame(ServerPlayer player, int requestedCount) {
         String username = player.getName().getString();
-        int currentKeys = com.craftcore.economy.EconomyManager.getLotteryKeys(username);
+        int currentKeys = Math.max(0, com.craftcore.economy.EconomyManager.getLotteryKeys(username));
         if (currentKeys <= 0) {
             player.sendSystemMessage(Component.literal("§c[Craft-Core] 您的抽獎鑰匙不足（目前擁有 0 把）！可完成每日簽到 /checkin 或於 Discord 領取。"));
             return 0;
@@ -455,7 +437,7 @@ dispatcher.register(Commands.literal("pay")
             countToDraw = currentKeys;
         }
 
-        com.craftcore.economy.EconomyManager.setLotteryKeys(username, currentKeys - countToDraw);
+        com.craftcore.economy.EconomyManager.setLotteryKeys(username, Math.max(0, currentKeys - countToDraw));
 
         String[] items = {
             "minecraft:diamond:5:鑽石 x 5",

@@ -624,13 +624,13 @@ router.post('/user/luckydraw', authenticateToken, async (req: CustomRequest, res
          OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
          OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
     `).get(cleanUsername, userDiscordId, userUuid) as any;
-    const currentKeys = row?.keys_count || 0;
+    const currentKeys = Math.max(0, row?.keys_count || 0);
 
     if (currentKeys < 1) {
       return res.status(400).json({ success: false, message: '您的抽獎鑰匙不足！請先進行每日簽到或完成任務獲得鑰匙。' });
     }
 
-    const newKeys = currentKeys - 1;
+    const newKeys = Math.max(0, currentKeys - 1);
     if (row?.id) {
       db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(newKeys, row.id);
     }

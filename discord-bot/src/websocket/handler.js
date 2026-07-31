@@ -215,9 +215,9 @@ async function handle(packet, discordClient) {
       }
       const discordId = binding.discord_id;
       let userKeys = await UserRepository.getUserKeys(discordId);
-      let currentDbKeys = userKeys ? (userKeys.keys_count || 0) : 0;
+      let currentDbKeys = userKeys ? Math.max(0, userKeys.keys_count || 0) : 0;
 
-      const modKeysVal = typeof mod_keys === 'number' ? mod_keys : 0;
+      const modKeysVal = typeof mod_keys === 'number' ? Math.max(0, mod_keys) : 0;
       if (modKeysVal > currentDbKeys) {
         currentDbKeys = modKeysVal;
       }
