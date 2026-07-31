@@ -94,6 +94,26 @@ router.post('/shop/withdraw', authenticateToken, async (req: CustomRequest, res:
     return res.status(400).json({ success: false, message: '缺少商店座標參數' });
   }
 
+  const username = user.mc_username;
+  const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+
+  // Validate shop ownership against local shops.json cache before forwarding to WS
+  try {
+    const shopsMap = loadConfigJson<Record<string, any>>('shops.json');
+    if (shopsMap && typeof shopsMap === 'object') {
+      const targetShop: any = Object.values(shopsMap).find((s: any) => {
+        const sCoords = s.coords || s.location || s.id;
+        return sCoords === coords;
+      });
+      if (targetShop) {
+        const shopOwner = (targetShop.player || targetShop.owner || '').replace(/^\./, '').toLowerCase();
+        if (shopOwner !== cleanUsername && !user.isAdmin) {
+          return res.status(403).json({ success: false, message: '安全性拒絕：您並非該箱子商店的店主，無權提領他人營收！' });
+        }
+      }
+    }
+  } catch (e) {}
+
   try {
     const response = await sendWsQuery('shop_action', {
       action: 'withdraw',

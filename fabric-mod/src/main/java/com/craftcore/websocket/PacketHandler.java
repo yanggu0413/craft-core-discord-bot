@@ -346,7 +346,9 @@ public class PacketHandler {
                             client.send(new Packet("withdraw_revenue_response", new GenericActionResponsePayload(payload.query_id, false, "Shop not found", 0.0)));
                             return;
                         }
-                        if (!shop.player.equalsIgnoreCase(payload.username)) {
+                        String shopOwnerClean = shop.player.replaceAll("^\\.", "").toLowerCase();
+                        String requesterClean = (payload.username != null ? payload.username : "").replaceAll("^\\.", "").toLowerCase();
+                        if (!shopOwnerClean.equals(requesterClean)) {
                             client.send(new Packet("withdraw_revenue_response", new GenericActionResponsePayload(payload.query_id, false, "You do not own this shop", 0.0)));
                             return;
                         }
@@ -357,7 +359,7 @@ public class PacketHandler {
                         }
                         shop.revenue = 0.0;
                         com.craftcore.shop.ShopManager.save();
-                        com.craftcore.economy.EconomyManager.addMoney(payload.username, revenue);
+                        com.craftcore.economy.EconomyManager.addMoney(shop.player, revenue);
                         client.send(new Packet("withdraw_revenue_response", new GenericActionResponsePayload(payload.query_id, true, "Revenue withdrawn successfully", revenue)));
                     });
                     break;

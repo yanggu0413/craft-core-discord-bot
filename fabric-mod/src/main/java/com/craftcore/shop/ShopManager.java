@@ -691,7 +691,10 @@ public class ShopManager {
         Shop shop = getShop(key);
         if (shop == null) return "Shop not found";
         
-        boolean isOwner = shop.player.equals(username) || isOp;
+        String shopOwnerClean = shop.player.replaceAll("^\\.", "").toLowerCase();
+        String userClean = (username != null ? username : "").replaceAll("^\\.", "").toLowerCase();
+        boolean isOwner = shopOwnerClean.equals(userClean) || isOp;
+
         switch (option.toLowerCase()) {
             case "teleport":
                 return "Teleported to " + shop.coords;
@@ -703,7 +706,7 @@ public class ShopManager {
                 double rev = shop.revenue;
                 if (rev > 0) {
                     shop.revenue = 0;
-                    com.craftcore.economy.EconomyManager.addMoney(username, rev);
+                    com.craftcore.economy.EconomyManager.addMoney(shop.player, rev);
                     save();
                     return "Withdrew " + rev;
                 }
