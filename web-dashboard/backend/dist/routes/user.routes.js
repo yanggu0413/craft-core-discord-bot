@@ -496,32 +496,38 @@ router.post('/mail/send', auth_1.authenticateToken, async (req, res) => {
         if (isNaN(payAmount) || payAmount <= 0) {
             return res.status(400).json({ success: false, message: '請輸入有效的轉帳金額' });
         }
-        try {
-            // Try in-game pay command first
-            const payResponse = await (0, wsClient_1.sendWsQuery)('command_request', {
-                command: `/pay ${targetReceiver} ${payAmount}`
-            }, 3000);
-            if (payResponse && payResponse.success) {
-                return res.json({ success: true, message: `成功轉帳 $${Math.floor(payAmount)} 元給玩家 ${targetReceiver}！` });
-            }
+        const cleanSender = user.mc_username.replace(/^\./, '').toLowerCase();
+        const cleanReceiver = targetReceiver.replace(/^\./, '').toLowerCase();
+        if (cleanSender === cleanReceiver) {
+            return res.status(400).json({ success: false, message: '轉帳失敗：不能轉帳給自己！' });
         }
-        catch (e) { }
-        // Fallback: update economy.json directly
         const ecoMap = (0, configLoader_1.loadConfigJson)('economy.json') || {};
-        const senderEcoKey = Object.keys(ecoMap).find(k => k.toLowerCase() === user.mc_username.toLowerCase()) || user.mc_username;
-        const receiverEcoKey = Object.keys(ecoMap).find(k => k.toLowerCase() === targetReceiver.toLowerCase()) || targetReceiver;
-        const senderBalance = ecoMap[senderEcoKey]?.balance || 0;
+        const senderEcoKey = Object.keys(ecoMap).find(k => k.replace(/^\./, '').toLowerCase() === cleanSender) || user.mc_username;
+        const receiverEcoKey = Object.keys(ecoMap).find(k => k.replace(/^\./, '').toLowerCase() === cleanReceiver) || targetReceiver;
+        const senderBalance = Number(ecoMap[senderEcoKey]?.balance) || 0;
         if (senderBalance < payAmount) {
-            return res.status(400).json({ success: false, message: '您的餘額不足！' });
+            return res.status(400).json({ success: false, message: `您的餘額不足！(目前餘額 $${senderBalance.toFixed(2)})` });
         }
         if (!ecoMap[senderEcoKey])
             ecoMap[senderEcoKey] = { username: user.mc_username, balance: senderBalance };
         if (!ecoMap[receiverEcoKey])
             ecoMap[receiverEcoKey] = { username: targetReceiver, balance: 0 };
-        ecoMap[senderEcoKey].balance = Math.max(0, ecoMap[senderEcoKey].balance - payAmount);
-        ecoMap[receiverEcoKey].balance = (ecoMap[receiverEcoKey].balance || 0) + payAmount;
+        ecoMap[senderEcoKey].balance = Math.max(0, Number(ecoMap[senderEcoKey].balance || 0) - payAmount);
+        ecoMap[receiverEcoKey].balance = Number(ecoMap[receiverEcoKey].balance || 0) + payAmount;
         (0, configLoader_1.saveConfigJson)('economy.json', ecoMap);
-        return res.json({ success: true, message: `成功電子匯款 $${Math.floor(payAmount)} 元給玩家 ${targetReceiver}！` });
+        // Synchronize to in-game server via WebSocket if online
+        try {
+            await (0, wsClient_1.sendWsQuery)('player_balance_update', {
+                username: user.mc_username,
+                balance: ecoMap[senderEcoKey].balance
+            }, 1000);
+            await (0, wsClient_1.sendWsQuery)('player_balance_update', {
+                username: targetReceiver,
+                balance: ecoMap[receiverEcoKey].balance
+            }, 1000);
+        }
+        catch (wsErr) { }
+        return res.json({ success: true, message: `成功轉帳 $${Math.floor(payAmount)} 元給玩家 ${targetReceiver}！` });
     }
     // Handle Item Package Mail
     const itemId = item_id || 'minecraft:paper';
