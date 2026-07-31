@@ -40,12 +40,22 @@ class SeededRandom {
 const SLAY_POOL = [
     { type: 1, target: 'Zombie', count: 15, reward: 250 },
     { type: 1, target: 'Skeleton', count: 10, reward: 300 },
-    { type: 1, target: 'Creeper', count: 5, reward: 400 }
+    { type: 1, target: 'Creeper', count: 5, reward: 400 },
+    { type: 1, target: 'Spider', count: 10, reward: 300 },
+    { type: 1, target: 'Enderman', count: 3, reward: 600 },
+    { type: 1, target: 'Blaze', count: 5, reward: 500 },
+    { type: 1, target: 'Witch', count: 2, reward: 500 },
+    { type: 1, target: 'Phantom', count: 3, reward: 400 }
 ];
 const MINE_POOL = [
     { type: 2, target: 'Coal Ore', count: 20, reward: 200 },
     { type: 2, target: 'Iron Ore', count: 10, reward: 300 },
-    { type: 2, target: 'Diamond Ore', count: 3, reward: 1000 }
+    { type: 2, target: 'Diamond Ore', count: 3, reward: 1000 },
+    { type: 2, target: 'Gold Ore', count: 10, reward: 350 },
+    { type: 2, target: 'Redstone Ore', count: 15, reward: 250 },
+    { type: 2, target: 'Lapis Ore', count: 10, reward: 300 },
+    { type: 2, target: 'Nether Quartz Ore', count: 15, reward: 300 },
+    { type: 2, target: 'Ancient Debris', count: 1, reward: 1500 }
 ];
 function getDailyTasksFallback(dateStr) {
     const hash = getHashCode(dateStr);
@@ -1057,18 +1067,59 @@ router.post('/warp-submissions', auth_1.authenticateToken, (req, res) => {
     return res.json({ success: true, message: '公用設施傳送點申請已送出！' });
 });
 // GET /api/warps & GET /api/public/warps - Public landmark warps
-const handleGetWarps = (req, res) => {
+const handleGetWarps = async (req, res) => {
     const cached = (0, wsClient_1.getCachedData)('warps_cache');
     if (cached)
         return res.json(cached);
-    let warps = [];
+    let rawList = [];
     const warpsConfig = (0, configLoader_1.loadConfigJson)('warps.json');
     if (Array.isArray(warpsConfig)) {
-        warps = warpsConfig;
+        rawList = warpsConfig;
     }
     else if (warpsConfig && typeof warpsConfig === 'object') {
-        warps = Object.values(warpsConfig);
+        rawList = Object.entries(warpsConfig).map(([key, val]) => {
+            let name = key;
+            let coords = '';
+            let dimension = 'minecraft:overworld';
+            let owner = undefined;
+            let type = undefined;
+            if (typeof val === 'string') {
+                coords = val;
+            }
+            else if (typeof val === 'object' && val !== null) {
+                name = val.name || key;
+                owner = val.owner;
+                type = val.type;
+                dimension = val.dimension || val.world || val.dimensionName || 'minecraft:overworld';
+                if (val.coords) {
+                    coords = val.coords;
+                }
+                else if (val.location) {
+                    coords = val.location;
+                }
+                else if (val.x !== undefined && val.y !== undefined && val.z !== undefined) {
+                    coords = `${Math.floor(val.x)}, ${Math.floor(val.y)}, ${Math.floor(val.z)}`;
+                }
+            }
+            return { name, coords, dimension, owner, type };
+        });
     }
+    const warps = rawList.map(w => {
+        let rawDim = String(w.dimension || 'minecraft:overworld').toLowerCase();
+        let dimDisplay = '主世界';
+        if (rawDim.includes('nether'))
+            dimDisplay = '地獄';
+        else if (rawDim.includes('end'))
+            dimDisplay = '終界';
+        return {
+            name: w.name || '未命名地標',
+            coords: w.coords || (w.x !== undefined ? `${Math.floor(w.x)}, ${Math.floor(w.y)}, ${Math.floor(w.z)}` : '未提供座標'),
+            dimension: rawDim,
+            dimensionDisplay: dimDisplay,
+            owner: w.owner,
+            type: w.type
+        };
+    });
     const result = { success: true, warps };
     (0, wsClient_1.setCachedData)('warps_cache', result, 5000);
     return res.json(result);

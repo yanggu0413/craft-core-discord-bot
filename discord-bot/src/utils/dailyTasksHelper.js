@@ -1,13 +1,23 @@
 const SLAY_POOL = [
   { type: 1, target: 'Zombie', count: 15, reward: 250 },
   { type: 1, target: 'Skeleton', count: 10, reward: 300 },
-  { type: 1, target: 'Creeper', count: 5, reward: 400 }
+  { type: 1, target: 'Creeper', count: 5, reward: 400 },
+  { type: 1, target: 'Spider', count: 10, reward: 300 },
+  { type: 1, target: 'Enderman', count: 3, reward: 600 },
+  { type: 1, target: 'Blaze', count: 5, reward: 500 },
+  { type: 1, target: 'Witch', count: 2, reward: 500 },
+  { type: 1, target: 'Phantom', count: 3, reward: 400 }
 ];
 
 const MINE_POOL = [
   { type: 2, target: 'Coal Ore', count: 20, reward: 200 },
   { type: 2, target: 'Iron Ore', count: 10, reward: 300 },
-  { type: 2, target: 'Diamond Ore', count: 3, reward: 1000 }
+  { type: 2, target: 'Diamond Ore', count: 3, reward: 1000 },
+  { type: 2, target: 'Gold Ore', count: 10, reward: 350 },
+  { type: 2, target: 'Redstone Ore', count: 15, reward: 250 },
+  { type: 2, target: 'Lapis Ore', count: 10, reward: 300 },
+  { type: 2, target: 'Nether Quartz Ore', count: 15, reward: 300 },
+  { type: 2, target: 'Ancient Debris', count: 1, reward: 1500 }
 ];
 
 function getHashCode(str) {

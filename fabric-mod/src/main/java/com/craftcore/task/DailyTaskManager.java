@@ -51,13 +51,23 @@ public class DailyTaskManager {
     public static final DailyTaskDef[] SLAY_POOL = {
         new DailyTaskDef(1, "Zombie", 15, 250.0),
         new DailyTaskDef(1, "Skeleton", 10, 300.0),
-        new DailyTaskDef(1, "Creeper", 5, 400.0)
+        new DailyTaskDef(1, "Creeper", 5, 400.0),
+        new DailyTaskDef(1, "Spider", 10, 300.0),
+        new DailyTaskDef(1, "Enderman", 3, 600.0),
+        new DailyTaskDef(1, "Blaze", 5, 500.0),
+        new DailyTaskDef(1, "Witch", 2, 500.0),
+        new DailyTaskDef(1, "Phantom", 3, 400.0)
     };
 
     public static final DailyTaskDef[] MINE_POOL = {
         new DailyTaskDef(2, "Coal Ore", 20, 200.0),
         new DailyTaskDef(2, "Iron Ore", 10, 300.0),
-        new DailyTaskDef(2, "Diamond Ore", 3, 1000.0)
+        new DailyTaskDef(2, "Diamond Ore", 3, 1000.0),
+        new DailyTaskDef(2, "Gold Ore", 10, 350.0),
+        new DailyTaskDef(2, "Redstone Ore", 15, 250.0),
+        new DailyTaskDef(2, "Lapis Ore", 10, 300.0),
+        new DailyTaskDef(2, "Nether Quartz Ore", 15, 300.0),
+        new DailyTaskDef(2, "Ancient Debris", 1, 1500.0)
     };
 
     public static String getTaipeiDate() {
@@ -78,6 +88,9 @@ public class DailyTaskManager {
     public static boolean matchesSlayTarget(String entityId, String target) {
         String cleanEntity = entityId.replace("minecraft:", "").toLowerCase();
         String cleanTarget = target.toLowerCase();
+        if (cleanTarget.equals("piglin")) {
+            return cleanEntity.contains("piglin");
+        }
         return cleanEntity.equals(cleanTarget);
     }
 
@@ -90,6 +103,18 @@ public class DailyTaskManager {
             return cleanBlock.equals("iron_ore") || cleanBlock.equals("deepslate_iron_ore");
         } else if (cleanTarget.equals("diamond ore")) {
             return cleanBlock.equals("diamond_ore") || cleanBlock.equals("deepslate_diamond_ore");
+        } else if (cleanTarget.equals("gold ore")) {
+            return cleanBlock.equals("gold_ore") || cleanBlock.equals("deepslate_gold_ore") || cleanBlock.equals("nether_gold_ore");
+        } else if (cleanTarget.equals("redstone ore")) {
+            return cleanBlock.equals("redstone_ore") || cleanBlock.equals("deepslate_redstone_ore");
+        } else if (cleanTarget.equals("lapis ore")) {
+            return cleanBlock.equals("lapis_ore") || cleanBlock.equals("deepslate_lapis_ore");
+        } else if (cleanTarget.equals("nether quartz ore")) {
+            return cleanBlock.equals("nether_quartz_ore");
+        } else if (cleanTarget.equals("ancient debris")) {
+            return cleanBlock.equals("ancient_debris");
+        } else if (cleanTarget.equals("emerald ore")) {
+            return cleanBlock.equals("emerald_ore") || cleanBlock.equals("deepslate_emerald_ore");
         }
         return false;
     }
