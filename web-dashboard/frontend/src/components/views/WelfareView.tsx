@@ -65,6 +65,57 @@ export default function WelfareView({
   const [loadingExchange, setLoadingExchange] = useState(false);
   const [exchangeMode, setExchangeMode] = useState<'single' | 'all'>('single');
 
+  // Titles State
+  const [unlockedTitles, setUnlockedTitles] = useState<string[]>([]);
+  const [activeTitle, setActiveTitle] = useState<string>('');
+  const [loadingTitles, setLoadingTitles] = useState(false);
+
+  const fetchTitles = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/user/titles`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActiveTitle(data.activeTitle || '');
+        setUnlockedTitles(data.unlockedTitles || []);
+      }
+    } catch (e) {
+      console.error('Error fetching user titles:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchTitles();
+  }, [token]);
+
+  const handleEquipTitle = async (titleText: string) => {
+    if (!token) return;
+    setLoadingTitles(true);
+    try {
+      const res = await fetch(`${API_URL}/user/title/equip`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ title_text: titleText })
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast(data.message || '稱號設定完成！', 'success');
+        fetchTitles();
+      } else {
+        triggerToast(data.message || '稱號設定失敗', 'error');
+      }
+    } catch (e: any) {
+      triggerToast('請求失敗：' + e.message, 'error');
+    } finally {
+      setLoadingTitles(false);
+    }
+  };
+
   // Lucky Draw State
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinPrizes, setSpinPrizes] = useState<typeof PRIZE_POOL>([]);
@@ -789,6 +840,66 @@ export default function WelfareView({
                   </TableBody>
                 </Table>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* 個人稱號配戴面板 */}
+          <Card className="border-border">
+            <CardHeader className="py-3 px-4 border-b border-border">
+              <CardTitle className="text-sm font-bold flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-emerald-500" />
+                  個人解鎖稱號配戴
+                </span>
+                {activeTitle && (
+                  <span className="text-[10px] bg-emerald-500/15 text-emerald-500 px-2 py-0.5 rounded font-bold">
+                    當前佩戴：[{activeTitle}]
+                  </span>
+                )}
+              </CardTitle>
+              <CardDescription className="text-[11px]">
+                點擊已解鎖的稱號即可實時佩戴至遊戲頭頂與聊天欄。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 space-y-3">
+              {!token ? (
+                <p className="text-xs text-muted-foreground text-center py-4">請先登入帳號以檢視個人解鎖稱號</p>
+              ) : unlockedTitles.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">您目前尚無解鎖任何專屬稱號</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {unlockedTitles.map((t, idx) => {
+                    const isEquipped = activeTitle === t;
+                    return (
+                      <Button
+                        key={idx}
+                        disabled={loadingTitles}
+                        onClick={() => handleEquipTitle(t)}
+                        size="sm"
+                        variant={isEquipped ? 'default' : 'outline'}
+                        className="text-xs font-bold gap-1.5"
+                      >
+                        <span>{t}</span>
+                        {isEquipped && <span className="text-[9px] bg-white/20 px-1 rounded">使用中</span>}
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {activeTitle && (
+                <div className="pt-2 border-t border-border flex justify-end">
+                  <Button
+                    disabled={loadingTitles}
+                    onClick={() => handleEquipTitle('')}
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-muted-foreground hover:text-destructive"
+                  >
+                    卸下當前稱號
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

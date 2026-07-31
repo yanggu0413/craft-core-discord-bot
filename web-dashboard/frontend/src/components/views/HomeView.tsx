@@ -437,7 +437,7 @@ export default function HomeView({
                 <div key={i} className="p-2.5 bg-muted/30 border border-border rounded-lg text-[11px] space-y-1">
                   <div className="flex items-center justify-between text-[9px] text-muted-foreground font-mono">
                     <span>時間：{trade.time}</span>
-                    <span className="text-emerald-500 font-bold">金幣：${trade.profit} 元</span>
+                    <span className="text-emerald-500 font-bold">成交金額：${trade.total_price || trade.profit || 0} 元</span>
                   </div>
                   <p className="leading-relaxed text-foreground">
                     玩家 <span className="font-bold text-primary">{trade.buyer}</span> 購買了 

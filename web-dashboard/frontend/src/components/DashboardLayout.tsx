@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { 
   BarChart3, ShoppingBag, TrendingUp, User, Shield, 
   Settings, LogOut, Sun, Moon, Menu, X, Compass, Mail, ShieldAlert, Gift,
-  Cpu, MapPin, Sparkles, BookOpen
+  Cpu, MapPin, Sparkles, BookOpen, CheckSquare
 } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface DashboardLayoutProps {
-  activeTab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports' | 'events';
-  setActiveTab: (tab: 'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports' | 'events') => void;
+  activeTab: 'home' | 'tasks' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports' | 'events';
+  setActiveTab: (tab: 'home' | 'tasks' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports' | 'events') => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
   token: string | null;
@@ -39,6 +39,7 @@ export default function DashboardLayout({
       title: '核心與活動',
       items: [
         { id: 'home', label: '數據總覽', icon: BarChart3 },
+        { id: 'tasks', label: '任務與狂歡', icon: CheckSquare },
         { id: 'events', label: '伺服器活動', icon: Sparkles }
       ]
     },
@@ -62,12 +63,6 @@ export default function DashboardLayout({
       items: [
         { id: 'welfare', label: '簽到與抽獎', icon: Gift },
         { id: 'inventory', label: '郵局與背包', icon: Mail }
-      ]
-    },
-    {
-      title: '說明與維基',
-      items: [
-        { id: 'docs', label: '官方說明文檔', icon: BookOpen, externalUrl: '/docs/' }
       ]
     },
     ...(token ? [{
@@ -221,8 +216,24 @@ export default function DashboardLayout({
         </header>
 
         {/* 頁面主要內容 */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-          {children}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col justify-between">
+          <div className="flex-1">
+            {children}
+          </div>
+          <footer className="mt-12 pt-6 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+            <p>© 2026 Craft-Core Minecraft Ecosystem. All rights reserved.</p>
+            <div className="flex items-center space-x-4">
+              <a 
+                href="/docs/" 
+                target="_blank" 
+                rel="noreferrer"
+                className="flex items-center space-x-1.5 hover:text-primary transition-colors font-medium text-foreground/80 hover:text-foreground"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>官方說明文檔 (Wiki)</span>
+              </a>
+            </div>
+          </footer>
         </main>
       </div>
 

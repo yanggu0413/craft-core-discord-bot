@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Shield, Search, User, MapPin } from 'lucide-react';
+import { Shield, Search, User, MapPin, Settings, UserX, Package, MousePointer, DoorOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog';
+import { apiFetch } from '../../lib/api';
 
 interface Claim {
   id: string;
@@ -17,6 +19,10 @@ interface Claim {
     containers: string[];
     interact: string[];
   };
+  public_containers?: boolean;
+  public_interact?: boolean;
+  public_entry?: boolean;
+  banned_players?: string[];
 }
 
 interface ClaimsViewProps {
@@ -36,6 +42,27 @@ export default function ClaimsView({
   const [searchFilter, setSearchFilter] = useState('');
   const [adminViewMode, setAdminViewMode] = useState<'all' | 'mine'>('all');
 
+  // Flags Modal State
+  const [flagsModal, setFlagsModal] = useState<{
+    show: boolean;
+    claimId: string;
+    claimName: string;
+    publicContainers: boolean;
+    publicInteract: boolean;
+    publicEntry: boolean;
+    bannedPlayersText: string;
+  }>({
+    show: false,
+    claimId: '',
+    claimName: '',
+    publicContainers: false,
+    publicInteract: false,
+    publicEntry: true,
+    bannedPlayersText: ''
+  });
+  const [savingFlags, setSavingFlags] = useState(false);
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const handleInputChange = (key: string, val: string) => {
     setGrantInputs(prev => ({ ...prev, [key]: val }));
   };
@@ -47,6 +74,54 @@ export default function ClaimsView({
 
     await handleUpdatePermission(claimId, permType, targetPlayer.trim(), 'grant');
     setGrantInputs(prev => ({ ...prev, [inputKey]: '' }));
+  };
+
+  const openFlagsModal = (claim: Claim) => {
+    setFlagsModal({
+      show: true,
+      claimId: claim.id,
+      claimName: claim.name,
+      publicContainers: Boolean(claim.public_containers),
+      publicInteract: Boolean(claim.public_interact),
+      publicEntry: claim.public_entry !== undefined ? Boolean(claim.public_entry) : true,
+      bannedPlayersText: Array.isArray(claim.banned_players) ? claim.banned_players.join(', ') : ''
+    });
+    setMsg(null);
+  };
+
+  const handleSaveFlags = async () => {
+    setSavingFlags(true);
+    setMsg(null);
+    try {
+      const bannedArray = flagsModal.bannedPlayersText
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const res = await apiFetch('/claims/flags', {
+        method: 'POST',
+        body: JSON.stringify({
+          claim_id: flagsModal.claimId,
+          public_containers: flagsModal.publicContainers,
+          public_interact: flagsModal.publicInteract,
+          public_entry: flagsModal.publicEntry,
+          banned_players: bannedArray
+        })
+      });
+
+      if (res.ok && res.data?.success) {
+        setMsg({ type: 'success', text: res.data.message || '領地權限標籤已更新成功！' });
+        setTimeout(() => {
+          setFlagsModal(prev => ({ ...prev, show: false }));
+        }, 1200);
+      } else {
+        setMsg({ type: 'error', text: res.data?.message || '更新失敗' });
+      }
+    } catch (err) {
+      setMsg({ type: 'error', text: '網路連線失敗' });
+    } finally {
+      setSavingFlags(false);
+    }
   };
 
   // Filter claims based on admin mode and search input
@@ -71,7 +146,7 @@ export default function ClaimsView({
             <span>領地管理系統 {isAdmin && <span className="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-bold ml-2">🛡️ 管理員檢視模式</span>}</span>
           </h2>
           <p className="text-xs text-muted-foreground">
-            檢視並設定保護領地內的權限，包含建造、破壞、容器開啟與方塊互動權限。{isAdmin && '（管理員可檢視與維護全服所有玩家之領地）'}
+            檢視並設定保護領地內的權限，包含建造、破壞、容器開啟、方塊互動與全域權限標籤。{isAdmin && '（管理員可檢視與維護全服所有玩家之領地）'}
           </p>
         </div>
 
@@ -157,6 +232,17 @@ export default function ClaimsView({
                   <span className="text-[10px] font-bold bg-muted border border-border px-2.5 py-1 rounded text-foreground">
                     領地面積：{claim.chunks} 個區塊
                   </span>
+                  {canManage && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openFlagsModal(claim)}
+                      className="h-8 text-xs font-bold gap-1.5 border-primary/30 hover:border-primary"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-primary" />
+                      全域標籤與黑名單
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="pt-4 text-left">
@@ -199,13 +285,13 @@ export default function ClaimsView({
 
                             <div className="flex flex-wrap gap-1.5 min-h-[28px] items-center">
                               {permPlayers.map((player) => (
-                                <span key={player} className="bg-muted border border-border text-foreground text-[11px] px-2 py-0.5 rounded flex items-center space-x-1">
+                                <span key={player} className="inline-flex items-center space-x-1 bg-background border border-border px-2 py-0.5 rounded text-[10px] font-bold text-foreground">
                                   <span>{player}</span>
                                   {canManage && (
-                                    <button 
+                                    <button
                                       onClick={() => handleUpdatePermission(claim.id, permType, player, 'revoke')}
-                                      className="hover:text-rose-500 transition-colors font-bold ml-1 text-xs cursor-pointer"
-                                      title="收回權限"
+                                      className="text-muted-foreground hover:text-destructive ml-1"
+                                      title="移除權限"
                                     >
                                       ×
                                     </button>
@@ -213,25 +299,25 @@ export default function ClaimsView({
                                 </span>
                               ))}
                               {permPlayers.length === 0 && (
-                                <span className="text-[10px] text-muted-foreground italic">無授權玩家</span>
+                                <span className="text-[10px] text-muted-foreground italic">尚無個人特許玩家</span>
                               )}
                             </div>
 
                             {canManage && (
-                              <div className="flex space-x-1.5 pt-1">
-                                <Input 
-                                  type="text" 
-                                  placeholder="玩家帳號..."
+                              <div className="flex items-center space-x-1 pt-1">
+                                <Input
+                                  placeholder="玩家名稱..."
                                   value={grantInputs[inputKey] || ''}
                                   onChange={(e) => handleInputChange(inputKey, e.target.value)}
-                                  className="h-7 text-xs flex-grow"
+                                  onKeyDown={(e) => e.key === 'Enter' && submitGrant(claim.id, permType)}
+                                  className="h-7 text-[10px]"
                                 />
-                                <Button 
-                                  onClick={() => submitGrant(claim.id, permType)}
+                                <Button
                                   size="sm"
-                                  className="h-7 text-[10px] px-2.5 font-bold shrink-0"
+                                  onClick={() => submitGrant(claim.id, permType)}
+                                  className="h-7 px-2 text-[10px] font-bold shrink-0"
                                 >
-                                  授權
+                                  新增
                                 </Button>
                               </div>
                             )}
@@ -247,17 +333,103 @@ export default function ClaimsView({
         })}
 
         {filteredClaims.length === 0 && (
-          <Card className="py-12 border-dashed text-center">
-            <CardContent className="flex flex-col items-center justify-center space-y-3">
-              <Shield className="w-8 h-8 text-muted-foreground/50" />
-              <CardTitle className="text-base font-bold">沒有符合條件的領地保護區</CardTitle>
-              <CardDescription className="max-w-md text-xs">
-                {searchFilter ? `沒有找到與「${searchFilter}」相關的領地。` : '伺服器中目前尚未建立任何保護領地。玩家可在遊戲中持木鋤點擊地面角落並輸入 /claim 來建立領地。'}
-              </CardDescription>
+          <Card>
+            <CardContent className="py-12 text-center text-xs text-muted-foreground">
+              找不到符合搜尋條件的保護領地
             </CardContent>
           </Card>
         )}
       </div>
+
+      {/* 全域權限與黑名單 Modal */}
+      <Dialog open={flagsModal.show} onOpenChange={(open) => !open && setFlagsModal(prev => ({ ...prev, show: false }))}>
+        <DialogContent className="max-w-md p-6 bg-background border border-border text-foreground rounded-xl shadow-2xl">
+          <DialogHeader className="text-left pb-2 border-b border-border">
+            <DialogTitle className="text-sm font-bold flex items-center space-x-2 text-primary">
+              <Settings className="w-4 h-4 text-primary" />
+              <span>設定領地全域權限與黑名單 (領地: {flagsModal.claimName})</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              修改此領地的全域開放設定或禁止特定違規玩家進入。
+            </DialogDescription>
+          </DialogHeader>
+
+          {msg && (
+            <div className={`p-2.5 rounded text-xs font-bold ${
+              msg.type === 'success' ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30' : 'bg-red-500/15 text-red-500 border border-red-500/30'
+            }`}>
+              {msg.text}
+            </div>
+          )}
+
+          <div className="space-y-4 pt-2">
+            <div className="space-y-3 bg-muted/20 border border-border p-3.5 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Package className="w-4 h-4 text-amber-500" />
+                  <span className="text-xs font-bold text-foreground">公開容器箱子 (Public Containers)</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={flagsModal.publicContainers}
+                  onChange={(e) => setFlagsModal(prev => ({ ...prev, publicContainers: e.target.checked }))}
+                  className="rounded border-border text-primary"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <MousePointer className="w-4 h-4 text-indigo-500" />
+                  <span className="text-xs font-bold text-foreground">公開方塊互動 (Public Interact)</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={flagsModal.publicInteract}
+                  onChange={(e) => setFlagsModal(prev => ({ ...prev, publicInteract: e.target.checked }))}
+                  className="rounded border-border text-primary"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <DoorOpen className="w-4 h-4 text-emerald-500" />
+                  <span className="text-xs font-bold text-foreground">公開自由進出 (Public Entry)</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={flagsModal.publicEntry}
+                  onChange={(e) => setFlagsModal(prev => ({ ...prev, publicEntry: e.target.checked }))}
+                  className="rounded border-border text-primary"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center space-x-1.5">
+                <UserX className="w-4 h-4 text-red-500" />
+                <span>領地黑名單玩家 (Banned Players)</span>
+              </label>
+              <Input
+                type="text"
+                placeholder="輸入禁止進入的玩家 ID (多位玩家以逗號分隔，例: Steve, Alex)"
+                value={flagsModal.bannedPlayersText}
+                onChange={(e) => setFlagsModal(prev => ({ ...prev, bannedPlayersText: e.target.value }))}
+                className="text-xs font-mono"
+              />
+              <p className="text-[10px] text-muted-foreground">列於黑名單的玩家踏入此領地將會被自動彈出推開。</p>
+            </div>
+
+            <DialogFooter className="pt-3 border-t border-border">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setFlagsModal(prev => ({ ...prev, show: false }))}>
+                取消
+              </Button>
+              <Button type="button" disabled={savingFlags} onClick={handleSaveFlags} size="sm" className="font-bold">
+                {savingFlags ? '儲存中...' : '儲存變更'}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

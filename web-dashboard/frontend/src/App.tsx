@@ -11,6 +11,7 @@ import InventoryView from './components/views/InventoryView';
 import AdminView from './components/views/AdminView';
 import WelfareView from './components/views/WelfareView';
 import EventsView from './components/views/EventsView';
+import TasksView from './components/views/TasksView';
 import { Card, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { cn } from './lib/utils';
 import { FakePlayers } from './components/FakePlayers';
@@ -83,7 +84,7 @@ export default function App() {
   const [liveTrades, setLiveTrades] = useState<any[]>([]);
 
   // 當前選單分頁
-  const [activeTab, setActiveTab] = useState<'home' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports' | 'events'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'tasks' | 'explorer' | 'market' | 'owner' | 'claims' | 'lockboxes' | 'inventory' | 'admin' | 'welfare' | 'fakeplayers' | 'teleports' | 'events'>('home');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   // 全域數據狀態
@@ -204,8 +205,8 @@ export default function App() {
               buyer: tx.buyer || 'Unknown',
               seller: tx.seller || 'Unknown',
               item: (tx.item || '').replace('minecraft:', '').toUpperCase(),
-              quantity: tx.quantity || 1,
-              profit: tx.net_profit || 0,
+              profit: tx.net_profit || (tx.quantity * tx.unit_price) || 0,
+              total_price: (tx.quantity * tx.unit_price) || tx.net_profit || 0
             }));
             setLiveTrades(mapped);
           }
@@ -324,8 +325,9 @@ export default function App() {
         if (type === 'transaction_log') {
           const log = payload as TradeLog;
           const cleanedItem = log.item.replace('minecraft:', '').toUpperCase();
+          const totalPrice = (log.unit_price * log.quantity) || log.net_profit || 0;
           triggerToast(
-            `交易動態：玩家 ${log.buyer} 向店主 ${log.seller} 購買了 ${log.quantity} 個 ${cleanedItem}，成交金額 $${log.net_profit + log.tax_deducted} 元！`,
+            `交易動態：玩家 ${log.buyer} 向店主 ${log.seller} 購買了 ${log.quantity} 個 ${cleanedItem}，成交金額 $${totalPrice} 元！`,
             'info'
           );
           
@@ -336,10 +338,11 @@ export default function App() {
               seller: log.seller,
               item: cleanedItem,
               quantity: log.quantity,
-              profit: log.net_profit
+              profit: totalPrice,
+              total_price: totalPrice
             },
-            ...prev
-          ].slice(0, 15));
+            ...prev.slice(0, 49)
+          ]);
 
           fetchData();
         }
@@ -667,6 +670,15 @@ export default function App() {
             <EventsView
               token={token}
               isAdmin={isAdmin}
+              triggerToast={triggerToast}
+              API_URL={API_URL}
+            />
+          )}
+
+          {activeTab === 'tasks' && (
+            <TasksView
+              token={token}
+              username={username}
               triggerToast={triggerToast}
               API_URL={API_URL}
             />

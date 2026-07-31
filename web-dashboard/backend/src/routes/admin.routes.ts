@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
-import { db, sendWsQuery, authenticateToken, requireAdmin, CustomRequest } from '../websocket/wsClient';
+import { loadConfigJson, saveConfigJson } from '../utils/configLoader';
+import { db, sendWsQuery, authenticateToken, requireAdmin, CustomRequest, invalidateCachePattern } from '../websocket/wsClient';
 
 const router = Router();
 
@@ -360,53 +361,174 @@ router.delete('/titles/:username', async (req: CustomRequest, res: Response) => 
   }
 });
 
-// GET /api/admin/transactions
-router.get('/transactions', (req: CustomRequest, res: Response) => {
-  if (!db) return res.status(500).json({ success: false, message: '資料庫未連結' });
+// DELETE /api/admin/warps/:name
+router.delete('/warps/:name', async (req: CustomRequest, res: Response) => {
+  const { name } = req.params;
+  if (!name) return res.status(400).json({ success: false, message: '缺少地標名稱' });
+
   try {
-    const search = req.query.search ? String(req.query.search).trim() : '';
-    const limit = Math.min(parseInt(String(req.query.limit || '50'), 10), 200);
-    const page = Math.max(parseInt(String(req.query.page || '1'), 10), 1);
-    const offset = (page - 1) * limit;
+    let warpsMap = loadConfigJson<Record<string, any>>('warps.json') || {};
+    let foundKey = Object.keys(warpsMap).find(k => k.toLowerCase() === name.toLowerCase());
 
-    let query = 'SELECT * FROM transactions';
-    const params: any[] = [];
-    const conditions: string[] = [];
-
-    if (search) {
-      conditions.push('(buyer LIKE ? OR seller LIKE ? OR item LIKE ? OR shop_coords LIKE ?)');
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    if (foundKey) {
+      delete warpsMap[foundKey];
+      saveConfigJson('warps.json', warpsMap);
+      invalidateCachePattern('warps_cache');
     }
 
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
+    try {
+      await sendWsQuery('command_request', {
+        command: `/warp remove "${name}"`,
+        admin_username: req.user?.mc_username || 'Web-Dashboard'
+      }, 3000);
+    } catch (wsErr) {}
 
-    query += ' ORDER BY id DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
-
-    const rows = db.prepare(query).all(...params);
-
-    let countQuery = 'SELECT COUNT(*) as total FROM transactions';
-    const countParams: any[] = [];
-    if (search) {
-      countQuery += ' WHERE (buyer LIKE ? OR seller LIKE ? OR item LIKE ? OR shop_coords LIKE ?)';
-      countParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
-    }
-    const totalRow = db.prepare(countQuery).get(...countParams) as any;
-
-    return res.json({
-      success: true,
-      transactions: rows,
-      total: totalRow?.total || 0,
-      page,
-      limit
-    });
-  } catch (error: any) {
-    console.error('Error fetching admin transactions:', error);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.json({ success: true, message: `已成功刪除地標：「${name}」！` });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
+
+// POST /api/admin/warps/rename
+router.post('/warps/rename', async (req: CustomRequest, res: Response) => {
+  const { old_name, new_name } = req.body;
+  if (!old_name || !new_name) {
+    return res.status(400).json({ success: false, message: '缺少原名稱或新名稱' });
+  }
+
+  try {
+    let warpsMap = loadConfigJson<Record<string, any>>('warps.json') || {};
+    let foundKey = Object.keys(warpsMap).find(k => k.toLowerCase() === old_name.toLowerCase());
+
+    if (foundKey) {
+      const warpObj = warpsMap[foundKey];
+      delete warpsMap[foundKey];
+      warpObj.name = new_name;
+      warpsMap[new_name] = warpObj;
+      saveConfigJson('warps.json', warpsMap);
+      invalidateCachePattern('warps_cache');
+    }
+
+    try {
+      await sendWsQuery('command_request', {
+        command: `/warp rename "${old_name}" "${new_name}"`,
+        admin_username: req.user?.mc_username || 'Web-Dashboard'
+      }, 3000);
+    } catch (wsErr) {}
+
+    return res.json({ success: true, message: `地標已成功由「${old_name}」更名為「${new_name}」！` });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/admin/warps/type
+router.post('/warps/type', async (req: CustomRequest, res: Response) => {
+  const { name, type } = req.body;
+  if (!name || !type) {
+    return res.status(400).json({ success: false, message: '缺少地標名稱或類型' });
+  }
+
+  try {
+    let warpsMap = loadConfigJson<Record<string, any>>('warps.json') || {};
+    let foundKey = Object.keys(warpsMap).find(k => k.toLowerCase() === name.toLowerCase());
+
+    if (foundKey) {
+      warpsMap[foundKey].type = type; // 'machine' vs 'normal'
+      saveConfigJson('warps.json', warpsMap);
+      invalidateCachePattern('warps_cache');
+    }
+
+    return res.json({ success: true, message: `地標「${name}」類別已設定為 ${type === 'machine' ? '🏭 認證機器設施' : '📍 普通公共地標'}！` });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/admin/warp-submissions/:id/approve & /api/admin/machine-submissions/:id/approve
+const handleApproveSubmission = async (req: CustomRequest, res: Response) => {
+  const { id } = req.params;
+  const { warp_name, is_machine } = req.body;
+
+  try {
+    let sub: any = null;
+    if (db) {
+      try {
+        sub = db.prepare('SELECT * FROM warp_submissions WHERE id = ?').get(id);
+      } catch (e) {}
+    }
+
+    const finalWarpName = (warp_name || sub?.facility_name || `facility_${id}`).trim();
+    const isMachine = is_machine !== undefined ? Boolean(is_machine) : true;
+
+    if (db) {
+      try {
+        db.prepare('UPDATE warp_submissions SET status = ?, warp_name = ? WHERE id = ?').run('approved', finalWarpName, id);
+      } catch (e) {}
+    }
+
+    // Add to warps.json
+    let warpsMap = loadConfigJson<Record<string, any>>('warps.json') || {};
+    warpsMap[finalWarpName] = {
+      name: finalWarpName,
+      owner: sub?.applicant_username || 'System',
+      coords: sub?.coords || '0 64 0',
+      dimension: sub?.dimension || 'minecraft:overworld',
+      type: isMachine ? 'machine' : 'normal',
+      desc: sub?.function_desc || '',
+      created_at: new Date().toISOString()
+    };
+    saveConfigJson('warps.json', warpsMap);
+    invalidateCachePattern('warps_cache');
+
+    // If machine, add to machines.json
+    if (isMachine) {
+      let machinesMap = loadConfigJson<Record<string, any>>('machines.json') || {};
+      machinesMap[finalWarpName] = {
+        name: finalWarpName,
+        owner: sub?.applicant_username || 'System',
+        coords: sub?.coords || '0 64 0',
+        desc: sub?.function_desc || '',
+        verified_at: new Date().toISOString()
+      };
+      saveConfigJson('machines.json', machinesMap);
+    }
+
+    try {
+      await sendWsQuery('command_request', {
+        command: `/warp set "${finalWarpName}" ${sub?.coords || ''}`,
+        admin_username: req.user?.mc_username || 'Web-Dashboard'
+      }, 3000);
+    } catch (wsErr) {}
+
+    return res.json({ success: true, message: `已成功核准機器/設施申請，並發布為地標：「${finalWarpName}」！` });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// POST /api/admin/warp-submissions/:id/reject & /api/admin/machine-submissions/:id/reject
+const handleRejectSubmission = async (req: CustomRequest, res: Response) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  try {
+    if (db) {
+      try {
+        db.prepare('UPDATE warp_submissions SET status = ?, reject_reason = ? WHERE id = ?').run('rejected', reason || '未符合設施規範', id);
+      } catch (e) {}
+    }
+    return res.json({ success: true, message: `已成功駁回設施/機器申請。` });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+router.post('/warp-submissions/:id/approve', handleApproveSubmission);
+router.post('/machine-submissions/:id/approve', handleApproveSubmission);
+
+router.post('/warp-submissions/:id/reject', handleRejectSubmission);
+router.post('/machine-submissions/:id/reject', handleRejectSubmission);
 
 import { botWsClient } from '../websocket/wsClient';
 

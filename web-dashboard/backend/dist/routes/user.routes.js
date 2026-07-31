@@ -1022,4 +1022,33 @@ const handleGetWarps = (req, res) => {
 };
 router.get('/warps', handleGetWarps);
 router.get('/public/warps', handleGetWarps);
+// DELETE /api/warps/:name & /api/user/warps/:name
+const handleDeleteWarp = async (req, res) => {
+    const { name } = req.params;
+    const user = req.user;
+    if (!name)
+        return res.status(400).json({ success: false, message: '缺少地標名稱' });
+    try {
+        let warpsMap = (0, configLoader_1.loadConfigJson)('warps.json') || {};
+        let foundKey = Object.keys(warpsMap).find(k => k.toLowerCase() === name.toLowerCase());
+        if (foundKey) {
+            delete warpsMap[foundKey];
+            (0, configLoader_1.saveConfigJson)('warps.json', warpsMap);
+            (0, wsClient_1.invalidateCachePattern)('warps_cache');
+        }
+        try {
+            await (0, wsClient_1.sendWsQuery)('command_request', {
+                command: `/warp remove "${name}"`,
+                admin_username: user?.mc_username || 'Web-Dashboard'
+            }, 3000);
+        }
+        catch (wsErr) { }
+        return res.json({ success: true, message: `已成功刪除地標：「${name}」！` });
+    }
+    catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+router.delete('/warps/:name', auth_1.authenticateToken, handleDeleteWarp);
+router.delete('/user/warps/:name', auth_1.authenticateToken, handleDeleteWarp);
 exports.default = router;

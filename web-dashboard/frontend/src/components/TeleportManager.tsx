@@ -1,94 +1,109 @@
-import React, { useState, useEffect } from 'react';
-import { Compass, Home, Flag, MapPin, Trash2, RefreshCw, AlertCircle, CheckCircle2, Plus, Check, X } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/api';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { Input } from './ui/input';
+import { 
+  Home, MapPin, Flag, Plus, Trash2, Check, X, Compass, ShieldAlert, Cpu, Edit2, Tag 
+} from 'lucide-react';
 
-interface HomeItem {
+interface HomeLocation {
   name: string;
   coords: string;
   dimension: string;
 }
 
-interface WarpItem {
+interface WarpLocation {
   name: string;
   coords: string;
   dimension: string;
+  owner?: string;
+  type?: string; // 'machine' | 'normal'
+  desc?: string;
 }
 
 interface WarpSubmission {
   id: number;
   applicant_username: string;
+  applicant_discord_id: string;
   facility_name: string;
   function_desc: string;
   coords: string;
   dimension: string;
   status: 'pending' | 'approved' | 'rejected';
+  warp_name?: string;
+  reject_reason?: string;
   created_at: string;
 }
 
 interface TeleportManagerProps {
   token: string | null;
-  isAdmin: boolean;
+  isAdmin?: boolean;
 }
 
-export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin }) => {
-  const [homes, setHomes] = useState<HomeItem[]>([]);
-  const [warps, setWarps] = useState<WarpItem[]>([]);
-  const [submissions, setSubmissions] = useState<WarpSubmission[]>([]);
+export function TeleportManager({ token, isAdmin = false }: TeleportManagerProps) {
   const [activeTab, setActiveTab] = useState<'homes' | 'warps' | 'submissions'>('homes');
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [homes, setHomes] = useState<HomeLocation[]>([]);
+  const [warps, setWarps] = useState<WarpLocation[]>([]);
+  const [submissions, setSubmissions] = useState<WarpSubmission[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Submission Modal state
+  // 申請設施 Modal 狀態
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [facilityName, setFacilityName] = useState('');
   const [functionDesc, setFunctionDesc] = useState('');
   const [coordsInput, setCoordsInput] = useState('');
-  const [dimInput, setDimInput] = useState('minecraft:overworld');
+  const [dimensionInput, setDimensionInput] = useState('minecraft:overworld');
   const [submitting, setSubmitting] = useState(false);
 
-  // Modal confirm states
-  const [confirmModal, setConfirmModal] = useState<{
-    show: boolean;
-    type: 'home' | 'warp';
-    name: string;
-  }>({ show: false, type: 'home', name: '' });
+  // 刪除確認 Modal 狀態
+  const [confirmModal, setConfirmModal] = useState<{ show: boolean; type: 'home' | 'warp'; name: string }>({
+    show: false,
+    type: 'home',
+    name: ''
+  });
+  const [deleting, setDeleting] = useState(false);
 
-  const [deleting, setDeleting] = useState<boolean>(false);
+  // 核准機器/地標 Modal 狀態
+  const [approvalModal, setApprovalModal] = useState<{ show: boolean; id: number; facilityName: string; isMachine: boolean }>({
+    show: false,
+    id: 0,
+    facilityName: '',
+    isMachine: true
+  });
+
+  // 改名 Modal 狀態
+  const [renameModal, setRenameModal] = useState<{ show: boolean; oldName: string; newName: string }>({
+    show: false,
+    oldName: '',
+    newName: ''
+  });
+
+  // 訊息提示
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchTeleportData = async () => {
     setLoading(true);
     try {
-      if (activeTab === 'homes') {
-        if (!token) return;
-        const res = await apiFetch('/user/homes');
-        if (res.ok && res.data?.success) {
-          setHomes(res.data.homes || []);
-          setError(null);
-        } else {
-          setError(res.data?.message || '讀取家園列表失敗');
-        }
-      } else if (activeTab === 'warps') {
-        const res = await apiFetch('/warps');
-        if (res.ok && res.data?.success) {
-          setWarps(res.data.warps || []);
-          setError(null);
-        } else {
-          setError(res.data?.message || '讀取公共地標失敗');
-        }
-      } else {
-        const res = await apiFetch('/warp-submissions');
-        if (res.ok && res.data?.success) {
-          setSubmissions(res.data.submissions || []);
-          setError(null);
+      if (token) {
+        const homesRes = await apiFetch('/user/homes');
+        if (homesRes.ok && homesRes.data?.success) {
+          setHomes(homesRes.data.homes || []);
         }
       }
+
+      const warpsRes = await apiFetch('/public/warps');
+      if (warpsRes.ok && warpsRes.data?.success) {
+        setWarps(warpsRes.data.warps || []);
+      }
+
+      const subRes = await apiFetch('/warp-submissions');
+      if (subRes.ok && subRes.data?.success) {
+        setSubmissions(subRes.data.submissions || []);
+      }
     } catch (err) {
-      setError('連線至伺服器失敗');
+      console.error('Failed to fetch teleport data', err);
     } finally {
       setLoading(false);
     }
@@ -96,26 +111,26 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
 
   useEffect(() => {
     fetchTeleportData();
-  }, [token, activeTab]);
+  }, [token]);
 
-  const handleSubmitAudit = async (e: React.FormEvent) => {
+  const handleSubmitFacility = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
-    if (!facilityName.trim() || !functionDesc.trim() || !coordsInput.trim()) {
-      setMsg({ type: 'error', text: '請填寫完整的設施名稱、功能說明與座標！' });
+    if (!facilityName.trim() || !coordsInput.trim()) {
+      setMsg({ type: 'error', text: '請輸入設施名稱與座標' });
       return;
     }
 
     setSubmitting(true);
+    setMsg(null);
     try {
       const res = await apiFetch('/warp-submissions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           facility_name: facilityName.trim(),
           function_desc: functionDesc.trim(),
           coords: coordsInput.trim(),
-          dimension: dimInput
+          dimension: dimensionInput
         })
       });
       if (res.ok && res.data?.success) {
@@ -135,14 +150,19 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
     }
   };
 
-  const handleApproveSubmission = async (id: number) => {
-    if (!token) return;
+  const executeApprove = async () => {
+    if (!token || !approvalModal.id) return;
     try {
-      const res = await apiFetch(`/admin/warp-submissions/${id}/approve`, {
-        method: 'POST'
+      const res = await apiFetch(`/admin/machine-submissions/${approvalModal.id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({
+          warp_name: approvalModal.facilityName,
+          is_machine: approvalModal.isMachine
+        })
       });
       if (res.ok && res.data?.success) {
         setMsg({ type: 'success', text: res.data.message });
+        setApprovalModal({ show: false, id: 0, facilityName: '', isMachine: true });
         fetchTeleportData();
       } else {
         setMsg({ type: 'error', text: res.data?.message || '審核失敗' });
@@ -154,15 +174,58 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
 
   const handleRejectSubmission = async (id: number) => {
     if (!token) return;
+    const reason = prompt('請輸入駁回原因：', '未符合設施規範') || '未符合設施規範';
     try {
-      const res = await apiFetch(`/admin/warp-submissions/${id}/reject`, {
-        method: 'POST'
+      const res = await apiFetch(`/admin/machine-submissions/${id}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ reason })
       });
       if (res.ok && res.data?.success) {
         setMsg({ type: 'success', text: res.data.message });
         fetchTeleportData();
       } else {
         setMsg({ type: 'error', text: res.data?.message || '操作失敗' });
+      }
+    } catch (err) {
+      setMsg({ type: 'error', text: '網路連線失敗' });
+    }
+  };
+
+  const handleRenameWarp = async () => {
+    if (!token || !renameModal.oldName || !renameModal.newName) return;
+    try {
+      const res = await apiFetch('/admin/warps/rename', {
+        method: 'POST',
+        body: JSON.stringify({
+          old_name: renameModal.oldName,
+          new_name: renameModal.newName.trim()
+        })
+      });
+      if (res.ok && res.data?.success) {
+        setMsg({ type: 'success', text: res.data.message });
+        setRenameModal({ show: false, oldName: '', newName: '' });
+        fetchTeleportData();
+      } else {
+        setMsg({ type: 'error', text: res.data?.message || '更名失敗' });
+      }
+    } catch (err) {
+      setMsg({ type: 'error', text: '網路連線失敗' });
+    }
+  };
+
+  const handleSetWarpType = async (warpName: string, currentType?: string) => {
+    if (!token) return;
+    const newType = currentType === 'machine' ? 'normal' : 'machine';
+    try {
+      const res = await apiFetch('/admin/warps/type', {
+        method: 'POST',
+        body: JSON.stringify({ name: warpName, type: newType })
+      });
+      if (res.ok && res.data?.success) {
+        setMsg({ type: 'success', text: res.data.message });
+        fetchTeleportData();
+      } else {
+        setMsg({ type: 'error', text: res.data?.message || '類型切換失敗' });
       }
     } catch (err) {
       setMsg({ type: 'error', text: '網路連線失敗' });
@@ -200,84 +263,73 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
   };
 
   const formatDimension = (dim: string) => {
-    if (!dim) return '主世界';
-    if (dim.includes('the_nether') || dim.includes('nether')) return '地獄 (Nether)';
-    if (dim.includes('the_end') || dim.includes('end')) return '終界 (End)';
-    return '主世界 (Overworld)';
+    if (dim.includes('nether')) return '🔥 地獄';
+    if (dim.includes('end')) return '🌌 終界';
+    return '🌿 主世界';
   };
 
   return (
-    <div className="space-y-6 text-left">
-      {/* 標頭與頁籤切換卡片 */}
-      <Card>
-        <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Compass className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base font-bold uppercase tracking-wider">傳送地標與設施審核</CardTitle>
-            </div>
-            <CardDescription className="mt-1">
-              在此檢視全服公共地標，或提交您建造的公共設施申請建立 /warp 傳送點！
-            </CardDescription>
-          </div>
+    <div className="space-y-6">
+      {/* 頂部說明區 */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
+        <div>
+          <h2 className="text-xl font-black text-foreground flex items-center gap-2">
+            <Compass className="h-6 w-6 text-primary" />
+            遊戲傳送點與機器設施審核
+          </h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            檢視個人家園地標、公共設施與機器審核發布進度。
+          </p>
+        </div>
+      </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant={activeTab === 'homes' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveTab('homes')}
-            >
-              <Home className="h-4 w-4 mr-1.5" />
-              我的家園 (Homes)
-            </Button>
-            <Button
-              variant={activeTab === 'warps' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveTab('warps')}
-            >
-              <Flag className="h-4 w-4 mr-1.5" />
-              公共地標 (Warps)
-            </Button>
-            <Button
-              variant={activeTab === 'submissions' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveTab('submissions')}
-            >
-              <Plus className="h-4 w-4 mr-1.5 text-amber-500" />
-              設施審核 ({submissions.filter(s => s.status === 'pending').length})
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* 提示訊息 */}
       {msg && (
-        <div className={`p-3 rounded-[4px] text-xs font-semibold flex items-center gap-2 ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
-          {msg.type === 'success' ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
-          <span>{msg.text}</span>
+        <div className={`p-3 rounded-lg text-xs font-bold ${
+          msg.type === 'success' ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/30' : 'bg-red-500/15 text-red-500 border border-red-500/30'
+        }`}>
+          {msg.text}
         </div>
       )}
 
-      {/* 列表內容 */}
+      {/* 分頁切換 Tab */}
+      <div className="flex items-center space-x-2 border-b border-border pb-2">
+        <Button
+          variant={activeTab === 'homes' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => { setActiveTab('homes'); setMsg(null); }}
+          className="text-xs font-bold gap-1.5"
+        >
+          <Home className="h-3.5 w-3.5" />
+          個人家園 ({homes.length})
+        </Button>
+        <Button
+          variant={activeTab === 'warps' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => { setActiveTab('warps'); setMsg(null); }}
+          className="text-xs font-bold gap-1.5"
+        >
+          <Flag className="h-3.5 w-3.5 text-indigo-500" />
+          公共地標 ({warps.length})
+        </Button>
+        <Button
+          variant={activeTab === 'submissions' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => { setActiveTab('submissions'); setMsg(null); }}
+          className="text-xs font-bold gap-1.5"
+        >
+          <Cpu className="h-3.5 w-3.5 text-amber-500" />
+          🏭 機器與設施審核 ({submissions.length})
+        </Button>
+      </div>
+
+      {/* 分頁內容 */}
       {loading ? (
-        <Card>
-          <CardContent className="py-12 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-            <RefreshCw className="h-4 w-4 animate-spin" />
-            <span>讀取中...</span>
-          </CardContent>
-        </Card>
-      ) : error ? (
-        <Card>
-          <CardContent className="py-12 text-center text-xs text-destructive flex items-center justify-center gap-2">
-            <AlertCircle className="h-4 w-4" />
-            <span>{error}</span>
-          </CardContent>
-        </Card>
+        <div className="text-center py-12 text-muted-foreground text-xs font-bold">載入資料中...</div>
       ) : activeTab === 'homes' ? (
         homes.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-xs text-muted-foreground">
-              您目前沒有在遊戲中設定任何家園儲存點。請使用 /sethome 指令來建立。
+              您目前尚未在遊戲內設定任何個人家點。可在遊戲內使用 <code className="bg-muted px-1.5 py-0.5 rounded font-mono">/sethome [名稱]</code> 設定家園！
             </CardContent>
           </Card>
         ) : (
@@ -290,14 +342,14 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
                       <Home className="h-5 w-5 text-primary" />
                       <CardTitle className="normal-case text-base font-bold">{home.name}</CardTitle>
                     </div>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
                       {formatDimension(home.dimension)}
                     </span>
                   </div>
                 </CardHeader>
 
                 <CardContent className="space-y-4">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-slate-50 p-2.5 rounded border border-slate-200 font-mono">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded border border-border font-mono">
                     <MapPin className="h-4 w-4 text-primary shrink-0" />
                     <span>座標: {home.coords}</span>
                   </div>
@@ -307,7 +359,7 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
                       variant="destructive"
                       size="sm"
                       onClick={() => initiateDelete('home', home.name)}
-                      className="w-full text-[11px]"
+                      className="w-full text-[11px] font-bold"
                     >
                       <Trash2 className="h-3.5 w-3.5 mr-1" /> 刪除此家園
                     </Button>
@@ -322,7 +374,7 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
           {warps.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-xs text-muted-foreground">
-                目前伺服器尚未設定任何公共地標。您可前往「設施審核」分頁申請設立設施地標！
+                目前伺服器尚未設定任何公共地標。您可前往「機器審核」分頁申請設立設施地標！
               </CardContent>
             </Card>
           ) : (
@@ -332,30 +384,57 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Flag className="h-5 w-5 text-indigo-600" />
+                        {warp.type === 'machine' ? (
+                          <Cpu className="h-5 w-5 text-amber-500" />
+                        ) : (
+                          <Flag className="h-5 w-5 text-indigo-500" />
+                        )}
                         <CardTitle className="normal-case text-base font-bold">{warp.name}</CardTitle>
                       </div>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        {formatDimension(warp.dimension)}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                          warp.type === 'machine' ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30' : 'bg-indigo-500/15 text-indigo-500 border border-indigo-500/30'
+                        }`}>
+                          {warp.type === 'machine' ? '🏭 認證機器' : '📍 公共地標'}
+                        </span>
+                      </div>
                     </div>
                   </CardHeader>
 
                   <CardContent className="space-y-4">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground bg-slate-50 p-2.5 rounded border border-slate-200 font-mono">
-                      <MapPin className="h-4 w-4 text-indigo-600 shrink-0" />
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded border border-border font-mono">
+                      <MapPin className="h-4 w-4 text-indigo-500 shrink-0" />
                       <span>座標: {warp.coords}</span>
                     </div>
 
                     {isAdmin && (
-                      <div className="pt-2 border-t border-border flex justify-end">
+                      <div className="pt-2 border-t border-border flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setRenameModal({ show: true, oldName: warp.name, newName: warp.name })}
+                            className="flex-1 text-[11px] font-bold gap-1"
+                          >
+                            <Edit2 className="h-3.5 w-3.5 text-primary" /> 地標改名
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSetWarpType(warp.name, warp.type)}
+                            className="flex-1 text-[11px] font-bold gap-1"
+                          >
+                            <Tag className="h-3.5 w-3.5 text-amber-500" /> 
+                            {warp.type === 'machine' ? '切為一般' : '設為機器'}
+                          </Button>
+                        </div>
                         <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => initiateDelete('warp', warp.name)}
-                          className="w-full text-[11px]"
+                          className="w-full text-[11px] font-bold"
                         >
-                          <Trash2 className="h-3.5 w-3.5 mr-1" /> 刪除地標 (管理員權限)
+                          <Trash2 className="h-3.5 w-3.5 mr-1" /> 刪除地標
                         </Button>
                       </div>
                     )}
@@ -369,21 +448,21 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
         /* Submissions Tab */
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-foreground">公共設施審核紀錄與申請列表</h3>
+            <h3 className="text-sm font-bold text-foreground">🏭 認證機器設施審核紀錄與申請列表</h3>
             <Button
               onClick={() => setIsSubmitModalOpen(true)}
               size="sm"
               className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-sm"
             >
               <Plus className="h-4 w-4" />
-              <span>提交設施審核</span>
+              <span>提交機器設施審核</span>
             </Button>
           </div>
 
           {submissions.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-xs text-muted-foreground">
-                目前沒有任何公共設施審核申請紀錄。
+                目前沒有任何機器設施審核申請紀錄。
               </CardContent>
             </Card>
           ) : (
@@ -395,11 +474,11 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-foreground">{sub.facility_name}</span>
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          sub.status === 'approved' ? 'bg-emerald-100 text-emerald-800' :
-                          sub.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-amber-100 text-amber-800'
+                          sub.status === 'approved' ? 'bg-emerald-500/15 text-emerald-500' :
+                          sub.status === 'rejected' ? 'bg-red-500/15 text-red-500' :
+                          'bg-amber-500/15 text-amber-500'
                         }`}>
-                          {sub.status === 'approved' ? '🟢 已核准' : sub.status === 'rejected' ? '🔴 已駁回' : '🟡 審核中'}
+                          {sub.status === 'approved' ? '🟢 已核准 (地標: ' + (sub.warp_name || sub.facility_name) + ')' : sub.status === 'rejected' ? '🔴 已駁回' : '🟡 審核中'}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">{sub.function_desc}</p>
@@ -413,11 +492,11 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
                       <div className="flex items-center gap-2 shrink-0">
                         <Button
                           size="sm"
-                          onClick={() => handleApproveSubmission(sub.id)}
+                          onClick={() => setApprovalModal({ show: true, id: sub.id, facilityName: sub.facility_name, isMachine: true })}
                           className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8"
                         >
                           <Check className="h-3.5 w-3.5 mr-1" />
-                          同意通過
+                          核准發布地標
                         </Button>
                         <Button
                           size="sm"
@@ -444,94 +523,173 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
           <DialogHeader className="text-left pb-2 border-b border-border">
             <DialogTitle className="text-sm font-bold flex items-center space-x-2 text-primary">
               <Plus className="w-4 h-4 text-amber-500" />
-              <span>申請設立公共設施 / Warp 傳送點</span>
+              <span>申請報備認證機器設施 / Warp 傳送點</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              請填寫您建造的設施名稱、詳細功能說明與遊戲座標，審核通過後將會為您設立公共 /warp 點！
+              請填寫您建造的紅石機器設施名稱、功能說明與座標，審核通過後將自動發布為公共 Warp 地標！
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmitAudit} className="space-y-4 pt-2 text-left">
-            <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase mb-1 block">1. 設施名稱</label>
-              <Input 
-                placeholder="例如: 刷鐵機 / 公共小麥農場" 
-                className="h-8 text-xs font-bold"
+          <form onSubmit={handleSubmitFacility} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground font-mono">設施/機器名稱</label>
+              <Input
+                type="text"
+                placeholder="例: 大白熊自動刷鐵機"
                 value={facilityName}
                 onChange={(e) => setFacilityName(e.target.value)}
                 required
+                className="text-xs"
               />
             </div>
 
-            <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase mb-1 block">2. 設施功能說明</label>
-              <textarea 
-                placeholder="說明設施為玩家提供的服務（如：免費鐵錠、公共附魔台...）" 
-                className="w-full min-h-[80px] p-2 text-xs border border-input bg-background rounded-[4px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground font-mono">功能說明與用途</label>
+              <Input
+                type="text"
+                placeholder="例: 自動刷鐵、全服共享"
                 value={functionDesc}
                 onChange={(e) => setFunctionDesc(e.target.value)}
-                required
+                className="text-xs"
               />
             </div>
 
-            <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase mb-1 block">3. 設施座標 X Y Z</label>
-              <Input 
-                placeholder="例如: 150 64 -200" 
-                className="h-8 text-xs font-mono"
-                value={coordsInput}
-                onChange={(e) => setCoordsInput(e.target.value)}
-                required
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground font-mono">遊戲座標 (X Y Z)</label>
+                <Input
+                  type="text"
+                  placeholder="例: 100 64 -200"
+                  value={coordsInput}
+                  onChange={(e) => setCoordsInput(e.target.value)}
+                  required
+                  className="text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground font-mono">維度</label>
+                <select
+                  value={dimensionInput}
+                  onChange={(e) => setDimensionInput(e.target.value)}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+                >
+                  <option value="minecraft:overworld">主世界</option>
+                  <option value="minecraft:the_nether">地獄</option>
+                  <option value="minecraft:the_end">終界</option>
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase mb-1 block">4. 所在世界</label>
-              <select
-                className="w-full h-8 px-2 text-xs border border-input bg-background rounded-[4px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                value={dimInput}
-                onChange={(e) => setDimInput(e.target.value)}
-              >
-                <option value="minecraft:overworld">主世界 (Overworld)</option>
-                <option value="minecraft:the_nether">地獄 (Nether)</option>
-                <option value="minecraft:the_end">終界 (End)</option>
-              </select>
-            </div>
-
-            <div className="pt-2 flex justify-end space-x-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsSubmitModalOpen(false)}>
+            <DialogFooter className="pt-3 border-t border-border">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setIsSubmitModalOpen(false)}>
                 取消
               </Button>
-              <Button type="submit" size="sm" className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold" disabled={submitting}>
-                {submitting ? '提交中...' : '正式提交審核'}
+              <Button type="submit" disabled={submitting} size="sm" className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold">
+                {submitting ? '提交中...' : '確認提交審核'}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 核准發布 Modal */}
+      <Dialog open={approvalModal.show} onOpenChange={(open) => !open && setApprovalModal({ show: false, id: 0, facilityName: '', isMachine: true })}>
+        <DialogContent className="max-w-md p-6 bg-background border border-border text-foreground rounded-xl shadow-2xl">
+          <DialogHeader className="text-left pb-2 border-b border-border">
+            <DialogTitle className="text-sm font-bold flex items-center space-x-2 text-emerald-500">
+              <Check className="w-4 h-4" />
+              <span>核准設施申請並發布地標</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground font-mono">最終地標名稱 (Warp Name)</label>
+              <Input
+                type="text"
+                value={approvalModal.facilityName}
+                onChange={(e) => setApprovalModal(prev => ({ ...prev, facilityName: e.target.value }))}
+                className="text-xs"
+              />
+            </div>
+
+            <div className="flex items-center space-x-2 pt-1">
+              <input
+                type="checkbox"
+                id="isMachineCheck"
+                checked={approvalModal.isMachine}
+                onChange={(e) => setApprovalModal(prev => ({ ...prev, isMachine: e.target.checked }))}
+                className="rounded border-border text-primary"
+              />
+              <label htmlFor="isMachineCheck" className="text-xs font-bold text-foreground cursor-pointer">
+                🏭 標註為認證機器設施 (免領地過期清潔費)
+              </label>
+            </div>
+
+            <DialogFooter className="pt-3 border-t border-border">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setApprovalModal({ show: false, id: 0, facilityName: '', isMachine: true })}>
+                取消
+              </Button>
+              <Button type="button" onClick={executeApprove} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+                確認核准並發布地標
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 改名 Modal */}
+      <Dialog open={renameModal.show} onOpenChange={(open) => !open && setRenameModal({ show: false, oldName: '', newName: '' })}>
+        <DialogContent className="max-w-md p-6 bg-background border border-border text-foreground rounded-xl shadow-2xl">
+          <DialogHeader className="text-left pb-2 border-b border-border">
+            <DialogTitle className="text-sm font-bold flex items-center space-x-2 text-primary">
+              <Edit2 className="w-4 h-4" />
+              <span>地標重新命名</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground font-mono">新地標名稱</label>
+              <Input
+                type="text"
+                value={renameModal.newName}
+                onChange={(e) => setRenameModal(prev => ({ ...prev, newName: e.target.value }))}
+                className="text-xs"
+              />
+            </div>
+
+            <DialogFooter className="pt-3 border-t border-border">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setRenameModal({ show: false, oldName: '', newName: '' })}>
+                取消
+              </Button>
+              <Button type="button" onClick={handleRenameWarp} size="sm" className="font-bold">
+                確認更名
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* 刪除確認 Modal */}
       <Dialog open={confirmModal.show} onOpenChange={(open) => !open && setConfirmModal({ show: false, type: 'home', name: '' })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>確認刪除{confirmModal.type === 'home' ? '家園' : '地標'}</DialogTitle>
-            <DialogDescription>
-              您確定要刪除{confirmModal.type === 'home' ? '家園' : '公共地標'} 「<span className="font-bold text-foreground">{confirmModal.name}</span>」嗎？此操作將無法撤銷。
+        <DialogContent className="max-w-sm p-6 bg-background border border-border text-foreground rounded-xl shadow-2xl">
+          <DialogHeader className="text-left pb-2 border-b border-border">
+            <DialogTitle className="text-sm font-bold flex items-center space-x-2 text-destructive">
+              <ShieldAlert className="w-4 h-4" />
+              <span>刪除確認</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              您確定要刪除{confirmModal.type === 'home' ? '家園' : '公共地標'}「<strong className="text-foreground">{confirmModal.name}</strong>」嗎？此操作無法撤銷！
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setConfirmModal({ show: false, type: 'home', name: '' })}
-              disabled={deleting}
-            >
+
+          <DialogFooter className="pt-3 border-t border-border">
+            <Button variant="ghost" size="sm" onClick={() => setConfirmModal({ show: false, type: 'home', name: '' })}>
               取消
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={deleting}
-            >
+            <Button variant="destructive" disabled={deleting} size="sm" onClick={handleConfirmDelete} className="font-bold">
               {deleting ? '刪除中...' : '確認刪除'}
             </Button>
           </DialogFooter>
@@ -539,4 +697,4 @@ export const TeleportManager: React.FC<TeleportManagerProps> = ({ token, isAdmin
       </Dialog>
     </div>
   );
-};
+}
