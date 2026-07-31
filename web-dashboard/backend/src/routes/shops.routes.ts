@@ -107,7 +107,8 @@ router.post('/shop/withdraw', authenticateToken, async (req: CustomRequest, res:
       });
       if (targetShop) {
         const shopOwner = (targetShop.player || targetShop.owner || '').replace(/^\./, '').toLowerCase();
-        if (shopOwner !== cleanUsername && !user.isAdmin) {
+        const isAdmin = Boolean((user as any).isAdmin || user.profile?.isAdmin);
+        if (shopOwner !== cleanUsername && !isAdmin) {
           return res.status(403).json({ success: false, message: '安全性拒絕：您並非該箱子商店的店主，無權提領他人營收！' });
         }
       }

@@ -103,19 +103,24 @@ router.post('/permission', auth_1.authenticateToken, async (req, res) => {
         if (claimsMap[claimId]) {
             const claim = claimsMap[claimId];
             if (!claim.permissions) {
-                claim.permissions = { build: [], break: [], containers: [], interact: [] };
+                claim.permissions = { build: [], break: [], breakBlocks: [], containers: [], interact: [] };
             }
-            let key = permissionType === 'break' ? 'break' : permissionType;
-            if (!claim.permissions[key]) {
-                claim.permissions[key] = [];
-            }
+            let targetList = Array.isArray(claim.permissions.break)
+                ? claim.permissions.break
+                : (Array.isArray(claim.permissions.breakBlocks) ? claim.permissions.breakBlocks : []);
+            let key = permissionType === 'break' || permissionType === 'breakBlocks' ? 'break' : permissionType;
+            let permArray = Array.isArray(claim.permissions[key]) ? claim.permissions[key] : targetList;
             if (action === 'grant') {
-                if (!claim.permissions[key].includes(player)) {
-                    claim.permissions[key].push(player);
+                if (!permArray.includes(player)) {
+                    permArray.push(player);
                 }
             }
             else if (action === 'revoke') {
-                claim.permissions[key] = claim.permissions[key].filter((p) => p !== player);
+                permArray = permArray.filter((p) => p !== player);
+            }
+            claim.permissions[key] = permArray;
+            if (key === 'break') {
+                claim.permissions.breakBlocks = permArray;
             }
             (0, configLoader_1.saveConfigJson)('claims.json', claimsMap);
             return res.json({ success: true, message: '權限更新成功 (離線檔案更新)' });

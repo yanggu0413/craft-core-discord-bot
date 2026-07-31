@@ -104,16 +104,8 @@ public class ShopGuiManager {
         ItemStack headStack = new ItemStack(Items.PLAYER_HEAD);
         if (username != null && !username.isEmpty()) {
             try {
-                headStack.set(DataComponents.PROFILE, new net.minecraft.world.item.component.ResolvableProfile(
-                    new com.mojang.authlib.GameProfile(null, username)
-                ));
-            } catch (Throwable t) {
-                try {
-                    headStack.set(DataComponents.PROFILE, new net.minecraft.world.item.component.ResolvableProfile(
-                        java.util.Optional.of(username), java.util.Optional.empty(), new com.mojang.authlib.properties.PropertyMap()
-                    ));
-                } catch (Throwable ignored) {}
-            }
+                headStack.set(DataComponents.PROFILE, net.minecraft.world.item.component.ResolvableProfile.createUnresolved(username));
+            } catch (Throwable ignored) {}
         }
         return headStack;
     }
