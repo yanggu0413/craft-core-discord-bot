@@ -55,6 +55,7 @@ public class InventoryVerificationTest {
     public void testPlayerInventoryQueryAll41Slots() {
         MinecraftServer server = mock(MinecraftServer.class);
         CraftCoreWSClient client = mock(CraftCoreWSClient.class);
+        when(client.isAuthenticated()).thenReturn(true);
         PlayerList playerList = mock(PlayerList.class);
 
         // Stub server execution and player list

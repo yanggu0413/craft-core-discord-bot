@@ -98,5 +98,17 @@ CREATE TABLE IF NOT EXISTS ai_chat_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_user_time ON ai_chat_messages(user_id, created_at);
 
-
-
+-- 10. Warp Submissions Table
+CREATE TABLE IF NOT EXISTS warp_submissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    applicant_username TEXT,
+    applicant_discord_id TEXT,
+    facility_name TEXT,
+    function_desc TEXT,
+    coords TEXT,
+    dimension TEXT,
+    status TEXT,
+    admin_reviewer TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_warp_submissions_status ON warp_submissions(status);

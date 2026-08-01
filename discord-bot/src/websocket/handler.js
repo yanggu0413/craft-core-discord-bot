@@ -289,6 +289,16 @@ async function handle(packet, discordClient) {
       session.resolveRequest(payload.query_id, payload);
       break;
 
+    case 'daily_task_complete':
+      logger.info('Daily task complete event received', {
+        username: payload ? payload.username : undefined,
+        taskType: payload ? (payload.taskType || payload.task_type || payload.type) : undefined,
+        target: payload ? payload.target : undefined,
+        reward: payload ? payload.reward : undefined
+      });
+      break;
+
+
     case 'warps_response':
     case 'warp_upsert_response':
       session.resolveRequest(payload.query_id, payload);

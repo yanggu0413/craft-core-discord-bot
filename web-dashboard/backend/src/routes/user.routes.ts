@@ -395,7 +395,7 @@ router.get('/user/profile', authenticateToken, async (req: CustomRequest, res: R
       const userDiscordId = user.discord_id || '';
       const userUuid = user.mc_uuid || '';
       const row = db.prepare(`
-        SELECT id, keys_count, checkin_streak, total_checkins, last_checkin, subscribe_reminder, discord_id
+        SELECT keys_count, checkin_streak, total_checkins, last_checkin, subscribe_reminder, discord_id
         FROM bindings
         WHERE lower(replace(mc_username, '.', '')) = ?
            OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
@@ -405,7 +405,7 @@ router.get('/user/profile', authenticateToken, async (req: CustomRequest, res: R
         const totalKeys = Math.max(Number(row.keys_count) || 0, ecoKeys);
         if (totalKeys > (row.keys_count || 0)) {
           try {
-            db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(totalKeys, row.id);
+            db.prepare("UPDATE bindings SET keys_count = ? WHERE lower(replace(mc_username, '.', '')) = ?").run(totalKeys, cleanUsername);
           } catch (e) {}
         }
         dbStats = {
@@ -413,7 +413,7 @@ router.get('/user/profile', authenticateToken, async (req: CustomRequest, res: R
           checkin_streak: row.checkin_streak || 0,
           total_checkins: row.total_checkins || 0,
           last_checkin: row.last_checkin || null,
-          subscribe_reminder: Boolean(row.subscribe_reminder),
+          subscribe_reminder: row.subscribe_reminder ? 1 : 0,
           discord_id: row.discord_id || null
         };
       } else {
@@ -422,7 +422,7 @@ router.get('/user/profile', authenticateToken, async (req: CustomRequest, res: R
           checkin_streak: 0,
           total_checkins: 0,
           last_checkin: null,
-          subscribe_reminder: false,
+          subscribe_reminder: 0,
           discord_id: userDiscordId
         };
       }
@@ -507,9 +507,9 @@ router.post('/user/checkin', authenticateToken, async (req: CustomRequest, res: 
           last_checkin = ?,
           checkin_streak = ?,
           total_checkins = ?
-      WHERE id = ?
+      WHERE lower(replace(mc_username, '.', '')) = ?
     `);
-    updateStmt.run(todayStr, newStreak, newTotal, row.id);
+    updateStmt.run(todayStr, newStreak, newTotal, cleanUsername);
 
     res.json({
       success: true,
@@ -686,7 +686,7 @@ router.get('/user/inventory', authenticateToken, async (req: CustomRequest, res:
   try {
     const response = await sendWsQuery('player_inventory_query', { username: user.mc_username }, 2000);
     if (response && response.success && Array.isArray(response.slots)) {
-      return res.json({ success: true, username: user.mc_username, slots: response.slots });
+      return res.json({ success: true, username: user.mc_username, slots: response.slots, items: response.slots });
     }
   } catch (err) {}
 
@@ -694,7 +694,8 @@ router.get('/user/inventory', authenticateToken, async (req: CustomRequest, res:
   return res.json({
     success: true,
     username: user.mc_username,
-    slots: fallbackSlots
+    slots: fallbackSlots,
+    items: fallbackSlots
   });
 });
 
@@ -722,7 +723,7 @@ router.post('/user/luckydraw', authenticateToken, async (req: CustomRequest, res
     const userDiscordId = user.discord_id || '';
     const userUuid = user.mc_uuid || '';
     const row = db.prepare(`
-      SELECT id, keys_count FROM bindings
+      SELECT keys_count FROM bindings
       WHERE lower(replace(mc_username, '.', '')) = ?
          OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
          OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
@@ -734,8 +735,8 @@ router.post('/user/luckydraw', authenticateToken, async (req: CustomRequest, res
     }
 
     const newKeys = Math.max(0, currentKeys - 1);
-    if (row?.id) {
-      db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(newKeys, row.id);
+    if (row) {
+      db.prepare("UPDATE bindings SET keys_count = ? WHERE lower(replace(mc_username, '.', '')) = ?").run(newKeys, cleanUsername);
     }
 
     // Sync key deduction to economy.json lotteryKeys to prevent double-spending in-game
@@ -885,7 +886,7 @@ router.post('/user/buy-key-with-money', authenticateToken, async (req: CustomReq
     const userDiscordId = user.discord_id || '';
     const userUuid = user.mc_uuid || '';
     const row = db.prepare(`
-      SELECT id, keys_count FROM bindings
+      SELECT keys_count FROM bindings
       WHERE lower(replace(mc_username, '.', '')) = ?
          OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
          OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
@@ -901,7 +902,7 @@ router.post('/user/buy-key-with-money', authenticateToken, async (req: CustomReq
         newKeys
       );
     } else {
-      db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(newKeys, row.id);
+      db.prepare("UPDATE bindings SET keys_count = ? WHERE lower(replace(mc_username, '.', '')) = ?").run(newKeys, cleanUsername);
     }
 
     // Also update lotteryKeys in economy.json
@@ -934,11 +935,12 @@ router.post('/user/reminder-subscription', authenticateToken, (req: CustomReques
   if (!db) return res.status(500).json({ success: false, message: '資料庫連線不可用' });
 
   try {
-    const row = db.prepare('SELECT subscribe_reminder FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username) as any;
+    const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+    const row = db.prepare("SELECT subscribe_reminder FROM bindings WHERE lower(replace(mc_username, '.', '')) = ?").get(cleanUsername) as any;
     const currentSub = row?.subscribe_reminder || 0;
     const newSub = currentSub === 1 ? 0 : 1;
 
-    db.prepare('UPDATE bindings SET subscribe_reminder = ? WHERE mc_username = ? COLLATE NOCASE').run(newSub, username);
+    db.prepare("UPDATE bindings SET subscribe_reminder = ? WHERE lower(replace(mc_username, '.', '')) = ?").run(newSub, cleanUsername);
 
     return res.json({
       success: true,
@@ -1313,12 +1315,12 @@ const handlePlaytimeExchange = async (req: CustomRequest, res: Response) => {
       try {
         const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
         const row = db.prepare(`
-          SELECT id, keys_count FROM bindings
+          SELECT keys_count FROM bindings
           WHERE lower(replace(mc_username, '.', '')) = ?
              OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
         `).get(cleanUsername, user.discord_id || '') as any;
         if (row) {
-          db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE id = ?').run(response.keys_added, row.id);
+          db.prepare("UPDATE bindings SET keys_count = keys_count + ? WHERE lower(replace(mc_username, '.', '')) = ?").run(response.keys_added, cleanUsername);
         }
       } catch (err) {
         console.error('[Playtime Exchange DB Sync Error]', err);
@@ -1353,8 +1355,11 @@ const handleSubmitWarp = (req: CustomRequest, res: Response) => {
   const user = req.user;
   if (!user) return res.status(401).json({ success: false, message: '尚未登入' });
 
-  const { facility_name, function_desc, coords, dimension } = req.body;
-  if (!facility_name || !coords) {
+  const { facility_name, facilityName, function_desc, functionDesc, coords, dimension } = req.body;
+  const targetFacilityName = (facilityName || facility_name || '').trim();
+  const targetFunctionDesc = (functionDesc || function_desc || '').trim();
+
+  if (!targetFacilityName || !coords) {
     return res.status(400).json({ success: false, message: '缺少地標名稱或座標' });
   }
 
@@ -1364,7 +1369,7 @@ const handleSubmitWarp = (req: CustomRequest, res: Response) => {
         INSERT INTO warp_submissions (applicant_username, applicant_discord_id, facility_name, function_desc, coords, dimension)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
-      stmt.run(user.mc_username, user.discord_id || null, facility_name, function_desc || '', coords, dimension || 'minecraft:overworld');
+      stmt.run(user.mc_username, user.discord_id || null, targetFacilityName, targetFunctionDesc, coords, dimension || 'minecraft:overworld');
       return res.json({ success: true, message: '公用設施傳送點申請已送出！' });
     } catch (e: any) {
       return res.status(500).json({ success: false, message: e.message });

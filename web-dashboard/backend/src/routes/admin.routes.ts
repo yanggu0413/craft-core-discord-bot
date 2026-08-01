@@ -277,7 +277,7 @@ router.get('/tickets', (req: CustomRequest, res: Response) => {
     const page = Math.max(parseInt(String(req.query.page || '1'), 10), 1);
     const offset = (page - 1) * limit;
 
-    let query = 'SELECT id, ticket_id, channel_id, channel_name, creator_id, creator_username, closed_by, closed_at FROM ticket_history';
+    let query = 'SELECT id, ticket_id, channel_id, channel_name, creator_id, creator_username, closed_by, closed_at FROM tickets';
     const params: any[] = [];
 
     if (search) {
@@ -290,7 +290,7 @@ router.get('/tickets', (req: CustomRequest, res: Response) => {
 
     const rows = db.prepare(query).all(...params);
 
-    let countQuery = 'SELECT COUNT(*) as total FROM ticket_history';
+    let countQuery = 'SELECT COUNT(*) as total FROM tickets';
     const countParams: any[] = [];
     if (search) {
       countQuery += ' WHERE (ticket_id LIKE ? OR creator_username LIKE ? OR creator_id LIKE ? OR channel_name LIKE ? OR closed_by LIKE ?)';
@@ -317,7 +317,7 @@ router.get('/tickets/:ticket_id', (req: CustomRequest, res: Response) => {
   if (!db) return res.status(500).json({ success: false, message: '資料庫未連結' });
 
   try {
-    const ticket = db.prepare('SELECT * FROM ticket_history WHERE ticket_id = ? OR id = ?').get(ticket_id, ticket_id) as any;
+    const ticket = db.prepare('SELECT * FROM tickets WHERE ticket_id = ? OR id = ?').get(ticket_id, ticket_id) as any;
     if (!ticket) {
       return res.status(404).json({ success: false, message: '找不到該客服單紀錄' });
     }

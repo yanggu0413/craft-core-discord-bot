@@ -53,7 +53,8 @@ java {
 
 test {
     useJUnitPlatform()
-    jvmArgs '-XX:+EnableDynamicAgentLoading', '-Dnet.bytebuddy.experimental=true'
+    maxHeapSize = '512m'
+    jvmArgs '-XX:+EnableDynamicAgentLoading', '-Dnet.bytebuddy.experimental=true', '--add-opens=java.base/java.lang=ALL-UNNAMED', '--add-opens=java.base/java.util=ALL-UNNAMED', '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED'
     systemProperty 'net.bytebuddy.experimental', 'true'
 }
 

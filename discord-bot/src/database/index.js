@@ -19,14 +19,16 @@ async function init(dbPath) {
   db.exec('PRAGMA foreign_keys = ON');
   db.exec('PRAGMA journal_mode = WAL');
   db.exec('PRAGMA synchronous = NORMAL');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_bindings_username ON bindings(mc_username COLLATE NOCASE)');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_bindings_discord_id ON bindings(discord_id)');
 
   // Load and run the schema.sql file located in the same folder
   const schemaPath = path.join(__dirname, 'schema.sql');
   if (fs.existsSync(schemaPath)) {
     const schema = fs.readFileSync(schemaPath, 'utf8');
     db.exec(schema);
+
+    db.exec('CREATE INDEX IF NOT EXISTS idx_bindings_username ON bindings(mc_username COLLATE NOCASE)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_bindings_discord_id ON bindings(discord_id)');
+
 
     // Migration: add keys_count and last_checkin columns to bindings table if they don't exist
     try {
@@ -81,7 +83,26 @@ async function init(dbPath) {
     try {
       db.exec('ALTER TABLE tickets ADD COLUMN transcript_text TEXT');
     } catch (e) {}
+
+    // Migration: ensure warp_submissions table exists
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS warp_submissions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          applicant_username TEXT,
+          applicant_discord_id TEXT,
+          facility_name TEXT,
+          function_desc TEXT,
+          coords TEXT,
+          dimension TEXT,
+          status TEXT,
+          admin_reviewer TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    } catch (e) {}
   } else {
+
     throw new Error(`Database initialization failed: schema.sql not found at ${schemaPath}`);
   }
 
@@ -172,6 +193,17 @@ async function init(dbPath) {
   stmts.updateMaxOnline = db.prepare('INSERT INTO daily_stats (date, max_online) VALUES (?, ?) ON CONFLICT(date) DO UPDATE SET max_online = MAX(max_online, excluded.max_online)');
   stmts.getStats = db.prepare('SELECT * FROM daily_stats WHERE date = ?');
   stmts.getLoginCount = db.prepare('SELECT COUNT(*) as count FROM daily_logins WHERE date = ?');
+
+  // 9. Warp Submissions Operations
+  stmts.createWarpSubmission = db.prepare(`
+    INSERT INTO warp_submissions (applicant_username, applicant_discord_id, facility_name, function_desc, coords, dimension, status)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending')
+  `);
+  stmts.getWarpSubmissionById = db.prepare('SELECT * FROM warp_submissions WHERE id = ?');
+  stmts.updateWarpSubmissionStatus = db.prepare("UPDATE warp_submissions SET status = ?, admin_reviewer = ? WHERE id = ?");
+  stmts.getPendingWarpSubmissions = db.prepare("SELECT * FROM warp_submissions WHERE status = 'pending'");
+  stmts.getAllWarpSubmissions = db.prepare('SELECT * FROM warp_submissions ORDER BY created_at DESC');
+
 
   bindUserTx = (discordId, mcUuid, mcUsername, code) => {
     db.exec('BEGIN TRANSACTION');
@@ -453,9 +485,35 @@ async function getChatUsageStatus(userId, maxMessages = 50, windowMs = 5 * 60 * 
   };
 }
 
+function prepare(sql) {
+  if (!db) throw new Error('Database not initialized');
+  return db.prepare(sql);
+}
+
+async function createWarpSubmission(applicantUsername, applicantDiscordId, facilityName, functionDesc, coords, dimension) {
+  return stmts.createWarpSubmission.run(applicantUsername, applicantDiscordId, facilityName, functionDesc, coords, dimension);
+}
+
+async function getWarpSubmissionById(id) {
+  return stmts.getWarpSubmissionById.get(id);
+}
+
+async function updateWarpSubmissionStatus(id, status, adminReviewer) {
+  return stmts.updateWarpSubmissionStatus.run(status, adminReviewer, id);
+}
+
+async function getPendingWarpSubmissions() {
+  return stmts.getPendingWarpSubmissions.all();
+}
+
+async function getAllWarpSubmissions() {
+  return stmts.getAllWarpSubmissions.all();
+}
+
 module.exports = {
   init,
   close,
+  prepare,
   bindUser,
   addBinding,
   getBindingByDiscordId,
@@ -499,6 +557,12 @@ module.exports = {
   getImageUsage,
   incrementImageUsage,
   checkAndRecordChatRateLimit,
-  getChatUsageStatus
+  getChatUsageStatus,
+  createWarpSubmission,
+  getWarpSubmissionById,
+  updateWarpSubmissionStatus,
+  getPendingWarpSubmissions,
+  getAllWarpSubmissions
 };
+
 

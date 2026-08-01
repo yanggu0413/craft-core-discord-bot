@@ -235,6 +235,7 @@ public class PacketHandler {
                 }
                 case "reload_config": {
                     String target = payloadObj != null && payloadObj.has("target") ? payloadObj.get("target").getAsString() : "";
+                    String queryId = payloadObj != null && payloadObj.has("query_id") ? payloadObj.get("query_id").getAsString() : null;
                     server.execute(() -> {
                         if ("economy".equalsIgnoreCase(target)) {
                             com.craftcore.economy.EconomyManager.load();
@@ -254,6 +255,9 @@ public class PacketHandler {
                             com.craftcore.claim.LockboxManager.load();
                         }
                         System.out.println("[CraftCore] WS reloaded config for target: " + target);
+                        if (queryId != null) {
+                            client.send(new Packet("reload_config_response", new GenericActionResponsePayload(queryId, true, "Config reloaded", 0.0)));
+                        }
                     });
                     break;
                 }
@@ -475,6 +479,7 @@ public class PacketHandler {
                 }
                 case "luckydraw_response": {
                     LuckydrawResponsePayload payload = GSON.fromJson(payloadObj, LuckydrawResponsePayload.class);
+                    String queryId = payloadObj != null && payloadObj.has("query_id") ? payloadObj.get("query_id").getAsString() : null;
                     server.execute(() -> {
                         net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
                         if (player == null) {
@@ -502,13 +507,20 @@ public class PacketHandler {
                             com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
                             player.sendSystemMessage(Component.literal(payload.message));
                         }
+                        if (queryId != null) {
+                            client.send(new Packet("generic_response", new GenericActionResponsePayload(queryId, true, "Luckydraw processed", 0.0)));
+                        }
                     });
                     break;
                 }
                 case "player_keys_update": {
                     PlayerKeysUpdatePayload payload = GSON.fromJson(payloadObj, PlayerKeysUpdatePayload.class);
+                    String queryId = payloadObj != null && payloadObj.has("query_id") ? payloadObj.get("query_id").getAsString() : null;
                     server.execute(() -> {
                         com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keys);
+                        if (queryId != null) {
+                            client.send(new Packet("player_keys_update_response", new GenericActionResponsePayload(queryId, true, "Keys updated", 0.0)));
+                        }
                     });
                     break;
                 }
@@ -779,12 +791,36 @@ public class PacketHandler {
                     com.google.gson.JsonObject obj = payloadObj.getAsJsonObject();
                     String targetName = obj.get("username").getAsString();
                     double amount = obj.get("amount").getAsDouble();
+                    String queryId = obj.has("query_id") ? obj.get("query_id").getAsString() : null;
                     server.execute(() -> {
                         com.craftcore.economy.EconomyManager.addMoney(targetName, amount);
                         ServerPlayer target = getPlayerCaseInsensitive(server, targetName);
                         if (target != null) {
                             target.sendSystemMessage(Component.literal(String.format("§b[Craft-Core] §a獲得管理員發放的獎勵金幣: §e+$%.2f§a 元！", amount)));
                             target.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+                        }
+                        if (queryId != null) {
+                            client.send(new Packet("give_money_response", new GenericActionResponsePayload(queryId, true, "Success", amount)));
+                        }
+                    });
+                    break;
+                }
+                case "player_balance_update": {
+                    com.google.gson.JsonObject obj = payloadObj.getAsJsonObject();
+                    String username = obj.has("username") ? obj.get("username").getAsString() : null;
+                    String queryId = obj.has("query_id") ? obj.get("query_id").getAsString() : null;
+                    server.execute(() -> {
+                        if (username != null) {
+                            if (obj.has("balance")) {
+                                double balance = obj.get("balance").getAsDouble();
+                                com.craftcore.economy.EconomyManager.setBalance(username, balance);
+                            } else if (obj.has("amount")) {
+                                double amount = obj.get("amount").getAsDouble();
+                                com.craftcore.economy.EconomyManager.addMoney(username, amount);
+                            }
+                        }
+                        if (queryId != null) {
+                            client.send(new Packet("player_balance_update_response", new GenericActionResponsePayload(queryId, true, "Balance updated", 0.0)));
                         }
                     });
                     break;

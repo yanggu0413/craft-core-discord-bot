@@ -411,7 +411,7 @@ export default function WelfareView({
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border border-border bg-card rounded-none">
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-foreground">使用遊戲金幣購買鑰匙</p>
-                  <p className="text-xs text-muted-foreground">單價：$10,000 遊戲幣 / 1 把鑰匙</p>
+                  <p className="text-xs text-muted-foreground">單價：$500 遊戲幣 / 1 把鑰匙</p>
                 </div>
                 <Button
                   variant="outline"
@@ -420,7 +420,7 @@ export default function WelfareView({
                   onClick={handleBuyKeyWithMoney}
                   className="text-xs font-semibold rounded-md"
                 >
-                  購買 1 把鑰匙 ($10,000)
+                  購買 1 把鑰匙 ($500)
                 </Button>
               </div>
             </CardContent>
