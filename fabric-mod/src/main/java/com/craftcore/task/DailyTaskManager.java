@@ -56,7 +56,15 @@ public class DailyTaskManager {
         new DailyTaskDef(1, "Enderman", 3, 600.0),
         new DailyTaskDef(1, "Blaze", 5, 500.0),
         new DailyTaskDef(1, "Witch", 2, 500.0),
-        new DailyTaskDef(1, "Phantom", 3, 400.0)
+        new DailyTaskDef(1, "Phantom", 3, 400.0),
+        new DailyTaskDef(1, "Piglin", 10, 350.0),
+        new DailyTaskDef(1, "Wither Skeleton", 3, 700.0),
+        new DailyTaskDef(1, "Guardian", 5, 600.0),
+        new DailyTaskDef(1, "Slime", 8, 300.0),
+        new DailyTaskDef(1, "Pillager", 5, 450.0),
+        new DailyTaskDef(1, "Husk", 10, 320.0),
+        new DailyTaskDef(1, "Stray", 10, 320.0),
+        new DailyTaskDef(1, "Cave Spider", 8, 350.0)
     };
 
     public static final DailyTaskDef[] MINE_POOL = {
@@ -67,7 +75,15 @@ public class DailyTaskManager {
         new DailyTaskDef(2, "Redstone Ore", 15, 250.0),
         new DailyTaskDef(2, "Lapis Ore", 10, 300.0),
         new DailyTaskDef(2, "Nether Quartz Ore", 15, 300.0),
-        new DailyTaskDef(2, "Ancient Debris", 1, 1500.0)
+        new DailyTaskDef(2, "Ancient Debris", 1, 1500.0),
+        new DailyTaskDef(2, "Emerald Ore", 2, 800.0),
+        new DailyTaskDef(2, "Oak Log", 30, 250.0),
+        new DailyTaskDef(2, "Dark Oak Log", 20, 300.0),
+        new DailyTaskDef(2, "Birch Log", 25, 250.0),
+        new DailyTaskDef(2, "Moss Block", 30, 200.0),
+        new DailyTaskDef(2, "Amethyst Cluster", 10, 400.0),
+        new DailyTaskDef(2, "Obsidian", 5, 500.0),
+        new DailyTaskDef(2, "Basalt", 30, 250.0)
     };
 
     public static String getTaipeiDate() {
@@ -90,8 +106,12 @@ public class DailyTaskManager {
         String cleanTarget = target.toLowerCase();
         if (cleanTarget.equals("piglin")) {
             return cleanEntity.contains("piglin");
+        } else if (cleanTarget.equals("wither skeleton")) {
+            return cleanEntity.equals("wither_skeleton");
+        } else if (cleanTarget.equals("cave spider")) {
+            return cleanEntity.equals("cave_spider");
         }
-        return cleanEntity.equals(cleanTarget);
+        return cleanEntity.equals(cleanTarget.replace(" ", "_"));
     }
 
     public static boolean matchesMineTarget(String blockId, String target) {
@@ -115,6 +135,20 @@ public class DailyTaskManager {
             return cleanBlock.equals("ancient_debris");
         } else if (cleanTarget.equals("emerald ore")) {
             return cleanBlock.equals("emerald_ore") || cleanBlock.equals("deepslate_emerald_ore");
+        } else if (cleanTarget.equals("oak log")) {
+            return cleanBlock.equals("oak_log");
+        } else if (cleanTarget.equals("dark oak log")) {
+            return cleanBlock.equals("dark_oak_log");
+        } else if (cleanTarget.equals("birch log")) {
+            return cleanBlock.equals("birch_log");
+        } else if (cleanTarget.equals("moss block")) {
+            return cleanBlock.equals("moss_block");
+        } else if (cleanTarget.equals("amethyst cluster")) {
+            return cleanBlock.equals("amethyst_cluster") || cleanBlock.equals("small_amethyst_bud") || cleanBlock.equals("medium_amethyst_bud") || cleanBlock.equals("large_amethyst_bud");
+        } else if (cleanTarget.equals("obsidian")) {
+            return cleanBlock.equals("obsidian");
+        } else if (cleanTarget.equals("basalt")) {
+            return cleanBlock.equals("basalt") || cleanBlock.equals("polished_basalt") || cleanBlock.equals("smooth_basalt");
         }
         return false;
     }

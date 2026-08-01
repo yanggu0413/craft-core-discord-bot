@@ -46,7 +46,15 @@ const SLAY_POOL = [
   { type: 1, target: 'Enderman', count: 3, reward: 600 },
   { type: 1, target: 'Blaze', count: 5, reward: 500 },
   { type: 1, target: 'Witch', count: 2, reward: 500 },
-  { type: 1, target: 'Phantom', count: 3, reward: 400 }
+  { type: 1, target: 'Phantom', count: 3, reward: 400 },
+  { type: 1, target: 'Piglin', count: 10, reward: 350 },
+  { type: 1, target: 'Wither Skeleton', count: 3, reward: 700 },
+  { type: 1, target: 'Guardian', count: 5, reward: 600 },
+  { type: 1, target: 'Slime', count: 8, reward: 300 },
+  { type: 1, target: 'Pillager', count: 5, reward: 450 },
+  { type: 1, target: 'Husk', count: 10, reward: 320 },
+  { type: 1, target: 'Stray', count: 10, reward: 320 },
+  { type: 1, target: 'Cave Spider', count: 8, reward: 350 }
 ];
 
 const MINE_POOL = [
@@ -57,7 +65,15 @@ const MINE_POOL = [
   { type: 2, target: 'Redstone Ore', count: 15, reward: 250 },
   { type: 2, target: 'Lapis Ore', count: 10, reward: 300 },
   { type: 2, target: 'Nether Quartz Ore', count: 15, reward: 300 },
-  { type: 2, target: 'Ancient Debris', count: 1, reward: 1500 }
+  { type: 2, target: 'Ancient Debris', count: 1, reward: 1500 },
+  { type: 2, target: 'Emerald Ore', count: 2, reward: 800 },
+  { type: 2, target: 'Oak Log', count: 30, reward: 250 },
+  { type: 2, target: 'Dark Oak Log', count: 20, reward: 300 },
+  { type: 2, target: 'Birch Log', count: 25, reward: 250 },
+  { type: 2, target: 'Moss Block', count: 30, reward: 200 },
+  { type: 2, target: 'Amethyst Cluster', count: 10, reward: 400 },
+  { type: 2, target: 'Obsidian', count: 5, reward: 500 },
+  { type: 2, target: 'Basalt', count: 30, reward: 250 }
 ];
 
 function getDailyTasksFallback(dateStr: string) {
