@@ -396,14 +396,21 @@ public class MenuGuiManager {
         GlobalGoalManager.GoalData goal = GlobalGoalManager.getCurrentGoal();
         double pct = Math.min(100.0, (double) goal.currentCount / goal.targetCount * 100.0);
         String topUser = GlobalGoalManager.getTopContributor();
+        int myContrib = goal.contributions.getOrDefault(player.getName().getString().toLowerCase(), 0);
 
-        container.setItem(22, createGuiItem(Items.GOLDEN_APPLE, "§e🌐 全服每週大目標 (/bounty)", List.of(
-                "§7目標: " + goal.title,
-                String.format("§7全服進度: §a%d / %d (%.1f%%)", goal.currentCount, goal.targetCount, pct),
-                "§7最高貢獻者: §6" + (topUser == null ? "無" : topUser),
-                "",
-                "§a[達標 100% 全服發放 $1000 + 2 鑰匙]"
-        )));
+        List<String> goalLore = new ArrayList<>();
+        goalLore.add("§7目標: " + goal.title);
+        goalLore.add(String.format("§7全服進度: §a%d / %d (%.1f%%)", goal.currentCount, goal.targetCount, pct));
+        goalLore.add("§7個人貢獻: §f" + myContrib + " 個進度 " + (myContrib >= GlobalGoalManager.MIN_CONTRIBUTION_THRESHOLD ? "§a[達標 >=50]" : "§c[未達門檻 50]"));
+        goalLore.add("§7最高貢獻者: §6" + (topUser == null ? "無" : topUser));
+        goalLore.add("");
+        if (goal.goalType == GlobalGoalManager.GoalType.SUBMIT_ITEMS) {
+            goalLore.add("§b[點擊直接繳交手持物資 (64個)]");
+        } else {
+            goalLore.add("§a[點擊查看全服目標詳情]");
+        }
+
+        container.setItem(22, createGuiItem(Items.GOLDEN_APPLE, "§e🌐 全服每週大目標 (/bounty)", goalLore));
 
         TreasureChestManager.TreasureLocation active = TreasureChestManager.getActiveTreasure();
         String treasureHint = "目前無活躍寶箱，即將刷新！";
@@ -430,7 +437,15 @@ public class MenuGuiManager {
                             if (slotId == 45) { openMainMenu(sp); return; }
                             if (slotId == 49) { sp.closeContainer(); return; }
                             if (slotId == 20) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "tasks"); return; }
-                            if (slotId == 22) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "bounty"); return; }
+                            if (slotId == 22) {
+                                if (goal.goalType == GlobalGoalManager.GoalType.SUBMIT_ITEMS) {
+                                    GlobalGoalManager.submitHandItem(sp, 64);
+                                } else {
+                                    sp.closeContainer();
+                                    server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "bounty");
+                                }
+                                return;
+                            }
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "treasure"); return; }
                         }
                     }

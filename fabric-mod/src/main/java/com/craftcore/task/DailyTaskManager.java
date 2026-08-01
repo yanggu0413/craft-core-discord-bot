@@ -174,6 +174,11 @@ public class DailyTaskManager {
                     }
                 }
             }
+
+            var globalGoal = com.craftcore.bounty.GlobalGoalManager.getCurrentGoal();
+            if (globalGoal.goalType == com.craftcore.bounty.GlobalGoalManager.GoalType.KILL_MOBS) {
+                com.craftcore.bounty.GlobalGoalManager.addContribution(killer.level().getServer(), username, 1);
+            }
         }
     }
 
@@ -272,6 +277,11 @@ public class DailyTaskManager {
                     completeTask(serverPlayer, mineTask);
                 }
             }
+        }
+
+        var globalGoal = com.craftcore.bounty.GlobalGoalManager.getCurrentGoal();
+        if (globalGoal.goalType == com.craftcore.bounty.GlobalGoalManager.GoalType.MINE_BLOCKS) {
+            com.craftcore.bounty.GlobalGoalManager.addContribution(serverPlayer.level().getServer(), username, 1);
         }
     }
 

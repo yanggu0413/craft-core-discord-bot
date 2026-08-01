@@ -1194,6 +1194,30 @@ const handleClaimDailyTask = async (req, res) => {
 };
 router.post('/tasks/claim', auth_1.authenticateToken, handleClaimDailyTask);
 router.post('/user/claim-daily-task', auth_1.authenticateToken, handleClaimDailyTask);
+// GET /api/bounty & GET /api/user/bounty
+const handleGetGlobalBounty = async (req, res) => {
+    const goalData = (0, configLoader_1.loadConfigJson)('global_goal.json') || {};
+    const title = goalData.title || '全服每週共同目標';
+    const currentCount = goalData.currentCount || 0;
+    const targetCount = goalData.targetCount || 3000;
+    const goalType = goalData.goalType || 'KILL_MOBS';
+    const targetItem = goalData.targetItem || 'ANY_MOB';
+    const completed = Boolean(goalData.completed);
+    const contributions = goalData.contributions || {};
+    return res.json({
+        success: true,
+        title,
+        current_count: currentCount,
+        target_count: targetCount,
+        goal_type: goalType,
+        target_item: targetItem,
+        completed,
+        min_threshold: 50,
+        contributions_count: Object.keys(contributions).length
+    });
+};
+router.get('/bounty', handleGetGlobalBounty);
+router.get('/user/bounty', handleGetGlobalBounty);
 // POST /api/playtime/exchange & /api/user/exchange-playtime
 const handlePlaytimeExchange = async (req, res) => {
     const user = req.user;
