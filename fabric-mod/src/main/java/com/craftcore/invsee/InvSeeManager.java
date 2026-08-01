@@ -133,15 +133,30 @@ public class InvSeeManager {
         }
 
         @Override
+        public ItemStack quickMoveStack(Player player, int slot) {
+            if (!isEnderChestMode && slot >= 41 && slot <= 53) {
+                return ItemStack.EMPTY;
+            }
+            if (isEnderChestMode && slot >= 27) {
+                return ItemStack.EMPTY;
+            }
+            return super.quickMoveStack(player, slot);
+        }
+
+        @Override
         public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
-            if (slotId < 0 || slotId >= 54) {
-                super.clicked(slotId, button, clickType, player);
-                return;
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
             }
 
             if (slotId == 44) {
                 this.isEnderChestMode = !this.isEnderChestMode;
                 refreshSlots();
+                if (player instanceof ServerPlayer sp) {
+                    sp.containerMenu.sendAllDataToRemote();
+                    sp.inventoryMenu.sendAllDataToRemote();
+                }
                 return;
             }
 
@@ -149,6 +164,10 @@ public class InvSeeManager {
 
             if (!isEnderChestMode) {
                 if (slotId >= 41 && slotId <= 53) {
+                    if (player instanceof ServerPlayer sp) {
+                        sp.containerMenu.sendAllDataToRemote();
+                        sp.inventoryMenu.sendAllDataToRemote();
+                    }
                     return; // Prevent taking info/glass items
                 }
 
@@ -177,6 +196,10 @@ public class InvSeeManager {
                 }
             } else {
                 if (slotId >= 27) {
+                    if (player instanceof ServerPlayer sp) {
+                        sp.containerMenu.sendAllDataToRemote();
+                        sp.inventoryMenu.sendAllDataToRemote();
+                    }
                     return; // Prevent clicking decoration glass in Ender Chest view
                 }
 
@@ -190,6 +213,11 @@ public class InvSeeManager {
                         targetPlayer.sendSystemMessage(Component.literal("§e[Craft-Core] 管理員/OP 調整了您的末影箱物品。"));
                     }
                 }
+            }
+
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
             }
         }
     }

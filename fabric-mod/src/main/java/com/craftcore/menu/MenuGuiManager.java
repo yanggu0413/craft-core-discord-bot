@@ -33,6 +33,44 @@ import java.util.Set;
 
 public class MenuGuiManager {
 
+    public abstract static class ReadOnlyMenuHandler extends ChestMenu {
+        public ReadOnlyMenuHandler(MenuType<ChestMenu> type, int syncId, net.minecraft.world.entity.player.Inventory playerInventory, net.minecraft.world.Container container, int rows) {
+            super(type, syncId, playerInventory, container, rows);
+        }
+
+        @Override
+        public ItemStack quickMoveStack(net.minecraft.world.entity.player.Player player, int slot) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player player) {
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
+            if (slotId >= 0 && slotId < getContainer().getContainerSize()) {
+                handleMenuClick(slotId, button, clickType, player);
+                if (player instanceof ServerPlayer sp) {
+                    sp.containerMenu.sendAllDataToRemote();
+                    sp.inventoryMenu.sendAllDataToRemote();
+                }
+                return;
+            }
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
+        }
+
+        @Override
+        public boolean stillValid(net.minecraft.world.entity.player.Player p) {
+            return true;
+        }
+
+        public abstract void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player player);
+    }
+
     private static Item getItem(String id) {
         return BuiltInRegistries.ITEM.getValue(Identifier.parse(id));
     }
@@ -152,9 +190,9 @@ public class MenuGuiManager {
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此 GUI 介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ChestMenu(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
                     @Override
-                    public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             if (slotId == 10) openShopMenu(sp);
                             else if (slotId == 12) openClaimMenu(sp);
@@ -167,8 +205,6 @@ public class MenuGuiManager {
                             else if (slotId == 49) sp.closeContainer();
                         }
                     }
-                    @Override
-                    public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
                 }, Component.literal("§1📜 Craft-Core 伺服器選單大廳")));
     }
 
@@ -198,7 +234,7 @@ public class MenuGuiManager {
                 String homeName = entry.getKey();
                 HomeManager.Home h = entry.getValue();
                 container.setItem(homeSlots[homeIdx++], createGuiItem(getItem("minecraft:cyan_bed"), "§e🏠 家園: " + homeName, List.of(
-                        "§7座標: X: " + (int)h.x + " Y: " + (int)h.y + " Z: " + (int)h.z,
+                        "§7座標: §f" + h.x + " " + h.y + " " + h.z,
                         "§7維度: " + h.dimension,
                         "",
                         "§a[點擊即時傳送至此家園]"
@@ -224,9 +260,9 @@ public class MenuGuiManager {
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ChestMenu(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
                     @Override
-                    public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             MinecraftServer server = sp.level().getServer();
                             if (server == null) return;
@@ -251,8 +287,6 @@ public class MenuGuiManager {
                             }
                         }
                     }
-                    @Override
-                    public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
                 }, Component.literal("§1🧭 傳送與家園選單")));
     }
 
@@ -304,9 +338,9 @@ public class MenuGuiManager {
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ChestMenu(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
                     @Override
-                    public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             MinecraftServer server = sp.level().getServer();
                             if (server == null) return;
@@ -339,8 +373,6 @@ public class MenuGuiManager {
                             }
                         }
                     }
-                    @Override
-                    public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
                 }, Component.literal("§1🤖 假人控制台選單")));
     }
 
@@ -388,9 +420,9 @@ public class MenuGuiManager {
         )));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ChestMenu(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
                     @Override
-                    public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             MinecraftServer server = sp.level().getServer();
                             if (server == null) return;
@@ -402,8 +434,6 @@ public class MenuGuiManager {
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "treasure"); return; }
                         }
                     }
-                    @Override
-                    public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
                 }, Component.literal("§1⚔️ 任務與懸賞選單")));
     }
 
@@ -440,9 +470,9 @@ public class MenuGuiManager {
         }
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ChestMenu(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
                     @Override
-                    public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             if (slotId == 45) { openMainMenu(sp); return; }
                             if (slotId == 49) { sp.closeContainer(); return; }
@@ -458,8 +488,6 @@ public class MenuGuiManager {
                             }
                         }
                     }
-                    @Override
-                    public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
                 }, Component.literal("§1🎰 福利與頭頂稱號選單")));
     }
 
@@ -497,9 +525,9 @@ public class MenuGuiManager {
         )));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ChestMenu(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
                     @Override
-                    public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             MinecraftServer server = sp.level().getServer();
                             if (server == null) return;
@@ -511,8 +539,6 @@ public class MenuGuiManager {
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim"); return; }
                         }
                     }
-                    @Override
-                    public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
                 }, Component.literal("§1🛡️ 領地與保險箱選單")));
     }
 
@@ -532,9 +558,9 @@ public class MenuGuiManager {
         )));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ChestMenu(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
                     @Override
-                    public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             if (slotId == 45) { openMainMenu(sp); return; }
                             if (slotId == 49) { sp.closeContainer(); return; }
@@ -544,8 +570,6 @@ public class MenuGuiManager {
                             }
                         }
                     }
-                    @Override
-                    public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
                 }, Component.literal("§1🏭 機器認證選單")));
     }
 
@@ -562,9 +586,9 @@ public class MenuGuiManager {
         container.setItem(24, createGuiItem(Items.COMMAND_BLOCK, "§4手動觸發 7z 地圖備份", List.of("§7一鍵觸發全服地圖增量備份", "", "§e[點擊執行]")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ChestMenu(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
                     @Override
-                    public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             MinecraftServer server = sp.level().getServer();
                             if (server == null) return;
@@ -576,8 +600,6 @@ public class MenuGuiManager {
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "craftcorebackup start"); return; }
                         }
                     }
-                    @Override
-                    public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
                 }, Component.literal("§1🛠️ 管理員 (OP) 控制台")));
     }
 
@@ -623,9 +645,9 @@ public class MenuGuiManager {
         }
 
         adminPlayer.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ChestMenu(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
                     @Override
-                    public void clicked(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             if (slotId == 45) { openAdminMenu(sp); return; }
                             if (slotId == 49) { sp.closeContainer(); return; }

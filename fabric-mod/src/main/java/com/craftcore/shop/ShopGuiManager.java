@@ -202,7 +202,16 @@ public class ShopGuiManager {
         }
 
         @Override
+        public ItemStack quickMoveStack(Player player, int slot) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
         public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
             if (slotId == 45) {
                 if (player instanceof ServerPlayer spe) {
                     com.craftcore.menu.MenuGuiManager.openMainMenu(spe);
@@ -313,7 +322,16 @@ public class ShopGuiManager {
         }
 
         @Override
+        public ItemStack quickMoveStack(Player player, int slot) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
         public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
             if (slotId >= 0 && slotId < 27) {
                 if (player instanceof ServerPlayer spe) {
                     if (slotId == 10) {
@@ -397,9 +415,16 @@ public class ShopGuiManager {
                         }
                     }
                 }
+                if (player instanceof ServerPlayer sp) {
+                    sp.containerMenu.sendAllDataToRemote();
+                    sp.inventoryMenu.sendAllDataToRemote();
+                }
                 return;
             }
-            super.clicked(slotId, button, clickType, player);
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
         }
 
         @Override
@@ -438,52 +463,71 @@ public class ShopGuiManager {
         }
 
         @Override
-        public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
-            if (slotId == 25) {
-                return;
+        public ItemStack quickMoveStack(Player player, int slot) {
+            if (slot == 25 || slot == 26) {
+                return ItemStack.EMPTY;
             }
-            if (slotId == 26) {
-                int totalSold = 0;
-                int totalRejected = 0;
-                double totalEarned = 0;
+            return super.quickMoveStack(player, slot);
+        }
 
-                for (int i = 0; i < 25; i++) {
-                    ItemStack stack = this.getContainer().getItem(i);
-                    if (!stack.isEmpty()) {
-                        String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-                        EconomyManager.SellResult result = EconomyManager.sellItem(
-                            getPlayerNameSafely(player), itemId, stack.getCount()
-                        );
+        @Override
+        public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
+            if (slotId == 25 || slotId == 26) {
+                if (slotId == 26) {
+                    int totalSold = 0;
+                    int totalRejected = 0;
+                    double totalEarned = 0;
 
-                        if (result.soldCount > 0) {
-                            totalSold += result.soldCount;
-                            totalEarned += result.moneyEarned;
-                            if (result.rejectedCount > 0) {
-                                stack.setCount(result.rejectedCount);
-                                this.getContainer().setItem(i, stack);
+                    for (int i = 0; i < 25; i++) {
+                        ItemStack stack = this.getContainer().getItem(i);
+                        if (!stack.isEmpty()) {
+                            String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                            EconomyManager.SellResult result = EconomyManager.sellItem(
+                                getPlayerNameSafely(player), itemId, stack.getCount()
+                            );
+
+                            if (result.soldCount > 0) {
+                                totalSold += result.soldCount;
+                                totalEarned += result.moneyEarned;
+                                if (result.rejectedCount > 0) {
+                                    stack.setCount(result.rejectedCount);
+                                    this.getContainer().setItem(i, stack);
+                                } else {
+                                    this.getContainer().setItem(i, ItemStack.EMPTY);
+                                }
                             } else {
-                                this.getContainer().setItem(i, ItemStack.EMPTY);
+                                totalRejected += result.rejectedCount;
                             }
-                        } else {
-                            totalRejected += result.rejectedCount;
                         }
                     }
-                }
 
-                if (totalSold > 0) {
-                    player.sendSystemMessage(Component.literal("§b[Craft-Core] §f成功出售 §a" + totalSold + " §f個物品，共賺取 §a$" + totalEarned + "§f 元！"));
-                    player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                    if (totalSold > 0) {
+                        player.sendSystemMessage(Component.literal("§b[Craft-Core] §f成功出售 §a" + totalSold + " §f個物品，共賺取 §a$" + totalEarned + "§f 元！"));
+                        player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                    }
+                    if (totalRejected > 0) {
+                        player.sendSystemMessage(Component.literal("§c[Craft-Core] §f" + totalRejected + " 個物品被拒收（已達每日回收上限或為無效回收物品）。"));
+                    }
+                    if (totalSold == 0 && totalRejected == 0) {
+                        player.sendSystemMessage(Component.literal("§c[Craft-Core] 沒有可出售的物品！請將物品放入 0-24 號格子中。"));
+                    }
+                    this.broadcastChanges();
                 }
-                if (totalRejected > 0) {
-                    player.sendSystemMessage(Component.literal("§c[Craft-Core] §f" + totalRejected + " 個物品被拒收（已達每日回收上限或為無效回收物品）。"));
+                if (player instanceof ServerPlayer sp) {
+                    sp.containerMenu.sendAllDataToRemote();
+                    sp.inventoryMenu.sendAllDataToRemote();
                 }
-                if (totalSold == 0 && totalRejected == 0) {
-                    player.sendSystemMessage(Component.literal("§c[Craft-Core] 沒有可出售的物品！請將物品放入 0-24 號格子中。"));
-                }
-                this.broadcastChanges();
                 return;
             }
             super.clicked(slotId, button, clickType, player);
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
         }
 
         @Override
@@ -619,6 +663,26 @@ public class ShopGuiManager {
                 );
                 stack.set(DataComponents.LORE, new ItemLore(lore));
                 this.getContainer().setItem(i, stack);
+            }
+        }
+
+        @Override
+        public ItemStack quickMoveStack(Player player, int slot) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
+            if (slotId >= 0 && slotId < 18) {
+                return;
+            }
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
             }
         }
 
