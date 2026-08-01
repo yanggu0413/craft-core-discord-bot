@@ -545,11 +545,9 @@ dispatcher.register(Commands.literal("pay")
         }
 
         if (slayCompletable) {
-            com.craftcore.economy.EconomyManager.setDailyTaskSlayClaimed(username, true);
             com.craftcore.task.DailyTaskManager.completeTask(player, dailyTasks[0]);
         }
         if (mineCompletable) {
-            com.craftcore.economy.EconomyManager.setDailyTaskGatherClaimed(username, true);
             com.craftcore.task.DailyTaskManager.completeTask(player, dailyTasks[1]);
         }
         return 1;

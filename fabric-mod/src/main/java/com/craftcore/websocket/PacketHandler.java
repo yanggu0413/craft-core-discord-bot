@@ -844,11 +844,9 @@ public class PacketHandler {
                         }
                         
                         if (slayCompletable) {
-                            com.craftcore.economy.EconomyManager.setDailyTaskSlayClaimed(username, true);
                             com.craftcore.task.DailyTaskManager.completeTask(player, dailyTasks[0]);
                         }
                         if (mineCompletable) {
-                            com.craftcore.economy.EconomyManager.setDailyTaskGatherClaimed(username, true);
                             com.craftcore.task.DailyTaskManager.completeTask(player, dailyTasks[1]);
                         }
                         client.send(new Packet("daily_task_claim_response", new GenericActionResponsePayload(payload.query_id, true, "Tasks claimed successfully", 0.0)));

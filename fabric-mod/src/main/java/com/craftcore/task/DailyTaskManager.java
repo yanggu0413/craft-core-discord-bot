@@ -169,7 +169,6 @@ public class DailyTaskManager {
                     int newProgress = oldProgress + 1;
                     killer.sendSystemMessage(Component.literal("§b[Craft-Core] §f每日任務進度：擊殺 " + slayTask.target + " (" + newProgress + "/" + slayTask.count + ")"));
                     if (newProgress == slayTask.count) {
-                        EconomyManager.setDailyTaskSlayClaimed(username, true);
                         completeTask(killer, slayTask);
                     }
                 }
@@ -273,7 +272,6 @@ public class DailyTaskManager {
                 int newProgress = oldProgress + 1;
                 serverPlayer.sendSystemMessage(Component.literal("§b[Craft-Core] §f每日任務進度：挖掘 " + mineTask.target + " (" + newProgress + "/" + mineTask.count + ")"));
                 if (newProgress == mineTask.count) {
-                    EconomyManager.setDailyTaskGatherClaimed(username, true);
                     completeTask(serverPlayer, mineTask);
                 }
             }
