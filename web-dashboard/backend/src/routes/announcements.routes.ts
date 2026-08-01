@@ -50,8 +50,8 @@ router.post('/admin/announcements', authenticateToken, requireAdmin, async (req:
       const embedPayload = {
         content: '@公告通知',
         embeds: [{
-          title: `📢 ｜ 伺服器公告：${cleanTitle}`,
-          description: `親愛的玩家們：\n\n${cleanContent}\n\n----------------------------------------\n\n📌 ｜ **公告核心內容**\n* 🗓️ **發布時間**：${todayStr}${cleanScope ? `\n* ⚙️ **涉及範圍**：${cleanScope}` : ''}${cleanImpact ? `\n* ⚠️ **重要影響**：${cleanImpact}` : ''}\n\n**Craft-Core 管理團隊 敬上**`,
+          title: `伺服器公告：${cleanTitle}`,
+          description: `親愛的玩家們：\n\n${cleanContent}\n\n----------------------------------------\n\n**公告核心內容**\n* **發布時間**：${todayStr}${cleanScope ? `\n* **涉及範圍**：${cleanScope}` : ''}${cleanImpact ? `\n* **重要影響**：${cleanImpact}` : ''}\n\n**Craft-Core 管理團隊 敬上**`,
           color: 5793266,
           footer: { text: `發布者: ${publisher} • ${todayStr}` }
         }]

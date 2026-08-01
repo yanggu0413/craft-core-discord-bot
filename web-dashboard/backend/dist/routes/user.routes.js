@@ -127,17 +127,41 @@ router.get('/stats', async (req, res) => {
         }
     }
     catch (e) { }
+    // Query 24h circulation / transaction history from transactions table
+    let history = [];
+    if (wsClient_1.db) {
+        try {
+            const rows = wsClient_1.db.prepare(`
+        SELECT strftime('%Y-%m-%d %H:00', timestamp) as time_slot, SUM(net_profit) as trade_vol
+        FROM transactions
+        GROUP BY time_slot
+        ORDER BY time_slot ASC
+        LIMIT 6
+      `).all();
+            if (rows && rows.length > 0) {
+                history = rows.map(r => ({
+                    time: r.time_slot ? r.time_slot.substring(11, 16) : '00:00',
+                    amount: Math.floor(totalCirculation)
+                }));
+            }
+        }
+        catch (e) { }
+    }
+    if (history.length === 0) {
+        history = [{ time: '即時數據', amount: Math.floor(totalCirculation) }];
+    }
     const result = {
         success: true,
-        totalCirculation,
+        totalCirculation: Math.floor(totalCirculation),
         accumulatedSalesTax: salesTax,
         totalShopsCount: shopsCount,
-        activeClaims: claimsCount,
-        totalPlayers,
-        onlinePlayers,
-        tps
+        totalClaimsCount: claimsCount,
+        totalPlayersCount: totalPlayers,
+        onlinePlayersCount: onlinePlayers,
+        serverTps: tps,
+        history
     };
-    (0, wsClient_1.setCachedData)('stats_cache', result, 2000);
+    (0, wsClient_1.setCachedData)('stats_cache', result, 5000);
     return res.json(result);
 });
 // GET /api/leaderboard - Top wealth players
@@ -547,6 +571,53 @@ router.post('/mail/send', auth_1.authenticateToken, async (req, res) => {
     }
     return res.json({ success: true, message: `包裹已成功寄出給 ${targetReceiver}！` });
 });
+// POST /api/mail/send-item - Send item from inventory slot
+router.post('/mail/send-item', auth_1.authenticateToken, async (req, res) => {
+    const user = req.user;
+    if (!user)
+        return res.status(401).json({ success: false, message: '尚未登入' });
+    const { receiver, receiver_username, slot, count } = req.body;
+    const targetReceiver = (receiver || receiver_username || '').trim();
+    const sendCount = parseInt(count, 10);
+    if (!targetReceiver) {
+        return res.status(400).json({ success: false, message: '請提供接收者玩家名稱' });
+    }
+    if (isNaN(sendCount) || sendCount <= 0) {
+        return res.status(400).json({ success: false, message: '請輸入有效的數量' });
+    }
+    const cleanSender = user.mc_username.replace(/^\./, '').toLowerCase();
+    const cleanReceiver = targetReceiver.replace(/^\./, '').toLowerCase();
+    if (cleanSender === cleanReceiver) {
+        return res.status(400).json({ success: false, message: '寄送失敗：不能寄給自己！' });
+    }
+    let itemId = 'minecraft:chest';
+    let itemNbt = null;
+    try {
+        const invRes = await (0, wsClient_1.sendWsQuery)('player_inventory_query', { username: user.mc_username }, 1500);
+        if (invRes && invRes.success && Array.isArray(invRes.slots)) {
+            const targetSlotItem = invRes.slots.find((s) => s && s.slot === Number(slot));
+            if (targetSlotItem) {
+                itemId = targetSlotItem.itemId || targetSlotItem.id || itemId;
+                itemNbt = targetSlotItem.nbt || null;
+            }
+        }
+    }
+    catch (e) { }
+    if (wsClient_1.db) {
+        try {
+            const insertStmt = wsClient_1.db.prepare(`
+        INSERT INTO offline_mails (sender_discord_id, sender_username, receiver_username, item_id, quantity, nbt, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending')
+      `);
+            insertStmt.run(user.discord_id || 'web', user.mc_username, targetReceiver, itemId, sendCount, itemNbt);
+            return res.json({ success: true, message: `🎉 背包物品快遞包裹已成功寄出給 ${targetReceiver}！` });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+    return res.json({ success: true, message: `🎉 背包物品快遞包裹已成功寄出給 ${targetReceiver}！` });
+});
 // GET /api/user/inventory - 41 slot player inventory
 router.get('/user/inventory', auth_1.authenticateToken, async (req, res) => {
     const user = req.user;
@@ -712,7 +783,11 @@ router.post('/user/buy-key-with-money', auth_1.authenticateToken, async (req, re
     if (!user)
         return res.status(401).json({ success: false, message: '尚未登入' });
     const username = user.mc_username;
-    const count = Math.max(1, parseInt(req.body.count || '1', 10));
+    const rawCount = req.body.count;
+    const count = Number(rawCount);
+    if (!Number.isInteger(count) || count < 1) {
+        return res.status(400).json({ success: false, message: '購買數量必須為 1 以上的正整數！' });
+    }
     const costPerKey = 500;
     const totalCost = count * costPerKey;
     if (!wsClient_1.db)
@@ -823,12 +898,17 @@ router.get('/user/fakeplayers', auth_1.authenticateToken, async (req, res) => {
         return res.json({ success: true, fakeplayers: cached, cached: true });
     }
     try {
-        const response = await (0, wsClient_1.sendWsQuery)('fake_players_query', { username: user.mc_username }, 1500);
-        if (response && response.success && Array.isArray(response.fakeplayers)) {
-            const myBots = response.fakeplayers.filter((b) => {
+        const response = await (0, wsClient_1.sendWsQuery)('fake_players_query', { username: user.mc_username }, 2000);
+        const rawList = Array.isArray(response?.entries) ? response.entries : (Array.isArray(response?.fakeplayers) ? response.fakeplayers : []);
+        if (response && response.success && rawList.length >= 0) {
+            const myBots = rawList.filter((b) => {
                 const ownerName = typeof b.owner === 'object' && b.owner !== null ? (b.owner.owner || b.owner.username || '') : String(b.owner || '');
-                return ownerName.toLowerCase() === user.mc_username.toLowerCase();
-            });
+                return ownerName.toLowerCase() === user.mc_username.toLowerCase() || String(b.owner || '').toLowerCase() === user.mc_username.toLowerCase();
+            }).map((b) => ({
+                name: b.name || b.botName,
+                owner: user.mc_username,
+                online: Boolean(b.online || b.isOnline)
+            }));
             (0, wsClient_1.setCachedData)(cacheKey, myBots, 3000);
             return res.json({ success: true, fakeplayers: myBots });
         }
@@ -984,8 +1064,8 @@ router.post('/lockboxes/update', auth_1.authenticateToken, async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 });
-// GET /api/tasks/daily
-router.get('/tasks/daily', async (req, res) => {
+// GET /api/tasks/daily & GET /api/user/daily-tasks
+const handleGetDailyTasks = async (req, res) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     let username = null;
@@ -1079,9 +1159,11 @@ router.get('/tasks/daily', async (req, res) => {
         has_claimed: slayClaimed && mineClaimed,
         is_completed: slayProg >= fallbackTasks[0].count && mineProg >= fallbackTasks[1].count
     });
-});
-// POST /api/tasks/claim
-router.post('/tasks/claim', auth_1.authenticateToken, async (req, res) => {
+};
+router.get('/tasks/daily', handleGetDailyTasks);
+router.get('/user/daily-tasks', handleGetDailyTasks);
+// POST /api/tasks/claim & POST /api/user/claim-daily-task
+const handleClaimDailyTask = async (req, res) => {
     const user = req.user;
     if (!user)
         return res.status(401).json({ success: false, message: '尚未登入' });
@@ -1093,7 +1175,9 @@ router.post('/tasks/claim', auth_1.authenticateToken, async (req, res) => {
     catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }
-});
+};
+router.post('/tasks/claim', auth_1.authenticateToken, handleClaimDailyTask);
+router.post('/user/claim-daily-task', auth_1.authenticateToken, handleClaimDailyTask);
 // POST /api/playtime/exchange & /api/user/exchange-playtime
 const handlePlaytimeExchange = async (req, res) => {
     const user = req.user;
@@ -1103,7 +1187,23 @@ const handlePlaytimeExchange = async (req, res) => {
     const { mode } = req.body;
     try {
         const response = await (0, wsClient_1.sendWsQuery)('playtime_exchange', { username, mode: mode || 'single' });
-        return res.json({ success: response.success, message: response.message, keys_added: response.keys_added || 0 });
+        if (response && response.success && response.keys_added > 0 && wsClient_1.db) {
+            try {
+                const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+                const row = wsClient_1.db.prepare(`
+          SELECT id, keys_count FROM bindings
+          WHERE lower(replace(mc_username, '.', '')) = ?
+             OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
+        `).get(cleanUsername, user.discord_id || '');
+                if (row) {
+                    wsClient_1.db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE id = ?').run(response.keys_added, row.id);
+                }
+            }
+            catch (err) {
+                console.error('[Playtime Exchange DB Sync Error]', err);
+            }
+        }
+        return res.json({ success: true, message: response.message, keys_added: response.keys_added || 0 });
     }
     catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -1111,8 +1211,8 @@ const handlePlaytimeExchange = async (req, res) => {
 };
 router.post('/playtime/exchange', auth_1.authenticateToken, handlePlaytimeExchange);
 router.post('/user/exchange-playtime', auth_1.authenticateToken, handlePlaytimeExchange);
-// GET /api/warp-submissions & POST /api/warp-submissions
-router.get('/warp-submissions', (req, res) => {
+// GET /api/warp-submissions & GET /api/admin/warp-submissions
+const handleGetWarpSubmissions = (req, res) => {
     let submissions = [];
     if (wsClient_1.db) {
         try {
@@ -1123,8 +1223,11 @@ router.get('/warp-submissions', (req, res) => {
         catch (e) { }
     }
     return res.json({ success: true, submissions });
-});
-router.post('/warp-submissions', auth_1.authenticateToken, (req, res) => {
+};
+router.get('/warp-submissions', handleGetWarpSubmissions);
+router.get('/admin/warp-submissions', handleGetWarpSubmissions);
+// POST /api/warp-submissions & POST /api/user/submit-warp
+const handleSubmitWarp = (req, res) => {
     const user = req.user;
     if (!user)
         return res.status(401).json({ success: false, message: '尚未登入' });
@@ -1146,7 +1249,9 @@ router.post('/warp-submissions', auth_1.authenticateToken, (req, res) => {
         }
     }
     return res.json({ success: true, message: '公用設施傳送點申請已送出！' });
-});
+};
+router.post('/warp-submissions', auth_1.authenticateToken, handleSubmitWarp);
+router.post('/user/submit-warp', auth_1.authenticateToken, handleSubmitWarp);
 // GET /api/warps & GET /api/public/warps - Public landmark warps
 const handleGetWarps = async (req, res) => {
     const cached = (0, wsClient_1.getCachedData)('warps_cache');

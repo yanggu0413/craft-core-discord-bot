@@ -110,6 +110,7 @@ public class ServerLifecycleHandler {
             if (player != null) {
                 com.craftcore.antixray.HoneypotTrapManager.clearTraps(player.getUUID());
                 String username = player.getName().getString();
+                com.craftcore.commands.EconomyCommands.removePlayerCooldown(username);
                 String uuid = player.getStringUUID();
                 ConfigManager.updatePlayerLastOnline(username);
 

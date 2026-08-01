@@ -264,7 +264,7 @@ router.get('/tickets', (req, res) => {
         return res.status(500).json({ success: false, message: '資料庫未連結' });
     try {
         const search = req.query.search ? String(req.query.search).trim() : '';
-        const limit = Math.min(parseInt(String(req.query.limit || '50'), 10), 200);
+        const limit = Math.max(1, Math.min(parseInt(String(req.query.limit || '50'), 10) || 50, 200));
         const page = Math.max(parseInt(String(req.query.page || '1'), 10), 1);
         const offset = (page - 1) * limit;
         let query = 'SELECT id, ticket_id, channel_id, channel_name, creator_id, creator_username, closed_by, closed_at FROM ticket_history';
@@ -333,7 +333,7 @@ router.post('/titles', async (req, res) => {
     }
     if (!wsClient_1.db)
         return res.status(500).json({ success: false, message: '資料庫連線不可用' });
-    const cleanTitle = (title_text || '').trim();
+    const cleanTitle = (title_text || '').replace(/§[kr]/gi, '').trim().substring(0, 32);
     const cleanColor = color_code || '§c';
     const boldFlag = is_bold ? 1 : 0;
     try {
@@ -473,7 +473,7 @@ router.post('/warps/type', async (req, res) => {
             (0, configLoader_1.saveConfigJson)('warps.json', warpsMap);
             (0, wsClient_1.invalidateCachePattern)('warps_cache');
         }
-        return res.json({ success: true, message: `地標「${name}」類別已設定為 ${type === 'machine' ? '🏭 認證機器設施' : '📍 普通公共地標'}！` });
+        return res.json({ success: true, message: `地標「${name}」類別已設定為 ${type === 'machine' ? '認證機器設施' : '普通公共地標'}！` });
     }
     catch (err) {
         return res.status(500).json({ success: false, message: err.message });

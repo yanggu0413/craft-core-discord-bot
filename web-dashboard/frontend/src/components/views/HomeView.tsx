@@ -19,6 +19,7 @@ interface HomeViewProps {
     totalCirculation: number;
     accumulatedSalesTax: number;
     totalShopsCount: number;
+    history?: any[];
   };
   dailyTasks?: any[];
   dailyTasksDate?: string;
@@ -64,15 +65,10 @@ export default function HomeView({
   handleManualRefresh
 }: HomeViewProps) {
 
-  const total = stats.totalCirculation || 75000;
-  const chartData = [
-    { time: '00:00', amount: Math.floor(total * 0.88) },
-    { time: '04:00', amount: Math.floor(total * 0.90) },
-    { time: '08:00', amount: Math.floor(total * 0.92) },
-    { time: '12:00', amount: Math.floor(total * 0.95) },
-    { time: '16:00', amount: Math.floor(total * 0.98) },
-    { time: '20:00', amount: total },
-  ];
+  const total = stats.totalCirculation || 0;
+  const chartData = stats.history && stats.history.length > 0
+    ? stats.history 
+    : [{ time: '即時數據', amount: Math.floor(total) }];
 
   return (
     <div className="space-y-6 text-left">
@@ -99,7 +95,7 @@ export default function HomeView({
         }
         kpis={[
           { label: "總發行幣", value: `$${(stats.totalCirculation || 0).toLocaleString()}`, icon: DollarSign, iconColor: "text-emerald-500" },
-          { label: "伺服器 TPS", value: `${(serverTps || 20).toFixed(1)}`, icon: Activity, iconColor: "text-cyan-500" },
+          { label: "伺服器 TPS", value: `${(Number(serverTps) || 20.0).toFixed(2)}`, icon: Activity, iconColor: "text-cyan-500" },
           { label: "箱子商店數", value: `${stats.totalShopsCount || 0} 間`, icon: TrendingUp, iconColor: "text-teal-500" },
           { label: "累計營業稅", value: `$${Math.floor(stats.accumulatedSalesTax || 0).toLocaleString()}`, icon: ShieldCheck, iconColor: "text-indigo-500" }
         ]}

@@ -273,7 +273,7 @@ router.get('/tickets', (req: CustomRequest, res: Response) => {
 
   try {
     const search = req.query.search ? String(req.query.search).trim() : '';
-    const limit = Math.min(parseInt(String(req.query.limit || '50'), 10), 200);
+    const limit = Math.max(1, Math.min(parseInt(String(req.query.limit || '50'), 10) || 50, 200));
     const page = Math.max(parseInt(String(req.query.page || '1'), 10), 1);
     const offset = (page - 1) * limit;
 
@@ -349,7 +349,7 @@ router.post('/titles', async (req: CustomRequest, res: Response) => {
   }
   if (!db) return res.status(500).json({ success: false, message: '資料庫連線不可用' });
 
-  const cleanTitle = (title_text || '').trim();
+  const cleanTitle = (title_text || '').replace(/§[kr]/gi, '').trim().substring(0, 32);
   const cleanColor = color_code || '§c';
   const boldFlag = is_bold ? 1 : 0;
 
@@ -499,7 +499,7 @@ router.post('/warps/type', async (req: CustomRequest, res: Response) => {
       invalidateCachePattern('warps_cache');
     }
 
-    return res.json({ success: true, message: `地標「${name}」類別已設定為 ${type === 'machine' ? '🏭 認證機器設施' : '📍 普通公共地標'}！` });
+    return res.json({ success: true, message: `地標「${name}」類別已設定為 ${type === 'machine' ? '認證機器設施' : '普通公共地標'}！` });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });
   }

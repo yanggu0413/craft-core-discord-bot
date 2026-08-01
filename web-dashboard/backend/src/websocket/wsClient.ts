@@ -261,6 +261,13 @@ export function connectToBotWS() {
 
   botWsClient.on('close', () => {
     console.warn('Discord Bot WS connection lost. Reconnecting in 3 seconds...');
+    pendingQueries.forEach((pending) => {
+      clearTimeout(pending.timeout);
+      try {
+        pending.reject(new Error('WebSocket connection closed'));
+      } catch (e) {}
+    });
+    pendingQueries.clear();
     setTimeout(connectToBotWS, 3000);
   });
 

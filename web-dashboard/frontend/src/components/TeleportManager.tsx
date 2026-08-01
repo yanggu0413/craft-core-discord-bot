@@ -7,7 +7,7 @@ import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import PageHeader from './ui/PageHeader';
 import { 
-  Home, MapPin, Flag, Plus, Cpu 
+  Home, MapPin, Flag, Plus, Cpu, Trash2 
 } from 'lucide-react';
 
 interface HomeLocation {
@@ -202,7 +202,29 @@ export function TeleportManager({ token, isAdmin = false }: TeleportManagerProps
                     </div>
                   </CardHeader>
                   <CardContent className="pt-4 flex items-center justify-between font-mono text-xs text-muted-foreground">
-                    <span>{home.coords}</span>
+                    <span>📍 {home.coords}</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-[10px] text-red-400 hover:text-red-300 hover:bg-red-500/10 font-sans font-bold"
+                      onClick={async () => {
+                        if (!confirm(`確定要刪除個人家點 "${home.name}" 嗎？`)) return;
+                        try {
+                          const res = await apiFetch(`/user/homes/${encodeURIComponent(home.name)}`, { method: 'DELETE' });
+                          if (res.ok && res.data?.success) {
+                            setMsg({ type: 'success', text: `家點 ${home.name} 已成功刪除！` });
+                            fetchTeleportData();
+                          } else {
+                            setMsg({ type: 'error', text: res.data?.message || '刪除家點失敗' });
+                          }
+                        } catch (e: any) {
+                          setMsg({ type: 'error', text: '請求失敗：' + e.message });
+                        }
+                      }}
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      刪除
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -264,6 +286,79 @@ export function TeleportManager({ token, isAdmin = false }: TeleportManagerProps
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {activeTab === 'submissions' && (
+        <div className="space-y-4">
+          {submissions.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {submissions.map((sub) => (
+                <Card key={sub.id} className="flex flex-col justify-between shadow-sm">
+                  <CardHeader className="pb-3 border-b border-border">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Cpu className="w-4 h-4 text-teal-500" />
+                        <CardTitle className="text-xs font-bold">{sub.facility_name}</CardTitle>
+                      </div>
+                      <Badge 
+                        variant={sub.status === 'approved' ? 'success' : sub.status === 'rejected' ? 'destructive' : 'secondary'} 
+                        className="text-[10px]"
+                      >
+                        {sub.status === 'approved' ? '已核准發布' : sub.status === 'rejected' ? '已駁回' : '待審核'}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-4 space-y-2 text-xs font-mono">
+                    <p className="font-sans text-muted-foreground text-[11px]">{sub.function_desc || '無描述'}</p>
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-muted-foreground font-sans">申請者: {sub.applicant_username}</span>
+                      <span className="font-bold text-foreground bg-muted/40 px-2 py-0.5 rounded border border-border">{sub.coords}</span>
+                    </div>
+
+                    {isAdmin && sub.status === 'pending' && (
+                      <div className="flex items-center space-x-2 pt-2 border-t border-border">
+                        <Button 
+                          size="sm" 
+                          className="h-7 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex-1"
+                          onClick={async () => {
+                            const res = await apiFetch(`/admin/warp-submissions/${sub.id}/approve`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ is_machine: true })
+                            });
+                            if (res.ok) fetchTeleportData();
+                          }}
+                        >
+                          ✓ 核准並發布
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          className="h-7 text-xs font-bold flex-1"
+                          onClick={async () => {
+                            const reason = prompt('請輸入駁回原因：') || '未符合規範';
+                            const res = await apiFetch(`/admin/warp-submissions/${sub.id}/reject`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ reason })
+                            });
+                            if (res.ok) fetchTeleportData();
+                          }}
+                        >
+                          ✕ 駁回申請
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="py-8 text-center text-xs text-muted-foreground">
+              目前沒有任何設施地標申請紀錄。
+            </Card>
+          )}
         </div>
       )}
 

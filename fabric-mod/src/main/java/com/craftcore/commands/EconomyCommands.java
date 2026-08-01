@@ -23,6 +23,18 @@ public class EconomyCommands {
 
     private static final java.util.Map<String, Long> payCooldowns = new java.util.concurrent.ConcurrentHashMap<>();
 
+    public static void removePlayerCooldown(String username) {
+        if (username != null) {
+            payCooldowns.remove(username.toLowerCase());
+            payCooldowns.remove(username);
+        }
+    }
+
+    public static void cleanupExpiredCooldowns() {
+        long now = System.currentTimeMillis();
+        payCooldowns.entrySet().removeIf(entry -> now - entry.getValue() > 5000);
+    }
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("events")
                 .executes(context -> {
@@ -325,9 +337,8 @@ dispatcher.register(Commands.literal("pay")
 
 
                                          // 1. 冷卻時間安全檢查 (1.0 秒)
-
+                                         cleanupExpiredCooldowns();
                                          long now = System.currentTimeMillis();
-
                                          long lastUsed = payCooldowns.getOrDefault(sender, 0L);
 
                                          if (now - lastUsed < 1000) {

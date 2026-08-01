@@ -128,8 +128,8 @@ export default function TransferView({
                   </label>
                   <Input
                     type="number"
-                    min="1"
-                    step="1"
+                    min="0.01"
+                    step="0.01"
                     placeholder="輸入匯款金額..."
                     value={moneyAmount}
                     onChange={(e) => setMoneyAmount(e.target.value)}
@@ -209,7 +209,7 @@ export default function TransferView({
               </div>
               <div className="p-3 border border-border bg-card rounded-none space-y-1">
                 <p className="font-semibold text-foreground">嚴禁線下違規交易</p>
-                <p className="text-[11px]">伺服器嚴禁涉及真實貨幣 (RMT) 之違規轉帳行為，系統均留有完整日誌記錄。</p>
+                <p className="text-[11px]">伺服器嚴禁涉及真實貨幣之違規轉帳行為，系統均留有完整日誌記錄。</p>
               </div>
             </CardContent>
           </Card>

@@ -53,13 +53,49 @@ public class LockboxManager {
         load();
     }
 
+    public static String hashPassword(String password) {
+        if (password == null || password.isEmpty()) return "";
+        if (password.startsWith("$SHA256$")) return password;
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(("CraftCoreSalt:" + password).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder("$SHA256$");
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return password;
+        }
+    }
+
+    public static boolean verifyPassword(String inputPassword, String storedPassword) {
+        if (storedPassword == null) return false;
+        if (storedPassword.startsWith("$SHA256$")) {
+            return storedPassword.equals(hashPassword(inputPassword));
+        } else {
+            return storedPassword.equals(inputPassword);
+        }
+    }
+
     public static synchronized void load() {
         if (configPath != null && Files.exists(configPath)) {
             try (BufferedReader reader = Files.newBufferedReader(configPath)) {
                 Map<String, Lockbox> loaded = GSON.fromJson(reader, new TypeToken<Map<String, Lockbox>>(){}.getType());
                 if (loaded != null) {
                     lockboxes.clear();
-                    lockboxes.putAll(loaded);
+                    boolean migrated = false;
+                    for (Map.Entry<String, Lockbox> entry : loaded.entrySet()) {
+                        Lockbox lb = entry.getValue();
+                        if (lb != null && lb.password != null && !lb.password.startsWith("$SHA256$")) {
+                            lb.password = hashPassword(lb.password);
+                            migrated = true;
+                        }
+                        lockboxes.put(entry.getKey(), lb);
+                    }
+                    if (migrated) {
+                        save();
+                    }
                 }
             } catch (IOException e) {
                 System.err.println("[CraftCore] Failed to load lockboxes: " + e.getMessage());
@@ -160,7 +196,7 @@ public class LockboxManager {
             return l;
         });
 
-        lockbox.password = password;
+        lockbox.password = hashPassword(password);
         if (!lockbox.authorized.contains(username)) {
             lockbox.authorized.add(username);
         }

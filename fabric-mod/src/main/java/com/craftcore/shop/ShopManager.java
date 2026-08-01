@@ -449,6 +449,11 @@ public class ShopManager {
                     for (net.minecraft.server.level.ServerLevel world : server.getAllLevels()) {
                         com.craftcore.shop.ShopGuiManager.cleanupShopVisuals(world, pos);
                     }
+                    for (net.minecraft.server.level.ServerPlayer player : server.getPlayerList().getPlayers()) {
+                        if (player.containerMenu != null && player.containerMenu != player.inventoryMenu) {
+                            com.craftcore.shop.ShopGuiManager.closeIfShopContainer(player, coords);
+                        }
+                    }
                 }
             } catch (Throwable t) {
                 // Safe fallback for JUnit/Mock environments

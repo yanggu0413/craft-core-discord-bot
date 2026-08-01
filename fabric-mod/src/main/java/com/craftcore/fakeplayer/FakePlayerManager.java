@@ -147,6 +147,22 @@ public class FakePlayerManager {
         save();
     }
 
+    public static void dropFakePlayerItems(ServerPlayer player) {
+        if (player == null || player.level() == null) return;
+        try {
+            net.minecraft.world.entity.player.Inventory inv = player.getInventory();
+            for (int i = 0; i < inv.getContainerSize(); i++) {
+                net.minecraft.world.item.ItemStack stack = inv.getItem(i);
+                if (!stack.isEmpty()) {
+                    player.spawnAtLocation((net.minecraft.server.level.ServerLevel) player.level(), stack);
+                    inv.setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
+                }
+            }
+        } catch (Throwable t) {
+            System.err.println("[CraftCore] Error dropping fake player items: " + t.getMessage());
+        }
+    }
+
     public static synchronized void unregister(String botName) {
         if (botName == null || botName.trim().isEmpty()) return;
         fakePlayers.remove(botName.toLowerCase());

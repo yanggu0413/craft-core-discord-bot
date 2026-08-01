@@ -1,13 +1,14 @@
 import { useState, useRef } from 'react';
 import { 
   Gift, Calendar, Flame, Key, 
-  Volume2, VolumeX 
+  Volume2, VolumeX, Bell 
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import PageHeader from '../ui/PageHeader';
 import MinecraftItemIcon from '../ui/MinecraftItemIcon';
+import { apiFetch } from '../../lib/api';
 
 interface WelfareViewProps {
   token: string | null;
@@ -45,6 +46,8 @@ export default function WelfareView({
   checkinStreak,
   totalCheckins,
   lastCheckin,
+  subscribeReminder,
+  setSubscribeReminder,
   setKeysCount,
   setCheckinStreak,
   setTotalCheckins,
@@ -304,6 +307,26 @@ export default function WelfareView({
     return lastCheckin.startsWith(today);
   };
 
+  const handleToggleReminder = async () => {
+    if (!token) {
+      triggerToast('請先進行安全登入！', 'error');
+      return;
+    }
+    try {
+      const res = await apiFetch('/user/reminder-subscription', {
+        method: 'POST'
+      });
+      if (res.ok && res.data?.success) {
+        setSubscribeReminder(res.data.subscribed ? 1 : 0);
+        triggerToast(res.data.message || '簽到提醒設定已更新！', 'success');
+      } else {
+        triggerToast(res.data?.message || '切換設定失敗', 'error');
+      }
+    } catch (err: any) {
+      triggerToast('連線 API 錯誤：' + err.message, 'error');
+    }
+  };
+
   return (
     <div className="space-y-6 text-left">
       <PageHeader
@@ -320,24 +343,36 @@ export default function WelfareView({
         ]}
       />
 
-      <div className="flex items-center space-x-2 border-b border-border pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+        <div className="flex items-center space-x-2">
+          <Button
+            variant={welfareSubTab === 'checkin' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setWelfareSubTab('checkin')}
+            className="text-xs font-semibold rounded-md"
+          >
+            <Calendar className="w-3.5 h-3.5 mr-1 text-cyan-500" />
+            <span>每日簽到與領取</span>
+          </Button>
+          <Button
+            variant={welfareSubTab === 'wheel' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setWelfareSubTab('wheel')}
+            className="text-xs font-semibold rounded-md"
+          >
+            <Gift className="w-3.5 h-3.5 mr-1 text-amber-500" />
+            <span>幸運轉盤大抽獎</span>
+          </Button>
+        </div>
+
         <Button
-          variant={welfareSubTab === 'checkin' ? 'default' : 'outline'}
+          variant={subscribeReminder === 1 ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setWelfareSubTab('checkin')}
-          className="text-xs font-semibold rounded-md"
+          onClick={handleToggleReminder}
+          className="text-xs font-semibold rounded-md flex items-center space-x-1.5"
         >
-          <Calendar className="w-3.5 h-3.5 mr-1 text-cyan-500" />
-          <span>每日簽到與領取</span>
-        </Button>
-        <Button
-          variant={welfareSubTab === 'wheel' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setWelfareSubTab('wheel')}
-          className="text-xs font-semibold rounded-md"
-        >
-          <Gift className="w-3.5 h-3.5 mr-1 text-amber-500" />
-          <span>幸運轉盤大抽獎</span>
+          <Bell className="w-3.5 h-3.5 text-amber-400" />
+          <span>{subscribeReminder === 1 ? '🔔 簽到 Discord 提醒已開啟' : '🔕 簽到 Discord 提醒已關閉'}</span>
         </Button>
       </div>
 

@@ -1,4 +1,5 @@
-import { Search, ShoppingBag, Cpu, MapPin } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, ShoppingBag, Cpu, MapPin, Sparkles } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
@@ -6,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import PageHeader from '../ui/PageHeader';
 import MinecraftItemIcon from '../ui/MinecraftItemIcon';
+import { apiFetch } from '../../lib/api';
 
 interface ChestShop {
   location: string;
@@ -36,6 +38,24 @@ export default function ExplorerView({
   sortBy,
   setSortBy
 }: ExplorerViewProps) {
+  const [machines, setMachines] = useState<any[]>([]);
+  const [treasureHint, setTreasureHint] = useState<string>('');
+
+  useEffect(() => {
+    const fetchRetentionData = async () => {
+      try {
+        const mRes = await apiFetch('/machines');
+        if (mRes.ok && mRes.data?.success) {
+          setMachines(mRes.data.machines || []);
+        }
+        const tRes = await apiFetch('/treasure/hints');
+        if (tRes.ok && tRes.data?.success) {
+          setTreasureHint(tRes.data.hint || '');
+        }
+      } catch (e) {}
+    };
+    fetchRetentionData();
+  }, []);
 
   const filteredShops = (shops || [])
     .filter(shop => {
@@ -67,6 +87,39 @@ export default function ExplorerView({
           { label: "自動化設施", value: `運作中`, icon: Cpu, iconColor: "text-teal-500" },
         ]}
       />
+
+      {treasureHint && (
+        <Card className="bg-amber-500/10 border-amber-500/30 text-amber-500 rounded-none p-4 flex items-center space-x-3 text-xs">
+          <Sparkles className="w-4 h-4 shrink-0 text-amber-400" />
+          <span className="font-semibold">{treasureHint}</span>
+        </Card>
+      )}
+
+      {machines.length > 0 && (
+        <Card className="rounded-none">
+          <CardHeader className="pb-3 border-b border-border">
+            <CardTitle className="text-sm font-bold flex items-center space-x-2">
+              <Cpu className="w-4 h-4 text-teal-500" />
+              <span>🏭 認證紅石自動化設施 ({machines.length})</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            {machines.map((m, idx) => (
+              <div key={idx} className="p-3 border border-border bg-muted/20 rounded space-y-1">
+                <div className="flex items-center justify-between font-bold">
+                  <span>{m.name}</span>
+                  <Badge variant="secondary" className="text-[10px]">認證設施</Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground">{m.desc || '自動化公共設施'}</p>
+                <div className="flex justify-between items-center text-[10px] font-mono pt-1 text-muted-foreground">
+                  <span>擁有者: {m.owner}</span>
+                  <span>📍 {m.coords}</span>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="rounded-none">
         <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -126,7 +179,7 @@ export default function ExplorerView({
                 {filteredShops.map((shop, idx) => {
                   const cleanItem = (shop.item || '').replace('minecraft:', '');
                   return (
-                    <TableRow key={idx}>
+                    <TableRow key={shop.location || `shop-${idx}`}>
                       <TableCell className="text-center">
                         <MinecraftItemIcon itemId={shop.item} className="w-7 h-7 mx-auto" />
                       </TableCell>

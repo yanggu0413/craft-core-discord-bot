@@ -3,13 +3,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.invalidateConfigCache = invalidateConfigCache;
 exports.loadConfigJson = loadConfigJson;
 exports.saveConfigJson = saveConfigJson;
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
-/**
- * Utility to load MCSManager / craft-core-shop JSON configuration files with fallback resolution.
- */
+const configCache = new Map();
+function invalidateConfigCache(filename) {
+    if (filename) {
+        configCache.delete(path_1.default.basename(filename));
+    }
+    else {
+        configCache.clear();
+    }
+}
 function loadConfigJson(filename) {
     const safeFilename = path_1.default.basename(filename);
     const candidatePaths = [
@@ -37,8 +44,15 @@ function loadConfigJson(filename) {
     for (const filePath of candidatePaths) {
         try {
             if (fs_1.default.existsSync(filePath)) {
+                const stat = fs_1.default.statSync(filePath);
+                const cached = configCache.get(safeFilename);
+                if (cached && cached.mtime === stat.mtimeMs) {
+                    return cached.data;
+                }
                 const rawContent = fs_1.default.readFileSync(filePath, 'utf8');
-                return JSON.parse(rawContent);
+                const parsed = JSON.parse(rawContent);
+                configCache.set(safeFilename, { data: parsed, mtime: stat.mtimeMs });
+                return parsed;
             }
         }
         catch (err) {
@@ -68,6 +82,7 @@ function saveConfigJson(filename, data) {
                 fs_1.default.mkdirSync(dirPath, { recursive: true });
             }
             fs_1.default.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+            invalidateConfigCache(safeFilename);
             return true;
         }
         catch (err) {

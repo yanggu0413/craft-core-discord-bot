@@ -147,7 +147,7 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
                   className="text-xs rounded-md"
                 >
                   <Hand className="w-3.5 h-3.5 mr-1 text-emerald-500" />
-                  <span>右鍵使用 (Use)</span>
+                  <span>右鍵使用</span>
                 </Button>
                 <Button
                   size="sm"
@@ -157,7 +157,7 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
                   className="text-xs rounded-md"
                 >
                   <Swords className="w-3.5 h-3.5 mr-1 text-rose-500" />
-                  <span>持續攻擊 (Attack)</span>
+                  <span>持續攻擊</span>
                 </Button>
                 <Button
                   size="sm"
@@ -167,7 +167,7 @@ export const FakePlayers: React.FC<FakePlayersProps> = ({ token }) => {
                   className="text-xs rounded-md ml-auto"
                 >
                   <Power className="w-3.5 h-3.5 mr-1" />
-                  <span>召回/下線 (Stop)</span>
+                  <span>召回/下線</span>
                 </Button>
               </CardContent>
             </Card>

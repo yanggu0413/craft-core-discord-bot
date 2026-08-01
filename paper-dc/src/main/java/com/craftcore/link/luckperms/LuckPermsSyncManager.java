@@ -97,40 +97,52 @@ public class LuckPermsSyncManager {
                 .anyMatch(node -> node.getGroupName().equalsIgnoreCase(vipGroup));
     }
 
+    private final java.util.concurrent.atomic.AtomicBoolean isSyncing = new java.util.concurrent.atomic.AtomicBoolean(false);
+
     public void syncMcToDiscord(UUID uuid, String username) {
         if (!enabled) return;
-        BindingManager.UserBinding binding = plugin.getBindingManager().getBindingByMcUuid(uuid.toString());
-        if (binding == null) return;
+        if (!isSyncing.compareAndSet(false, true)) return;
+        try {
+            BindingManager.UserBinding binding = plugin.getBindingManager().getBindingByMcUuid(uuid.toString());
+            if (binding == null) return;
 
-        boolean hasVip = hasVipGroup(uuid);
-        String discordId = binding.getDiscordId();
-        String vipRoleId = plugin.getConfigManager().getVipRoleId();
+            boolean hasVip = hasVipGroup(uuid);
+            String discordId = binding.getDiscordId();
+            String vipRoleId = plugin.getConfigManager().getVipRoleId();
 
-        if (hasVip) {
-            plugin.getDiscordBotManager().addRoleToUser(discordId, vipRoleId);
-        } else {
-            plugin.getDiscordBotManager().removeRoleFromUser(discordId, vipRoleId);
+            if (hasVip) {
+                plugin.getDiscordBotManager().addRoleToUser(discordId, vipRoleId);
+            } else {
+                plugin.getDiscordBotManager().removeRoleFromUser(discordId, vipRoleId);
+            }
+        } finally {
+            isSyncing.set(false);
         }
     }
 
     public void syncDiscordToMc(String discordId, boolean addVip) {
         if (!enabled || luckPerms == null) return;
-        BindingManager.UserBinding binding = plugin.getBindingManager().getBindingByDiscordId(discordId);
-        if (binding == null) return;
+        if (!isSyncing.compareAndSet(false, true)) return;
+        try {
+            BindingManager.UserBinding binding = plugin.getBindingManager().getBindingByDiscordId(discordId);
+            if (binding == null) return;
 
-        UUID uuid = UUID.fromString(binding.getMcUuid());
-        String vipGroup = plugin.getConfigManager().getVipGroupName();
+            UUID uuid = UUID.fromString(binding.getMcUuid());
+            String vipGroup = plugin.getConfigManager().getVipGroupName();
 
-        luckPerms.getUserManager().modifyUser(uuid, user -> {
-            InheritanceNode node = InheritanceNode.builder(vipGroup).build();
-            if (addVip) {
-                user.data().add(node);
-                plugin.getLogger().info("Granted LuckPerms group '" + vipGroup + "' to " + binding.getMcUsername() + " via Discord VIP role.");
-            } else {
-                user.data().remove(node);
-                plugin.getLogger().info("Removed LuckPerms group '" + vipGroup + "' from " + binding.getMcUsername() + " via Discord VIP role.");
-            }
-        });
+            luckPerms.getUserManager().modifyUser(uuid, user -> {
+                InheritanceNode node = InheritanceNode.builder(vipGroup).build();
+                if (addVip) {
+                    user.data().add(node);
+                    plugin.getLogger().info("Granted LuckPerms group '" + vipGroup + "' to " + binding.getMcUsername() + " via Discord VIP role.");
+                } else {
+                    user.data().remove(node);
+                    plugin.getLogger().info("Removed LuckPerms group '" + vipGroup + "' from " + binding.getMcUsername() + " via Discord VIP role.");
+                }
+            });
+        } finally {
+            isSyncing.set(false);
+        }
     }
 
     public boolean isEnabled() {

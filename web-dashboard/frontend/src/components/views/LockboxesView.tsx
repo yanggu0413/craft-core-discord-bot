@@ -26,7 +26,7 @@ export default function LockboxesView({ lockboxes = [], onUpdateLockbox, current
       <PageHeader
         icon={Lock}
         iconColor="text-indigo-500"
-        title="鎖箱管理 (/padlock)"
+        title="鎖箱管理"
         description="遠端管理伺服器內已設置 /padlock 的密碼鎖箱，授權隊友成員與查看座標"
         badgeText={`${lockboxes.length} 個鎖箱`}
         badgeVariant="outline"

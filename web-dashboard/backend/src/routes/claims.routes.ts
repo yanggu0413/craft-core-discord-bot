@@ -128,18 +128,26 @@ router.post('/permission', authenticateToken, async (req: CustomRequest, res: Re
         claim.permissions.breakBlocks = permArray;
       }
       saveConfigJson('claims.json', claimsMap);
+      try {
+        sendWsQuery('reload_config', { target: 'claims' }, 1000).catch(() => {});
+      } catch (e) {}
       return res.json({ success: true, message: '權限更新成功 (離線檔案更新)' });
     }
     return res.status(500).json({ success: false, message: error.message || '遊戲伺服器未連線' });
   }
 });
 
-// POST /api/claims/flags
-router.post('/flags', authenticateToken, async (req: CustomRequest, res: Response) => {
+// POST /api/claims/flags & POST /api/claims/:claimId/flags
+const handleUpdateClaimFlags = async (req: CustomRequest, res: Response) => {
   try {
-    const { claim_id, public_containers, public_interact, public_entry, banned_players } = req.body;
+    const claim_id = req.params.claimId || req.body.claim_id || req.body.claimId;
+    const { public_containers, public_interact, public_entry, banned_players } = req.body;
     const username = req.user?.mc_username;
     const isAdmin = Boolean((req.user?.discord_id && ADMIN_DISCORD_IDS.has(req.user.discord_id)) || req.user?.profile?.isAdmin);
+
+    if (!claim_id) {
+      return res.status(400).json({ success: false, message: '缺少領地識別碼 (claim_id)' });
+    }
 
     try {
       const wsRes = await sendWsQuery('update_claim_flags', {
@@ -181,6 +189,9 @@ router.post('/flags', authenticateToken, async (req: CustomRequest, res: Respons
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
   }
-});
+};
+
+router.post('/flags', authenticateToken, handleUpdateClaimFlags);
+router.post('/:claimId/flags', authenticateToken, handleUpdateClaimFlags);
 
 export default router;

@@ -513,6 +513,7 @@ public class PacketHandler {
                     break;
                 }
                 case "claims_query": {
+                    if (!client.isAuthenticated()) break;
                     ClaimsQueryPayload payload = GSON.fromJson(payloadObj, ClaimsQueryPayload.class);
                     java.util.List<ClaimEntry> entries = new java.util.ArrayList<>();
                     for (com.craftcore.claim.ClaimManager.Claim c : com.craftcore.claim.ClaimManager.getClaims()) {
@@ -855,6 +856,7 @@ public class PacketHandler {
                     break;
                 }
                 case "player_status_query": {
+                    if (!client.isAuthenticated()) break;
                     PlayerStatusQueryPayload payload = GSON.fromJson(payloadObj, PlayerStatusQueryPayload.class);
                     server.execute(() -> {
                         String username = payload.username;
@@ -872,6 +874,7 @@ public class PacketHandler {
                     break;
                 }
                 case "player_inventory_query": {
+                    if (!client.isAuthenticated()) break;
                     PlayerInventoryQueryPayload payload = GSON.fromJson(payloadObj, PlayerInventoryQueryPayload.class);
                     server.execute(() -> {
                         String username = payload.username;

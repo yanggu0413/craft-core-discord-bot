@@ -18,6 +18,9 @@ async function init(dbPath) {
   db = new Database(dbPath);
   db.exec('PRAGMA foreign_keys = ON');
   db.exec('PRAGMA journal_mode = WAL');
+  db.exec('PRAGMA synchronous = NORMAL');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_bindings_username ON bindings(mc_username COLLATE NOCASE)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_bindings_discord_id ON bindings(discord_id)');
 
   // Load and run the schema.sql file located in the same folder
   const schemaPath = path.join(__dirname, 'schema.sql');
@@ -242,7 +245,18 @@ async function getTicketByChannelId(channelId) {
 }
 
 async function closeTicket(channelId, closedBy = null, transcriptJson = null, transcriptText = null) {
-  return stmts.closeTicket.run(closedBy, transcriptJson, transcriptText, channelId);
+  let safeJson = transcriptJson;
+  if (safeJson && safeJson.length > 50000) {
+    try {
+      const parsed = JSON.parse(safeJson);
+      if (Array.isArray(parsed) && parsed.length > 100) {
+        safeJson = JSON.stringify(parsed.slice(-100));
+      }
+    } catch (e) {
+      safeJson = safeJson.substring(0, 50000);
+    }
+  }
+  return stmts.closeTicket.run(closedBy, safeJson, transcriptText, channelId);
 }
 
 async function setSetting(key, value) {

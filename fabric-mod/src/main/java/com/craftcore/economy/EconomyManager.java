@@ -259,36 +259,60 @@ public class EconomyManager {
         save();
     }
 
+    private static final Map<String, java.util.concurrent.locks.ReentrantLock> playerLocks = new ConcurrentHashMap<>();
+
+    public static java.util.concurrent.locks.ReentrantLock getPlayerLock(String username) {
+        String key = username != null ? username.toLowerCase() : "";
+        return playerLocks.computeIfAbsent(key, k -> new java.util.concurrent.locks.ReentrantLock());
+    }
+
+    public static double round2(double val) {
+        return Math.round(val * 100.0) / 100.0;
+    }
+
     public static synchronized double getBalance(String username) {
         PlayerData data = getOrCreate(username);
-        return data.balance;
+        return round2(data.balance);
     }
 
     public static synchronized void setBalance(String username, double amount) {
         PlayerData data = getOrCreate(username);
-        data.balance = Math.max(0, amount);
+        data.balance = Math.max(0, round2(amount));
         save();
     }
 
     public static synchronized boolean addMoney(String username, double amount) {
         if (username == null || username.trim().isEmpty()) return false;
         if (amount <= 0) return false;
-        PlayerData data = getOrCreate(username);
-        data.balance += amount;
-        save();
-        return true;
+        java.util.concurrent.locks.ReentrantLock lock = getPlayerLock(username);
+        lock.lock();
+        try {
+            PlayerData data = getOrCreate(username);
+            data.balance = round2(data.balance + round2(amount));
+            save();
+            return true;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public static synchronized boolean removeMoney(String username, double amount) {
         if (username == null || username.trim().isEmpty()) return false;
         if (amount <= 0) return false;
-        PlayerData data = getOrCreate(username);
-        if (data.balance < amount) {
-            return false;
+        java.util.concurrent.locks.ReentrantLock lock = getPlayerLock(username);
+        lock.lock();
+        try {
+            PlayerData data = getOrCreate(username);
+            double roundedAmount = round2(amount);
+            if (round2(data.balance) < roundedAmount) {
+                return false;
+            }
+            data.balance = round2(data.balance - roundedAmount);
+            save();
+            return true;
+        } finally {
+            lock.unlock();
         }
-        data.balance -= amount;
-        save();
-        return true;
     }
 
     public static synchronized int getUpgradedShopSlots(String username) {

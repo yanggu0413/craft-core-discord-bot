@@ -108,7 +108,9 @@ public class BindingManager {
             if (list != null) {
                 for (UserBinding binding : list) {
                     bindingsByDiscordId.put(binding.getDiscordId(), binding);
-                    bindingsByMcUuid.put(binding.getMcUuid(), binding);
+                    if (binding.getMcUuid() != null) {
+                        bindingsByMcUuid.put(binding.getMcUuid().toLowerCase(), binding);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -159,15 +161,17 @@ public class BindingManager {
     }
 
     public synchronized UserBinding bindUser(String discordId, String mcUuid, String mcUsername) {
-        UserBinding binding = new UserBinding(discordId, mcUuid, mcUsername, System.currentTimeMillis());
+        String cleanUuid = mcUuid != null ? mcUuid.toLowerCase() : "";
+        UserBinding binding = new UserBinding(discordId, cleanUuid, mcUsername, System.currentTimeMillis());
         bindingsByDiscordId.put(discordId, binding);
-        bindingsByMcUuid.put(mcUuid, binding);
+        bindingsByMcUuid.put(cleanUuid, binding);
         saveBindings();
         return binding;
     }
 
     public synchronized UserBinding unbindUserByMcUuid(String mcUuid) {
-        UserBinding binding = bindingsByMcUuid.remove(mcUuid);
+        String cleanUuid = mcUuid != null ? mcUuid.toLowerCase() : "";
+        UserBinding binding = bindingsByMcUuid.remove(cleanUuid);
         if (binding != null) {
             bindingsByDiscordId.remove(binding.getDiscordId());
             saveBindings();
@@ -176,7 +180,8 @@ public class BindingManager {
     }
 
     public synchronized boolean toggleDeathDm(String mcUuid) {
-        UserBinding binding = bindingsByMcUuid.get(mcUuid);
+        String cleanUuid = mcUuid != null ? mcUuid.toLowerCase() : "";
+        UserBinding binding = bindingsByMcUuid.get(cleanUuid);
         if (binding == null) return false;
         boolean newStatus = !binding.isDmDeathEnabled();
         binding.setDmDeathEnabled(newStatus);
@@ -189,7 +194,8 @@ public class BindingManager {
     }
 
     public UserBinding getBindingByMcUuid(String mcUuid) {
-        return bindingsByMcUuid.get(mcUuid);
+        if (mcUuid == null) return null;
+        return bindingsByMcUuid.get(mcUuid.toLowerCase());
     }
 
     public DmRateLimit getRateLimit(String discordId) {

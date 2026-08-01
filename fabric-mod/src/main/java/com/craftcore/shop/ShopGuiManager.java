@@ -39,6 +39,14 @@ import java.util.List;
 
 public class ShopGuiManager {
 
+    public static void closeIfShopContainer(ServerPlayer player, String coords) {
+        if (player != null && player.containerMenu != null && player.containerMenu != player.inventoryMenu) {
+            try {
+                player.closeContainer();
+            } catch (Exception ignored) {}
+        }
+    }
+
     private static boolean isOp(Player player) {
         if (player instanceof ServerPlayer serverPlayer) {
             return serverPlayer.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);

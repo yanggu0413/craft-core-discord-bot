@@ -186,7 +186,11 @@ public class ClaimManager {
         String dimA = playerCornerADim.get(username);
         String dimB = playerCornerBDim.get(username);
 
-        if (a != null && b != null && dimA != null && dimB != null && dimA.equals(dimB)) {
+        if (a != null && b != null && dimA != null && dimB != null) {
+            if (!dimA.equalsIgnoreCase(dimB)) {
+                player.sendSystemMessage(Component.literal("§c[Craft-Core] 劃分領地失敗：角落 A (" + dimA + ") 與角落 B (" + dimB + ") 屬於不同的維度！"));
+                return;
+            }
             int chunks = calculateChunks(a, b);
             boolean hasExistingClaim = claims.values().stream().anyMatch(c -> c.owner.equalsIgnoreCase(username));
             double cost = hasExistingClaim ? (chunks * 30.0) : 0.0;
@@ -230,7 +234,7 @@ public class ClaimManager {
             return 0;
         }
 
-        boolean isOp = player.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);
+        boolean isOp = player.hasPermissions(2);
 
         // 1. World Spawn Protection Radius (150 blocks from 0,0 in Overworld)
         if (dimA.equalsIgnoreCase("minecraft:overworld") && !isOp) {

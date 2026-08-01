@@ -147,8 +147,18 @@ public class TitleManager {
         setActiveTitle(username, "");
     }
 
+    public static String sanitizeTitleText(String text) {
+        if (text == null) return "";
+        String cleaned = text.replaceAll("(?i)§[kr]", "");
+        if (cleaned.length() > 32) {
+            cleaned = cleaned.substring(0, 32);
+        }
+        return cleaned;
+    }
+
     public static synchronized void setTitle(String username, String text, String color, boolean bold) {
-        String titleStr = (color != null ? color : "") + (bold ? "§l" : "") + text;
+        String cleanText = sanitizeTitleText(text);
+        String titleStr = (color != null ? color : "") + (bold ? "§l" : "") + cleanText;
         unlockTitle(username, titleStr);
         setActiveTitle(username, titleStr);
     }

@@ -1,9 +1,20 @@
 import path from 'path';
 import fs from 'fs';
 
-/**
- * Utility to load MCSManager / craft-core-shop JSON configuration files with fallback resolution.
- */
+interface FileCache {
+  data: any;
+  mtime: number;
+}
+const configCache = new Map<string, FileCache>();
+
+export function invalidateConfigCache(filename?: string) {
+  if (filename) {
+    configCache.delete(path.basename(filename));
+  } else {
+    configCache.clear();
+  }
+}
+
 export function loadConfigJson<T = any>(filename: string): T | null {
   const safeFilename = path.basename(filename);
   const candidatePaths = [
@@ -32,8 +43,15 @@ export function loadConfigJson<T = any>(filename: string): T | null {
   for (const filePath of candidatePaths) {
     try {
       if (fs.existsSync(filePath)) {
+        const stat = fs.statSync(filePath);
+        const cached = configCache.get(safeFilename);
+        if (cached && cached.mtime === stat.mtimeMs) {
+          return cached.data as T;
+        }
         const rawContent = fs.readFileSync(filePath, 'utf8');
-        return JSON.parse(rawContent) as T;
+        const parsed = JSON.parse(rawContent) as T;
+        configCache.set(safeFilename, { data: parsed, mtime: stat.mtimeMs });
+        return parsed;
       }
     } catch (err) {
       // Continue searching next path
@@ -65,6 +83,7 @@ export function saveConfigJson(filename: string, data: any): boolean {
         fs.mkdirSync(dirPath, { recursive: true });
       }
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+      invalidateConfigCache(safeFilename);
       return true;
     } catch (err) {
       // Continue to next path

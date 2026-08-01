@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Hammer, LogOut, UserCheck, Megaphone, Search, AlertCircle, Eye, Shield, Sparkles, Send, FileText, DollarSign, Key, Coins, HardDrive, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -120,6 +120,65 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
       setIsLoadingBackup(false);
     }
   };
+
+  // Ticket History States
+  const [ticketSearch, setTicketSearch] = useState('');
+  const [ticketList, setTicketList] = useState<any[]>([]);
+  const [ticketTotal, setTicketTotal] = useState(0);
+  const [ticketPage, setTicketPage] = useState(1);
+  const [isLoadingTickets, setIsLoadingTickets] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+
+  const fetchAdminTickets = async (page = 1, search = '') => {
+    if (!token) return;
+    setIsLoadingTickets(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/tickets?page=${page}&limit=20&search=${encodeURIComponent(search)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTicketList(data.tickets || []);
+        setTicketTotal(data.total || 0);
+        setTicketPage(page);
+      } else {
+        triggerToast(data.message || '無法取得客服單紀錄', 'error');
+      }
+    } catch (err: any) {
+      triggerToast('連線 API 錯誤：' + err.message, 'error');
+    } finally {
+      setIsLoadingTickets(false);
+    }
+  };
+
+  const fetchTicketDetails = async (ticketId: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/admin/tickets/${ticketId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedTicket(data.ticket);
+        setIsTicketModalOpen(true);
+      } else {
+        triggerToast(data.message || '無法取得客服單詳情', 'error');
+      }
+    } catch (err: any) {
+      triggerToast('連線 API 錯誤：' + err.message, 'error');
+    }
+  };
+
+  useEffect(() => {
+    if (currentSubTab === 'transactions') {
+      fetchAdminTransactions(1, '');
+    } else if (currentSubTab === 'backup') {
+      fetchBackupStatus();
+    } else if (currentSubTab === 'tickets') {
+      fetchAdminTickets(1, '');
+    }
+  }, [currentSubTab, token]);
 
   const handleTriggerBackup = async () => {
     if (!token) return;
@@ -1166,6 +1225,162 @@ export default function AdminView({ token, triggerToast, API_URL, subTab }: Admi
           </Card>
         </div>
       )}
+
+      {/* 7. 子分頁 G: 🎫 Discord 客服單對話歷史審查 */}
+      {currentSubTab === 'tickets' && (
+        <Card className="bg-card border-border shadow-sm">
+          <CardHeader className="pb-3 border-b border-border">
+            <CardTitle className="text-sm font-bold flex items-center space-x-2">
+              <FileText className="w-4 h-4 text-indigo-400" />
+              <span>Discord 玩家客服對話單紀錄 (Ticket History)</span>
+            </CardTitle>
+            <CardDescription className="text-[11px]">
+              檢視 Discord 機器人建立的所有玩家客服單 (`ticket_history`) 關閉存檔與對話細節。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div className="flex items-center space-x-2">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-muted-foreground" />
+                <Input
+                  value={ticketSearch}
+                  onChange={(e) => setTicketSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchAdminTickets(1, ticketSearch)}
+                  placeholder="搜尋 Ticket ID、頻道名稱、玩家或處理者帳號..."
+                  className="pl-9 h-9 text-xs"
+                />
+              </div>
+              <Button
+                onClick={() => fetchAdminTickets(1, ticketSearch)}
+                disabled={isLoadingTickets}
+                size="sm"
+                className="h-9 px-4 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                {isLoadingTickets ? '搜尋中...' : '🔍 查詢工單'}
+              </Button>
+            </div>
+
+            <div className="border border-border rounded-lg overflow-hidden bg-background/50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-muted/50 border-b border-border text-[10px] uppercase font-bold text-muted-foreground">
+                    <tr>
+                      <th className="p-3">Ticket ID</th>
+                      <th className="p-3">頻道名稱</th>
+                      <th className="p-3">建立玩家</th>
+                      <th className="p-3">結案處理者</th>
+                      <th className="p-3">結案時間</th>
+                      <th className="p-3 text-right">對話檢視</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {isLoadingTickets ? (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-muted-foreground text-xs font-medium">
+                          資料載入中...
+                        </td>
+                      </tr>
+                    ) : ticketList.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-muted-foreground text-xs font-medium">
+                          尚無客服單歷史紀錄。
+                        </td>
+                      </tr>
+                    ) : (
+                      ticketList.map((t: any) => (
+                        <tr key={t.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="p-3 font-mono text-[11px] font-bold text-indigo-400">#{t.ticket_id || t.id}</td>
+                          <td className="p-3 text-xs font-semibold">{t.channel_name || 'ticket-channel'}</td>
+                          <td className="p-3 font-bold text-foreground">{t.creator_username || t.creator_id}</td>
+                          <td className="p-3 text-xs text-muted-foreground">{t.closed_by || '系統'}</td>
+                          <td className="p-3 text-[11px] font-mono text-muted-foreground">{t.closed_at || 'N/A'}</td>
+                          <td className="p-3 text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => fetchTicketDetails(t.ticket_id || t.id)}
+                              className="h-7 text-xs font-bold"
+                            >
+                              <Eye className="w-3.5 h-3.5 mr-1 text-emerald-400" />
+                              檢視對話紀錄
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-[11px] text-muted-foreground font-mono">
+                共 {ticketTotal} 筆客服對話單
+              </span>
+              <div className="flex items-center space-x-2">
+                <Button
+                  onClick={() => fetchAdminTickets(ticketPage - 1, ticketSearch)}
+                  disabled={ticketPage <= 1 || isLoadingTickets}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs font-bold"
+                >
+                  ◀ 上一頁
+                </Button>
+                <span className="text-xs font-bold px-2">第 {ticketPage} 頁</span>
+                <Button
+                  onClick={() => fetchAdminTickets(ticketPage + 1, ticketSearch)}
+                  disabled={ticketPage * 20 >= ticketTotal || isLoadingTickets}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs font-bold"
+                >
+                  下一頁 ▶
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Ticket Transcript Detail Dialog */}
+      <Dialog open={isTicketModalOpen} onOpenChange={setIsTicketModalOpen}>
+        <DialogContent className="max-w-2xl p-6 bg-card border-border rounded-xl shadow-xl max-h-[85vh] overflow-y-auto text-left">
+          <DialogHeader className="pb-2 border-b border-border">
+            <DialogTitle className="text-sm font-bold text-indigo-400 flex items-center space-x-2">
+              <FileText className="w-4 h-4" />
+              <span>客服單 #{selectedTicket?.ticket_id} 詳細對話紀錄</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              發起人: {selectedTicket?.creator_username} | 結案人: {selectedTicket?.closed_by || '系統'} | 結案時間: {selectedTicket?.closed_at}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 pt-3">
+            {selectedTicket?.transcript_json && Array.isArray(selectedTicket.transcript_json) && selectedTicket.transcript_json.length > 0 ? (
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto p-3 bg-muted/20 border border-border rounded-lg">
+                {selectedTicket.transcript_json.map((msg: any, idx: number) => (
+                  <div key={idx} className="p-2 border-b border-border/50 text-xs space-y-1">
+                    <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                      <span className="font-bold text-foreground">{msg.author || msg.username || '匿名'}</span>
+                      <span>{msg.timestamp || msg.created_at || ''}</span>
+                    </div>
+                    <p className="text-xs font-sans text-foreground whitespace-pre-wrap">{msg.content || msg.message}</p>
+                  </div>
+                ))}
+              </div>
+            ) : selectedTicket?.transcript_text ? (
+              <pre className="p-3 bg-muted/20 border border-border rounded-lg text-xs font-mono whitespace-pre-wrap max-h-[60vh] overflow-y-auto">
+                {selectedTicket.transcript_text}
+              </pre>
+            ) : (
+              <div className="p-8 text-center text-xs text-muted-foreground">
+                該客服單尚無對話文字記錄。
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 4. Ban 對話框 (Ban Dialog) */}
       <Dialog open={isBanDialogOpen} onOpenChange={setIsBanDialogOpen}>

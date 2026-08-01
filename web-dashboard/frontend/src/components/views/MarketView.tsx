@@ -47,15 +47,7 @@ export default function MarketView({
     getMineralStats('minecraft:iron_ingot', '鐵錠 (Iron Ingot)')
   ];
 
-  const currentChartData = analytics[selectedMineral] || [
-    { date: '07/25', price: 100 },
-    { date: '07/26', price: 105 },
-    { date: '07/27', price: 98 },
-    { date: '07/28', price: 110 },
-    { date: '07/29', price: 115 },
-    { date: '07/30', price: 112 },
-    { date: '07/31', price: 120 }
-  ];
+  const currentChartData = analytics[selectedMineral] || [];
 
   return (
     <div className="space-y-6 text-left">
@@ -106,8 +98,15 @@ export default function MarketView({
           </div>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="w-full h-80">
-            <ResponsiveContainer width="100%" height="100%">
+          {currentChartData.length === 0 ? (
+            <div className="w-full h-80 flex flex-col items-center justify-center text-muted-foreground text-xs space-y-2 border border-dashed border-border">
+              <TrendingUp className="w-8 h-8 text-teal-500/50" />
+              <p className="font-semibold text-foreground">尚無此物資的真實交易歷史紀錄</p>
+              <p>當玩家在遊戲內箱子商店進行此物資買賣時，系統將即時繪製走勢圖。</p>
+            </div>
+          ) : (
+            <div className="w-full h-80">
+              <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={currentChartData} margin={{ top: 15, right: 20, left: 10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="marketPriceGrad" x1="0" y1="0" x2="0" y2="1">
@@ -146,6 +145,7 @@ export default function MarketView({
               </AreaChart>
             </ResponsiveContainer>
           </div>
+          )}
         </CardContent>
       </Card>
     </div>
