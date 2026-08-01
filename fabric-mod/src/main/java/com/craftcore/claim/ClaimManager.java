@@ -234,7 +234,7 @@ public class ClaimManager {
             return 0;
         }
 
-        boolean isOp = player.hasPermissions(2);
+        boolean isOp = player.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);
 
         // 1. World Spawn Protection Radius (150 blocks from 0,0 in Overworld)
         if (dimA.equalsIgnoreCase("minecraft:overworld") && !isOp) {

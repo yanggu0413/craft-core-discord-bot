@@ -132,7 +132,8 @@ public class ShopGuiManager {
                 if (slot == 45 || slot == 49 || slot == 53) continue;
                 ShopManager.Shop shop = shops.get(shopIdx);
                 String ownerName = shop.player != null ? shop.player : "Steve";
-                ItemStack stack = createPlayerHead(ownerName);
+                Item itemObj = BuiltInRegistries.ITEM.getValue(Identifier.parse(shop.item));
+                ItemStack stack = (itemObj != null && itemObj != Items.AIR) ? new ItemStack(itemObj) : createPlayerHead(ownerName);
                 stack.set(DataComponents.CUSTOM_NAME, Component.literal(shop.customName != null ? "§6" + shop.customName : "§6" + ownerName + " 的商店"));
 
                 List<Component> lore = new ArrayList<>();
