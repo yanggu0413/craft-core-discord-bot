@@ -101,8 +101,18 @@ public class ServerLifecycleHandler {
                     }, 1500, TimeUnit.MILLISECONDS);
                 }
 
-                // 3. 更新 Tab 清單頂部與底部排版 (消除擁擠感)
+                // 3. 更新 Tab 清單頂部與底部排版 (消除擁擠感，多重延遲傳送確保 100% 成功刷出)
                 updateTabListHeaderFooter(server);
+                getGreetingScheduler().schedule(() -> {
+                    try {
+                        server.execute(() -> updateTabListHeaderFooter(server));
+                    } catch (Exception ignored) {}
+                }, 2, TimeUnit.SECONDS);
+                getGreetingScheduler().schedule(() -> {
+                    try {
+                        server.execute(() -> updateTabListHeaderFooter(server));
+                    } catch (Exception ignored) {}
+                }, 5, TimeUnit.SECONDS);
             }
         });
 
@@ -156,6 +166,7 @@ public class ServerLifecycleHandler {
             telemetryScheduler = Executors.newSingleThreadScheduledExecutor();
             telemetryScheduler.scheduleAtFixedRate(() -> {
                 try {
+                    server.execute(() -> updateTabListHeaderFooter(server));
                     if (client != null && client.isAuthenticated()) {
                         server.execute(() -> {
                             try {
@@ -219,11 +230,11 @@ public class ServerLifecycleHandler {
         );
         Component footer = Component.literal(
                 "\n§f在線人數: §a" + online + " §f/ §7" + max + "\n" +
-                "§e輸入 §f/shop §e開啟商店  §7|  §e輸入 §f/events §e查看熱門活動\n"
+                "§e✨ 輸入 §f/menu §e開啟伺服器主選單大廳 ✨\n"
         );
         net.minecraft.network.protocol.game.ClientboundTabListPacket packet = new net.minecraft.network.protocol.game.ClientboundTabListPacket(header, footer);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (player.connection != null) {
+            if (player != null && player.connection != null) {
                 player.connection.send(packet);
             }
         }
