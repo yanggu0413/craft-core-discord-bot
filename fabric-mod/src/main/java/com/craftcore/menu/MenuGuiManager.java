@@ -163,7 +163,7 @@ public class MenuGuiManager {
                 "§e[點擊開啟傳送子選單]"
         )));
 
-        container.setItem(14, createGuiItem(Items.SHIELD, "§b🛡 領地與密碼箱", List.of(
+        container.setItem(14, createGuiItem(Items.GRASS_BLOCK, "§b🛡 領地與密碼箱", List.of(
                 "§7管理個人領地、獲取圈地神杖",
                 "§7以及密碼鎖保險箱設定",
                 "",
@@ -197,10 +197,10 @@ public class MenuGuiManager {
         )));
 
         boolean pvpEnabled = com.craftcore.pvp.PvpManager.isPvpEnabled(player.getName().getString());
-        net.minecraft.world.item.Item pvpItem = pvpEnabled ? Items.NETHERITE_SWORD : Items.SHIELD;
+        net.minecraft.world.item.Item pvpItem = pvpEnabled ? Items.NETHERITE_SWORD : Items.TOTEM_OF_UNDYING;
         String pvpTitle = pvpEnabled ? "§c⚔️ PvP 戰鬥狀態 (已開啟)" : "§a🛡️ PvP 戰鬥狀態 (已關閉-保護中)";
         List<String> pvpLore = List.of(
-                pvpEnabled ? "§7目前狀態: §c[已開啟 ⚔️]" : "§7目前狀態: §a[已關閉 🛡️ (安全模式)]",
+                pvpEnabled ? "§7目前狀態: §c[已開啟 ⚔️]" : "§7目前狀態: §a[已關閉 🛡️ (和平保護)]",
                 "§7開啟時可與其他開啟 PvP 的玩家戰鬥",
                 "§7關閉時免受其他玩家傷害，亦無法攻擊他人",
                 "",
