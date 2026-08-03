@@ -198,9 +198,9 @@ public class MenuGuiManager {
 
         boolean pvpEnabled = com.craftcore.pvp.PvpManager.isPvpEnabled(player.getName().getString());
         net.minecraft.world.item.Item pvpItem = pvpEnabled ? Items.NETHERITE_SWORD : Items.TOTEM_OF_UNDYING;
-        String pvpTitle = pvpEnabled ? "§c⚔️ PvP 戰鬥狀態 (已開啟)" : "§a🛡️ PvP 戰鬥狀態 (已關閉-保護中)";
+        String pvpTitle = pvpEnabled ? "§c⚔ PvP 戰鬥狀態 (已開啟)" : "§a🛡 PvP 戰鬥狀態 (已關閉-保護中)";
         List<String> pvpLore = List.of(
-                pvpEnabled ? "§7目前狀態: §c[已開啟 ⚔️]" : "§7目前狀態: §a[已關閉 🛡️ (和平保護)]",
+                pvpEnabled ? "§7目前狀態: §c[已開啟 ⚔]" : "§7目前狀態: §a[已關閉 🛡 (和平保護)]",
                 "§7開啟時可與其他開啟 PvP 的玩家戰鬥",
                 "§7關閉時免受其他玩家傷害，亦無法攻擊他人",
                 "",
@@ -257,7 +257,7 @@ public class MenuGuiManager {
         )));
 
         if (isOp) {
-            container.setItem(40, createGuiItem(Items.BEACON, "§4🛠️ 管理員 (OP) 控制台", List.of(
+            container.setItem(40, createGuiItem(Items.BEACON, "§4🛠 管理員 (OP) 控制台", List.of(
                     "§c[OP 專屬權限]",
                     "§7全服玩家/假人背包與末影箱監看",
                     "§7機器認證審核、7z 地圖手動備份",
@@ -265,14 +265,14 @@ public class MenuGuiManager {
                     "§e[點擊開啟管理員主控台]"
             )));
         } else {
-            container.setItem(40, createGuiItem(Items.HOPPER, "§c🗑️ 隨身垃圾桶", List.of(
+            container.setItem(40, createGuiItem(Items.HOPPER, "§c🗑 隨身垃圾桶", List.of(
                     "§7開啟 10 秒自動銷毀隨身垃圾桶",
                     "",
                     "§e[點擊開啟垃圾桶]"
             )));
         }
 
-        container.setItem(42, createGuiItem(Items.HOPPER, "§c🗑️ 隨身垃圾桶", List.of(
+        container.setItem(42, createGuiItem(Items.HOPPER, "§c🗑 隨身垃圾桶", List.of(
                 "§7開啟 10 秒自動銷毀隨身垃圾桶",
                 "",
                 "§e[點擊開啟垃圾桶]"
