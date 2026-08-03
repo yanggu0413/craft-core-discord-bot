@@ -650,40 +650,63 @@ public class MenuGuiManager {
             }
         } else {
             List<WelfareLeaderboardEntry> cached = welfareLeaderboardCache.get(category);
-            if (cached != null && !cached.isEmpty()) {
-                for (int i = 0; i < cached.size() && i < displaySlots.length; i++) {
-                    WelfareLeaderboardEntry entry = cached.get(i);
-                    String user = entry.getUsername();
+            if (cached != null) {
+                if (cached.isEmpty()) {
+                    container.setItem(22, createGuiItem(Items.PAPER, "§7尚無排行榜數據", List.of("§7全服目前暫無相關資料紀錄", "", "§e[點擊重新整理榜單]")));
+                } else {
+                    for (int i = 0; i < cached.size() && i < displaySlots.length; i++) {
+                        WelfareLeaderboardEntry entry = cached.get(i);
+                        String user = entry.getUsername();
 
-                    String rankStr;
-                    if (i == 0) rankStr = "§6🥇 第 1 名";
-                    else if (i == 1) rankStr = "§7🥈 第 2 名";
-                    else if (i == 2) rankStr = "§c🥉 第 3 名";
-                    else rankStr = "§f第 " + (i + 1) + " 名";
+                        String rankStr;
+                        if (i == 0) rankStr = "§6🥇 第 1 名";
+                        else if (i == 1) rankStr = "§7🥈 第 2 名";
+                        else if (i == 2) rankStr = "§c🥉 第 3 名";
+                        else rankStr = "§f第 " + (i + 1) + " 名";
 
-                    ItemStack head = createPlayerHead(user);
-                    head.set(DataComponents.CUSTOM_NAME, Component.literal(rankStr + " §e" + user));
-                    List<Component> lore = new ArrayList<>();
-                    if (isKeys) {
-                        lore.add(Component.literal("§7全服抽獎鑰匙排行榜"));
-                        lore.add(Component.literal("§7玩家名稱: §f" + user));
-                        lore.add(Component.literal("§7抽獎鑰匙: §e" + entry.keys_count + " 把"));
-                        lore.add(Component.literal("§7累計簽到: §a" + entry.total_checkins + " 天"));
-                    } else {
-                        lore.add(Component.literal("§7全服連續簽到排行榜"));
-                        lore.add(Component.literal("§7玩家名稱: §f" + user));
-                        lore.add(Component.literal("§7連續簽到: §a" + entry.checkin_streak + " 天"));
-                        lore.add(Component.literal("§7累計簽到: §f" + entry.total_checkins + " 天"));
+                        ItemStack head = createPlayerHead(user);
+                        head.set(DataComponents.CUSTOM_NAME, Component.literal(rankStr + " §e" + user));
+                        List<Component> lore = new ArrayList<>();
+                        if (isKeys) {
+                            lore.add(Component.literal("§7全服抽獎鑰匙排行榜"));
+                            lore.add(Component.literal("§7玩家名稱: §f" + user));
+                            lore.add(Component.literal("§7抽獎鑰匙: §e" + entry.keys_count + " 把"));
+                            lore.add(Component.literal("§7累計簽到: §a" + entry.total_checkins + " 天"));
+                        } else {
+                            lore.add(Component.literal("§7全服連續簽到排行榜"));
+                            lore.add(Component.literal("§7玩家名稱: §f" + user));
+                            lore.add(Component.literal("§7連續簽到: §a" + entry.checkin_streak + " 天"));
+                            lore.add(Component.literal("§7累計簽到: §f" + entry.total_checkins + " 天"));
+                        }
+                        head.set(DataComponents.LORE, new ItemLore(lore));
+                        container.setItem(displaySlots[i], head);
                     }
-                    head.set(DataComponents.LORE, new ItemLore(lore));
-                    container.setItem(displaySlots[i], head);
                 }
             } else {
-                container.setItem(22, createGuiItem(Items.PAPER, "§e🔄 載入排行榜數據中...", List.of("§7正在自資料庫查詢最新榜單資料...")));
+                container.setItem(22, createGuiItem(Items.PAPER, "§e🔄 載入排行榜數據中...", List.of("§7正在自資料庫查詢最新榜單資料...", "", "§e[若未載入，點擊強制開啟榜單]")));
 
                 CraftCoreWSClient ws = CraftCoreMod.getWSClient();
                 if (ws != null && ws.isAuthenticated()) {
                     ws.send(new Packet("welfare_leaderboard_query", new WelfareLeaderboardQueryPayload(UUID.randomUUID().toString(), category, 10)));
+                } else {
+                    // Fallback to local EconomyManager data if WS is offline or not authenticated
+                    List<WelfareLeaderboardEntry> fallback = new ArrayList<>();
+                    for (var entry : EconomyManager.getTopWealthPlayers(10)) {
+                        String user = entry.getKey();
+                        WelfareLeaderboardEntry wEntry = new WelfareLeaderboardEntry();
+                        wEntry.mc_username = user;
+                        wEntry.username = user;
+                        wEntry.keys_count = EconomyManager.getLotteryKeys(user);
+                        wEntry.checkin_streak = 0;
+                        wEntry.total_checkins = 0;
+                        fallback.add(wEntry);
+                    }
+                    if (isKeys) {
+                        fallback.sort((a, b) -> Integer.compare(b.keys_count, a.keys_count));
+                    }
+                    welfareLeaderboardCache.put(category, fallback);
+                    openLeaderboardMenu(player, category);
+                    return;
                 }
             }
         }
@@ -700,9 +723,10 @@ public class MenuGuiManager {
                             if (slotId == 45) { activeLeaderboardTabs.remove(sp.getUUID()); openMainMenu(sp); return; }
                             if (slotId == 49) { activeLeaderboardTabs.remove(sp.getUUID()); sp.closeContainer(); return; }
 
-                            if (slotId == 2) openLeaderboardMenu(sp, "wealth");
-                            else if (slotId == 4) openLeaderboardMenu(sp, "keys");
-                            else if (slotId == 6) openLeaderboardMenu(sp, "streaks");
+                            if (slotId == 2) { welfareLeaderboardCache.remove("wealth"); openLeaderboardMenu(sp, "wealth"); }
+                            else if (slotId == 4) { welfareLeaderboardCache.remove("keys"); openLeaderboardMenu(sp, "keys"); }
+                            else if (slotId == 6) { welfareLeaderboardCache.remove("streaks"); openLeaderboardMenu(sp, "streaks"); }
+                            else if (slotId == 22) { welfareLeaderboardCache.remove(category); openLeaderboardMenu(sp, category); }
                         }
                     }
                 }, Component.literal("§1🏆 全服排行榜 (Leaderboards)")));
