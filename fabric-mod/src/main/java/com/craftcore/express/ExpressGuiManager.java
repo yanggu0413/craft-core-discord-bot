@@ -97,8 +97,8 @@ public class ExpressGuiManager {
                 "§e[點擊開啟寄件紀錄]"
         )));
 
-        // Slot 45: <- 返回主選單
-        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        // Slot 45: ⬅️ 返回主選單
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
 
         // Slot 49: ❌ 關閉選單
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
@@ -139,7 +139,7 @@ public class ExpressGuiManager {
                 parcelContainer.setItem(i, glass.copy());
             }
 
-            parcelContainer.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回快遞主頁", List.of("§7點擊返回 /express 主頁")));
+            parcelContainer.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回快遞主頁", List.of("§7點擊返回 /express 主頁")));
 
             String btnTitle = presetRecipient != null ? "§a✉️ 寄送給 §e" + presetRecipient : "§a✉️ 選擇收件人並寄出";
             List<String> btnLore = List.of(
@@ -271,7 +271,7 @@ public class ExpressGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回快遞主頁", List.of("§7點擊返回 /express 主頁")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回快遞主頁", List.of("§7點擊返回 /express 主頁")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         int[] innerSlots = {
@@ -337,7 +337,7 @@ public class ExpressGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回快遞主頁", List.of("§7點擊返回 /express 主頁")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回快遞主頁", List.of("§7點擊返回 /express 主頁")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         int[] innerSlots = {

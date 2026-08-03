@@ -189,7 +189,7 @@ public class ShopGuiManager {
             }
 
             ItemStack backBtn = new ItemStack(Items.ARROW);
-            backBtn.set(DataComponents.CUSTOM_NAME, Component.literal("§a<- 返回主選單"));
+            backBtn.set(DataComponents.CUSTOM_NAME, Component.literal("§a⬅️ 返回主選單"));
             backBtn.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("§7點擊返回 /menu 大廳"))));
             this.getContainer().setItem(45, backBtn);
 
