@@ -16,7 +16,6 @@
     "EndermanLeaveBlockGoalMixin",
     "PistonStructureResolverMixin",
     "FlowingFluidMixin",
-    "HangingEntityMixin",
     "BasePressurePlateBlockMixin"
   ],
   "injectors": {

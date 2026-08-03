@@ -416,6 +416,32 @@ public class ClaimManager {
     private static final Map<String, Long> lastEntryWarningTime = new ConcurrentHashMap<>();
 
     public static void registerEvents() {
+        net.fabricmc.fabric.api.event.player.AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (!world.isClientSide() && player instanceof ServerPlayer sp) {
+                if (entity instanceof net.minecraft.world.entity.decoration.HangingEntity || entity instanceof net.minecraft.world.entity.decoration.ArmorStand) {
+                    BlockPos pos = entity.blockPosition();
+                    if (!checkPermission(sp, pos, world, "break") && !checkPermission(sp, pos, world, "interact")) {
+                        sp.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有操作實體的權限！"));
+                        return net.minecraft.world.InteractionResult.FAIL;
+                    }
+                }
+            }
+            return net.minecraft.world.InteractionResult.PASS;
+        });
+
+        net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (!world.isClientSide() && player instanceof ServerPlayer sp) {
+                if (entity instanceof net.minecraft.world.entity.decoration.HangingEntity || entity instanceof net.minecraft.world.entity.decoration.ArmorStand) {
+                    BlockPos pos = entity.blockPosition();
+                    if (!checkPermission(sp, pos, world, "interact")) {
+                        sp.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有操作實體的權限！"));
+                        return net.minecraft.world.InteractionResult.FAIL;
+                    }
+                }
+            }
+            return net.minecraft.world.InteractionResult.PASS;
+        });
+
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             long now = System.currentTimeMillis();
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
