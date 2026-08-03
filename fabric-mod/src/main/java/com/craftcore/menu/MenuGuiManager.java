@@ -153,13 +153,12 @@ public class MenuGuiManager {
         container.setItem(10, createGuiItem(Items.EMERALD_BLOCK, "§a🏪 商店管理系統", List.of(
                 "§7查看個人箱子商店、擺攤與市場行情",
                 "",
-                "§e[點擊開啟商店系統 (/shop)]"
+                "§e[點擊開啟商店系統]"
         )));
 
         container.setItem(12, createGuiItem(Items.COMPASS, "§e🧭 傳送與家園", List.of(
-                "§7傳送至個人家點 (/home)",
-                "§7公共地標 (/warp)、隨機傳送 (/rtp)",
-                "§7與返回死亡點 (/back)",
+                "§7傳送至個人家點、公共地標",
+                "§7隨機傳送與返回死亡地點",
                 "",
                 "§e[點擊開啟傳送子選單]"
         )));
@@ -171,7 +170,7 @@ public class MenuGuiManager {
                 "§e[點擊開啟領地子選單]"
         )));
 
-        container.setItem(16, createGuiItem(Items.CHEST, "§e📦 虛擬快遞箱 (/express)", List.of(
+        container.setItem(16, createGuiItem(Items.CHEST, "§e📦 虛擬快遞箱", List.of(
                 "§7寄送跨服/離線物品包裹",
                 "§7接收玩家寄送物資與查看歷史紀錄",
                 "",
@@ -181,7 +180,7 @@ public class MenuGuiManager {
         // =========================================================
         // Row 3: 社交與金流 [Col 2, 4, 6, 8] -> Slots 19, 21, 23, 25
         // =========================================================
-        container.setItem(19, createGuiItem(Items.ENDER_PEARL, "§6🤝 玩家傳送請求 (/tpa)", List.of(
+        container.setItem(19, createGuiItem(Items.ENDER_PEARL, "§6🤝 玩家傳送請求", List.of(
                 "§7點擊開啟線上玩家頭顱列表",
                 "§7發送對點傳送請求至目標玩家",
                 "§7受請求玩家可在聊天欄點擊 [接受]/[拒絕]",
@@ -189,7 +188,7 @@ public class MenuGuiManager {
                 "§e[點擊開啟 TPA 選擇器]"
         )));
 
-        container.setItem(21, createGuiItem(Items.GOLD_INGOT, "§6💸 玩家安全轉帳 (/pay)", List.of(
+        container.setItem(21, createGuiItem(Items.GOLD_INGOT, "§6💸 玩家安全轉帳", List.of(
                 "§7點擊開啟線上玩家頭顱列表",
                 "§7選取玩家後在聊天欄輸入欲轉帳金額",
                 "§7系統將彈出確認點擊按鈕，點擊後才扣款",
@@ -205,7 +204,7 @@ public class MenuGuiManager {
                 "§7開啟時可與其他開啟 PvP 的玩家戰鬥",
                 "§7關閉時免受其他玩家傷害，亦無法攻擊他人",
                 "",
-                "§e[點擊切換 PvP 狀態 (/pvp)]"
+                "§e[點擊切換 PvP 狀態]"
         );
         container.setItem(23, createGuiItem(pvpItem, pvpTitle, pvpLore));
 
@@ -227,8 +226,8 @@ public class MenuGuiManager {
         )));
 
         container.setItem(30, createGuiItem(Items.DIAMOND_SWORD, "§c⚔ 任務與懸賞", List.of(
-                "§7查看每日任務 (/tasks)、全服大目標 (/bounty)",
-                "§7與野外藏寶圖線索 (/treasure)",
+                "§7查看每日任務、全服大目標",
+                "§7與野外藏寶圖線索",
                 "",
                 "§e[點擊開啟任務子選單]"
         )));
@@ -241,7 +240,7 @@ public class MenuGuiManager {
         )));
 
         container.setItem(34, createGuiItem(Items.REDSTONE_BLOCK, "§6🏭 機器認證與免領地費", List.of(
-                "§7提交自動化機器認證申請 (/machine apply)",
+                "§7提交自動化機器認證申請",
                 "§7查看已通過認證之 T2/T3 免領地費機器",
                 "",
                 "§e[點擊開啟機器認證子選單]"
@@ -252,7 +251,7 @@ public class MenuGuiManager {
         // =========================================================
         container.setItem(38, createGuiItem(Items.ARMOR_STAND, "§f🤖 假人 (Bot) 控制台", List.of(
                 "§7一鍵召喚/解散假人、切換掛機動作",
-                "§7與一鍵查看假人背包 (/invsee)",
+                "§7與一鍵查看假人背包",
                 "",
                 "§e[點擊開啟假人子選單]"
         )));
@@ -260,20 +259,20 @@ public class MenuGuiManager {
         if (isOp) {
             container.setItem(40, createGuiItem(Items.BEACON, "§4🛠️ 管理員 (OP) 控制台", List.of(
                     "§c[OP 專屬權限]",
-                    "§7全服玩家/假人 /invsee 背包與末影箱",
+                    "§7全服玩家/假人背包與末影箱監看",
                     "§7機器認證審核、7z 地圖手動備份",
                     "",
                     "§e[點擊開啟管理員主控台]"
             )));
         } else {
-            container.setItem(40, createGuiItem(Items.HOPPER, "§c🗑️ 隨身垃圾桶 (/wastebin)", List.of(
+            container.setItem(40, createGuiItem(Items.HOPPER, "§c🗑️ 隨身垃圾桶", List.of(
                     "§7開啟 10 秒自動銷毀隨身垃圾桶",
                     "",
                     "§e[點擊開啟垃圾桶]"
             )));
         }
 
-        container.setItem(42, createGuiItem(Items.HOPPER, "§c🗑️ 隨身垃圾桶 (/wastebin)", List.of(
+        container.setItem(42, createGuiItem(Items.HOPPER, "§c🗑️ 隨身垃圾桶", List.of(
                 "§7開啟 10 秒自動銷毀隨身垃圾桶",
                 "",
                 "§e[點擊開啟垃圾桶]"
