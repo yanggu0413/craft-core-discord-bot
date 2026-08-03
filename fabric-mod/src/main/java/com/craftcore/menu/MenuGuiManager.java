@@ -211,9 +211,21 @@ public class MenuGuiManager {
                 "§e[點擊開啟機器認證子選單]"
         )));
 
-        // Row 5 (Slot 40): 🛠 管理員控制台 (OP 專屬居中)
+        // Row 5: ⚔️ PvP 狀態切換 (Slot 38), 🛠️ OP 控制台 (Slot 40)
+        boolean pvpEnabled = com.craftcore.pvp.PvpManager.isPvpEnabled(player.getName().getString());
+        net.minecraft.world.item.Item pvpItem = pvpEnabled ? Items.NETHERITE_SWORD : Items.SHIELD;
+        String pvpTitle = pvpEnabled ? "§c⚔️ PvP 戰鬥狀態 (已開啟)" : "§a🛡️ PvP 戰鬥狀態 (已關閉-保護中)";
+        List<String> pvpLore = List.of(
+                pvpEnabled ? "§7目前狀態: §c[已開啟 ⚔️]" : "§7目前狀態: §a[已關閉 🛡️ (安全模式)]",
+                "§7開啟時可與其他開啟 PvP 的玩家戰鬥",
+                "§7關閉時免受其他玩家傷害，亦無法攻擊他人",
+                "",
+                "§e[點擊切換 PvP 狀態 (/pvp)]"
+        );
+        container.setItem(38, createGuiItem(pvpItem, pvpTitle, pvpLore));
+
         if (isOp) {
-            container.setItem(40, createGuiItem(Items.BEACON, "§4🛠 管理員 (OP) 控制台", List.of(
+            container.setItem(40, createGuiItem(Items.BEACON, "§4🛠️ 管理員 (OP) 控制台", List.of(
                     "§c[OP 專屬權限]",
                     "§7全服玩家/假人 /invsee 背包與末影箱",
                     "§7機器認證審核、7z 地圖手動備份",
@@ -239,6 +251,10 @@ public class MenuGuiManager {
                             else if (slotId == 29) openFakePlayerMenu(sp);
                             else if (slotId == 31) openLeaderboardMenu(sp, "wealth");
                             else if (slotId == 33) openMachineMenu(sp);
+                            else if (slotId == 38) {
+                                com.craftcore.pvp.PvpManager.togglePvp(sp);
+                                openMainMenu(sp);
+                            }
                             else if (slotId == 40 && isOp) openAdminMenu(sp);
                             else if (slotId == 49) sp.closeContainer();
                         }

@@ -418,6 +418,18 @@ public class ClaimManager {
     public static void registerEvents() {
         net.fabricmc.fabric.api.event.player.AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
             if (!world.isClientSide() && player instanceof ServerPlayer sp) {
+                if (entity instanceof ServerPlayer targetPlayer) {
+                    String attackerName = sp.getName().getString();
+                    String victimName = targetPlayer.getName().getString();
+                    if (!com.craftcore.pvp.PvpManager.isPvpEnabled(attackerName)) {
+                        sp.sendSystemMessage(Component.literal("§c[PvP] 無法攻擊！你目前已關閉 PvP 模式 (/pvp)。"));
+                        return net.minecraft.world.InteractionResult.FAIL;
+                    }
+                    if (!com.craftcore.pvp.PvpManager.isPvpEnabled(victimName)) {
+                        sp.sendSystemMessage(Component.literal("§c[PvP] 無法攻擊！目標玩家 §e" + victimName + " §c已關閉 PvP 模式 (/pvp)。"));
+                        return net.minecraft.world.InteractionResult.FAIL;
+                    }
+                }
                 if (entity instanceof net.minecraft.world.entity.decoration.HangingEntity || entity instanceof net.minecraft.world.entity.decoration.ArmorStand) {
                     BlockPos pos = entity.blockPosition();
                     if (!checkPermission(sp, pos, world, "break") && !checkPermission(sp, pos, world, "interact")) {

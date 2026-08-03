@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 
 @Mixin(Player.class)
 public abstract class PlayerMixin {
@@ -20,6 +21,24 @@ public abstract class PlayerMixin {
         Player player = (Player) (Object) this;
         if (AfkManager.isAfk(player)) {
             cir.setReturnValue(false); // Completely invulnerable when AFK
+            return;
+        }
+
+        if (source.getEntity() instanceof ServerPlayer attacker) {
+            String attackerName = attacker.getName().getString();
+            String victimName = player.getName().getString();
+
+            if (!com.craftcore.pvp.PvpManager.isPvpEnabled(attackerName)) {
+                attacker.sendSystemMessage(Component.literal("§c[PvP] 無法攻擊！你目前已關閉 PvP 模式 (/pvp)。"));
+                cir.setReturnValue(false);
+                return;
+            }
+
+            if (!com.craftcore.pvp.PvpManager.isPvpEnabled(victimName)) {
+                attacker.sendSystemMessage(Component.literal("§c[PvP] 無法攻擊！目標玩家 §e" + victimName + " §c已關閉 PvP 模式 (/pvp)。"));
+                cir.setReturnValue(false);
+                return;
+            }
         }
     }
 
