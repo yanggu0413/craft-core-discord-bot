@@ -1,5 +1,6 @@
 package com.craftcore.shop;
 
+import com.craftcore.util.AsyncSaveExecutor;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -249,10 +250,8 @@ public class ShopManager {
 
     static {
         try {
-            configPath = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir()
-                    .resolve("craft-core-shop").resolve("shops.json");
-            logsConfigPath = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir()
-                    .resolve("craft-core-shop").resolve("logs.json");
+            configPath = com.craftcore.util.FabricPathUtil.getShopConfigDir().resolve("shops.json");
+            logsConfigPath = com.craftcore.util.FabricPathUtil.getShopConfigDir().resolve("logs.json");
         } catch (Throwable e) {
             configPath = Path.of("config", "craft-core-shop", "shops.json");
             logsConfigPath = Path.of("config", "craft-core-shop", "logs.json");
@@ -262,6 +261,7 @@ public class ShopManager {
     }
 
     public static synchronized void setConfigPath(Path path) {
+        AsyncSaveExecutor.flush();
         configPath = path;
         if (path != null) {
             String filename = path.getFileName().toString();
@@ -276,6 +276,7 @@ public class ShopManager {
     }
 
     public static synchronized void loadLogs() {
+        AsyncSaveExecutor.flush();
         merchantLogs.clear();
         if (logsConfigPath != null && Files.exists(logsConfigPath)) {
             try (BufferedReader reader = Files.newBufferedReader(logsConfigPath)) {
@@ -299,14 +300,16 @@ public class ShopManager {
 
     public static synchronized void saveLogs() {
         if (logsConfigPath != null) {
-            try {
-                Files.createDirectories(logsConfigPath.getParent());
-                try (BufferedWriter writer = Files.newBufferedWriter(logsConfigPath)) {
-                    GSON.toJson(merchantLogs, writer);
+            AsyncSaveExecutor.submit(() -> {
+                try {
+                    Files.createDirectories(logsConfigPath.getParent());
+                    try (BufferedWriter writer = Files.newBufferedWriter(logsConfigPath)) {
+                        GSON.toJson(merchantLogs, writer);
+                    }
+                } catch (IOException e) {
+                    System.err.println("[CraftCore] Failed to save transaction logs: " + e.getMessage());
                 }
-            } catch (IOException e) {
-                System.err.println("[CraftCore] Failed to save transaction logs: " + e.getMessage());
-            }
+            });
         }
     }
 
@@ -365,14 +368,16 @@ public class ShopManager {
 
     public static synchronized void save() {
         if (configPath != null) {
-            try {
-                Files.createDirectories(configPath.getParent());
-                try (BufferedWriter writer = Files.newBufferedWriter(configPath)) {
-                    GSON.toJson(shopMap, writer);
+            AsyncSaveExecutor.submit(() -> {
+                try {
+                    Files.createDirectories(configPath.getParent());
+                    try (BufferedWriter writer = Files.newBufferedWriter(configPath)) {
+                        GSON.toJson(shopMap, writer);
+                    }
+                } catch (IOException e) {
+                    System.err.println("[CraftCore] Failed to save shops: " + e.getMessage());
                 }
-            } catch (IOException e) {
-                System.err.println("[CraftCore] Failed to save shops: " + e.getMessage());
-            }
+            });
         }
     }
 

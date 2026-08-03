@@ -1,5 +1,6 @@
 package com.craftcore.fakeplayer;
 
+import com.craftcore.util.AsyncSaveExecutor;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -107,17 +108,20 @@ public class FakePlayerManager {
         }
     }
 
-    public static synchronized void save() {
-        if (configPath != null) {
-            try {
-                Files.createDirectories(configPath.getParent());
-                try (BufferedWriter writer = Files.newBufferedWriter(configPath)) {
-                    GSON.toJson(fakePlayers, writer);
+    public static void save() {
+        Map<String, FakePlayerEntry> snapshot = new ConcurrentHashMap<>(fakePlayers);
+        AsyncSaveExecutor.submit(() -> {
+            if (configPath != null) {
+                try {
+                    Files.createDirectories(configPath.getParent());
+                    try (BufferedWriter writer = Files.newBufferedWriter(configPath)) {
+                        GSON.toJson(snapshot, writer);
+                    }
+                } catch (IOException e) {
+                    System.err.println("[CraftCore] Failed to save fake players: " + e.getMessage());
                 }
-            } catch (IOException e) {
-                System.err.println("[CraftCore] Failed to save fake players: " + e.getMessage());
             }
-        }
+        });
     }
 
     public static synchronized void saveAllCurrentPositions(MinecraftServer server) {

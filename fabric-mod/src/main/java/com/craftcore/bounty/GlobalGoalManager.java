@@ -72,8 +72,7 @@ public class GlobalGoalManager {
 
     static {
         try {
-            configPath = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir()
-                    .resolve("craft-core-shop").resolve("global_goal.json");
+            configPath = com.craftcore.util.FabricPathUtil.getShopConfigDir().resolve("global_goal.json");
         } catch (Throwable e) {
             configPath = Path.of("config", "craft-core-shop", "global_goal.json");
         }

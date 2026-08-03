@@ -57,8 +57,7 @@ public class WarpManager {
 
     static {
         try {
-            configPath = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir()
-                    .resolve("craft-core-shop").resolve("warps.json");
+            configPath = com.craftcore.util.FabricPathUtil.getShopConfigDir().resolve("warps.json");
         } catch (Throwable e) {
             configPath = Path.of("config", "craft-core-shop", "warps.json");
         }

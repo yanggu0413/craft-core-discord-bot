@@ -175,6 +175,8 @@ async function init(dbPath) {
   stmts.toggleReminderSubscription = db.prepare('UPDATE bindings SET subscribe_reminder = ? WHERE discord_id = ?');
   stmts.updateExchangedTicks = db.prepare('UPDATE bindings SET exchanged_ticks = ?, keys_count = keys_count + ? WHERE discord_id = ?');
   stmts.getCheckinLeaderboard = db.prepare('SELECT mc_username, keys_count, checkin_streak, total_checkins FROM bindings ORDER BY keys_count DESC, checkin_streak DESC LIMIT ?');
+  stmts.getKeysLeaderboard = db.prepare('SELECT mc_username, keys_count, checkin_streak, total_checkins FROM bindings ORDER BY keys_count DESC, checkin_streak DESC LIMIT ?');
+  stmts.getStreakLeaderboard = db.prepare('SELECT mc_username, keys_count, checkin_streak, total_checkins FROM bindings ORDER BY checkin_streak DESC, total_checkins DESC LIMIT ?');
   stmts.getSubscribedUsers = db.prepare('SELECT discord_id, mc_username FROM bindings WHERE subscribe_reminder = 1');
   stmts.addKeysByMcUsername = db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE mc_username = ? COLLATE NOCASE');
   stmts.addKeysByDiscordId = db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE discord_id = ?');
@@ -334,6 +336,14 @@ async function updateExchangedTicks(discordId, newExchangedTicks, keysToAdd) {
 
 async function getCheckinLeaderboard(limit = 10) {
   return stmts.getCheckinLeaderboard.all(limit);
+}
+
+async function getKeysLeaderboard(limit = 10) {
+  return stmts.getKeysLeaderboard.all(limit);
+}
+
+async function getStreakLeaderboard(limit = 10) {
+  return stmts.getStreakLeaderboard.all(limit);
 }
 
 async function getSubscribedUsers() {
@@ -540,6 +550,8 @@ module.exports = {
   toggleReminderSubscription,
   updateExchangedTicks,
   getCheckinLeaderboard,
+  getKeysLeaderboard,
+  getStreakLeaderboard,
   getSubscribedUsers,
   addKeysByMcUsername,
   addKeysByDiscordId,

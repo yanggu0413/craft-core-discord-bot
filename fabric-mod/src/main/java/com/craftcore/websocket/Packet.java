@@ -666,6 +666,14 @@ public class Packet {
         public String query_id;
         public String username;
         public String mode; // "single" or "all"
+
+        public PlaytimeExchangePayload() {}
+
+        public PlaytimeExchangePayload(String queryId, String username, String mode) {
+            this.query_id = queryId;
+            this.username = username;
+            this.mode = mode;
+        }
     }
 
     public static class PlaytimeExchangeResponsePayload {
@@ -734,6 +742,39 @@ public class Packet {
             this.success = success;
             this.message = message;
             this.stats = stats;
+        }
+    }
+
+    public static class WelfareLeaderboardQueryPayload {
+        public String query_id;
+        public String category; // "keys" | "streaks"
+        public int limit;
+
+        public WelfareLeaderboardQueryPayload(String queryId, String category, int limit) {
+            this.query_id = queryId;
+            this.category = category;
+            this.limit = limit;
+        }
+    }
+
+    public static class WelfareLeaderboardResponsePayload {
+        public String query_id;
+        public String category;
+        public boolean success;
+        public List<WelfareLeaderboardEntry> leaderboard;
+        public String message;
+    }
+
+    public static class WelfareLeaderboardEntry {
+        public String mc_username;
+        public String username;
+        public int keys_count;
+        public int checkin_streak;
+        public int total_checkins;
+
+        public String getUsername() {
+            if (mc_username != null && !mc_username.isEmpty()) return mc_username;
+            return username != null ? username : "Unknown";
         }
     }
 }

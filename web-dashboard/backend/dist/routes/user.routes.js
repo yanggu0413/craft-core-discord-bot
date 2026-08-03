@@ -379,7 +379,7 @@ router.get('/user/profile', auth_1.authenticateToken, async (req, res) => {
             const userDiscordId = user.discord_id || '';
             const userUuid = user.mc_uuid || '';
             const row = wsClient_1.db.prepare(`
-        SELECT id, keys_count, checkin_streak, total_checkins, last_checkin, subscribe_reminder, discord_id
+        SELECT keys_count, checkin_streak, total_checkins, last_checkin, subscribe_reminder, discord_id
         FROM bindings
         WHERE lower(replace(mc_username, '.', '')) = ?
            OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
@@ -389,7 +389,7 @@ router.get('/user/profile', auth_1.authenticateToken, async (req, res) => {
                 const totalKeys = Math.max(Number(row.keys_count) || 0, ecoKeys);
                 if (totalKeys > (row.keys_count || 0)) {
                     try {
-                        wsClient_1.db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(totalKeys, row.id);
+                        wsClient_1.db.prepare("UPDATE bindings SET keys_count = ? WHERE lower(replace(mc_username, '.', '')) = ?").run(totalKeys, cleanUsername);
                     }
                     catch (e) { }
                 }
@@ -398,7 +398,7 @@ router.get('/user/profile', auth_1.authenticateToken, async (req, res) => {
                     checkin_streak: row.checkin_streak || 0,
                     total_checkins: row.total_checkins || 0,
                     last_checkin: row.last_checkin || null,
-                    subscribe_reminder: Boolean(row.subscribe_reminder),
+                    subscribe_reminder: row.subscribe_reminder ? 1 : 0,
                     discord_id: row.discord_id || null
                 };
             }
@@ -408,7 +408,7 @@ router.get('/user/profile', auth_1.authenticateToken, async (req, res) => {
                     checkin_streak: 0,
                     total_checkins: 0,
                     last_checkin: null,
-                    subscribe_reminder: false,
+                    subscribe_reminder: 0,
                     discord_id: userDiscordId
                 };
             }
@@ -481,9 +481,9 @@ router.post('/user/checkin', auth_1.authenticateToken, async (req, res) => {
           last_checkin = ?,
           checkin_streak = ?,
           total_checkins = ?
-      WHERE id = ?
+      WHERE lower(replace(mc_username, '.', '')) = ?
     `);
-        updateStmt.run(todayStr, newStreak, newTotal, row.id);
+        updateStmt.run(todayStr, newStreak, newTotal, cleanUsername);
         res.json({
             success: true,
             message: `簽到成功！獲得抽獎鑰匙 x1（連續簽到 ${newStreak} 天，累計 ${newTotal} 天）`,
@@ -642,7 +642,7 @@ router.get('/user/inventory', auth_1.authenticateToken, async (req, res) => {
     try {
         const response = await (0, wsClient_1.sendWsQuery)('player_inventory_query', { username: user.mc_username }, 2000);
         if (response && response.success && Array.isArray(response.slots)) {
-            return res.json({ success: true, username: user.mc_username, slots: response.slots });
+            return res.json({ success: true, username: user.mc_username, slots: response.slots, items: response.slots });
         }
     }
     catch (err) { }
@@ -650,7 +650,8 @@ router.get('/user/inventory', auth_1.authenticateToken, async (req, res) => {
     return res.json({
         success: true,
         username: user.mc_username,
-        slots: fallbackSlots
+        slots: fallbackSlots,
+        items: fallbackSlots
     });
 });
 // POST /api/user/luckydraw - Deduct key & draw prize
@@ -676,7 +677,7 @@ router.post('/user/luckydraw', auth_1.authenticateToken, async (req, res) => {
         const userDiscordId = user.discord_id || '';
         const userUuid = user.mc_uuid || '';
         const row = wsClient_1.db.prepare(`
-      SELECT id, keys_count FROM bindings
+      SELECT keys_count FROM bindings
       WHERE lower(replace(mc_username, '.', '')) = ?
          OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
          OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
@@ -686,8 +687,8 @@ router.post('/user/luckydraw', auth_1.authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: '您的抽獎鑰匙不足！請先進行每日簽到或完成任務獲得鑰匙。' });
         }
         const newKeys = Math.max(0, currentKeys - 1);
-        if (row?.id) {
-            wsClient_1.db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(newKeys, row.id);
+        if (row) {
+            wsClient_1.db.prepare("UPDATE bindings SET keys_count = ? WHERE lower(replace(mc_username, '.', '')) = ?").run(newKeys, cleanUsername);
         }
         // Sync key deduction to economy.json lotteryKeys to prevent double-spending in-game
         const ecoMap = (0, configLoader_1.loadConfigJson)('economy.json') || {};
@@ -830,7 +831,7 @@ router.post('/user/buy-key-with-money', auth_1.authenticateToken, async (req, re
         const userDiscordId = user.discord_id || '';
         const userUuid = user.mc_uuid || '';
         const row = wsClient_1.db.prepare(`
-      SELECT id, keys_count FROM bindings
+      SELECT keys_count FROM bindings
       WHERE lower(replace(mc_username, '.', '')) = ?
          OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
          OR (mc_uuid IS NOT NULL AND mc_uuid != '' AND mc_uuid = ?)
@@ -841,7 +842,7 @@ router.post('/user/buy-key-with-money', auth_1.authenticateToken, async (req, re
             wsClient_1.db.prepare('INSERT INTO bindings (discord_id, mc_uuid, mc_username, keys_count) VALUES (?, ?, ?, ?)').run(user.discord_id || 'system', user.mc_uuid || `dev-uuid-${cleanUsername}`, username, newKeys);
         }
         else {
-            wsClient_1.db.prepare('UPDATE bindings SET keys_count = ? WHERE id = ?').run(newKeys, row.id);
+            wsClient_1.db.prepare("UPDATE bindings SET keys_count = ? WHERE lower(replace(mc_username, '.', '')) = ?").run(newKeys, cleanUsername);
         }
         // Also update lotteryKeys in economy.json
         ecoMap[ecoKey].lotteryKeys = newKeys;
@@ -872,10 +873,11 @@ router.post('/user/reminder-subscription', auth_1.authenticateToken, (req, res) 
     if (!wsClient_1.db)
         return res.status(500).json({ success: false, message: '資料庫連線不可用' });
     try {
-        const row = wsClient_1.db.prepare('SELECT subscribe_reminder FROM bindings WHERE mc_username = ? COLLATE NOCASE').get(username);
+        const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
+        const row = wsClient_1.db.prepare("SELECT subscribe_reminder FROM bindings WHERE lower(replace(mc_username, '.', '')) = ?").get(cleanUsername);
         const currentSub = row?.subscribe_reminder || 0;
         const newSub = currentSub === 1 ? 0 : 1;
-        wsClient_1.db.prepare('UPDATE bindings SET subscribe_reminder = ? WHERE mc_username = ? COLLATE NOCASE').run(newSub, username);
+        wsClient_1.db.prepare("UPDATE bindings SET subscribe_reminder = ? WHERE lower(replace(mc_username, '.', '')) = ?").run(newSub, cleanUsername);
         return res.json({
             success: true,
             subscribed: newSub === 1,
@@ -1231,12 +1233,12 @@ const handlePlaytimeExchange = async (req, res) => {
             try {
                 const cleanUsername = (username || '').replace(/^\./, '').toLowerCase();
                 const row = wsClient_1.db.prepare(`
-          SELECT id, keys_count FROM bindings
+          SELECT keys_count FROM bindings
           WHERE lower(replace(mc_username, '.', '')) = ?
              OR (discord_id IS NOT NULL AND discord_id != '' AND discord_id = ?)
         `).get(cleanUsername, user.discord_id || '');
                 if (row) {
-                    wsClient_1.db.prepare('UPDATE bindings SET keys_count = keys_count + ? WHERE id = ?').run(response.keys_added, row.id);
+                    wsClient_1.db.prepare("UPDATE bindings SET keys_count = keys_count + ? WHERE lower(replace(mc_username, '.', '')) = ?").run(response.keys_added, cleanUsername);
                 }
             }
             catch (err) {
@@ -1271,8 +1273,10 @@ const handleSubmitWarp = (req, res) => {
     const user = req.user;
     if (!user)
         return res.status(401).json({ success: false, message: '尚未登入' });
-    const { facility_name, function_desc, coords, dimension } = req.body;
-    if (!facility_name || !coords) {
+    const { facility_name, facilityName, function_desc, functionDesc, coords, dimension } = req.body;
+    const targetFacilityName = (facilityName || facility_name || '').trim();
+    const targetFunctionDesc = (functionDesc || function_desc || '').trim();
+    if (!targetFacilityName || !coords) {
         return res.status(400).json({ success: false, message: '缺少地標名稱或座標' });
     }
     if (wsClient_1.db) {
@@ -1281,7 +1285,7 @@ const handleSubmitWarp = (req, res) => {
         INSERT INTO warp_submissions (applicant_username, applicant_discord_id, facility_name, function_desc, coords, dimension)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
-            stmt.run(user.mc_username, user.discord_id || null, facility_name, function_desc || '', coords, dimension || 'minecraft:overworld');
+            stmt.run(user.mc_username, user.discord_id || null, targetFacilityName, targetFunctionDesc, coords, dimension || 'minecraft:overworld');
             return res.json({ success: true, message: '公用設施傳送點申請已送出！' });
         }
         catch (e) {

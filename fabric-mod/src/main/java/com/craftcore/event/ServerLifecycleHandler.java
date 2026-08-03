@@ -66,9 +66,10 @@ public class ServerLifecycleHandler {
                 String username = player.getName().getString();
                 String uuid = player.getStringUUID();
 
-                // 1. 處理 UUID 改名遷移、離線轉帳通知與首次登入禮包
+                // 1. 處理 UUID 改名遷移、離線轉帳通知、每日任務自動領取與首次登入禮包
                 com.craftcore.economy.EconomyManager.handlePlayerLogin(username, uuid);
                 com.craftcore.economy.EconomyManager.checkAndDeliverOfflineNotifications(player);
+                com.craftcore.task.DailyTaskManager.checkAndAutoClaimTasks(player);
                 FirstJoinManager.checkAndHandleFirstJoin(player);
 
                 // 2. 發送隨機迎賓小提示 (Welcome Tip) 與限時活動通知

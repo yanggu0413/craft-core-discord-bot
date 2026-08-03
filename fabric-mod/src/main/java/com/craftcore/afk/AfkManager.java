@@ -1,7 +1,5 @@
 package com.craftcore.afk;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.server.level.ServerPlayer;
@@ -36,16 +34,24 @@ public class AfkManager {
     private static final long AFK_TIMEOUT_MS = 10 * 60 * 1000L; // 10 minutes
 
     public static void registerEvents() {
-        ServerTickEvents.END_SERVER_TICK.register(server -> {
-            long now = System.currentTimeMillis();
-            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                checkPlayerAfk(player, now);
-            }
-        });
+        try {
+            FabricEventsRegistrar.register();
+        } catch (Throwable ignored) {}
+    }
 
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            playerStates.remove(handler.getPlayer().getUUID());
-        });
+    private static class FabricEventsRegistrar {
+        static void register() {
+            net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {
+                long now = System.currentTimeMillis();
+                for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                    checkPlayerAfk(player, now);
+                }
+            });
+
+            net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+                playerStates.remove(handler.getPlayer().getUUID());
+            });
+        }
     }
 
     public static boolean isAfk(Player player) {

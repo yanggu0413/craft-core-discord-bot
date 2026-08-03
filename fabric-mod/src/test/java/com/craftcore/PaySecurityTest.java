@@ -20,6 +20,12 @@ public class PaySecurityTest {
         // Set temp file to isolate tests from production database
         EconomyManager.setConfigPath(tempDir.resolve("economy.json"));
         EconomyManager.clearAll();
+        com.craftcore.util.AsyncSaveExecutor.flush();
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    public void tearDown() {
+        com.craftcore.util.AsyncSaveExecutor.flush();
     }
 
     @Test

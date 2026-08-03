@@ -680,6 +680,13 @@ public class ChestShopEventHandler {
             || name.contains("gate") 
             || name.contains("lever") 
             || name.contains("trapdoor") 
-            || name.contains("pressureplate");
+            || name.contains("pressureplate")
+            || name.contains("repeater")
+            || name.contains("comparator")
+            || name.contains("daylight")
+            || name.contains("sculk")
+            || name.contains("jukebox")
+            || name.contains("noteblock")
+            || name.contains("target");
     }
 }

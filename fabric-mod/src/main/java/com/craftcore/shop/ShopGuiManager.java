@@ -63,8 +63,23 @@ public class ShopGuiManager {
 
     public static void openShopList(ServerPlayer player) {
         player.openMenu(new SimpleMenuProvider(
-            (syncId, playerInv, playerEntity) -> new ShopListScreenHandler(syncId, playerInv, ShopManager.getShops(), player),
-            Component.literal("商店列表")
+            (syncId, playerInv, playerEntity) -> new ShopListScreenHandler(syncId, playerInv, ShopManager.getShops(), player, 0, null),
+            Component.literal("🛒 全服箱子商店市場")
+        ));
+    }
+
+    public static void openOwnerShopList(ServerPlayer player) {
+        List<ShopManager.Shop> allShops = ShopManager.getShops();
+        List<ShopManager.Shop> personalShops = new ArrayList<>();
+        String username = getPlayerNameSafely(player);
+        for (ShopManager.Shop s : allShops) {
+            if (s.player != null && s.player.equalsIgnoreCase(username)) {
+                personalShops.add(s);
+            }
+        }
+        player.openMenu(new SimpleMenuProvider(
+            (syncId, playerInv, playerEntity) -> new ShopListScreenHandler(syncId, playerInv, personalShops, player, 1, null),
+            Component.literal("🏪 店主遙控台")
         ));
     }
 
@@ -96,8 +111,8 @@ public class ShopGuiManager {
         });
 
         player.openMenu(new SimpleMenuProvider(
-            (syncId, playerInv, playerEntity) -> new ShopListScreenHandler(syncId, playerInv, filtered, player),
-            Component.literal("商店搜尋: " + query)
+            (syncId, playerInv, playerEntity) -> new ShopListScreenHandler(syncId, playerInv, filtered, player, 2, query),
+            Component.literal("🔍 商店搜尋: " + query)
         ));
     }
 
@@ -121,15 +136,18 @@ public class ShopGuiManager {
     public static class ShopListScreenHandler extends ChestMenu {
         private final List<ShopManager.Shop> shops;
         private final ServerPlayer player;
+        private final int mode; // 0 = Market, 1 = Owner Remote, 2 = Search
+        private final String searchQuery;
 
-        public ShopListScreenHandler(int syncId, Inventory playerInventory, List<ShopManager.Shop> shops, ServerPlayer player) {
+        public ShopListScreenHandler(int syncId, Inventory playerInventory, List<ShopManager.Shop> shops, ServerPlayer player, int mode, String searchQuery) {
             super(MenuType.GENERIC_9x6, syncId, playerInventory, new SimpleContainer(54), 6);
             this.shops = shops;
             this.player = player;
+            this.mode = mode;
+            this.searchQuery = searchQuery;
 
             int shopIdx = 0;
-            for (int slot = 0; slot < 54 && shopIdx < shops.size(); slot++) {
-                if (slot == 45 || slot == 49 || slot == 53) continue;
+            for (int slot = 0; slot < 45 && shopIdx < shops.size(); slot++) {
                 ShopManager.Shop shop = shops.get(shopIdx);
                 String ownerName = shop.player != null ? shop.player : "Steve";
                 Item itemObj = BuiltInRegistries.ITEM.getValue(Identifier.parse(shop.item));
@@ -156,10 +174,18 @@ public class ShopGuiManager {
                 if (shop.player.equals(getPlayerNameSafely(player)) || isOp(player)) {
                     lore.add(Component.literal("§7營業額: §d$" + shop.revenue));
                 }
+                lore.add(Component.literal(""));
+                lore.add(Component.literal("§a[點擊開啟傳送 / 遠端管理選單]"));
                 stack.set(DataComponents.LORE, new ItemLore(lore));
 
                 this.getContainer().setItem(slot, stack);
                 shopIdx++;
+            }
+
+            ItemStack glass = new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse("minecraft:gray_stained_glass_pane")));
+            glass.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
+            for (int s = shopIdx; s < 45; s++) {
+                this.getContainer().setItem(s, glass);
             }
 
             ItemStack backBtn = new ItemStack(Items.ARROW);
@@ -179,16 +205,52 @@ public class ShopGuiManager {
             instBook.set(DataComponents.LORE, new ItemLore(instLore));
             this.getContainer().setItem(46, instBook);
 
-            ItemStack addShopBtn = new ItemStack(Items.CHEST);
-            addShopBtn.set(DataComponents.CUSTOM_NAME, Component.literal("§a新增商店"));
-            List<Component> addLore = List.of(
-                Component.literal("§7點擊以進入商店建立模式")
-            );
-            addShopBtn.set(DataComponents.LORE, new ItemLore(addLore));
-            this.getContainer().setItem(49, addShopBtn);
+            ItemStack marketTab = new ItemStack(Items.CHEST);
+            marketTab.set(DataComponents.CUSTOM_NAME, Component.literal("§a🛒 全服箱子商店市場"));
+            marketTab.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§7瀏覽全服所有玩家的箱子商店與即時庫存"),
+                mode == 0 ? Component.literal("§a[當前頁面: 全服市場]") : Component.literal("§e[點擊切換至全服市場]")
+            )));
+            this.getContainer().setItem(47, marketTab);
+
+            double totalRevenue = 0;
+            String username = getPlayerNameSafely(player);
+            for (ShopManager.Shop s : ShopManager.getShops()) {
+                if (s.player != null && s.player.equalsIgnoreCase(username)) {
+                    totalRevenue += s.revenue;
+                }
+            }
+            ItemStack ownerTab = new ItemStack(Items.ENDER_CHEST);
+            ownerTab.set(DataComponents.CUSTOM_NAME, Component.literal("§b🏪 店主遙控台"));
+            ownerTab.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§7瀏覽個人商店、累積未提領收益與遠端遙控"),
+                Component.literal("§7未提領總收益: §d$" + totalRevenue),
+                mode == 1 ? Component.literal("§a[當前頁面: 店主遙控台]") : Component.literal("§e[點擊切換至店主遙控台]")
+            )));
+            this.getContainer().setItem(48, ownerTab);
+
+            ItemStack closeBtn = new ItemStack(Items.BARRIER);
+            closeBtn.set(DataComponents.CUSTOM_NAME, Component.literal("§c❌ 關閉選單"));
+            closeBtn.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("§7點擊關閉此選單"))));
+            this.getContainer().setItem(49, closeBtn);
+
+            ItemStack searchTab = new ItemStack(Items.COMPASS);
+            searchTab.set(DataComponents.CUSTOM_NAME, Component.literal("§e🔍 搜尋物資"));
+            searchTab.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§7依名稱或物品類型搜尋商店"),
+                mode == 2 ? Component.literal("§a[搜尋關鍵字: " + searchQuery + "]") : Component.literal("§e[點擊進行物品搜尋]")
+            )));
+            this.getContainer().setItem(50, searchTab);
+
+            this.getContainer().setItem(51, glass);
+
+            ItemStack addShopBtn = new ItemStack(Items.EMERALD);
+            addShopBtn.set(DataComponents.CUSTOM_NAME, Component.literal("§a➕ 新增商店"));
+            addShopBtn.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("§7點擊以進入商店建立模式"))));
+            this.getContainer().setItem(52, addShopBtn);
 
             ItemStack upgradeBtn = new ItemStack(Items.DIAMOND);
-            int currentUpgrades = com.craftcore.economy.EconomyManager.getUpgradedShopSlots(getPlayerNameSafely(player));
+            int currentUpgrades = com.craftcore.economy.EconomyManager.getUpgradedShopSlots(username);
             int maxAllowed = 15 + currentUpgrades;
             double cost = com.craftcore.economy.EconomyManager.getUpgradeCost(maxAllowed);
             upgradeBtn.set(DataComponents.CUSTOM_NAME, Component.literal("§d升級商店上限"));
@@ -199,6 +261,10 @@ public class ShopGuiManager {
             );
             upgradeBtn.set(DataComponents.LORE, new ItemLore(upgradeLore));
             this.getContainer().setItem(53, upgradeBtn);
+        }
+
+        public ShopListScreenHandler(int syncId, Inventory playerInventory, List<ShopManager.Shop> shops, ServerPlayer player) {
+            this(syncId, playerInventory, shops, player, 0, null);
         }
 
         @Override
@@ -218,7 +284,32 @@ public class ShopGuiManager {
                 }
                 return;
             }
+            if (slotId == 47) {
+                if (player instanceof ServerPlayer spe) {
+                    openShopList(spe);
+                }
+                return;
+            }
+            if (slotId == 48) {
+                if (player instanceof ServerPlayer spe) {
+                    openOwnerShopList(spe);
+                }
+                return;
+            }
             if (slotId == 49) {
+                if (player instanceof ServerPlayer spe) {
+                    spe.closeContainer();
+                }
+                return;
+            }
+            if (slotId == 50) {
+                if (player instanceof ServerPlayer spe) {
+                    spe.closeContainer();
+                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §f請使用指令 §e/shop search <物品名稱> §f進行物資搜尋！"));
+                }
+                return;
+            }
+            if (slotId == 52) {
                 if (player instanceof ServerPlayer spe) {
                     spe.closeContainer();
                     ShopManager.addActivationState(getPlayerNameSafely(spe));
@@ -250,22 +341,13 @@ public class ShopGuiManager {
                 }
                 return;
             }
-            if (slotId >= 0 && slotId < 54) {
-                int shopIdx = -1;
-                if (slotId < 45) {
-                    shopIdx = slotId;
-                } else if (slotId > 45 && slotId < 49) {
-                    shopIdx = slotId - 1;
-                } else if (slotId > 49 && slotId < 53) {
-                    shopIdx = slotId - 2;
-                }
-                if (shopIdx >= 0 && shopIdx < shops.size()) {
-                    ShopManager.Shop shop = shops.get(shopIdx);
+            if (slotId >= 0 && slotId < 45) {
+                if (slotId < shops.size()) {
+                    ShopManager.Shop shop = shops.get(slotId);
                     if (player instanceof ServerPlayer spe) {
                         spe.closeContainer();
                         openSubMenu(spe, shop);
                     }
-                    return;
                 }
                 return;
             }

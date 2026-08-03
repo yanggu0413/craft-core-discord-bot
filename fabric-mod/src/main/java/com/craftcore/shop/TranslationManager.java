@@ -16,6 +16,19 @@ public class TranslationManager {
     private static final Map<String, String> CN_TRANSLATIONS = new HashMap<>();
 
     static {
+        TW_TRANSLATIONS.put("item.minecraft.coal", "煤炭");
+        TW_TRANSLATIONS.put("item.minecraft.diamond", "鑽石");
+        TW_TRANSLATIONS.put("item.minecraft.iron_ingot", "鐵錠");
+        TW_TRANSLATIONS.put("item.minecraft.copper_ingot", "銅錠");
+        TW_TRANSLATIONS.put("item.minecraft.netherite_scrap", "獄髓碎片");
+        TW_TRANSLATIONS.put("block.minecraft.stone", "石頭");
+        TW_TRANSLATIONS.put("block.minecraft.cobblestone", "鵝卵石");
+        TW_TRANSLATIONS.put("item.minecraft.rotten_flesh", "腐肉");
+        TW_TRANSLATIONS.put("block.minecraft.chest", "箱子");
+
+        CN_TRANSLATIONS.put("item.minecraft.coal", "煤炭");
+        CN_TRANSLATIONS.put("item.minecraft.diamond", "钻石");
+
         loadTranslations("/assets/craftcore/lang/zh_tw.json", TW_TRANSLATIONS);
         loadTranslations("/assets/craftcore/lang/zh_cn.json", CN_TRANSLATIONS);
     }

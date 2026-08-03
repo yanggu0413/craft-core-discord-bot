@@ -69,6 +69,14 @@ class UserRepository {
     return db.getCheckinLeaderboard(limit);
   }
 
+  async getKeysLeaderboard(limit = 10) {
+    return db.getKeysLeaderboard(limit);
+  }
+
+  async getStreaksLeaderboard(limit = 10) {
+    return db.getStreakLeaderboard(limit);
+  }
+
   async getSubscribedUsers() {
     return db.getSubscribedUsers();
   }

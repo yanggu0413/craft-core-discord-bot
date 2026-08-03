@@ -15,6 +15,7 @@ public class TestRunner {
             LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
                 .selectors(
                     selectClass("com.craftcore.CommandCapturerTest"),
+                    selectClass("com.craftcore.Milestone7GateTest"),
                     selectClass("com.craftcore.SearchAndLogTest"),
                     selectClass("com.craftcore.SerializationTest"),
                     selectClass("com.craftcore.ShopSearchAndLogsTest"),

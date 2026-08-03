@@ -27,8 +27,7 @@ public class FirstJoinManager {
 
     static {
         try {
-            configPath = FabricLoader.getInstance().getConfigDir()
-                    .resolve("craft-core-shop").resolve("first_join_claimed.json");
+            configPath = com.craftcore.util.FabricPathUtil.getShopConfigDir().resolve("first_join_claimed.json");
         } catch (Throwable e) {
             configPath = Path.of("config", "craft-core-shop", "first_join_claimed.json");
         }

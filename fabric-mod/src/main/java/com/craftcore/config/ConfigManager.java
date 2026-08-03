@@ -16,8 +16,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ConfigManager {
-    private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("craftcore.json");
-    private static final Path PLAYER_PATH = FabricLoader.getInstance().getConfigDir().resolve("craftcore_players.json");
+    private static final Path CONFIG_PATH = com.craftcore.util.FabricPathUtil.getConfigDir().resolve("craftcore.json");
+    private static final Path PLAYER_PATH = com.craftcore.util.FabricPathUtil.getConfigDir().resolve("craftcore_players.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private static ModConfig config = new ModConfig();

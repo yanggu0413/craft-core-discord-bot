@@ -510,6 +510,7 @@ public class PacketHandler {
                         if (queryId != null) {
                             client.send(new Packet("generic_response", new GenericActionResponsePayload(queryId, true, "Luckydraw processed", 0.0)));
                         }
+                        com.craftcore.menu.MenuGuiManager.handleLuckyDrawResponse(payload);
                     });
                     break;
                 }
@@ -743,6 +744,13 @@ public class PacketHandler {
                         if (player != null) {
                             com.craftcore.task.DailyTaskManager.displayGreetingCard(player, payload.hasCheckedIn, payload.pendingMailCount);
                         }
+                    });
+                    break;
+                }
+                case "welfare_leaderboard_response": {
+                    WelfareLeaderboardResponsePayload payload = GSON.fromJson(payloadObj, WelfareLeaderboardResponsePayload.class);
+                    server.execute(() -> {
+                        com.craftcore.menu.MenuGuiManager.handleWelfareLeaderboardResponse(payload);
                     });
                     break;
                 }

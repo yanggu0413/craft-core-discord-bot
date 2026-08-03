@@ -77,7 +77,7 @@ public class BackupManager {
 
         Executors.newSingleThreadExecutor().submit(() -> {
             try {
-                Path rootDir = FabricLoader.getInstance().getGameDir();
+                Path rootDir = com.craftcore.util.FabricPathUtil.getGameDir();
                 Path backupDir = rootDir.resolve("backups");
                 if (!Files.exists(backupDir)) {
                     Files.createDirectories(backupDir);

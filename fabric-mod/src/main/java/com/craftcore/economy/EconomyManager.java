@@ -37,8 +37,7 @@ public class EconomyManager {
 
     static {
         try {
-            configPath = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir()
-                    .resolve("craft-core-shop").resolve("economy.json");
+            configPath = com.craftcore.util.FabricPathUtil.getShopConfigDir().resolve("economy.json");
         } catch (Throwable e) {
             configPath = Path.of("config", "craft-core-shop", "economy.json");
         }
@@ -46,6 +45,7 @@ public class EconomyManager {
     }
 
     public static synchronized void setConfigPath(Path path) {
+        com.craftcore.util.AsyncSaveExecutor.flush();
         configPath = path;
         load();
     }
@@ -106,20 +106,36 @@ public class EconomyManager {
         }
     }
 
-    public static synchronized void save() {
+    private static final Object SAVE_LOCK = new Object();
+
+    public static void save() {
         if (configPath != null) {
-            try {
-                Files.createDirectories(configPath.getParent());
-                try (BufferedWriter writer = Files.newBufferedWriter(configPath)) {
-                    GSON.toJson(dataMap, writer);
+            com.craftcore.util.AsyncSaveExecutor.submit(() -> {
+                synchronized (SAVE_LOCK) {
+                    try {
+                        Path parent = configPath.getParent();
+                        if (parent != null) {
+                            Files.createDirectories(parent);
+                        }
+                        Path tempPath = configPath.resolveSibling(configPath.getFileName() + ".tmp");
+                        try (BufferedWriter writer = Files.newBufferedWriter(tempPath)) {
+                            GSON.toJson(dataMap, writer);
+                        }
+                        try {
+                            Files.move(tempPath, configPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+                        } catch (IOException moveEx) {
+                            Files.move(tempPath, configPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        }
+                    } catch (IOException e) {
+                        System.err.println("[CraftCore] Failed to save economy: " + e.getMessage());
+                    }
                 }
-            } catch (IOException e) {
-                System.err.println("[CraftCore] Failed to save economy: " + e.getMessage());
-            }
+            });
         }
     }
 
     public static synchronized void clearAll() {
+        com.craftcore.util.AsyncSaveExecutor.flush();
         dataMap.clear();
         save();
     }
@@ -528,7 +544,7 @@ public class EconomyManager {
         }
     }
 
-    public static synchronized TransferResult transferMoney(String sender, String recipient, double amount, boolean recipientOnline) {
+    public static TransferResult transferMoney(String sender, String recipient, double amount, boolean recipientOnline) {
         if (sender == null || recipient == null) {
             return new TransferResult(false, "轉帳失敗：付款者或收款者無效。");
         }
@@ -544,44 +560,64 @@ public class EconomyManager {
             return new TransferResult(false, "不能轉帳給自己。");
         }
 
-        PlayerData senderData = getOrCreate(sender);
+        // Deterministically order locks alphabetically to prevent deadlocks
+        String firstUser = cleanSender.compareTo(cleanRecipient) < 0 ? cleanSender : cleanRecipient;
+        String secondUser = cleanSender.compareTo(cleanRecipient) < 0 ? cleanRecipient : cleanSender;
 
-        if (senderData.balance < amount) {
-            return new TransferResult(false, "餘額不足 (目前餘額 $" + String.format("%.2f", senderData.balance) + ")。");
-        }
+        java.util.concurrent.locks.ReentrantLock lock1 = getPlayerLock(firstUser);
+        java.util.concurrent.locks.ReentrantLock lock2 = getPlayerLock(secondUser);
 
-        String today = getCurrentDate();
-        if (!today.equals(senderData.lastResetDate)) {
-            senderData.stonesSoldToday = 0;
-            senderData.trashSoldToday = 0;
-            senderData.dailyPaidAmount = 0.0;
-            senderData.lastResetDate = today;
-        }
+        lock1.lock();
+        lock2.lock();
+        try {
+            double roundedAmount = round2(amount);
+            PlayerData senderData = getOrCreate(sender);
 
-        if (senderData.dailyPaidAmount + amount > DAILY_TRANSFER_LIMIT) {
-            return new TransferResult(false, "超出每日轉帳限制，今日還能轉帳 $" + String.format("%.2f", (DAILY_TRANSFER_LIMIT - senderData.dailyPaidAmount)) + "。");
-        }
-
-        String actualRecipient = getActualUsernameCaseInsensitive(recipient);
-        if (!recipientOnline && actualRecipient == null) {
-            return new TransferResult(false, "轉帳失敗：找不到該離線玩家紀錄。");
-        }
-
-        String recipientKey = actualRecipient != null ? actualRecipient : recipient;
-        PlayerData recipientData = getOrCreate(recipientKey);
-
-        senderData.balance -= amount;
-        senderData.dailyPaidAmount += amount;
-        recipientData.balance += amount;
-
-        if (!recipientOnline) {
-            if (recipientData.offlineNotifications == null) {
-                recipientData.offlineNotifications = new java.util.ArrayList<>();
+            if (round2(senderData.balance) < roundedAmount) {
+                return new TransferResult(false, "餘額不足 (目前餘額 $" + String.format("%.2f", round2(senderData.balance)) + ")。");
             }
-            recipientData.offlineNotifications.add("§b[Craft-Core] §f您在離線期間收到了來自 §a" + sender + " §f的轉帳：§a$" + String.format("%.2f", amount) + "§f！");
-        }
 
-        save();
-        return new TransferResult(true, "已成功轉帳 $" + String.format("%.2f", amount) + " 給 " + recipientKey + "。");
+            String today = getCurrentDate();
+            if (!today.equals(senderData.lastResetDate)) {
+                senderData.stonesSoldToday = 0;
+                senderData.trashSoldToday = 0;
+                senderData.dailyPaidAmount = 0.0;
+                senderData.lastResetDate = today;
+            }
+
+            if (round2(senderData.dailyPaidAmount + roundedAmount) > DAILY_TRANSFER_LIMIT) {
+                return new TransferResult(false, "超出每日轉帳限制，今日還能轉帳 $" + String.format("%.2f", round2(DAILY_TRANSFER_LIMIT - senderData.dailyPaidAmount)) + "。");
+            }
+
+            String actualRecipient = getActualUsernameCaseInsensitive(recipient);
+            if (!recipientOnline && actualRecipient == null) {
+                return new TransferResult(false, "轉帳失敗：找不到該離線玩家紀錄。");
+            }
+
+            String recipientKey = actualRecipient != null ? actualRecipient : recipient;
+            PlayerData recipientData = getOrCreate(recipientKey);
+
+            // Atomic money deduction, daily paid increment, and recipient balance addition with round2 precision
+            senderData.balance = round2(senderData.balance - roundedAmount);
+            senderData.dailyPaidAmount = round2(senderData.dailyPaidAmount + roundedAmount);
+            recipientData.balance = round2(recipientData.balance + roundedAmount);
+
+            if (!recipientOnline) {
+                if (recipientData.offlineNotifications == null) {
+                    recipientData.offlineNotifications = new java.util.ArrayList<>();
+                }
+                recipientData.offlineNotifications.add("§b[Craft-Core] §f您在離線期間收到了來自 §a" + sender + " §f的轉帳：§a$" + String.format("%.2f", roundedAmount) + "§f！");
+            }
+
+            save();
+            return new TransferResult(true, "已成功轉帳 $" + String.format("%.2f", roundedAmount) + " 給 " + recipientKey + "。");
+        } finally {
+            lock2.unlock();
+            lock1.unlock();
+        }
+    }
+
+    public static TransferResult transferMoney(String sender, String recipient, double amount) {
+        return transferMoney(sender, recipient, amount, false);
     }
 }

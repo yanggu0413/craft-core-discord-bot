@@ -50,8 +50,7 @@ public class MachineManager {
 
     static {
         try {
-            configPath = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir()
-                    .resolve("craft-core-shop").resolve("machines.json");
+            configPath = com.craftcore.util.FabricPathUtil.getShopConfigDir().resolve("machines.json");
         } catch (Throwable e) {
             configPath = Path.of("config", "craft-core-shop", "machines.json");
         }

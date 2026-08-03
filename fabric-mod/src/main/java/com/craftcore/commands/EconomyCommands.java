@@ -504,6 +504,8 @@ dispatcher.register(Commands.literal("pay")
 
     private static int handleTasksCommand(ServerPlayer player) {
         if (player == null) return 0;
+        com.craftcore.task.DailyTaskManager.checkAndAutoClaimTasks(player);
+
         String username = player.getName().getString();
         String dateStr = com.craftcore.task.DailyTaskManager.getTaipeiDate();
         com.craftcore.task.DailyTaskManager.DailyTaskDef[] dailyTasks = com.craftcore.task.DailyTaskManager.getDailyTasks(dateStr);
@@ -516,10 +518,10 @@ dispatcher.register(Commands.literal("pay")
         player.sendSystemMessage(Component.literal("§6=================== 今日每日任務 ==================="));
         player.sendSystemMessage(Component.literal("§e★ 任務日期: " + dateStr));
 
-        String slayStatus = (slayProgress >= dailyTasks[0].count) ? (slayClaimed ? "§a[已領取]" : "§e[待領取] (請輸入 /tasks claim 領取)") : "§7[未完成]";
+        String slayStatus = (slayProgress >= dailyTasks[0].count || slayClaimed) ? "§a[已完成 (已自動發放)]" : "§7[未完成]";
         player.sendSystemMessage(Component.literal("§f- 擊殺 " + dailyTasks[0].target + ": §e" + slayProgress + "§f/§e" + dailyTasks[0].count + " §f(獎金 §e$" + (int)dailyTasks[0].reward + "§f) " + slayStatus));
 
-        String mineStatus = (mineProgress >= dailyTasks[1].count) ? (mineClaimed ? "§a[已領取]" : "§e[待領取] (請輸入 /tasks claim 領取)") : "§7[未完成]";
+        String mineStatus = (mineProgress >= dailyTasks[1].count || mineClaimed) ? "§a[已完成 (已自動發放)]" : "§7[未完成]";
         player.sendSystemMessage(Component.literal("§f- 挖掘 " + dailyTasks[1].target + ": §e" + mineProgress + "§f/§e" + dailyTasks[1].count + " §f(獎金 §e$" + (int)dailyTasks[1].reward + "§f) " + mineStatus));
         player.sendSystemMessage(Component.literal("§6=================================================="));
         return 1;
@@ -527,29 +529,8 @@ dispatcher.register(Commands.literal("pay")
 
     private static int handleTasksClaimCommand(ServerPlayer player) {
         if (player == null) return 0;
-        String username = player.getName().getString();
-        String dateStr = com.craftcore.task.DailyTaskManager.getTaipeiDate();
-        com.craftcore.task.DailyTaskManager.DailyTaskDef[] dailyTasks = com.craftcore.task.DailyTaskManager.getDailyTasks(dateStr);
-
-        int slayProgress = com.craftcore.economy.EconomyManager.getDailyTaskSlayProgress(username);
-        boolean slayClaimed = com.craftcore.economy.EconomyManager.getDailyTaskSlayClaimed(username);
-        int mineProgress = com.craftcore.economy.EconomyManager.getDailyTaskGatherProgress(username);
-        boolean mineClaimed = com.craftcore.economy.EconomyManager.getDailyTaskGatherClaimed(username);
-
-        boolean slayCompletable = (slayProgress >= dailyTasks[0].count) && !slayClaimed;
-        boolean mineCompletable = (mineProgress >= dailyTasks[1].count) && !mineClaimed;
-
-        if (!slayCompletable && !mineCompletable) {
-            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您目前沒有待領取的每日任務獎勵！"));
-            return 1;
-        }
-
-        if (slayCompletable) {
-            com.craftcore.task.DailyTaskManager.completeTask(player, dailyTasks[0]);
-        }
-        if (mineCompletable) {
-            com.craftcore.task.DailyTaskManager.completeTask(player, dailyTasks[1]);
-        }
+        com.craftcore.task.DailyTaskManager.checkAndAutoClaimTasks(player);
+        player.sendSystemMessage(Component.literal("§b[Craft-Core] §a每日任務達標時已自動發放獎勵，無需手動領取！"));
         return 1;
     }
 }

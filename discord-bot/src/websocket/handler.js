@@ -265,6 +265,40 @@ async function handle(packet, discordClient) {
       break;
     }
 
+    case 'welfare_leaderboard_query': {
+      const { query_id, category, limit = 10 } = payload;
+      try {
+        let leaderboard = [];
+        if (category === 'streaks') {
+          leaderboard = await UserRepository.getStreaksLeaderboard(limit);
+        } else {
+          leaderboard = await UserRepository.getKeysLeaderboard(limit);
+        }
+        session.send({
+          type: 'welfare_leaderboard_response',
+          payload: {
+            query_id,
+            category,
+            success: true,
+            leaderboard: leaderboard || []
+          }
+        });
+      } catch (err) {
+        logger.error('Error handling welfare_leaderboard_query', { error: err });
+        session.send({
+          type: 'welfare_leaderboard_response',
+          payload: {
+            query_id,
+            category,
+            success: false,
+            leaderboard: [],
+            message: err.message
+          }
+        });
+      }
+      break;
+    }
+
     case 'whitelist_response':
       logger.info('Whitelist action response', { username: payload.username, action: payload.action, success: payload.success });
       break;

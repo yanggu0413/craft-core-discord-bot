@@ -82,11 +82,15 @@ try {
         shop_coords TEXT,
         buyer TEXT,
         seller TEXT,
+        sender TEXT,
+        receiver TEXT,
         item TEXT,
         quantity INTEGER,
         unit_price REAL,
         tax_deducted REAL,
-        net_profit REAL
+        net_profit REAL,
+        total_price REAL,
+        type TEXT
       )
     `);
         exports.db.exec(`
@@ -113,6 +117,8 @@ try {
         dimension TEXT DEFAULT 'minecraft:overworld',
         status TEXT DEFAULT 'pending',
         admin_reviewer TEXT,
+        warp_name TEXT,
+        reject_reason TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -150,6 +156,30 @@ try {
         catch (e) { }
         try {
             exports.db.exec('ALTER TABLE bindings ADD COLUMN discord_tag TEXT');
+        }
+        catch (e) { }
+        try {
+            exports.db.exec('ALTER TABLE transactions ADD COLUMN sender TEXT');
+        }
+        catch (e) { }
+        try {
+            exports.db.exec('ALTER TABLE transactions ADD COLUMN receiver TEXT');
+        }
+        catch (e) { }
+        try {
+            exports.db.exec('ALTER TABLE transactions ADD COLUMN total_price REAL');
+        }
+        catch (e) { }
+        try {
+            exports.db.exec('ALTER TABLE transactions ADD COLUMN type TEXT');
+        }
+        catch (e) { }
+        try {
+            exports.db.exec('ALTER TABLE warp_submissions ADD COLUMN warp_name TEXT');
+        }
+        catch (e) { }
+        try {
+            exports.db.exec('ALTER TABLE warp_submissions ADD COLUMN reject_reason TEXT');
         }
         catch (e) { }
         try {

@@ -14,9 +14,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Level.class)
 public class LevelMixin {
-    @Inject(method = "destroyBlock", at = @At("HEAD"))
+    @Inject(method = "destroyBlock", at = @At("HEAD"), cancellable = true)
     private void onDestroyBlock(BlockPos pos, boolean drop, Entity entity, int maxUpdateDepth, CallbackInfoReturnable<Boolean> cir) {
         Level level = (Level) (Object) this;
+        if (!(entity instanceof net.minecraft.server.level.ServerPlayer)) {
+            com.craftcore.claim.ClaimManager.Claim claim = com.craftcore.claim.ClaimManager.getClaimAt(pos, level);
+            if (claim != null && claim.explosion_protection) {
+                cir.setReturnValue(false);
+                return;
+            }
+        }
         BlockState state = level.getBlockState(pos);
         BlockEntity blockEntity = level.getBlockEntity(pos);
         Player player = (entity instanceof Player p) ? p : DailyTaskManager.getActiveMiningPlayer();

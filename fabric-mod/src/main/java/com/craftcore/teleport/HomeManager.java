@@ -39,8 +39,7 @@ public class HomeManager {
 
     static {
         try {
-            configPath = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir()
-                    .resolve("craft-core-shop").resolve("homes.json");
+            configPath = com.craftcore.util.FabricPathUtil.getShopConfigDir().resolve("homes.json");
         } catch (Throwable e) {
             configPath = Path.of("config", "craft-core-shop", "homes.json");
         }

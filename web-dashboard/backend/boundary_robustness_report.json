@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-27T04:01:10.938Z",
+  "timestamp": "2026-08-01T02:23:43.029Z",
   "unitTestResults": [
     {
       "testName": "verifyToken(null) returns null",
@@ -130,10 +130,16 @@
         "totalCirculation": 150000,
         "accumulatedSalesTax": 0,
         "totalShopsCount": 0,
-        "activeClaims": 3,
-        "totalPlayers": 1,
-        "onlinePlayers": 1,
-        "tps": 20
+        "totalClaimsCount": 3,
+        "totalPlayersCount": 1,
+        "onlinePlayersCount": 1,
+        "serverTps": 20,
+        "history": [
+          {
+            "time": "即時數據",
+            "amount": 150000
+          }
+        ]
       }
     },
     {
@@ -145,10 +151,16 @@
         "totalCirculation": 150000,
         "accumulatedSalesTax": 0,
         "totalShopsCount": 0,
-        "activeClaims": 3,
-        "totalPlayers": 1,
-        "onlinePlayers": 1,
-        "tps": 20
+        "totalClaimsCount": 3,
+        "totalPlayersCount": 1,
+        "onlinePlayersCount": 1,
+        "serverTps": 20,
+        "history": [
+          {
+            "time": "即時數據",
+            "amount": 150000
+          }
+        ]
       }
     },
     {
@@ -161,7 +173,11 @@
           {
             "rank": 1,
             "username": "Yanggu",
+            "mc_username": "Yanggu",
             "balance": 0,
+            "keys_count": 10,
+            "checkin_streak": 0,
+            "total_checkins": 0,
             "shopsCount": 0,
             "avatar": "https://mc-heads.net/avatar/Yanggu/64"
           }
@@ -178,8 +194,10 @@
           {
             "rank": 1,
             "username": "Yanggu",
-            "balance": 0,
-            "shopsCount": 0,
+            "mc_username": "Yanggu",
+            "keys_count": 10,
+            "checkin_streak": 0,
+            "total_checkins": 0,
             "avatar": "https://mc-heads.net/avatar/Yanggu/64"
           }
         ]
@@ -195,7 +213,11 @@
           {
             "rank": 1,
             "username": "Yanggu",
+            "mc_username": "Yanggu",
             "balance": 0,
+            "keys_count": 10,
+            "checkin_streak": 0,
+            "total_checkins": 0,
             "shopsCount": 0,
             "avatar": "https://mc-heads.net/avatar/Yanggu/64"
           }
@@ -212,7 +234,11 @@
           {
             "rank": 1,
             "username": "Yanggu",
+            "mc_username": "Yanggu",
             "balance": 0,
+            "keys_count": 10,
+            "checkin_streak": 0,
+            "total_checkins": 0,
             "shopsCount": 0,
             "avatar": "https://mc-heads.net/avatar/Yanggu/64"
           }
@@ -366,7 +392,13 @@
             "public_containers": false,
             "public_interact": false,
             "public_entry": true,
-            "banned_players": []
+            "banned_players": [],
+            "permissions": {
+              "build": [],
+              "break": [],
+              "containers": [],
+              "interact": []
+            }
           },
           {
             "id": "claim_1",
@@ -454,10 +486,10 @@
     {
       "name": "POST /api/claims/flags empty body with valid token",
       "status": "PASS",
-      "httpCode": 403,
+      "httpCode": 400,
       "response": {
         "success": false,
-        "message": "您無權修改此領地的標籤 (僅限領地擁有者或管理員)"
+        "message": "缺少領地識別碼 (claim_id)"
       }
     },
     {
@@ -520,33 +552,33 @@
       "httpCode": 200,
       "response": {
         "success": true,
-        "date": "2026-07-27",
+        "date": "2026-08-01",
         "slay_task": {
           "type": 1,
-          "target": "Creeper",
-          "count": 5,
-          "reward": 400
+          "target": "Piglin",
+          "count": 10,
+          "reward": 350
         },
         "mine_task": {
           "type": 2,
-          "target": "Diamond Ore",
-          "count": 3,
-          "reward": 1000
+          "target": "Iron Ore",
+          "count": 10,
+          "reward": 300
         },
         "tasks": [
           {
             "type": 1,
-            "target": "Creeper",
-            "count": 5,
-            "reward": 400,
+            "target": "Piglin",
+            "count": 10,
+            "reward": 350,
             "progress": 0,
             "claimed": false
           },
           {
             "type": 2,
-            "target": "Diamond Ore",
-            "count": 3,
-            "reward": 1000,
+            "target": "Iron Ore",
+            "count": 10,
+            "reward": 300,
             "progress": 0,
             "claimed": false
           }
@@ -563,39 +595,41 @@
       "httpCode": 200,
       "response": {
         "success": true,
-        "date": "2026-07-27",
+        "date": "2026-08-01",
         "slay_task": {
           "type": 1,
-          "target": "Creeper",
-          "count": 5,
-          "reward": 400
+          "target": "Piglin",
+          "count": 10,
+          "reward": 350
         },
         "mine_task": {
           "type": 2,
-          "target": "Diamond Ore",
-          "count": 3,
-          "reward": 1000
+          "target": "Iron Ore",
+          "count": 10,
+          "reward": 300
         },
         "tasks": [
           {
             "type": 1,
-            "target": "Creeper",
-            "count": 5,
-            "reward": 400,
+            "target": "Piglin",
+            "count": 10,
+            "reward": 350,
             "progress": 0,
             "claimed": false
           },
           {
             "type": 2,
-            "target": "Diamond Ore",
-            "count": 3,
-            "reward": 1000,
+            "target": "Iron Ore",
+            "count": 10,
+            "reward": 300,
             "progress": 0,
             "claimed": false
           }
         ],
         "slay_progress": 0,
         "mine_progress": 0,
+        "slay_claimed": false,
+        "mine_claimed": false,
         "has_claimed": false,
         "is_completed": false
       }
@@ -624,7 +658,7 @@
       "httpCode": 400,
       "response": {
         "success": false,
-        "message": "金幣餘額不足！購買 1 把鑰匙需要 $500，您目前僅有 $0"
+        "message": "購買數量必須為 1 以上的正整數！"
       }
     },
     {
@@ -633,17 +667,16 @@
       "httpCode": 400,
       "response": {
         "success": false,
-        "message": "金幣餘額不足！購買 1 把鑰匙需要 $500，您目前僅有 $0"
+        "message": "購買數量必須為 1 以上的正整數！"
       }
     },
     {
       "name": "POST /api/user/buy-key-with-money invalid string count",
       "status": "PASS",
-      "httpCode": 200,
+      "httpCode": 400,
       "response": {
-        "success": true,
-        "message": "成功購買 NaN 把鑰匙！",
-        "keys_count": null
+        "success": false,
+        "message": "購買數量必須為 1 以上的正整數！"
       }
     },
     {
@@ -652,7 +685,7 @@
       "httpCode": 400,
       "response": {
         "success": false,
-        "message": "缺少接收者、物品 ID 或數量參數"
+        "message": "請提供接收者玩家名稱"
       }
     },
     {

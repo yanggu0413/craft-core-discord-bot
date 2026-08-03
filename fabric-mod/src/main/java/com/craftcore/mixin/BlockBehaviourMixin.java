@@ -19,8 +19,8 @@ import net.minecraft.core.Direction;
 public class BlockBehaviourMixin {
     @Inject(method = "onExplosionHit", at = @At("HEAD"), cancellable = true)
     private void onExplosionHit(BlockState state, ServerLevel level, BlockPos pos, Explosion explosion, BiConsumer<ItemStack, BlockPos> dropConsumer, CallbackInfo ci) {
-        // 1. Claim protection: 100% cancel explosion block destruction inside any claim
-        if (com.craftcore.claim.ClaimManager.getClaimAt(pos, level) != null) {
+        com.craftcore.claim.ClaimManager.Claim claim = com.craftcore.claim.ClaimManager.getClaimAt(pos, level);
+        if (claim != null && claim.explosion_protection) {
             ci.cancel();
             return;
         }

@@ -2,6 +2,7 @@ package com.craftcore.util;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 高效非同步存檔執行器 (Async Save Executor)
@@ -18,5 +19,11 @@ public class AsyncSaveExecutor {
         if (task != null) {
             EXECUTOR.submit(task);
         }
+    }
+
+    public static void flush() {
+        try {
+            EXECUTOR.submit(() -> {}).get(5, TimeUnit.SECONDS);
+        } catch (Throwable ignored) {}
     }
 }

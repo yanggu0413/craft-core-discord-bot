@@ -18,6 +18,7 @@ public class ModCommands {
             TitleCommand.register(dispatcher);
             RetentionCommands.register(dispatcher);
             MenuCommand.register(dispatcher);
+            ExpressCommand.register(dispatcher);
         });
     }
 }

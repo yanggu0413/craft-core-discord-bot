@@ -1,6 +1,7 @@
 package com.craftcore.claim;
 
 import com.craftcore.economy.EconomyManager;
+import com.craftcore.util.AsyncSaveExecutor;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
@@ -39,8 +40,15 @@ public class ClaimManager {
         public boolean public_containers = false;
         public boolean public_interact = false;
         public boolean public_entry = true;
+        public boolean explosion_protection = true;
+        public boolean pvp = false;
+        public boolean mob_spawn = false;
         public List<String> banned_players = new ArrayList<>();
         public Permissions permissions = new Permissions();
+
+        public String getId() {
+            return id;
+        }
 
         public static class Permissions {
             @SerializedName("build")
@@ -82,6 +90,10 @@ public class ClaimManager {
             try (BufferedReader reader = Files.newBufferedReader(configPath)) {
                 Map<String, Claim> loaded = GSON.fromJson(reader, new TypeToken<Map<String, Claim>>(){}.getType());
                 if (loaded != null) {
+                    for (Claim c : loaded.values()) {
+                        if (c.permissions == null) c.permissions = new Claim.Permissions();
+                        if (c.banned_players == null) c.banned_players = new ArrayList<>();
+                    }
                     claims.clear();
                     claims.putAll(loaded);
                 }
@@ -91,17 +103,20 @@ public class ClaimManager {
         }
     }
 
-    public static synchronized void save() {
-        if (configPath != null) {
-            try {
-                Files.createDirectories(configPath.getParent());
-                try (BufferedWriter writer = Files.newBufferedWriter(configPath)) {
-                    GSON.toJson(claims, writer);
+    public static void save() {
+        Map<String, Claim> snapshot = new ConcurrentHashMap<>(claims);
+        AsyncSaveExecutor.submit(() -> {
+            if (configPath != null) {
+                try {
+                    Files.createDirectories(configPath.getParent());
+                    try (BufferedWriter writer = Files.newBufferedWriter(configPath)) {
+                        GSON.toJson(snapshot, writer);
+                    }
+                } catch (IOException e) {
+                    System.err.println("[CraftCore] Failed to save claims: " + e.getMessage());
                 }
-            } catch (IOException e) {
-                System.err.println("[CraftCore] Failed to save claims: " + e.getMessage());
             }
-        }
+        });
     }
 
     public static synchronized List<Claim> getClaims() {

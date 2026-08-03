@@ -45,8 +45,7 @@ public class LockboxManager {
 
     static {
         try {
-            configPath = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir()
-                    .resolve("craft-core-shop").resolve("lockboxes.json");
+            configPath = com.craftcore.util.FabricPathUtil.getShopConfigDir().resolve("lockboxes.json");
         } catch (Throwable e) {
             configPath = Path.of("config", "craft-core-shop", "lockboxes.json");
         }

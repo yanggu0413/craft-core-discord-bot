@@ -11,7 +11,13 @@
     "PlayerMixin",
     "LevelMixin",
     "BlockMixin",
-    "HopperBlockEntityMixin"
+    "HopperBlockEntityMixin",
+    "EndermanTakeBlockGoalMixin",
+    "EndermanLeaveBlockGoalMixin",
+    "PistonStructureResolverMixin",
+    "FlowingFluidMixin",
+    "HangingEntityMixin",
+    "BasePressurePlateBlockMixin"
   ],
   "injectors": {
     "defaultRequire": 1

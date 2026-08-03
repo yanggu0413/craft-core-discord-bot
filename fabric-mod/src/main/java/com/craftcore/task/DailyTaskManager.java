@@ -164,13 +164,16 @@ public class DailyTaskManager {
             String entityId = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
             if (matchesSlayTarget(entityId, slayTask.target)) {
                 int oldProgress = EconomyManager.getDailyTaskSlayProgress(username);
+                boolean slayClaimed = EconomyManager.getDailyTaskSlayClaimed(username);
                 if (oldProgress < slayTask.count) {
                     EconomyManager.incrementDailyTaskSlayProgress(username, 1);
                     int newProgress = oldProgress + 1;
                     killer.sendSystemMessage(Component.literal("§b[Craft-Core] §f每日任務進度：擊殺 " + slayTask.target + " (" + newProgress + "/" + slayTask.count + ")"));
-                    if (newProgress == slayTask.count) {
+                    if (newProgress >= slayTask.count && !slayClaimed) {
                         completeTask(killer, slayTask);
                     }
+                } else if (!slayClaimed) {
+                    completeTask(killer, slayTask);
                 }
             }
 
@@ -267,13 +270,16 @@ public class DailyTaskManager {
         String blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
         if (matchesMineTarget(blockId, mineTask.target)) {
             int oldProgress = EconomyManager.getDailyTaskGatherProgress(username);
+            boolean mineClaimed = EconomyManager.getDailyTaskGatherClaimed(username);
             if (oldProgress < mineTask.count) {
                 EconomyManager.incrementDailyTaskGatherProgress(username, 1);
                 int newProgress = oldProgress + 1;
                 serverPlayer.sendSystemMessage(Component.literal("§b[Craft-Core] §f每日任務進度：挖掘 " + mineTask.target + " (" + newProgress + "/" + mineTask.count + ")"));
-                if (newProgress == mineTask.count) {
+                if (newProgress >= mineTask.count && !mineClaimed) {
                     completeTask(serverPlayer, mineTask);
                 }
+            } else if (!mineClaimed) {
+                completeTask(serverPlayer, mineTask);
             }
         }
 
@@ -300,18 +306,19 @@ public class DailyTaskManager {
             EconomyManager.setDailyTaskGatherClaimed(username, true);
         }
 
-        // Award the money reward
+        // Award the money reward and 1 lottery key
         EconomyManager.addMoney(username, task.reward);
+        EconomyManager.setLotteryKeys(username, EconomyManager.getLotteryKeys(username) + 1);
 
         // Sound level up
         player.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
 
         // Subtitle/title screens
         player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§a🎉 每日任務完成！")));
-        player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("§f已自動獲得獎金 §e$" + (int)task.reward + "§f 元")));
+        player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("§f已自動獲得獎金 §e$" + (int)task.reward + "§f 元與 §e1§f 把抽獎鑰匙")));
 
         // Completion chat message
-        player.sendSystemMessage(Component.literal("§b[Craft-Core] §a恭喜完成每日任務【" + (task.type == 1 ? "擊殺" : "挖掘") + " " + task.target + "】，已自動撥款 §e$" + (int)task.reward + "§a 元至您的帳戶！"));
+        player.sendSystemMessage(Component.literal("§b[Craft-Core] §a恭喜完成每日任務【" + (task.type == 1 ? "擊殺" : "挖掘") + " " + task.target + "】，已自動撥款 §e$" + (int)task.reward + "§a 元與 §e1§a 把抽獎鑰匙至您的帳戶！"));
 
         // Send daily_task_complete packet over WebSocket
         CraftCoreWSClient client = CraftCoreMod.getWSClient();
@@ -320,7 +327,31 @@ public class DailyTaskManager {
         }
     }
 
+    public static void checkAndAutoClaimTasks(ServerPlayer player) {
+        if (player == null) return;
+        String username = player.getName().getString();
+        String dateStr = getTaipeiDate();
+        DailyTaskDef[] dailyTasks = getDailyTasks(dateStr);
+        DailyTaskDef slayTask = dailyTasks[0];
+        DailyTaskDef mineTask = dailyTasks[1];
+
+        int slayProgress = EconomyManager.getDailyTaskSlayProgress(username);
+        boolean slayClaimed = EconomyManager.getDailyTaskSlayClaimed(username);
+        if (slayProgress >= slayTask.count && !slayClaimed) {
+            completeTask(player, slayTask);
+        }
+
+        int mineProgress = EconomyManager.getDailyTaskGatherProgress(username);
+        boolean mineClaimed = EconomyManager.getDailyTaskGatherClaimed(username);
+        if (mineProgress >= mineTask.count && !mineClaimed) {
+            completeTask(player, mineTask);
+        }
+    }
+
     public static void displayGreetingCard(ServerPlayer player, boolean hasCheckedIn, int pendingMailCount) {
+        if (player == null) return;
+        checkAndAutoClaimTasks(player);
+
         String username = player.getName().getString();
         String dateStr = getTaipeiDate();
         DailyTaskDef[] dailyTasks = getDailyTasks(dateStr);
@@ -336,10 +367,10 @@ public class DailyTaskManager {
         player.sendSystemMessage(Component.literal("§a歡迎玩家 §e" + username + " §a登入伺服器！"));
         player.sendSystemMessage(Component.literal("§e★ 今日每日任務 (" + dateStr + ")："));
 
-        String slayStatus = (slayProgress >= slayTask.count) ? (slayClaimed ? "§a[已領取]" : "§e[待領取]") : "§7[未完成]";
+        String slayStatus = (slayProgress >= slayTask.count || slayClaimed) ? "§a[已完成 (已自動發放)]" : "§7[未完成]";
         player.sendSystemMessage(Component.literal("§f- 擊殺 " + slayTask.target + ": §e" + slayProgress + "§f/§e" + slayTask.count + " §f(獎金 §e$" + (int)slayTask.reward + "§f) " + slayStatus));
 
-        String mineStatusStr = (mineProgress >= mineTask.count) ? (mineClaimed ? "§a[已領取]" : "§e[待領取]") : "§7[未完成]";
+        String mineStatusStr = (mineProgress >= mineTask.count || mineClaimed) ? "§a[已完成 (已自動發放)]" : "§7[未完成]";
         player.sendSystemMessage(Component.literal("§f- 挖掘 " + mineTask.target + ": §e" + mineProgress + "§f/§e" + mineTask.count + " §f(獎金 §e$" + (int)mineTask.reward + "§f) " + mineStatusStr));
 
         if (hasCheckedIn) {

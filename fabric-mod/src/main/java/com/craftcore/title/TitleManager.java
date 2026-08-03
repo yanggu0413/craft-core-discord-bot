@@ -27,8 +27,7 @@ public class TitleManager {
 
     static {
         try {
-            configPath = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir()
-                    .resolve("craft-core-shop").resolve("titles.json");
+            configPath = com.craftcore.util.FabricPathUtil.getShopConfigDir().resolve("titles.json");
         } catch (Throwable e) {
             configPath = Path.of("config", "craft-core-shop", "titles.json");
         }
