@@ -20,7 +20,9 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import java.util.HashMap;
 import net.minecraft.server.permissions.Permissions;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -1339,11 +1341,19 @@ public class MenuGuiManager {
         container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
-        container.setItem(22, createGuiItem(Items.REDSTONE_LAMP, "§a🏭 提交機器審核 (/machine apply)", List.of(
-                "§7站在您的機器領地內點擊提交審核",
-                "§7管理員認證 T2/T3 後可享受 100% 免領地費！",
+        // Slot 20: 📍 提交當前位置機器認證
+        container.setItem(20, createGuiItem(Items.REDSTONE_LAMP, "§a🏭 提交目前站立位置機器認證", List.of(
+                "§7站在您的機器領地現場點擊即可快速提交！",
+                "§7管理者審核 T2/T3 後可享有 100% 免領地維護費",
                 "",
-                "§e[點擊提交認證]"
+                "§e[點擊一鍵提交申請]"
+        )));
+
+        // Slot 24: 📜 查看我的機器認證狀態
+        container.setItem(24, createGuiItem(Items.BOOK, "§b📜 我的機器認證狀態列表", List.of(
+                "§7查看您已提交的機器審核與獲批狀態",
+                "",
+                "§e[點擊查看已提交機器]"
         )));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -1353,13 +1363,71 @@ public class MenuGuiManager {
                         if (clicker instanceof ServerPlayer sp) {
                             if (slotId == 45) { openMainMenu(sp); return; }
                             if (slotId == 49) { sp.closeContainer(); return; }
-                            if (slotId == 22) {
+                            if (slotId == 20) {
+                                String defaultName = "機器_" + sp.getBlockX() + "_" + sp.getBlockZ();
+                                String machineId = com.craftcore.machine.MachineManager.applyMachine(sp, defaultName);
+                                sp.sendSystemMessage(Component.literal("§a[Craft-Core] 🎉 已成功提交機器認證申請 (ID: " + machineId + ")！請等待管理員審核。"));
                                 sp.closeContainer();
-                                sp.sendSystemMessage(Component.literal("§b請輸入 /machine apply <機器名稱> 提交機器認證！"));
+                                return;
+                            }
+                            if (slotId == 24) {
+                                openMyMachinesMenu(sp);
+                                return;
                             }
                         }
                     }
                 }, Component.literal("§1🏭 機器認證選單")));
+    }
+
+    public static void openMyMachinesMenu(ServerPlayer player) {
+        if (player == null) return;
+        SimpleContainer container = new SimpleContainer(54);
+        clearInnerGrid(container);
+
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回機器選單", List.of("§7點擊返回機器認證選單")));
+        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
+        String username = player.getName().getString();
+        List<com.craftcore.machine.MachineManager.MachineEntry> myMachines = new ArrayList<>();
+        for (com.craftcore.machine.MachineManager.MachineEntry entry : com.craftcore.machine.MachineManager.getAllMachines().values()) {
+            if (entry.owner != null && entry.owner.equalsIgnoreCase(username)) {
+                myMachines.add(entry);
+            }
+        }
+
+        int[] slots = {
+                10, 11, 12, 13, 14, 15, 16,
+                19, 20, 21, 22, 23, 24, 25,
+                28, 29, 30, 31, 32, 33, 34,
+                37, 38, 39, 40, 41, 42, 43
+        };
+
+        for (int i = 0; i < Math.min(myMachines.size(), slots.length); i++) {
+            int slot = slots[i];
+            com.craftcore.machine.MachineManager.MachineEntry entry = myMachines.get(i);
+            boolean pending = "PENDING".equalsIgnoreCase(entry.status);
+            boolean approved = "APPROVED".equalsIgnoreCase(entry.status);
+
+            net.minecraft.world.item.Item iconItem = pending ? Items.REDSTONE_TORCH : (approved ? Items.EMERALD_BLOCK : Items.REDSTONE_BLOCK);
+            String title = (pending ? "§e⏳ 審核中: " : (approved ? "§a✔ 已認證: " : "§c❌ 已駁回: ")) + entry.name;
+            List<String> lore = List.of(
+                    "§7世界維度: §f" + entry.dimension,
+                    "§7座標位置: §fX: " + entry.x + ", Y: " + entry.y + ", Z: " + entry.z,
+                    "§7審核狀態: " + (pending ? "§e[待審核]" : (approved ? "§a[已通關 " + entry.tier + "]" : "§c[已駁回]"))
+            );
+            container.setItem(slot, createGuiItem(iconItem, title, lore));
+        }
+
+        player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 45) { openMachineMenu(sp); return; }
+                            if (slotId == 49) { sp.closeContainer(); return; }
+                        }
+                    }
+                }, Component.literal("§1📜 我的機器認證列表 (" + myMachines.size() + " 個)")));
     }
 
     public static void openAdminMenu(ServerPlayer player) {
@@ -1371,7 +1439,7 @@ public class MenuGuiManager {
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         container.setItem(20, createGuiItem(Items.PLAYER_HEAD, "§4全服玩家 /invsee 背包管理", List.of("§7點擊開啟線上玩家選擇器", "", "§e[點擊開啟選擇器]")));
-        container.setItem(22, createGuiItem(Items.REPEATER, "§4機器認證審核列表", List.of("§7點擊查看待審核機器", "", "§e[點擊開啟]")));
+        container.setItem(22, createGuiItem(Items.REPEATER, "§4機器認證審核列表", List.of("§7點擊開啟機器審核箱子 GUI", "", "§e[點擊開啟 GUI 審核]")));
         container.setItem(24, createGuiItem(Items.COMMAND_BLOCK, "§4手動觸發 7z 地圖備份", List.of("§7一鍵觸發全服地圖增量備份", "", "§e[點擊執行]")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -1385,11 +1453,185 @@ public class MenuGuiManager {
                             if (slotId == 45) { openMainMenu(sp); return; }
                             if (slotId == 49) { sp.closeContainer(); return; }
                             if (slotId == 20) { openPlayerSelectorMenu(sp); return; }
-                            if (slotId == 22) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "machine admin list"); return; }
+                            if (slotId == 22) { openAdminMachineReviewMenu(sp); return; }
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "craftcorebackup start"); return; }
                         }
                     }
                 }, Component.literal("§1🛠 管理員 (OP) 控制台")));
+    }
+
+    public static void openAdminMachineReviewMenu(ServerPlayer adminPlayer) {
+        if (adminPlayer == null) return;
+        SimpleContainer container = new SimpleContainer(54);
+        clearInnerGrid(container);
+
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回管理員選單", List.of("§7點擊返回 OP 控制台")));
+        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
+        List<com.craftcore.machine.MachineManager.MachineEntry> all = new ArrayList<>(com.craftcore.machine.MachineManager.getAllMachines().values());
+        all.sort((a, b) -> {
+            boolean aPending = "PENDING".equalsIgnoreCase(a.status);
+            boolean bPending = "PENDING".equalsIgnoreCase(b.status);
+            if (aPending && !bPending) return -1;
+            if (!aPending && bPending) return 1;
+            return Long.compare(b.applyTime, a.applyTime);
+        });
+
+        int[] slots = {
+                10, 11, 12, 13, 14, 15, 16,
+                19, 20, 21, 22, 23, 24, 25,
+                28, 29, 30, 31, 32, 33, 34,
+                37, 38, 39, 40, 41, 42, 43
+        };
+
+        Map<Integer, com.craftcore.machine.MachineManager.MachineEntry> slotMap = new HashMap<>();
+        for (int i = 0; i < Math.min(all.size(), slots.length); i++) {
+            int slot = slots[i];
+            com.craftcore.machine.MachineManager.MachineEntry entry = all.get(i);
+            slotMap.put(slot, entry);
+
+            boolean pending = "PENDING".equalsIgnoreCase(entry.status);
+            boolean approved = "APPROVED".equalsIgnoreCase(entry.status);
+
+            net.minecraft.world.item.Item iconItem = pending ? Items.REDSTONE_TORCH : (approved ? Items.EMERALD_BLOCK : Items.REDSTONE_BLOCK);
+            String title = (pending ? "§e⏳ 待審核: " : (approved ? "§a✔ 已認證: " : "§c❌ 已駁回: ")) + entry.name;
+            List<String> lore = List.of(
+                    "§7申請玩家: §f" + entry.owner,
+                    "§7世界維度: §f" + entry.dimension,
+                    "§7座標位置: §fX: " + entry.x + ", Y: " + entry.y + ", Z: " + entry.z,
+                    "§7目前狀態: " + (pending ? "§e[待審核]" : (approved ? "§a[已通關 " + entry.tier + "]" : "§c[已駁回]")),
+                    "",
+                    "§e[點擊開啟詳細審核與一鍵傳送]"
+            );
+            container.setItem(slot, createGuiItem(iconItem, title, lore));
+        }
+
+        adminPlayer.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 45) { openAdminMenu(sp); return; }
+                            if (slotId == 49) { sp.closeContainer(); return; }
+
+                            com.craftcore.machine.MachineManager.MachineEntry target = slotMap.get(slotId);
+                            if (target != null) {
+                                openAdminMachineDetailMenu(sp, target);
+                            }
+                        }
+                    }
+                }, Component.literal("§1🏭 機器認證審核列表 (" + all.size() + " 個)")));
+    }
+
+    public static void openAdminMachineDetailMenu(ServerPlayer adminPlayer, com.craftcore.machine.MachineManager.MachineEntry entry) {
+        if (adminPlayer == null || entry == null) return;
+        SimpleContainer container = new SimpleContainer(54);
+        fillBackground(container);
+
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回審核列表", List.of("§7點擊返回審核清單")));
+        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
+        // Slot 13: Details header
+        container.setItem(13, createGuiItem(Items.REDSTONE_LAMP, "§6🏭 機器名稱: §e" + entry.name, List.of(
+                "§7機器 ID: §f" + entry.id,
+                "§7申請玩家: §f" + entry.owner,
+                "§7座標位置: §f" + entry.dimension + " (X: " + entry.x + ", Y: " + entry.y + ", Z: " + entry.z + ")",
+                "§7目前狀態: " + ("PENDING".equalsIgnoreCase(entry.status) ? "§e[待審核]" : ("APPROVED".equalsIgnoreCase(entry.status) ? "§a[已通關 " + entry.tier + "]" : "§c[已駁回]"))
+        )));
+
+        // Slot 20: 📍 傳送至機器位置
+        container.setItem(20, createGuiItem(Items.COMPASS, "§e📍 傳送至機器現場位置", List.of(
+                "§7點擊一鍵傳送至機器座標進行現場審查",
+                "§7座標: X: " + entry.x + ", Y: " + entry.y + ", Z: " + entry.z,
+                "",
+                "§e[點擊瞬間傳送]"
+        )));
+
+        // Slot 22: ✔ 通過 T1 認證
+        container.setItem(22, createGuiItem(Items.COPPER_INGOT, "§a✔ 批准通過 T1 認證", List.of(
+                "§7通過基礎機器認證",
+                "",
+                "§e[點擊批准 T1]"
+        )));
+
+        // Slot 23: ✔ 通過 T2 認證
+        container.setItem(23, createGuiItem(Items.GOLD_INGOT, "§b✔ 批准通過 T2 認證 (免領地費)", List.of(
+                "§7通過 T2 認證，享受 100% 免領地維護費",
+                "§7解鎖稱號 [🏭 工業大亨]",
+                "",
+                "§e[點擊批准 T2]"
+        )));
+
+        // Slot 24: ✔ 通過 T3 認證
+        container.setItem(24, createGuiItem(Items.DIAMOND, "§6✔ 批准通過 T3 最高認證", List.of(
+                "§7通過最高級認證，享受 100% 免領地維護費",
+                "§7解鎖專屬稱號 [⚙ 首席工程師]",
+                "",
+                "§e[點擊批准 T3]"
+        )));
+
+        // Slot 31: ❌ 駁回申請
+        container.setItem(31, createGuiItem(Items.BARRIER, "§c❌ 駁回此機器申請", List.of(
+                "§7將該機器狀態標記為未通過駁回",
+                "",
+                "§c[點擊駁回申請]"
+        )));
+
+        adminPlayer.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            MinecraftServer server = sp.level().getServer();
+                            String adminName = sp.getName().getString();
+
+                            if (slotId == 45) { openAdminMachineReviewMenu(sp); return; }
+                            if (slotId == 49) { sp.closeContainer(); return; }
+
+                            if (slotId == 20 && server != null) {
+                                try {
+                                    net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimKey = net.minecraft.resources.ResourceKey.create(
+                                            net.minecraft.core.registries.Registries.DIMENSION,
+                                            net.minecraft.resources.Identifier.parse(entry.dimension)
+                                    );
+                                    ServerLevel targetLevel = server.getLevel(dimKey);
+                                    if (targetLevel != null) {
+                                        sp.teleportTo(targetLevel, entry.x + 0.5, entry.y + 1.0, entry.z + 0.5, java.util.Collections.emptySet(), sp.getYRot(), sp.getXRot(), true);
+                                        sp.sendSystemMessage(Component.literal("§a[管理員] 已成功傳送至機器 「" + entry.name + "」 現場位置！"));
+                                    }
+                                } catch (Throwable t) {
+                                    sp.sendSystemMessage(Component.literal("§c[管理員] 傳送失敗: " + t.getMessage()));
+                                }
+                                return;
+                            }
+
+                            if (slotId == 22) {
+                                com.craftcore.machine.MachineManager.approveMachine(server, entry.id, "T1", adminName);
+                                sp.sendSystemMessage(Component.literal("§a[管理員] 已批准機器 「" + entry.name + "」 通過 T1 認證！"));
+                                openAdminMachineReviewMenu(sp);
+                                return;
+                            }
+                            if (slotId == 23) {
+                                com.craftcore.machine.MachineManager.approveMachine(server, entry.id, "T2", adminName);
+                                sp.sendSystemMessage(Component.literal("§b[管理員] 已批准機器 「" + entry.name + "」 通過 T2 認證 (免領地費)！"));
+                                openAdminMachineReviewMenu(sp);
+                                return;
+                            }
+                            if (slotId == 24) {
+                                com.craftcore.machine.MachineManager.approveMachine(server, entry.id, "T3", adminName);
+                                sp.sendSystemMessage(Component.literal("§6[管理員] 已批准機器 「" + entry.name + "」 通過 T3 最高認證！"));
+                                openAdminMachineReviewMenu(sp);
+                                return;
+                            }
+                            if (slotId == 31) {
+                                com.craftcore.machine.MachineManager.rejectMachine(server, entry.id, adminName);
+                                sp.sendSystemMessage(Component.literal("§c[管理員] 已駁回機器 「" + entry.name + "」 的申請。"));
+                                openAdminMachineReviewMenu(sp);
+                                return;
+                            }
+                        }
+                    }
+                }, Component.literal("§1⚙ 審核機器: " + entry.name)));
     }
 
     public static void openPlayerSelectorMenu(ServerPlayer adminPlayer) {
