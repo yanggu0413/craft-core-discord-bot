@@ -306,7 +306,7 @@ public class MenuGuiManager {
         )));
 
         // Slot 45 返回主選單, Slot 49 關閉選單
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -404,7 +404,7 @@ public class MenuGuiManager {
         )));
 
         // Navigation (Slot 25 返回福利中心, Slot 26 關閉選單)
-        container.setItem(25, createGuiItem(Items.ARROW, "§a⬅️ 返回福利中心", List.of("§7點擊返回福利中心大廳")));
+        container.setItem(25, createGuiItem(Items.ARROW, "§a<- 返回福利中心", List.of("§7點擊返回福利中心大廳")));
         container.setItem(26, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -624,7 +624,7 @@ public class MenuGuiManager {
         }
 
         // Navigation (Slot 45 返回主選單, Slot 49 關閉選單)
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -706,7 +706,7 @@ public class MenuGuiManager {
             )));
         }
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -780,7 +780,7 @@ public class MenuGuiManager {
             }
         }
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -851,7 +851,7 @@ public class MenuGuiManager {
                 "§c[點擊解散假人]"
         )));
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -925,7 +925,7 @@ public class MenuGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         container.setItem(20, createGuiItem(Items.BOOK, "§a⚔️ 每日任務 (/tasks)", List.of(
@@ -1003,7 +1003,7 @@ public class MenuGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回福利中心", List.of("§7點擊返回福利中心大廳")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回福利中心", List.of("§7點擊返回福利中心大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         Set<String> unlocked = TitleManager.getUnlockedTitles(username);
@@ -1036,7 +1036,7 @@ public class MenuGuiManager {
                             ItemStack clickedStack = container.getItem(slotId);
                             if (clickedStack != null && clickedStack.has(DataComponents.CUSTOM_NAME)) {
                                 String titleName = clickedStack.get(DataComponents.CUSTOM_NAME).getString();
-                                if (!titleName.equals("頭頂稱號狀態") && !titleName.equals("⬅️ 返回福利中心")) {
+                                if (!titleName.equals("頭頂稱號狀態") && !titleName.equals("<- 返回福利中心")) {
                                     TitleManager.setActiveTitle(sp.getName().getString(), titleName);
                                     sp.sendSystemMessage(Component.literal("§a成功切換頭頂稱號為: " + titleName));
                                     openWelfareTitleMenu(sp);
@@ -1060,7 +1060,7 @@ public class MenuGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         // Auto-detect player standing claim
@@ -1188,7 +1188,7 @@ public class MenuGuiManager {
                 "§c[點擊確認刪除並放棄該領地]"
         )));
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -1241,7 +1241,7 @@ public class MenuGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         clearInnerGrid(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回領地管理", List.of("§7點擊返回領地詳細管理 GUI")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回領地管理", List.of("§7點擊返回領地詳細管理 GUI")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         MinecraftServer server = player.level().getServer();
@@ -1326,7 +1326,7 @@ public class MenuGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         container.setItem(22, createGuiItem(Items.REDSTONE_LAMP, "§a🏭 提交機器審核 (/machine apply)", List.of(
@@ -1357,7 +1357,7 @@ public class MenuGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回主選單", List.of("§7點擊返回 /menu 大廳")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         container.setItem(20, createGuiItem(Items.PLAYER_HEAD, "§4全服玩家 /invsee 背包管理", List.of("§7點擊開啟線上玩家選擇器", "", "§e[點擊開啟選擇器]")));
@@ -1390,7 +1390,7 @@ public class MenuGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回管理員選單", List.of("§7點擊返回 OP 控制台")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a<- 返回管理員選單", List.of("§7點擊返回 OP 控制台")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         int slot = 0;
