@@ -145,15 +145,14 @@ public class MenuGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         fillBackground(container);
 
-        // Slot 10: 🏪 商店管理系統
-        container.setItem(10, createGuiItem(Items.EMERALD_BLOCK, "§a🏪 商店管理系統", List.of(
+        // Row 2: 🏪 商店 (11), 🧭 傳送 (13), 🛡️ 領地 (15)
+        container.setItem(11, createGuiItem(Items.EMERALD_BLOCK, "§a🏪 商店管理系統", List.of(
                 "§7查看個人箱子商店、擺攤與市場行情",
                 "",
                 "§e[點擊開啟商店系統 (/shop)]"
         )));
 
-        // Slot 12: 🧭 傳送與家園
-        container.setItem(12, createGuiItem(Items.COMPASS, "§e🧭 傳送與家園", List.of(
+        container.setItem(13, createGuiItem(Items.COMPASS, "§e🧭 傳送與家園", List.of(
                 "§7傳送至個人家點 (/home)",
                 "§7公共地標 (/warp)、隨機傳送 (/rtp)",
                 "§7與返回死亡點 (/back)",
@@ -161,49 +160,60 @@ public class MenuGuiManager {
                 "§e[點擊開啟傳送子選單]"
         )));
 
-        // Slot 14: 🤖 假人控制台
-        container.setItem(14, createGuiItem(Items.ARMOR_STAND, "§f🤖 假人 (Bot) 控制台", List.of(
-                "§7一鍵召喚/解散假人、切換掛機動作",
-                "§7與一鍵查看假人背包 (/invsee)",
-                "",
-                "§e[點擊開啟假人子選單]"
-        )));
-
-        // Slot 16: 🛡️ 領地與保險箱
-        container.setItem(16, createGuiItem(Items.SHIELD, "§b🛡️ 領地與密碼箱", List.of(
+        container.setItem(15, createGuiItem(Items.SHIELD, "§b🛡️ 領地與密碼箱", List.of(
                 "§7管理個人領地、獲取圈地神杖",
                 "§7以及密碼鎖保險箱設定",
                 "",
                 "§e[點擊開啟領地子選單]"
         )));
 
-        // Slot 28: 🎰 福利中心
-        container.setItem(28, createGuiItem(Items.NETHER_STAR, "§d🎰 福利中心", List.of(
+        // Row 3: 🎰 福利 (20), ⚔️ 任務 (22), 📦 快遞 (24)
+        container.setItem(20, createGuiItem(Items.NETHER_STAR, "§d🎰 福利中心", List.of(
                 "§7每日簽到、在線時數兌換鑰匙",
                 "§7幸運 9x3 轉盤抽獎與炫彩稱號",
                 "",
                 "§e[點擊開啟福利中心 GUI]"
         )));
 
-        // Slot 30: ⚔️ 任務與懸賞
-        container.setItem(30, createGuiItem(Items.DIAMOND_SWORD, "§c⚔️ 任務與懸賞", List.of(
+        container.setItem(22, createGuiItem(Items.DIAMOND_SWORD, "§c⚔️ 任務與懸賞", List.of(
                 "§7查看每日任務 (/tasks)、全服大目標 (/bounty)",
                 "§7與野外藏寶圖線索 (/treasure)",
                 "",
                 "§e[點擊開啟任務子選單]"
         )));
 
-        // Slot 32: 🏭 機器認證
-        container.setItem(32, createGuiItem(Items.REDSTONE_BLOCK, "§6🏭 機器認證與免領地費", List.of(
+        container.setItem(24, createGuiItem(Items.CHEST, "§e📦 虛擬快遞箱 (/express)", List.of(
+                "§7寄送跨服/離線物品包裹",
+                "§7接收玩家寄送物資與查看歷史紀錄",
+                "",
+                "§e[點擊開啟快遞箱選單]"
+        )));
+
+        // Row 4: 🤖 假人 (29), 🏆 排行榜 (31), 🏭 機器 (33)
+        container.setItem(29, createGuiItem(Items.ARMOR_STAND, "§f🤖 假人 (Bot) 控制台", List.of(
+                "§7一鍵召喚/解散假人、切換掛機動作",
+                "§7與一鍵查看假人背包 (/invsee)",
+                "",
+                "§e[點擊開啟假人子選單]"
+        )));
+
+        container.setItem(31, createGuiItem(Items.GOLD_BLOCK, "§6🏆 全服排行榜", List.of(
+                "§7查看財富排行榜、鑰匙排行榜",
+                "§7與連續簽到排行榜",
+                "",
+                "§e[點擊開啟排行榜 GUI]"
+        )));
+
+        container.setItem(33, createGuiItem(Items.REDSTONE_BLOCK, "§6🏭 機器認證與免領地費", List.of(
                 "§7提交自動化機器認證申請 (/machine apply)",
                 "§7查看已通過認證之 T2/T3 免領地費機器",
                 "",
                 "§e[點擊開啟機器認證子選單]"
         )));
 
-        // Slot 34: 🛠️ 管理員控制台 (OP 專屬)
+        // Row 5 (Slot 40): 🛠️ 管理員控制台 (OP 專屬居中)
         if (isOp) {
-            container.setItem(34, createGuiItem(Items.BEACON, "§4🛠️ 管理員 (OP) 控制台", List.of(
+            container.setItem(40, createGuiItem(Items.BEACON, "§4🛠️ 管理員 (OP) 控制台", List.of(
                     "§c[OP 專屬權限]",
                     "§7全服玩家/假人 /invsee 背包與末影箱",
                     "§7機器認證審核、7z 地圖手動備份",
@@ -212,23 +222,7 @@ public class MenuGuiManager {
             )));
         }
 
-        // Slot 38: 🏆 全服排行榜
-        container.setItem(38, createGuiItem(Items.GOLD_BLOCK, "§6🏆 全服排行榜", List.of(
-                "§7查看財富排行榜、鑰匙排行榜",
-                "§7與連續簽到排行榜",
-                "",
-                "§e[點擊開啟排行榜 GUI]"
-        )));
-
-        // Slot 40: 📦 虛擬快遞箱
-        container.setItem(40, createGuiItem(Items.CHEST, "§e📦 虛擬快遞箱 (/express)", List.of(
-                "§7寄送跨服/離線物品包裹",
-                "§7接收玩家寄送物資與查看歷史紀錄",
-                "",
-                "§e[點擊開啟快遞箱選單]"
-        )));
-
-        // Slot 49: ❌ 關閉選單
+        // Row 6 (Slot 49): ❌ 關閉選單
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此 GUI 介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
@@ -236,16 +230,16 @@ public class MenuGuiManager {
                     @Override
                     public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
-                            if (slotId == 10) openShopMenu(sp);
-                            else if (slotId == 12) openTeleportMenu(sp);
-                            else if (slotId == 14) openFakePlayerMenu(sp);
-                            else if (slotId == 16) openClaimMenu(sp);
-                            else if (slotId == 28) openWelfareCenterMenu(sp);
-                            else if (slotId == 30) openTaskBountyMenu(sp);
-                            else if (slotId == 32) openMachineMenu(sp);
-                            else if (slotId == 34 && isOp) openAdminMenu(sp);
-                            else if (slotId == 38) openLeaderboardMenu(sp, "wealth");
-                            else if (slotId == 40) com.craftcore.express.ExpressGuiManager.openExpressMainMenu(sp);
+                            if (slotId == 11) openShopMenu(sp);
+                            else if (slotId == 13) openTeleportMenu(sp);
+                            else if (slotId == 15) openClaimMenu(sp);
+                            else if (slotId == 20) openWelfareCenterMenu(sp);
+                            else if (slotId == 22) openTaskBountyMenu(sp);
+                            else if (slotId == 24) com.craftcore.express.ExpressGuiManager.openExpressMainMenu(sp);
+                            else if (slotId == 29) openFakePlayerMenu(sp);
+                            else if (slotId == 31) openLeaderboardMenu(sp, "wealth");
+                            else if (slotId == 33) openMachineMenu(sp);
+                            else if (slotId == 40 && isOp) openAdminMenu(sp);
                             else if (slotId == 49) sp.closeContainer();
                         }
                     }
