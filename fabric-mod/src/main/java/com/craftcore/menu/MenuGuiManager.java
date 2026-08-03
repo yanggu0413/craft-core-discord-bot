@@ -213,7 +213,15 @@ public class MenuGuiManager {
                 "§e[點擊開啟機器認證子選單]"
         )));
 
-        // Row 5: ⚔️ PvP 狀態切換 (Slot 38), 🛠️ OP 控制台 (Slot 40)
+        // Row 5: 🤝 /tpa (37), ⚔️ /pvp (39), 💸 /pay (41), 💬 Discord (43), 🛠️ OP (40)
+        container.setItem(37, createGuiItem(Items.ENDER_PEARL, "§6🤝 玩家傳送請求 (/tpa)", List.of(
+                "§7點擊開啟線上玩家頭顱列表",
+                "§7發送對點傳送請求至目標玩家",
+                "§7受請求玩家可在聊天欄點擊 [接受]/[拒絕]",
+                "",
+                "§e[點擊開啟 TPA 選擇器]"
+        )));
+
         boolean pvpEnabled = com.craftcore.pvp.PvpManager.isPvpEnabled(player.getName().getString());
         net.minecraft.world.item.Item pvpItem = pvpEnabled ? Items.NETHERITE_SWORD : Items.SHIELD;
         String pvpTitle = pvpEnabled ? "§c⚔️ PvP 戰鬥狀態 (已開啟)" : "§a🛡️ PvP 戰鬥狀態 (已關閉-保護中)";
@@ -224,7 +232,22 @@ public class MenuGuiManager {
                 "",
                 "§e[點擊切換 PvP 狀態 (/pvp)]"
         );
-        container.setItem(38, createGuiItem(pvpItem, pvpTitle, pvpLore));
+        container.setItem(39, createGuiItem(pvpItem, pvpTitle, pvpLore));
+
+        container.setItem(41, createGuiItem(Items.GOLD_INGOT, "§6💸 玩家安全轉帳 (/pay)", List.of(
+                "§7點擊開啟線上玩家頭顱列表",
+                "§7選取玩家後在聊天欄輸入欲轉帳金額",
+                "§7系統將彈出確認點擊按鈕，點擊後才扣款",
+                "",
+                "§e[點擊開啟轉帳選擇器]"
+        )));
+
+        container.setItem(43, createGuiItem(Items.DISPENSER, "§6💬 官方 Discord 社群", List.of(
+                "§7點擊開啟 Discord 社群與帳號綁定選單",
+                "§7獲取社群邀請連結或生成 6 位數綁定碼",
+                "",
+                "§e[點擊開啟 Discord 選單]"
+        )));
 
         if (isOp) {
             container.setItem(40, createGuiItem(Items.BEACON, "§4🛠️ 管理員 (OP) 控制台", List.of(
@@ -253,10 +276,13 @@ public class MenuGuiManager {
                             else if (slotId == 29) openFakePlayerMenu(sp);
                             else if (slotId == 31) openLeaderboardMenu(sp, "wealth");
                             else if (slotId == 33) openMachineMenu(sp);
-                            else if (slotId == 38) {
+                            else if (slotId == 37) openTpaPlayerSelectorMenu(sp);
+                            else if (slotId == 39) {
                                 com.craftcore.pvp.PvpManager.togglePvp(sp);
                                 openMainMenu(sp);
                             }
+                            else if (slotId == 41) openPayPlayerSelectorMenu(sp);
+                            else if (slotId == 43) openDiscordMenu(sp);
                             else if (slotId == 40 && isOp) openAdminMenu(sp);
                             else if (slotId == 49) sp.closeContainer();
                         }
@@ -1687,5 +1713,150 @@ public class MenuGuiManager {
                     @Override
                     public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
                 }, Component.literal("§1🔍 選擇查看背包玩家 (/invsee)")));
+    }
+
+    public static void openDiscordMenu(ServerPlayer player) {
+        if (player == null) return;
+        SimpleContainer container = new SimpleContainer(54);
+        fillBackground(container);
+
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
+        container.setItem(20, createGuiItem(Items.DISPENSER, "§b🔗 官方 Discord 社群邀請連結", List.of(
+                "§7點擊在聊天欄開啟可直接點擊的邀請網址",
+                "",
+                "§e[點擊彈出邀請網址]"
+        )));
+
+        container.setItem(24, createGuiItem(Items.NAME_TAG, "§6🔑 Discord 帳號綁定驗證碼 (/discord link)", List.of(
+                "§7生成 6 位數驗證碼，至 Discord 私訊機器人綁定",
+                "§7完成綁定可獲得每日簽到與領取專屬禮包！",
+                "",
+                "§e[點擊生成 6 位數驗證碼]"
+        )));
+
+        player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            MinecraftServer server = sp.level().getServer();
+                            if (slotId == 45) { openMainMenu(sp); return; }
+                            if (slotId == 49) { sp.closeContainer(); return; }
+                            if (slotId == 20 && server != null) {
+                                sp.closeContainer();
+                                server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "discord");
+                                return;
+                            }
+                            if (slotId == 24 && server != null) {
+                                sp.closeContainer();
+                                server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "discord link");
+                                return;
+                            }
+                        }
+                    }
+                }, Component.literal("§1💬 Discord 社群與帳號綁定")));
+    }
+
+    public static void openPayPlayerSelectorMenu(ServerPlayer player) {
+        if (player == null || player.level().getServer() == null) return;
+        MinecraftServer server = player.level().getServer();
+        List<ServerPlayer> players = new ArrayList<>(server.getPlayerList().getPlayers());
+
+        SimpleContainer container = new SimpleContainer(54);
+        fillBackground(container);
+
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
+        int slot = 0;
+        Map<Integer, String> slotPlayerMap = new HashMap<>();
+        for (ServerPlayer p : players) {
+            if (slot >= 45) break;
+            if (slot == 45 || slot == 49) continue;
+            String name = p.getName().getString();
+            if (name.equalsIgnoreCase(player.getName().getString())) continue;
+
+            slotPlayerMap.put(slot, name);
+            ItemStack head = createPlayerHead(name);
+            head.set(DataComponents.CUSTOM_NAME, Component.literal("§6💸 轉帳給: §e" + name));
+            List<Component> lore = List.of(
+                    Component.literal("§7點擊此頭顱選擇該玩家"),
+                    Component.literal("§7選擇後在聊天欄輸入金額"),
+                    Component.literal(""),
+                    Component.literal("§e[點擊選擇該玩家]")
+            );
+            head.set(DataComponents.LORE, new ItemLore(lore));
+            container.setItem(slot++, head);
+        }
+
+        player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 45) { openMainMenu(sp); return; }
+                            if (slotId == 49) { sp.closeContainer(); return; }
+
+                            String targetName = slotPlayerMap.get(slotId);
+                            if (targetName != null) {
+                                sp.closeContainer();
+                                com.craftcore.commands.EconomyCommands.setPendingPayTarget(sp.getName().getString(), targetName);
+                                sp.sendSystemMessage(Component.literal("§b[轉帳系統] 您已選擇轉帳對象 §e" + targetName + "§b！\n請在聊天欄輸入欲轉帳的金額（例如: 500），或輸入 cancel 取消："));
+                            }
+                        }
+                    }
+                }, Component.literal("§1💸 選擇轉帳目標玩家")));
+    }
+
+    public static void openTpaPlayerSelectorMenu(ServerPlayer player) {
+        if (player == null || player.level().getServer() == null) return;
+        MinecraftServer server = player.level().getServer();
+        List<ServerPlayer> players = new ArrayList<>(server.getPlayerList().getPlayers());
+
+        SimpleContainer container = new SimpleContainer(54);
+        fillBackground(container);
+
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
+        int slot = 0;
+        Map<Integer, ServerPlayer> slotPlayerMap = new HashMap<>();
+        for (ServerPlayer p : players) {
+            if (slot >= 45) break;
+            if (slot == 45 || slot == 49) continue;
+            String name = p.getName().getString();
+            if (name.equalsIgnoreCase(player.getName().getString())) continue;
+
+            slotPlayerMap.put(slot, p);
+            ItemStack head = createPlayerHead(name);
+            head.set(DataComponents.CUSTOM_NAME, Component.literal("§6🤝 傳送請求給: §e" + name));
+            List<Component> lore = List.of(
+                    Component.literal("§7點擊發送 /tpa 傳送請求"),
+                    Component.literal("§7對方可在聊天欄點擊 [接受] 或 [拒絕]"),
+                    Component.literal(""),
+                    Component.literal("§e[點擊發送傳送請求]")
+            );
+            head.set(DataComponents.LORE, new ItemLore(lore));
+            container.setItem(slot++, head);
+        }
+
+        player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 45) { openMainMenu(sp); return; }
+                            if (slotId == 49) { sp.closeContainer(); return; }
+
+                            ServerPlayer targetPlayer = slotPlayerMap.get(slotId);
+                            if (targetPlayer != null) {
+                                sp.closeContainer();
+                                com.craftcore.teleport.TeleportRequestManager.sendRequest(sp, targetPlayer, "tpa");
+                            }
+                        }
+                    }
+                }, Component.literal("§1🤝 選擇 TPA 傳送目標玩家")));
     }
 }

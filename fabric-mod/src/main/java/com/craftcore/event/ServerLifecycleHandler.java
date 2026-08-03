@@ -131,6 +131,14 @@ public class ServerLifecycleHandler {
             }
         });
 
+        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
+            String content = message.signedContent();
+            if (com.craftcore.commands.EconomyCommands.handleChatMessage(sender, content)) {
+                return false;
+            }
+            return true;
+        });
+
         ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
             String username = sender.getName().getString();
             String uuid = sender.getStringUUID();

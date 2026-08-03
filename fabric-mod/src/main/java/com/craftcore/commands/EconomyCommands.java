@@ -35,7 +35,114 @@ public class EconomyCommands {
         payCooldowns.entrySet().removeIf(entry -> now - entry.getValue() > 5000);
     }
 
+    public static class PendingPayTarget {
+        public String recipient;
+        public long timestamp;
+        public PendingPayTarget(String recipient) {
+            this.recipient = recipient;
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
+
+    public static class PendingPayConfirm {
+        public String recipient;
+        public double amount;
+        public long timestamp;
+        public PendingPayConfirm(String recipient, double amount) {
+            this.recipient = recipient;
+            this.amount = amount;
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
+
+    private static final java.util.Map<String, PendingPayTarget> pendingPayTargets = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<String, PendingPayConfirm> pendingPayConfirms = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public static void setPendingPayTarget(String sender, String recipient) {
+        if (sender != null && recipient != null) {
+            pendingPayTargets.put(sender.toLowerCase(), new PendingPayTarget(recipient));
+        }
+    }
+
+    public static boolean handleChatMessage(ServerPlayer player, String message) {
+        if (player == null || message == null) return false;
+        String senderKey = player.getName().getString().toLowerCase();
+
+        PendingPayTarget target = pendingPayTargets.get(senderKey);
+        if (target != null && (System.currentTimeMillis() - target.timestamp < 60_000)) {
+            pendingPayTargets.remove(senderKey);
+            String raw = message.trim();
+            if (raw.equalsIgnoreCase("cancel") || raw.equalsIgnoreCase("取消")) {
+                player.sendSystemMessage(Component.literal("§c[轉帳] 已取消轉帳。"));
+                return true;
+            }
+            try {
+                double amount = Double.parseDouble(raw);
+                if (amount <= 0) {
+                    player.sendSystemMessage(Component.literal("§c[轉帳] 轉帳金額必須大於 0！"));
+                    return true;
+                }
+
+                pendingPayConfirms.put(senderKey, new PendingPayConfirm(target.recipient, amount));
+
+                Component confirmBtn = Component.literal("§a§l[✔ 點擊確認轉帳 $" + amount + "]")
+                        .withStyle(style -> style.withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/payconfirm confirm"))
+                                .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal("點擊扣款並轉帳給 " + target.recipient))));
+
+                Component cancelBtn = Component.literal("§c§l[❌ 點擊取消]")
+                        .withStyle(style -> style.withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/payconfirm cancel"))
+                                .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal("點擊取消此筆轉帳"))));
+
+                Component msg = Component.literal("§e[轉帳確認] 確定要轉帳 §a$" + amount + " 元 §e給玩家 §b" + target.recipient + " §e嗎？\n")
+                        .append(confirmBtn).append(Component.literal("  ")).append(cancelBtn);
+
+                player.sendSystemMessage(msg);
+                return true;
+            } catch (NumberFormatException e) {
+                player.sendSystemMessage(Component.literal("§c[轉帳] 金額格式不正確，轉帳已取消。"));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void registerPayConfirmCommand(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(Commands.literal("payconfirm")
+                .then(Commands.literal("confirm").executes(context -> {
+                    ServerPlayer player = context.getSource().getPlayer();
+                    if (player == null) return 0;
+                    String senderKey = player.getName().getString().toLowerCase();
+                    PendingPayConfirm confirm = pendingPayConfirms.remove(senderKey);
+                    if (confirm == null || (System.currentTimeMillis() - confirm.timestamp > 60_000)) {
+                        player.sendSystemMessage(Component.literal("§c[轉帳] 沒有待確認的轉帳或已超時！"));
+                        return 0;
+                    }
+                    ServerPlayer recipientPlayer = com.craftcore.websocket.PacketHandler.getPlayerCaseInsensitive(player.level().getServer(), confirm.recipient);
+                    boolean recipientOnline = (recipientPlayer != null);
+                    com.craftcore.economy.EconomyManager.TransferResult res = com.craftcore.economy.EconomyManager.transferMoney(player.getName().getString(), confirm.recipient, confirm.amount, recipientOnline);
+                    if (res.success) {
+                        player.sendSystemMessage(Component.literal("§b[Craft-Core] §f" + res.message));
+                        if (recipientOnline) {
+                            recipientPlayer.sendSystemMessage(Component.literal("§b[Craft-Core] §a玩家 " + player.getName().getString() + " 向您轉帳了 $" + String.format("%.2f", confirm.amount) + " 元！"));
+                        }
+                    } else {
+                        player.sendSystemMessage(Component.literal("§c[Craft-Core] " + res.message));
+                    }
+                    return 1;
+                }))
+                .then(Commands.literal("cancel").executes(context -> {
+                    ServerPlayer player = context.getSource().getPlayer();
+                    if (player == null) return 0;
+                    String senderKey = player.getName().getString().toLowerCase();
+                    pendingPayConfirms.remove(senderKey);
+                    player.sendSystemMessage(Component.literal("§c[轉帳] 已取消轉帳。"));
+                    return 1;
+                }))
+        );
+    }
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        registerPayConfirmCommand(dispatcher);
         dispatcher.register(Commands.literal("events")
                 .executes(context -> {
                     if (context.getSource().getEntity() instanceof ServerPlayer player) {
