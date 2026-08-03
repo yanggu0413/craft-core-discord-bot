@@ -166,7 +166,7 @@ public class ClaimCommand {
         }
 
         ItemStack tool = new ItemStack(Items.WOODEN_HOE);
-        tool.set(DataComponents.CUSTOM_NAME, Component.literal("§6[🛡️ 領地圈地神杖]"));
+        tool.set(DataComponents.CUSTOM_NAME, Component.literal("§6[🛡 領地圈地神杖]"));
         tool.set(DataComponents.LORE, new ItemLore(List.of(
                 Component.literal("§7手持此神杖可用於劃分領地範圍"),
                 Component.literal("§e- 左鍵點擊方塊: 設置對角點 1 (Pos1)"),
@@ -177,7 +177,7 @@ public class ClaimCommand {
         if (!player.getInventory().add(tool)) {
             player.drop(tool, false);
         }
-        player.sendSystemMessage(Component.literal("§a[Craft-Core] 成功發放 §6[🛡️ 領地圈地神杖]§a！手持木鋤左鍵/右鍵點擊方塊即可選擇領地對角點。"));
+        player.sendSystemMessage(Component.literal("§a[Craft-Core] 成功發放 §6[🛡 領地圈地神杖]§a！手持木鋤左鍵/右鍵點擊方塊即可選擇領地對角點。"));
         return 1;
     }
 }

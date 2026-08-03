@@ -57,7 +57,7 @@ public class WastebinManager {
 
         player.openMenu(new SimpleMenuProvider(
                 (syncId, playerInv, playerEntity) -> new WastebinScreenHandler(syncId, playerInv, container, username),
-                Component.literal("🗑️ 垃圾桶 (關閉10秒後銷毀)")
+                Component.literal("🗑 垃圾桶 (關閉10秒後銷毀)")
         ));
     }
 

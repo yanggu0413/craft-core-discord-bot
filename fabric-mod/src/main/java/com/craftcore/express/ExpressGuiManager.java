@@ -74,8 +74,8 @@ public class ExpressGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         fillBackground(container);
 
-        // Slot 20: ✉️ 寄送包裹
-        container.setItem(20, createGuiItem(Items.WRITABLE_BOOK, "§a✉️ 寄送包裹", List.of(
+        // Slot 20: ✉ 寄送包裹
+        container.setItem(20, createGuiItem(Items.WRITABLE_BOOK, "§a✉ 寄送包裹", List.of(
                 "§7將背包物資放入虛擬箱子中，",
                 "§7即可線上/離線跨服寄送給指定玩家！",
                 "",
@@ -97,8 +97,8 @@ public class ExpressGuiManager {
                 "§e[點擊開啟寄件紀錄]"
         )));
 
-        // Slot 45: ⬅️ 返回主選單
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        // Slot 45: ⬅ 返回主選單
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
 
         // Slot 49: ❌ 關閉選單
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
@@ -139,9 +139,9 @@ public class ExpressGuiManager {
                 parcelContainer.setItem(i, glass.copy());
             }
 
-            parcelContainer.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回快遞主頁", List.of("§7點擊返回 /express 主頁")));
+            parcelContainer.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回快遞主頁", List.of("§7點擊返回 /express 主頁")));
 
-            String btnTitle = presetRecipient != null ? "§a✉️ 寄送給 §e" + presetRecipient : "§a✉️ 選擇收件人並寄出";
+            String btnTitle = presetRecipient != null ? "§a✉ 寄送給 §e" + presetRecipient : "§a✉ 選擇收件人並寄出";
             List<String> btnLore = List.of(
                     "§7將要寄送的物品放置於上方 0-35 號格子",
                     presetRecipient != null ? "§7指定收件人: §e" + presetRecipient : "§7點擊後將在聊天欄輸入/指定收件人",
@@ -256,7 +256,7 @@ public class ExpressGuiManager {
         if (sender == null) return;
         sender.openMenu(new SimpleMenuProvider(
                 (syncId, inv, p) -> new ParcelSendScreenHandler(syncId, inv, sender, presetRecipient),
-                Component.literal(presetRecipient != null ? "✉️ 寄送包裹給: " + presetRecipient : "✉️ 放置寄送物品 (0-35槽)")
+                Component.literal(presetRecipient != null ? "✉ 寄送包裹給: " + presetRecipient : "✉ 放置寄送物品 (0-35槽)")
         ));
     }
 
@@ -271,7 +271,7 @@ public class ExpressGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回快遞主頁", List.of("§7點擊返回 /express 主頁")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回快遞主頁", List.of("§7點擊返回 /express 主頁")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         int[] innerSlots = {
@@ -337,7 +337,7 @@ public class ExpressGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅️ 返回快遞主頁", List.of("§7點擊返回 /express 主頁")));
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回快遞主頁", List.of("§7點擊返回 /express 主頁")));
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         int[] innerSlots = {

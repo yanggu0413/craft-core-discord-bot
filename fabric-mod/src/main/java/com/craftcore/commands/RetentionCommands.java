@@ -26,7 +26,7 @@ public class RetentionCommands {
                         int minZ = (active.z / 300) * 300;
                         int maxZ = minZ + 300;
                         player.sendSystemMessage(Component.literal(
-                                String.format("§6[🗺️ 最新藏寶圖線索] 野外藏寶箱目前地位於大致區域: §eX: %d ~ %d, Z: %d ~ %d§6！快前去尋寶！", minX, maxX, minZ, maxZ)
+                                String.format("§6[🗺 最新藏寶圖線索] 野外藏寶箱目前地位於大致區域: §eX: %d ~ %d, Z: %d ~ %d§6！快前去尋寶！", minX, maxX, minZ, maxZ)
                         ));
                     }
                     return 1;
