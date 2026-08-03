@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(BasePressurePlateBlock.class)
 public class BasePressurePlateBlockMixin {
     @Inject(method = "entityInside", at = @At("HEAD"), cancellable = true)
-    private void onEntityInside(BlockState state, Level level, BlockPos pos, Entity entity, CallbackInfo ci) {
+    private void onEntityInside(BlockState state, Level level, BlockPos pos, Entity entity, net.minecraft.world.entity.InsideBlockEffectApplier applier, boolean flag, CallbackInfo ci) {
         if (!level.isClientSide() && entity instanceof ServerPlayer player) {
             if (!ClaimManager.checkPermission(player, pos, level, "interact")) {
                 ci.cancel();
