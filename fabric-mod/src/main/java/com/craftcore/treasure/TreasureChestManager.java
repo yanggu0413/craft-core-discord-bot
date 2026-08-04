@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.entity.ChestBlockEntity;
 
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -46,6 +47,7 @@ public class TreasureChestManager {
     private static TreasureLocation activeTreasure = null;
     private static ScheduledExecutorService scheduler = null;
     private static final Random random = new Random();
+    private static final ConcurrentHashMap<String, Long> radarCooldowns = new ConcurrentHashMap<>();
     private static int tickCounter = 0;
 
     public static synchronized TreasureLocation getActiveTreasure() {
@@ -67,8 +69,8 @@ public class TreasureChestManager {
 
         // Try up to 15 random coordinates to find a clean, safe surface spot
         for (int attempt = 0; attempt < 15; attempt++) {
-            int tx = (random.nextInt(1200) + 400) * (random.nextBoolean() ? 1 : -1);
-            int tz = (random.nextInt(1200) + 400) * (random.nextBoolean() ? 1 : -1);
+            int tx = (random.nextInt(1600) + 600) * (random.nextBoolean() ? 1 : -1);
+            int tz = (random.nextInt(1600) + 600) * (random.nextBoolean() ? 1 : -1);
 
             if (ClaimManager.getClaimAt(new BlockPos(tx, 64, tz), overworld) != null) {
                 continue;
@@ -111,8 +113,8 @@ public class TreasureChestManager {
 
         // Safe fallback if loop failed to find ground
         if (surfacePos == null) {
-            randX = 500;
-            randZ = 500;
+            randX = 800;
+            randZ = 800;
             randY = 71;
             overworld.getChunk(new BlockPos(randX, 64, randZ));
             overworld.setBlock(new BlockPos(randX, 70, randZ), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
@@ -147,12 +149,12 @@ public class TreasureChestManager {
 
         activeTreasure = new TreasureLocation("minecraft:overworld", randX, randY, randZ, displayUuid);
 
-        int minX = (randX / 100) * 100;
-        int maxX = minX + 100;
-        int minZ = (randZ / 100) * 100;
-        int maxZ = minZ + 100;
+        int minX = (randX / 300) * 300;
+        int maxX = minX + 300;
+        int minZ = (randZ / 300) * 300;
+        int maxZ = minZ + 300;
 
-        String hint = String.format("§6[藏寶廣播] 🗺️ 野外神秘寶箱已刷新於地表！天空升起金色強光粒子柱，縮小範圍: §eX: %d ~ %d, Z: %d ~ %d §6(Y: %d)（輸入 /treasure 可開啟定向羅盤雷達！）", minX, maxX, minZ, maxZ, randY);
+        String hint = String.format("§6[藏寶廣播] 🗺️ 野外神秘寶箱已刷新於地表！搜尋區域: §eX: %d ~ %d, Z: %d ~ %d§6（輸入 /treasure 可開啟羅盤雷達，每 45 秒注意天空的短暫脈衝光束！）", minX, maxX, minZ, maxZ);
         server.getPlayerList().broadcastSystemMessage(Component.literal(hint), false);
     }
 
@@ -162,10 +164,19 @@ public class TreasureChestManager {
         }
         if (player == null) return "§7請於遊戲內查看";
 
+        String username = player.getName().getString();
+        long now = System.currentTimeMillis();
+        long lastUsed = radarCooldowns.getOrDefault(username, 0L);
+        if (now - lastUsed < 10000) { // 10s cooldown
+            long remainingSec = (10000 - (now - lastUsed)) / 1000 + 1;
+            return "§c[藏寶雷達] 系統冷卻中！請等待 " + remainingSec + " 秒後再重新進行掃描。";
+        }
+        radarCooldowns.put(username, now);
+
         if (!player.level().dimension().identifier().toString().equals(activeTreasure.dimension)) {
-            int minX = (activeTreasure.x / 100) * 100;
-            int minZ = (activeTreasure.z / 100) * 100;
-            return String.format("§6[🗺 藏寶圖] 寶藏位於主世界 Overworld 地表: §eX: %d ~ %d, Z: %d ~ %d (高度 Y: %d)", minX, minX + 100, minZ, minZ + 100, activeTreasure.y);
+            int minX = (activeTreasure.x / 300) * 300;
+            int minZ = (activeTreasure.z / 300) * 300;
+            return String.format("§6[🗺 藏寶圖] 寶藏位於主世界 Overworld 地表區域: §eX: %d ~ %d, Z: %d ~ %d", minX, minX + 300, minZ, minZ + 300);
         }
 
         double dx = activeTreasure.x - player.getX();
@@ -185,14 +196,18 @@ public class TreasureChestManager {
         else if (angle >= 247.5 && angle < 292.5) dirStr = "➡ 正東";
         else dirStr = "↘ 東南";
 
-        if (dist <= 35) {
-            return String.format("§d✨ [強烈熱感應！] 寶箱就在您 %s 方向僅 %d 公尺地表！(高度 Y: %d)", dirStr, (int) dist, activeTreasure.y);
+        if (dist <= 25) {
+            return "§e🔥 [極近距離！] 寶箱就在您身邊 25 公尺內地表！快尋找地表草叢與岩石附近的金色微光！";
+        } else if (dist <= 100) {
+            int band = ((int) dist / 10) * 10 + 10;
+            return String.format("§d✨ [強烈熱感應！] 寶箱就在您 %s 方向約 %d 公尺內！仔細觀察週遭地貌與天空脈衝！", dirStr, band);
         } else if (dist <= 300) {
-            return String.format("§a🧭 [羅盤精確感應] 寶箱在您的 %s 方向地表，距離約 %d 公尺 (高度 Y: %d)", dirStr, (int) dist, activeTreasure.y);
+            int approxMin = ((int) dist / 50) * 50;
+            return String.format("§a🧭 [羅盤中程感應] 寶箱在您的 %s 方向，距離約 %d~%d 公尺。每隔 45 秒留意天空短暫閃光！", dirStr, approxMin, approxMin + 50);
         } else {
-            int minX = (activeTreasure.x / 100) * 100;
-            int minZ = (activeTreasure.z / 100) * 100;
-            return String.format("§6[🗺 藏寶圖] 範圍: §eX: %d ~ %d, Z: %d ~ %d §6(%s 方向 %dm, 地表 Y: %d)", minX, minX + 100, minZ, minZ + 100, dirStr, (int) dist, activeTreasure.y);
+            int minX = (activeTreasure.x / 300) * 300;
+            int minZ = (activeTreasure.z / 300) * 300;
+            return String.format("§6[🗺 藏寶圖] 廣域目標: §eX: %d ~ %d, Z: %d ~ %d §6(%s 方向, 距離較遠)", minX, minX + 300, minZ, minZ + 300, dirStr);
         }
     }
 
@@ -248,38 +263,40 @@ public class TreasureChestManager {
     }
 
     public static void startLoop(MinecraftServer server) {
-        // High-visibility particle beam tick event (Every 4 ticks = 0.2s)
         ServerTickEvents.END_SERVER_TICK.register(srv -> {
             tickCounter++;
-            if (tickCounter % 4 == 0) {
-                TreasureLocation treasure = activeTreasure;
-                if (treasure != null && !treasure.opened) {
-                    ServerLevel overworld = srv.getLevel(ServerLevel.OVERWORLD);
-                    if (overworld != null) {
-                        double cx = treasure.x + 0.5;
-                        double cz = treasure.z + 0.5;
-                        int startY = treasure.y + 1;
-                        int endY = Math.min(treasure.y + 120, 310);
+            TreasureLocation treasure = activeTreasure;
+            if (treasure != null && !treasure.opened) {
+                ServerLevel overworld = srv.getLevel(ServerLevel.OVERWORLD);
+                if (overworld != null) {
+                    double cx = treasure.x + 0.5;
+                    double cz = treasure.z + 0.5;
+                    int startY = treasure.y + 1;
 
-                        // 1. Towering Flame & End Rod Vertical Beam with overrideLimiter=true, alwaysShow=true (Visible across long distances)
-                        for (int y = startY; y <= endY; y += 2) {
-                            overworld.sendParticles(ParticleTypes.END_ROD, true, true, cx, y, cz, 4, 0.08, 0.08, 0.08, 0.01);
-                            overworld.sendParticles(ParticleTypes.FLAME, true, true, cx, y, cz, 3, 0.1, 0.1, 0.1, 0.02);
-
-                            if (y % 4 == 0) {
-                                overworld.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, true, true, cx, y, cz, 6, 0.25, 0.25, 0.25, 0.03);
-                                overworld.sendParticles(ParticleTypes.GLOW, true, true, cx, y, cz, 3, 0.15, 0.15, 0.15, 0.01);
+                    // 1. Periodic Sonar Sky Pulse: Only triggers for 3 seconds (60 ticks) every 45 seconds (900 ticks)
+                    boolean isPulseActive = (tickCounter % 900) < 60;
+                    if (isPulseActive && (tickCounter % 5 == 0)) {
+                        int endY = Math.min(treasure.y + 70, 310);
+                        for (int y = startY; y <= endY; y += 3) {
+                            overworld.sendParticles(ParticleTypes.END_ROD, true, true, cx, y, cz, 2, 0.08, 0.08, 0.08, 0.01);
+                            if (y % 6 == 0) {
+                                overworld.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, true, true, cx, y, cz, 3, 0.2, 0.2, 0.2, 0.02);
                             }
                         }
+                    }
 
-                        // 2. Dynamic Rotating Spiral Aura around chest
-                        double radius = 1.2;
-                        double angle = (tickCounter % 40) * (2.0 * Math.PI / 40.0);
-                        double sx = cx + radius * Math.cos(angle);
-                        double sz = cz + radius * Math.sin(angle);
-
-                        for (int h = 0; h < 4; h++) {
-                            overworld.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, true, true, sx, startY + h * 0.8, sz, 4, 0.05, 0.05, 0.05, 0.01);
+                    // 2. Near-Field Proximity Particles: Only when players get within 25m
+                    if (tickCounter % 10 == 0) {
+                        boolean playerNearby = false;
+                        for (ServerPlayer p : overworld.players()) {
+                            if (p.distanceToSqr(cx, treasure.y, cz) <= 625) { // 25 meters
+                                playerNearby = true;
+                                break;
+                            }
+                        }
+                        if (playerNearby) {
+                            overworld.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, true, true, cx, startY + 0.5, cz, 4, 0.4, 0.4, 0.4, 0.02);
+                            overworld.sendParticles(ParticleTypes.GLOW, true, true, cx, startY + 0.5, cz, 2, 0.3, 0.3, 0.3, 0.01);
                         }
                     }
                 }
