@@ -1,7 +1,7 @@
 # ⚔️ Craft-Core 生態系統 (Minecraft Server Ecosystem)
 
 <p alias="center">
-  <img src="https://img.shields.io/badge/Minecraft-1.21.4%20%2F%2026.2-brightgreen.svg" alt="Minecraft Version">
+  <img src="https://img.shields.io/badge/Minecraft-Fabric%2026.2%20%7C%20Paper%201.21.11-brightgreen.svg" alt="Minecraft Version">
   <img src="https://img.shields.io/badge/Platform-Fabric%20Loader-orange.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Java-25-blue.svg" alt="Java Version">
   <img src="https://img.shields.io/badge/Backend-Node.js%20%2F%20SQLite-darkgreen.svg" alt="Backend">
@@ -24,12 +24,11 @@ craft-core-shop/
 ```
 
 ### 1. 👑 `fabric-mod/` — Fabric 伺服器核心模組
-- **環境版本**: Java 25 / Fabric Loader (Minecraft 1.21.4 / 26.2)。
+- **環境版本**: Java 25 / Fabric Loader (Minecraft 26.2)。
 - **核心定位**: 服主主要營運之主伺服器核心模組，原生包辦所有遊戲內箱子 GUI 與生存經濟防護。
-- **目標實例**: `/opt/mcsmanager/daemon/data/InstanceData/e73c05307a6b4259bd052b88706757df/mods/`
 
 ### 2. 📄 `paper-dc/` — Paper 伺服器連動插件 (`CraftCoreLink`)
-- **環境版本**: Java 21 / Paper API 1.21.1。
+- **環境版本**: Java 21 / Paper API 1.21.11。
 - **核心定位**: 次要 Paper 伺服器插件，處理跨服帳號綁定、LuckPerms VIP 權限雙向同步與 Discord 訊息轉發。
 
 ### 3. 🤖 `discord-bot/` — Discord 機器人與 WebSocket/SQLite 中樞
