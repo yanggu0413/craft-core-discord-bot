@@ -152,7 +152,7 @@ public class TreasureChestManager {
         int minZ = (randZ / 100) * 100;
         int maxZ = minZ + 100;
 
-        String hint = String.format("§6[藏寶廣播] 🗺️ 野外神秘寶箱已刷新於地表！天空升起金色粒子光柱，縮小範圍: §eX: %d ~ %d, Z: %d ~ %d §6(Y: %d)（輸入 /treasure 可開啟定向羅盤雷達！）", minX, maxX, minZ, maxZ, randY);
+        String hint = String.format("§6[藏寶廣播] 🗺️ 野外神秘寶箱已刷新於地表！天空升起金色強光粒子柱，縮小範圍: §eX: %d ~ %d, Z: %d ~ %d §6(Y: %d)（輸入 /treasure 可開啟定向羅盤雷達！）", minX, maxX, minZ, maxZ, randY);
         server.getPlayerList().broadcastSystemMessage(Component.literal(hint), false);
     }
 
@@ -227,8 +227,9 @@ public class TreasureChestManager {
 
             if (player.level() instanceof ServerLevel sl) {
                 cleanupActiveDisplay(sl);
-                // Spawn victory burst particles
-                sl.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, 50, 0.5, 0.5, 0.5, 0.1);
+                // Spawn victory burst particles with longDistance = true
+                sl.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, true, true, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, 100, 0.8, 0.8, 0.8, 0.15);
+                sl.sendParticles(ParticleTypes.FIREWORK, true, true, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, 50, 0.5, 0.5, 0.5, 0.1);
             }
 
             int currentKeys = com.craftcore.economy.EconomyManager.getLotteryKeys(playerName);
@@ -247,10 +248,10 @@ public class TreasureChestManager {
     }
 
     public static void startLoop(MinecraftServer server) {
-        // Register Particle Beam Tick Event (Every 10 ticks = 0.5 second)
+        // High-visibility particle beam tick event (Every 4 ticks = 0.2s)
         ServerTickEvents.END_SERVER_TICK.register(srv -> {
             tickCounter++;
-            if (tickCounter % 10 == 0) {
+            if (tickCounter % 4 == 0) {
                 TreasureLocation treasure = activeTreasure;
                 if (treasure != null && !treasure.opened) {
                     ServerLevel overworld = srv.getLevel(ServerLevel.OVERWORLD);
@@ -258,13 +259,27 @@ public class TreasureChestManager {
                         double cx = treasure.x + 0.5;
                         double cz = treasure.z + 0.5;
                         int startY = treasure.y + 1;
-                        int endY = Math.min(treasure.y + 60, 310);
+                        int endY = Math.min(treasure.y + 120, 310);
 
-                        for (int y = startY; y <= endY; y += 1) {
-                            overworld.sendParticles(ParticleTypes.END_ROD, cx, y, cz, 2, 0.05, 0.05, 0.05, 0.01);
-                            if (y % 3 == 0) {
-                                overworld.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, cx, y, cz, 3, 0.15, 0.15, 0.15, 0.02);
+                        // 1. Towering Flame & End Rod Vertical Beam with overrideLimiter=true, alwaysShow=true (Visible across long distances)
+                        for (int y = startY; y <= endY; y += 2) {
+                            overworld.sendParticles(ParticleTypes.END_ROD, true, true, cx, y, cz, 4, 0.08, 0.08, 0.08, 0.01);
+                            overworld.sendParticles(ParticleTypes.FLAME, true, true, cx, y, cz, 3, 0.1, 0.1, 0.1, 0.02);
+
+                            if (y % 4 == 0) {
+                                overworld.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, true, true, cx, y, cz, 6, 0.25, 0.25, 0.25, 0.03);
+                                overworld.sendParticles(ParticleTypes.GLOW, true, true, cx, y, cz, 3, 0.15, 0.15, 0.15, 0.01);
                             }
+                        }
+
+                        // 2. Dynamic Rotating Spiral Aura around chest
+                        double radius = 1.2;
+                        double angle = (tickCounter % 40) * (2.0 * Math.PI / 40.0);
+                        double sx = cx + radius * Math.cos(angle);
+                        double sz = cz + radius * Math.sin(angle);
+
+                        for (int h = 0; h < 4; h++) {
+                            overworld.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, true, true, sx, startY + h * 0.8, sz, 4, 0.05, 0.05, 0.05, 0.01);
                         }
                     }
                 }
