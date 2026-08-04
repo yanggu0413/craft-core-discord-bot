@@ -54,15 +54,15 @@ const translations = {
     footerContact: '聯絡我們'
   },
   'zh-CN': {
-    title: 'Craft-Core 原汁原味生存 | Minecraft 服务器 | 高性能双端互通服',
-    metaDesc: '欢迎加入 Craft-Core 我的世界原汁原味生存服！支持 Java 版 (1.20 - 26.2) 与基岩版无缝互通。内置箱子集市、实体支票、野外探宝雷达、大轮盘抽奖、领地防爆隔离与全服排行榜！',
+    title: 'Craft-Core 原版生存 | Minecraft 服务器 | 高性能双端互通服',
+    metaDesc: '欢迎加入 Craft-Core 我的世界原版生存服！支持 Java 版 (1.20 - 26.2) 与基岩版无缝互通。内置箱子集市、实体支票、野外探宝雷达、大轮盘抽奖、领地防爆隔离与全服排行榜！',
     navWiki: '官方 Wiki',
     navDiscord: 'Discord 社区',
     navJoin: '立即加入',
-    badgeSurvival: '纯正生存',
+    badgeSurvival: '原版生存',
     heroSubtitle: 'JAVA 1.20 - 26.2 / 基岩最新版 / 跨平台无缝互通',
     heroTitle: 'CRAFT-CORE',
-    heroDesc: '回归最纯粹的生存冒险 ‧ 丰富可视化 GUI 界面与活跃社群',
+    heroDesc: '回归最纯粹的原版生存冒险 ‧ 丰富可视化 GUI 界面与活跃社群',
     copyIpBtn: '复制服务器 IP',
     copiedIpBtn: 'IP 已复制！',
     joinDiscordBtn: '加入 Discord 社区',
@@ -99,7 +99,7 @@ const translations = {
     bedrockVersion: '支持版本: 最新基岩版',
     copiedNotice: 'IP 已复制！',
     rulesBtn: '点击查看服务器守则与玩家新手指南',
-    footerRights: 'Craft-Core 原汁原味生存服. 保留所有权利。',
+    footerRights: 'Craft-Core 原版生存服. 保留所有权利。',
     footerRules: '服务器守则',
     footerContact: '联系我们'
   },
