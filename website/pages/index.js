@@ -1,6 +1,6 @@
 import Head from 'next/head';
-import { useState, useEffect } from 'react';
-import { BookOpen, Copy, Check, ShieldCheck, Mail, Sparkles, Server, MessageSquare, ClipboardList, Menu, X, Cpu, Compass, Banknote, Trophy, Gift, Globe } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { BookOpen, Copy, Check, ShieldCheck, Mail, Sparkles, Server, MessageSquare, ClipboardList, Menu, X, Cpu, Compass, Banknote, Trophy, Gift, Globe, ChevronDown } from 'lucide-react';
 
 const translations = {
   'zh-TW': {
@@ -155,6 +155,68 @@ const translations = {
   }
 };
 
+// Custom Dropdown Language Switcher Component
+function CustomLanguageSwitcher({ lang, setLang }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const languages = [
+    { code: 'zh-TW', label: '繁體中文' },
+    { code: 'zh-CN', label: '简体中文' },
+    { code: 'en', label: 'English' }
+  ];
+
+  const currentLang = languages.find(l => l.code === lang) || languages[0];
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative inline-block text-left" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center space-x-1.5 border border-zinc-200/90 rounded-lg px-3 py-1.5 text-xs font-extrabold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 transition-all shadow-2xs cursor-pointer"
+        aria-expanded={isOpen}
+      >
+        <Globe className="w-3.5 h-3.5 text-blue-600" />
+        <span>{currentLang.label}</span>
+        <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-1.5 w-36 rounded-xl bg-white border border-zinc-200 shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+          {languages.map((l) => (
+            <button
+              key={l.code}
+              type="button"
+              onClick={() => {
+                setLang(l.code);
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-3.5 py-2 text-xs font-bold flex items-center justify-between transition-colors ${
+                lang === l.code
+                  ? 'bg-blue-50 text-blue-600'
+                  : 'text-zinc-700 hover:bg-zinc-50'
+              }`}
+            >
+              <span>{l.label}</span>
+              {lang === l.code && <Check className="w-3.5 h-3.5 text-blue-600" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
   const [copiedJava, setCopiedJava] = useState(false);
   const [copiedBedrock, setCopiedBedrock] = useState(false);
@@ -259,20 +321,8 @@ export default function Home() {
               {t.navDiscord}
             </a>
             
-            {/* Language Switcher Dropdown */}
-            <div className="relative flex items-center space-x-1.5 border border-zinc-200 rounded-lg px-2.5 py-1 text-xs font-bold text-zinc-600 bg-zinc-50 hover:border-zinc-300 transition-colors">
-              <Globe className="w-3.5 h-3.5 text-zinc-500" />
-              <select
-                value={lang}
-                onChange={(e) => setLang(e.target.value)}
-                className="bg-transparent border-none text-xs font-bold text-zinc-700 focus:outline-none cursor-pointer pr-1"
-                aria-label="Language Switcher"
-              >
-                <option value="zh-TW">繁體中文</option>
-                <option value="zh-CN">简体中文</option>
-                <option value="en">English</option>
-              </select>
-            </div>
+            {/* Custom Language Switcher Dropdown */}
+            <CustomLanguageSwitcher lang={lang} setLang={setLang} />
 
             <a 
               href="#join"
@@ -285,19 +335,8 @@ export default function Home() {
 
           {/* Mobile Menu & Language Selector */}
           <div className="flex md:hidden items-center space-x-3">
-            <div className="relative flex items-center space-x-1 border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold text-zinc-600 bg-zinc-50">
-              <Globe className="w-3.5 h-3.5 text-zinc-500" />
-              <select
-                value={lang}
-                onChange={(e) => setLang(e.target.value)}
-                className="bg-transparent border-none text-xs font-bold text-zinc-700 focus:outline-none cursor-pointer"
-                aria-label="Mobile Language Switcher"
-              >
-                <option value="zh-TW">繁中</option>
-                <option value="zh-CN">简中</option>
-                <option value="en">EN</option>
-              </select>
-            </div>
+            {/* Custom Language Switcher Dropdown for Mobile */}
+            <CustomLanguageSwitcher lang={lang} setLang={setLang} />
 
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
