@@ -51,9 +51,9 @@ public class Challenger2StressTest {
                 try {
                     for (int j = 0; j < iterations; j++) {
                         if (direction) {
-                            EconomyManager.transferMoney("UserA", "UserB", 1.55, true);
+                            EconomyManager.transferMoney("UserA", "UserB", 1.55, false);
                         } else {
-                            EconomyManager.transferMoney("UserB", "UserA", 1.55, true);
+                            EconomyManager.transferMoney("UserB", "UserA", 1.55, false);
                         }
                     }
                 } finally {
