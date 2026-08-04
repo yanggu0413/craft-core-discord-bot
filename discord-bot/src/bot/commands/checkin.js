@@ -49,7 +49,8 @@ module.exports = {
       .setTimestamp();
 
     await interaction.reply({
-      embeds: [embed]
+      embeds: [embed],
+      ephemeral: true
     });
   }
 };

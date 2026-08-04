@@ -78,7 +78,7 @@ async function handleCheckin(interaction) {
     )
     .setTimestamp();
 
-  return interaction.reply({ embeds: [embed] });
+  return interaction.reply({ embeds: [embed], ephemeral: true });
 }
 
 async function handleQueryKeys(interaction) {
@@ -133,7 +133,7 @@ async function handleLeaderboard(interaction) {
     .setDescription(description)
     .setTimestamp();
 
-  return interaction.reply({ embeds: [embed] });
+  return interaction.reply({ embeds: [embed], ephemeral: true });
 }
 
 async function handleSubscribeReminder(interaction) {
@@ -204,10 +204,11 @@ async function handleLottery(interaction, countParam = 1) {
 
   // Check if player is online
   try {
-    const info = await session.executeCommand(`playerinfo "${binding.mc_username}"`, interaction.user.tag);
-    if (!info.success || !info.output.includes('Online: true')) {
+    const info = await session.executeCommand('list', interaction.user.tag);
+    const outputStr = (info && info.output) ? info.output : '';
+    if (!info.success || !outputStr.toLowerCase().includes(binding.mc_username.toLowerCase())) {
       return interaction.editReply({
-        content: `❌ 開獎失敗！您必須處於遊戲線上狀態才能接收道具與金幣。`
+        content: `❌ 開獎失敗！您必須處於遊戲線上狀態才能接收道具與金幣。\n目前伺服器在線玩家列表中未找到：\`${binding.mc_username}\``
       });
     }
   } catch (err) {
