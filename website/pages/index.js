@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import { BookOpen, Copy, Check, ShieldCheck, Mail, Sparkles, Server, MessageSquare, ClipboardList, Menu, X, Cpu, Compass, Banknote, Trophy, Gift, Globe, ChevronDown } from 'lucide-react';
 
@@ -299,6 +300,16 @@ export default function Home() {
         <title>{t.title}</title>
         <meta name="description" content={t.metaDesc} />
         <meta name="keywords" content="Minecraft 伺服器, Minecraft 生存伺服器, 麥塊伺服器, 原味生存伺服器, 雙端互通伺服器, Java 基岩互通, Craft-Core, 麥塊生存, i7-13700" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+        <meta property="og:title" content={t.title} />
+        <meta property="og:description" content={t.metaDesc} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://craft-core.xyz" />
+        <meta property="og:image" content="https://craft-core.xyz/favicon.png" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={t.title} />
+        <meta name="twitter:description" content={t.metaDesc} />
+        <meta name="twitter:image" content="https://craft-core.xyz/favicon.png" />
         <link rel="icon" href="/favicon.png" />
         <link rel="preload" href="/favicon.png" as="image" />
       </Head>
@@ -307,7 +318,7 @@ export default function Home() {
       <header className="sticky top-0 z-40 w-full border-b border-zinc-200 bg-white/95 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <img src="/favicon.png" alt="CRAFT-CORE Logo" className="w-8 h-8 object-contain" />
+            <Image src="/favicon.png" alt="CRAFT-CORE Logo" width={32} height={32} priority className="w-8 h-8 object-contain" />
             <span className="font-black text-xl tracking-wider text-blue-600">CRAFT-CORE</span>
             <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded">{t.badgeSurvival}</span>
           </div>
@@ -542,7 +553,7 @@ export default function Home() {
                       const avatar = typeof p === 'object' && p.avatar ? p.avatar : `https://mc-heads.net/avatar/${encodeURIComponent(name)}/32`;
                       return (
                         <div key={idx} className="flex items-center space-x-2 bg-white/90 border border-emerald-200 px-3 py-1.5 rounded-lg shadow-2xs hover:border-emerald-400 transition-colors">
-                          <img src={avatar} alt={name} className="w-6 h-6 rounded border border-zinc-200" />
+                          <Image src={avatar} alt={`${name}'s avatar`} width={24} height={24} loading="lazy" decoding="async" className="w-6 h-6 rounded border border-zinc-200" unoptimized />
                           <span className="text-xs font-bold text-zinc-700">{name}</span>
                         </div>
                       );
