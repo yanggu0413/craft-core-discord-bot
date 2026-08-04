@@ -37,6 +37,8 @@
 | :--- | :--- | :--- |
 | **`/addmoney <玩家> <金額>`** | 增加指定玩家的遊戲金幣餘額 | `/addmoney Alex 5000` |
 | **`/removemoney <玩家> <金額>`** | 扣除指定玩家的遊戲金幣餘額 | `/removemoney Alex 1000` |
+| **`/check <金額>`** | 開立具防偽標籤之實體紙張支票面交/發放 | `/check 10000` |
+| **`/treasure spawn`** | 強制清除舊寶箱並於地表刷新野外神秘寶箱 | `/treasure spawn` |
 | **`/setwarp <地標名稱>`** | 在當前位置建立公共地標 | `/setwarp spawn` |
 | **`/delwarp <地標名稱>`** | 刪除指定的公共地標 | `/delwarp spawn` |
 | **`/invsee <玩家>`** | 查看與編輯線上玩家或假人的背包與裝備箱 | `/invsee Alex` |
