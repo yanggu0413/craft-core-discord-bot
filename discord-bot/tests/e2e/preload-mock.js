@@ -29,7 +29,8 @@ class SlashCommandBuilder {
       setDescription(d) { opt.description = d; return this; },
       setRequired(r) { opt.required = r; return this; },
       setMinLength(l) { opt.minLength = l; return this; },
-      setMaxLength(l) { opt.maxLength = l; return this; }
+      setMaxLength(l) { opt.maxLength = l; return this; },
+      addChoices(...choices) { opt.choices = choices; return this; }
     };
     fn(builder);
     this.options.push(opt);
@@ -42,7 +43,8 @@ class SlashCommandBuilder {
       setDescription(d) { opt.description = d; return this; },
       setRequired(r) { opt.required = r; return this; },
       setMinValue(v) { opt.minValue = v; return this; },
-      setMaxValue(v) { opt.maxValue = v; return this; }
+      setMaxValue(v) { opt.maxValue = v; return this; },
+      addChoices(...choices) { opt.choices = choices; return this; }
     };
     if (typeof fn === 'function') fn(builder);
     this.options.push(opt);

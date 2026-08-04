@@ -23,8 +23,17 @@ client.once('ready', async () => {
     logger.warn('Failed to auto-deploy slash commands on ready:', err);
   }
 
-  // Start WebSocket server
+  // Start WebSocket server & Status API server (Default Port 9967)
   wsServer.start(client);
+  const statusApiPort = parseInt(process.env.STATUS_API_PORT || (process.env.NODE_ENV === 'test' ? '0' : '9967'), 10);
+  if (statusApiPort > 0) {
+    try {
+      const { startApiStatusServer } = require('./apiStatusServer');
+      startApiStatusServer(statusApiPort);
+    } catch (err) {
+      logger.warn('Failed to start Status API server:', err);
+    }
+  }
 
   // Initialize button panels
   await panelService.initializePanels(client);
@@ -384,7 +393,7 @@ async function main() {
 }
 
 main().catch(err => {
-  logger.error('Bot startup failed', { error: err });
+  logger.error('Bot startup failed', { error: err ? (err.message || String(err)) : 'unknown', stack: err ? err.stack : undefined });
   if (process.env.NODE_ENV !== 'test') {
     process.exit(1);
   }
@@ -394,6 +403,8 @@ main().catch(err => {
 async function shutdown() {
   logger.info('Shutting down...');
   wsServer.stop();
+  const { stopApiStatusServer } = require('./apiStatusServer');
+  stopApiStatusServer();
   await db.close();
   if (client && typeof client.destroy === 'function') {
     await client.destroy();

@@ -17,7 +17,45 @@ function getTaipeiDateString(date = new Date()) {
 
 let lastStatusMessageId = null;
 
+let latestStatusData = {
+  online: false,
+  current_players: 0,
+  max_players: 0,
+  players: [],
+  lastUpdated: 0
+};
+
+function getStatusForApi() {
+  if (Date.now() - latestStatusData.lastUpdated > 35000) {
+    return {
+      online: false,
+      current_players: 0,
+      max_players: 0,
+      players: []
+    };
+  }
+  return {
+    online: latestStatusData.online,
+    current_players: latestStatusData.current_players,
+    max_players: latestStatusData.max_players,
+    players: latestStatusData.players
+  };
+}
+
 async function updateStatus(payload, discordClient) {
+  if (payload) {
+    latestStatusData = {
+      online: !!payload.online,
+      current_players: payload.current_players || 0,
+      max_players: payload.max_players || 50,
+      players: (payload.players || []).map(p => ({
+        name: p,
+        avatar: `https://mc-heads.net/avatar/${encodeURIComponent(p)}/32`
+      })),
+      lastUpdated: Date.now()
+    };
+  }
+
   if (!config.discord.channels.status) return;
 
   try {
@@ -80,5 +118,6 @@ async function updateStatus(payload, discordClient) {
 }
 
 module.exports = {
-  updateStatus
+  updateStatus,
+  getStatusForApi
 };

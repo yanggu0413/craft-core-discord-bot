@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BookOpen, Copy, Check, ShieldCheck, Mail, Sparkles, Server, MessageSquare, ClipboardList, Menu, X, Cpu, Compass, Banknote, Trophy, Gift } from 'lucide-react';
 
 export default function Home() {
@@ -7,6 +7,40 @@ export default function Home() {
   const [copiedBedrock, setCopiedBedrock] = useState(false);
   const [copiedGeneral, setCopiedGeneral] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const [serverStatus, setServerStatus] = useState({
+    loading: true,
+    online: false,
+    current_players: 0,
+    max_players: 0,
+    players: []
+  });
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch('https://getmcsrvstatus.craft-core.xyz');
+        if (res.ok) {
+          const data = await res.json();
+          setServerStatus({
+            loading: false,
+            online: !!data.online,
+            current_players: data.current_players || 0,
+            max_players: data.max_players || 50,
+            players: data.players || []
+          });
+        } else {
+          setServerStatus({ loading: false, online: false, current_players: 0, max_players: 0, players: [] });
+        }
+      } catch (e) {
+        setServerStatus({ loading: false, online: false, current_players: 0, max_players: 0, players: [] });
+      }
+    };
+
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const copyToClipboard = (text, setCopied) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -225,19 +259,67 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Dynamic MOTD Banner Container */}
-        <section className="w-full max-w-3xl border border-zinc-200 bg-zinc-50 rounded-xl overflow-hidden shadow-sm p-5 mb-20 text-center">
-          <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider mb-4">伺服器即時連線狀態</h3>
-          <div className="bg-black flex items-center justify-center p-3 rounded-lg border border-zinc-200 shadow-inner">
-            <img 
-              src="https://sr-api.sfirew.com/server/mc.craft-core.xyz/banner/motd.png?hl=tw&v=mpvEEcngwP" 
-              alt="CRAFT-CORE Minecraft Server MOTD Status Banner" 
-              width={700}
-              height={120}
-              loading="lazy"
-              decoding="async"
-              className="w-full h-auto max-w-[1836px] object-contain rounded"
-            />
+        {/* Real-time Server Status Component */}
+        <section className="w-full max-w-3xl mb-20">
+          <div className={`border rounded-2xl p-6 sm:p-8 transition-all shadow-sm ${
+            serverStatus.online 
+              ? 'bg-emerald-50/70 border-emerald-200' 
+              : 'bg-red-50/70 border-red-200'
+          }`}>
+            {/* Status Header */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center space-x-3">
+                <span className="relative flex h-3.5 w-3.5">
+                  {serverStatus.online && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  )}
+                  <span className={`relative inline-flex rounded-full h-3.5 w-3.5 ${
+                    serverStatus.online ? 'bg-emerald-500' : 'bg-red-500'
+                  }`}></span>
+                </span>
+                <span className="text-xl font-black tracking-tight">
+                  伺服器狀態：{serverStatus.loading ? '正在連線中...' : (serverStatus.online ? '正常 (Online)' : '關閉 (Offline)')}
+                </span>
+              </div>
+
+              {serverStatus.online && (
+                <div className="text-sm font-bold bg-white/80 px-4 py-1.5 rounded-full border border-emerald-200 text-emerald-800 shadow-xs">
+                  線上玩家：<span className="text-emerald-600 font-extrabold">{serverStatus.current_players}</span> / {serverStatus.max_players} 人
+                </div>
+              )}
+            </div>
+
+            {/* Offline Message */}
+            {!serverStatus.online && !serverStatus.loading && (
+              <p className="text-sm text-red-600/80 font-medium mt-3 text-center sm:text-left">
+                伺服器目前處於關閉維護或重啟狀態，請關注 Discord 頻道公告資訊。
+              </p>
+            )}
+
+            {/* Online Players Grid (Only shown when server is online) */}
+            {serverStatus.online && (
+              <div className="mt-6 pt-5 border-t border-emerald-200/60">
+                <div className="text-xs font-extrabold uppercase text-emerald-700/80 tracking-wider mb-3">
+                  目前線上玩家名單
+                </div>
+                {serverStatus.players && serverStatus.players.length > 0 ? (
+                  <div className="flex flex-wrap gap-2.5">
+                    {serverStatus.players.map((p, idx) => {
+                      const name = typeof p === 'string' ? p : p.name;
+                      const avatar = typeof p === 'object' && p.avatar ? p.avatar : `https://mc-heads.net/avatar/${encodeURIComponent(name)}/32`;
+                      return (
+                        <div key={idx} className="flex items-center space-x-2 bg-white/90 border border-emerald-200 px-3 py-1.5 rounded-lg shadow-2xs hover:border-emerald-400 transition-colors">
+                          <img src={avatar} alt={name} className="w-6 h-6 rounded border border-zinc-200" />
+                          <span className="text-xs font-bold text-zinc-700">{name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-emerald-700/70 italic">目前無人在線，快成為第一個連入的冒險家！</p>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
