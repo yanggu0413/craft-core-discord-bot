@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: "Craft-Core",
-  description: "Craft-Core 官方說明文件",
+  description: "Craft-Core 官方玩家指南與指令手冊",
   head: [
     ['link', { rel: 'icon', href: '/favicon.png' }]
   ],
@@ -10,51 +10,40 @@ export default defineConfig({
     logo: '/favicon.png',
     nav: [
       { text: '首頁', link: '/' },
-      { text: '指南', link: '/README' }
+      { text: '玩家指南', link: '/README' }
     ],
     sidebar: [
       {
         text: '📖 系統介紹',
         items: [
-          { text: '關於 CraftCore', link: '/README' }
+          { text: '關於 Craft-Core 伺服器', link: '/README' }
         ]
       },
       {
-        text: '🖥️ 網頁端儀表板',
+        text: '🎮 遊戲玩法與指南',
         items: [
-          { text: '網頁版首頁簡介', link: '/Web-Dashboard' },
-          { text: '商店瀏覽與導航', link: '/Web-Shop-Navigation' },
-          { text: '全服市場行情', link: '/Web-Market-Analytics' },
-          { text: '店主遠端遙控', link: '/Web-Owner-Remote' },
-          { text: '領地保護設定', link: '/Web-Claims-Management' },
-          { text: '密碼箱白名單管理', link: '/Web-Password-Lock' },
-          { text: '每日簽到與抽獎', link: '/Web-Welfare' },
-          { text: '郵局快遞與個人背包', link: '/Web-Postal-Inventory' }
+          { text: '📜 /menu 選單大廳指南', link: '/Mc-Menu-System' },
+          { text: '🏪 箱子商店與全服市場', link: '/Mc-Shop-System' },
+          { text: '📦 虛擬快遞箱系統', link: '/Mc-Virtual-Express' },
+          { text: '🔐 箱子密碼鎖保險箱', link: '/Mc-Lockbox-Gui' },
+          { text: '🛡️ 領地保護與極致防爆', link: '/Mc-Claim-Entity-Protection' },
+          { text: '⚔️ PvP 和平與戰鬥模式', link: '/Mc-Pvp-System' },
+          { text: '🗺️ 野外定向尋寶雷達', link: '/Mc-Treasure-Hunt' },
+          { text: '🤝 玩家轉帳與傳送指令', link: '/Mc-Teleport-Commands' },
+          { text: '🎰 每日簽到與轉盤抽獎', link: '/Mc-Hourly-Lottery' },
+          { text: '⚔️ 每日任務與全服懸賞', link: '/Mc-Task-System' },
+          { text: '🏭 機器認證與免領地費', link: '/Mc-Machine-Certification' },
+          { text: '🤖 假人助手與背包看管', link: '/Mc-Fake-Player' },
+          { text: '🎒 /invsee 背包查看管理', link: '/Mc-InvSee-System' },
+          { text: '👑 頭頂炫彩稱號系統', link: '/Mc-Custom-Titles' },
+          { text: '💡 迎賓小提示列表', link: '/Mc-Welcome-Tips' },
+          { text: '🛠️ 管理員權限與維護', link: '/Mc-Admin-Management' }
         ]
       },
       {
-        text: '🎮 Minecraft 遊戲指南',
+        text: '💬 社群連動',
         items: [
-          { text: '/menu 54-槽位箱子選單 GUI', link: '/Mc-Menu-System' },
-          { text: '每日任務系統', link: '/Mc-Task-System' },
-          { text: '全服共同目標與每週懸賞', link: '/Mc-Global-Goal' },
-          { text: '整點幸運雨與錦鯉抽獎', link: '/Mc-Hourly-Lottery' },
-          { text: '野外藏寶圖與地城寶箱', link: '/Mc-Treasure-Hunt' },
-          { text: '機器認證與免領地費', link: '/Mc-Machine-Certification' },
-          { text: '頭頂炫彩稱號系統', link: '/Mc-Custom-Titles' },
-          { text: '/invsee 玩家與假人背包管理', link: '/Mc-InvSee-System' },
-          { text: '領地生物與實體保護規範', link: '/Mc-Claim-Entity-Protection' },
-          { text: '商店系統概覽', link: '/Mc-Shop-System' },
-          { text: '如何新增商店', link: '/Mc-Create-Shop' },
-          { text: '如何刪除商店', link: '/Mc-Delete-Shop' },
-          { text: '遊戲內傳送與 TP 指令', link: '/Mc-Teleport-Commands' },
-          { text: '管理員指令與權限', link: '/Mc-Admin-Management' }
-        ]
-      },
-      {
-        text: '🤖 Discord 機器人',
-        items: [
-          { text: 'Discord 連動綁定', link: '/Discord-Integration' }
+          { text: 'Discord 帳號綁定教學', link: '/Discord-Integration' }
         ]
       }
     ],
