@@ -149,10 +149,10 @@ public class TreasureChestManager {
 
         activeTreasure = new TreasureLocation("minecraft:overworld", randX, randY, randZ, displayUuid);
 
-        int minX = (randX / 300) * 300;
-        int maxX = minX + 300;
-        int minZ = (randZ / 300) * 300;
-        int maxZ = minZ + 300;
+        int minX = (randX / 100) * 100;
+        int maxX = minX + 100;
+        int minZ = (randZ / 100) * 100;
+        int maxZ = minZ + 100;
 
         String hint = String.format("§6[藏寶廣播] 🗺️ 野外神秘寶箱已刷新於地表！搜尋區域: §eX: %d ~ %d, Z: %d ~ %d§6（輸入 /treasure 可開啟羅盤雷達，每 45 秒注意天空的短暫脈衝光束！）", minX, maxX, minZ, maxZ);
         server.getPlayerList().broadcastSystemMessage(Component.literal(hint), false);
@@ -174,9 +174,9 @@ public class TreasureChestManager {
         radarCooldowns.put(username, now);
 
         if (!player.level().dimension().identifier().toString().equals(activeTreasure.dimension)) {
-            int minX = (activeTreasure.x / 300) * 300;
-            int minZ = (activeTreasure.z / 300) * 300;
-            return String.format("§6[🗺 藏寶圖] 寶藏位於主世界 Overworld 地表區域: §eX: %d ~ %d, Z: %d ~ %d", minX, minX + 300, minZ, minZ + 300);
+            int minX = (activeTreasure.x / 100) * 100;
+            int minZ = (activeTreasure.z / 100) * 100;
+            return String.format("§6[🗺 藏寶圖] 寶藏位於主世界 Overworld 地表區域: §eX: %d ~ %d, Z: %d ~ %d", minX, minX + 100, minZ, minZ + 100);
         }
 
         double dx = activeTreasure.x - player.getX();
@@ -205,9 +205,9 @@ public class TreasureChestManager {
             int approxMin = ((int) dist / 50) * 50;
             return String.format("§a🧭 [羅盤中程感應] 寶箱在您的 %s 方向，距離約 %d~%d 公尺。每隔 45 秒留意天空短暫閃光！", dirStr, approxMin, approxMin + 50);
         } else {
-            int minX = (activeTreasure.x / 300) * 300;
-            int minZ = (activeTreasure.z / 300) * 300;
-            return String.format("§6[🗺 藏寶圖] 廣域目標: §eX: %d ~ %d, Z: %d ~ %d §6(%s 方向, 距離較遠)", minX, minX + 300, minZ, minZ + 300, dirStr);
+            int minX = (activeTreasure.x / 100) * 100;
+            int minZ = (activeTreasure.z / 100) * 100;
+            return String.format("§6[🗺 藏寶圖] 廣域目標: §eX: %d ~ %d, Z: %d ~ %d §6(%s 方向, 距離較遠)", minX, minX + 100, minZ, minZ + 100, dirStr);
         }
     }
 
