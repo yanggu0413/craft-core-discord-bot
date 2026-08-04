@@ -103,9 +103,6 @@ public class TitleManager {
         PlayerTitleData data = playerTitles.computeIfAbsent(key, k -> new PlayerTitleData());
         checkExpiries(username);
         if (data.unlockedTitles.add(title)) {
-            if (data.activeTitle == null || data.activeTitle.isEmpty()) {
-                data.activeTitle = title;
-            }
             save();
         }
     }
@@ -122,10 +119,26 @@ public class TitleManager {
         String key = username.toLowerCase();
         checkExpiries(username);
         PlayerTitleData data = playerTitles.get(key);
-        if (data != null && (title.isEmpty() || data.unlockedTitles.contains(title))) {
-            data.activeTitle = title;
-            save();
-            return true;
+        if (data != null && data.unlockedTitles != null) {
+            if (title.isEmpty()) {
+                data.activeTitle = "";
+                save();
+                return true;
+            }
+            if (data.unlockedTitles.contains(title)) {
+                data.activeTitle = title;
+                save();
+                return true;
+            }
+            String cleanTarget = title.replaceAll("§[0-9a-fk-orA-FK-OR]", "").replace("\"", "").trim();
+            for (String unlocked : data.unlockedTitles) {
+                String cleanUnlocked = unlocked.replaceAll("§[0-9a-fk-orA-FK-OR]", "").replace("\"", "").trim();
+                if (cleanUnlocked.equalsIgnoreCase(cleanTarget) || unlocked.equalsIgnoreCase(title)) {
+                    data.activeTitle = unlocked;
+                    save();
+                    return true;
+                }
+            }
         }
         return false;
     }

@@ -13,9 +13,11 @@
 # 佩戴指定的已解鎖稱號 (需包含樣式碼)
 /title set "<稱號名稱>"
 
-# 卸下當前佩戴的頭頂稱號
-/title clear
+# 卸下當前佩戴的頭頂稱號 (回復原始 LuckPerms 身分組頭銜如 [服主 Owner] / [管理員 Admin])
+/title clear  (或 /title reset / /title remove / /title off)
 ```
+
+> **提示**：抽中整點活動「幸運錦鯉」僅會將稱號 **解鎖至您的稱號選單中**，不會自動強行覆蓋您原本的 [服主 Owner] 或 [管理員 Admin] 身分組頭銜！
 
 ---
 
@@ -38,4 +40,3 @@
 1. **玩家頭頂名稱前綴 (Name Tag Above Head)**
 2. **按下 `Tab` 鍵開啟的玩家線上清單 (Player List)**
 3. **遊戲內聊天室對話前綴 (Chat Message Prefix)**
-4. **Discord 群組同步身分組標籤**

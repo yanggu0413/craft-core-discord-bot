@@ -57,7 +57,7 @@ public abstract class PlayerMixin {
                 prefix.append(Component.literal("§7[AFK] "));
             }
             if (!customTitle.isEmpty()) {
-                prefix.append(Component.literal(customTitle));
+                prefix.append(Component.literal(customTitle.trim() + "§r "));
             }
             if (isFakePlayer) {
                 prefix.append(Component.literal("§8[假人] "));
