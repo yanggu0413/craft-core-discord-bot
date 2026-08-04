@@ -312,6 +312,7 @@ export default function Home() {
         <meta name="twitter:image" content="https://craft-core.xyz/favicon.png" />
         <link rel="icon" href="/favicon.png" />
         <link rel="preload" href="/favicon.png" as="image" />
+        <link rel="preload" href="/hero-bg.webp" as="image" type="image/webp" />
       </Head>
 
       {/* Navigation Header */}
@@ -397,7 +398,7 @@ export default function Home() {
       {/* Hero Section */}
       <section 
         className="relative w-full h-[520px] bg-cover bg-center flex flex-col items-center justify-center text-center px-4"
-        style={{ backgroundImage: `url('/hero-bg.jpg')` }}
+        style={{ backgroundImage: `url('/hero-bg.webp')` }}
       >
         <div className="absolute inset-0 bg-black/50 z-0"></div>
 
