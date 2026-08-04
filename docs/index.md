@@ -1,48 +1,39 @@
 # Craft-Core 原味生存服官方文檔
 
-歡迎來到 **Craft-Core 原味生存服** 官方文檔！本指南將協助您快速熟悉本伺服器的箱子商店、領地防護、密碼安全箱，以及 Discord 機器人與網頁儀表板的使用方法。
+歡迎來到 **Craft-Core 原味生存服** 官方玩家文檔！本指南將協助您快速熟悉本伺服器的 4x4 選單大廳、箱子商店市場、領地防護、密碼鎖保險箱、虛擬快遞箱以及 Discord 帳號綁定。
 
 ---
 
-## 🌐 系統三向連動設計
+## 🎮 雙向連動設計
 
-本伺服器採用「遊戲內模組」、「Discord 聊天群組」與「網頁儀表板」三合一的即時互通系統，您的帳號金幣與資料會在這三個平台之間自動同步：
+本伺服器採用「遊戲內箱子 GUI」與「Discord 機器人」連動設計，您的金幣、鑰匙與簽到天數會在兩大平台之間自動同步：
 
-* **遊戲伺服器**：進行箱子商店買賣、框選領地、密碼鎖設定與每日任務。
-* **Discord 機器人**：進行每日簽到、福利抽獎、查看商店狀況與發送快遞。
-* **網頁儀表板**：在網頁上直觀查看全服富豪排行榜、管理您的領地權限與密碼箱、閱讀實時交易廣播。
+- **遊戲伺服器**：使用 `/menu` 與 `/shop` 箱子選單進行商店買賣、領地劃分、密碼鎖保險箱設定、虛擬快遞寄件、PvP 切換與野外尋寶。
+- **Discord 機器人**：進行帳號綁定、領取簽到鑰匙、客服單反饋以及即時接收遊戲聊天訊息與皮膚頭像。
 
 ---
 
-## 🧭 文件導覽目錄
+## 🧭 玩家指南目錄
 
 您可以點選下方連結深入閱讀各單元的詳細教學：
 
-### 🖥️ 1. 網頁端儀表板使用指南
-* 🖥️ [網頁版首頁簡介](Web-Dashboard.md) — 首頁各項即時看板與帳號登入綁定。
-* 🔍 [商店瀏覽與導航](Web-Shop-Navigation.md) — 搜尋全服擺攤並獲取快速傳送指令。
-* 📈 [全服市場行情](Web-Market-Analytics.md) — 商品均價、7日價格走勢與系統回收機制。
-* 📲 [店主遠端遙控](Web-Owner-Remote.md) — 網頁端遠端領取收益、修改招牌名稱與升級店面。
-* 🛡️ [領地保護設定](Web-Claims-Management.md) — 網頁端設置好友的 Build、Break 等細部共建權限。
-* 🔒 [密碼箱白名單管理](Web-Password-Lock.md) — 遠端管理密碼箱白名單授權、變更密碼與註銷。
-* 🎁 [每日簽到與抽獎](Web-Welfare.md) — 網頁端簽到並消耗鑰匙參與福利抽獎。
-* 📬 [郵局快遞與個人背包](Web-Postal-Inventory.md) — 即時預覽背包格、發送快遞包裹與金幣電子匯款。
+### 🎮 遊戲玩法與指令指南
+- [📜 /menu 選單大廳指南](Mc-Menu-System.md) — 4x4 全功能視覺化選單大廳。
+- [🏪 箱子商店與全服市場](Mc-Shop-System.md) — 擺攤建立、全服市場搜尋與店主遙控。
+- [📦 虛擬快遞箱系統](Mc-Virtual-Express.md) — 線上與離線物品快遞寄送 (`/express`)。
+- [🔐 箱子密碼鎖保險箱](Mc-Lockbox-Gui.md) — 密碼鎖設定與保險箱管理 (`/padlock`)。
+- [🛡️ 領地保護與極致防爆](Mc-Claim-Entity-Protection.md) — 圈地劃分、爆炸與實體完全防護。
+- [⚔️ PvP 和平與戰鬥模式](Mc-Pvp-System.md) — 和平保護與雙向戰鬥切換 (`/pvp`)。
+- [🗺️ 野外定向尋寶雷達](Mc-Treasure-Hunt.md) — 100x100 網格寶藏與羅盤尋寶雷達 (`/treasure`)。
+- [🤝 玩家轉帳與傳送指令](Mc-Teleport-Commands.md) — 傳送請求 (`/tpa`)、金幣轉帳 (`/pay`) 與家園。
+- [🎰 每日簽到與轉盤抽獎](Mc-Hourly-Lottery.md) — 簽到領獎與 9x3 轉盤大抽獎。
+- [⚔️ 每日任務與全服懸賞](Mc-Task-System.md) — 每日任務與全服共同目標。
+- [🏭 機器認證與免領地費](Mc-Machine-Certification.md) — 自動化設施認證與免領地費。
+- [🤖 假人助手與背包看管](Mc-Fake-Player.md) — 假人召喚、掛機動作與背包管理。
+- [🎒 /invsee 背包查看管理](Mc-InvSee-System.md) — 玩家與假人背包實時檢視。
+- [👑 頭頂炫彩稱號系統](Mc-Custom-Titles.md) — 稱號解鎖與配戴切換 (`/title`)。
+- [💡 迎賓小提示列表](Mc-Welcome-Tips.md) — 伺服器實用技巧匯整。
+- [🛠️ 管理員權限與維護](Mc-Admin-Management.md) — 管理員指令與維護說明。
 
-### 🎮 2. Minecraft 遊戲指南
-* 📜 [/menu 54-槽位箱子選單 GUI](Mc-Menu-System.md) — 全功能視覺化箱子選單大廳（/menu、/m、/cd）。
-* ⚔️ [每日任務系統](Mc-Task-System.md) — 遊戲內擊殺與挖掘任務的玩法與領賞。
-* 🌐 [全服共同目標與每週懸賞](Mc-Global-Goal.md) — 全服玩家合作達成 100% 目標領取金幣與鑰匙。
-* 🎰 [整點幸運雨與錦鯉抽獎](Mc-Hourly-Lottery.md) — 每整點在線禮包與抽選幸運錦鯉。
-* 🗺️ [野外藏寶圖與地城寶箱](Mc-Treasure-Hunt.md) — 探險開箱獲得大獎與專屬稱號。
-* 🏭 [機器認證與免領地費](Mc-Machine-Certification.md) — 機器評級申請與 T2/T3 免領地費權益。
-* 🎖️ [頭頂炫彩稱號系統](Mc-Custom-Titles.md) — `/title` 選單、解鎖條件與佩戴切換。
-* 🔍 [/invsee 玩家與假人背包管理](Mc-InvSee-System.md) — 54 槽位雙向同步介面、假人與末影箱切換。
-* 🛡️ [領地生物與實體保護規範](Mc-Claim-Entity-Protection.md) — 領地內動物、村民、盔甲架傷害與互動攔截。
-* 🏪 [商店系統概覽](Mc-Shop-System.md) — 玩家基礎買賣操作與商店更名升級。
-* 🔨 [如何新增商店](Mc-Create-Shop.md) — 告示牌寫法規範與手持 `[this]` 自動建立技巧。
-* ❌ [如何刪除商店](Mc-Delete-Shop.md) — 手動敲除與店主面板註銷商店方法。
-* 🧭 [遊戲內傳送與 TP 指令](Mc-Teleport-Commands.md) — `/shop control`、`/home` 及 `/tpa` 等傳送快捷指令。
-* 🛠️ [管理員指令與權限](Mc-Admin-Management.md) — 管理員無限商店、重新載入與全局強拆維護指令。
-
-### 🤖 3. Discord 機器人連動
-* 🤖 [Discord 連動綁定](Discord-Integration.md) — 綁定 Minecraft 帳號、獲取每日簽到與大額營收成交廣播。
+### 💬 社群連動
+- [Discord 帳號綁定教學](Discord-Integration.md) — 帳號綁定與 Discord 機器人。
