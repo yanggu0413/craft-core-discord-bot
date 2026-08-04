@@ -25,64 +25,22 @@ echo -e "${GREEN}PM2 is available.${NC}"
 echo
 
 # 2. Stop existing processes
-echo -e "${YELLOW}[1/4] Stopping existing PM2 processes...${NC}"
+echo -e "${YELLOW}[1/2] Stopping existing PM2 processes...${NC}"
 pm2 delete craft-core-bot >/dev/null 2>&1
-pm2 delete craft-core-backend >/dev/null 2>&1
 # Clean up deprecated processes if any
+pm2 delete craft-core-backend >/dev/null 2>&1
 pm2 delete craft-core-frontend >/dev/null 2>&1
 pm2 delete craft-core-docs >/dev/null 2>&1
 echo "Stopped."
 echo
 
-# 3. Build Backend
-echo -e "${YELLOW}[2/4] Building Backend (TypeScript Compilation)...${NC}"
-cd web-dashboard/backend || exit 1
-npm run build
-if [ $? -ne 0 ]; then
-    echo -e "${RED}[ERROR] Backend build failed!${NC}"
-    exit 1
-fi
-cd ../..
-echo
-
-# 4. Build Frontend
-echo -e "${YELLOW}[3/4] Building Dashboard Frontend (Vite Production Build)...${NC}"
-cd web-dashboard/frontend || exit 1
-npm run build
-if [ $? -ne 0 ]; then
-    echo -e "${RED}[ERROR] Frontend build failed!${NC}"
-    exit 1
-fi
-cd ../..
-echo
-
-# Deploy Dashboard Frontend
-mkdir -p /var/www/craft-core/dashboard
-rm -rf /var/www/craft-core/dashboard/*
-cp -r web-dashboard/frontend/dist/* /var/www/craft-core/dashboard/
-
-# Also sync frontend build to /var/www/craft-core root for root fallback
-cp -r web-dashboard/frontend/dist/* /var/www/craft-core/ 2>/dev/null || true
-
-# Adjust permissions so caddy user can read them
-chown -R caddy:caddy /var/www/craft-core 2>/dev/null || true
-chmod -R 755 /var/www/craft-core 2>/dev/null || true
-
-# Reload Caddy to serve fresh static assets immediately
-systemctl reload caddy >/dev/null 2>&1 || systemctl restart caddy >/dev/null 2>&1 || true
-echo -e "${GREEN}Deployment & Caddy reload to /var/www/craft-core completed.${NC}"
-echo
-
-# 5. Start PM2 services
-echo -e "${YELLOW}[4/4] Starting PM2 Daemons...${NC}"
-echo "Starting Discord Bot..."
+# 3. Start PM2 services
+echo -e "${YELLOW}[2/2] Starting PM2 Daemons...${NC}"
+echo "Starting Discord Bot (WebSocket Server & SQLite Database)..."
 pm2 start src/index.js --name craft-core-bot --cwd discord-bot
-
-echo "Starting Web Dashboard Backend..."
-pm2 start dist/server.js --name craft-core-backend --cwd web-dashboard/backend
 echo
 
-# 6. Save PM2 processes for startup persistence
+# 4. Save PM2 processes for startup persistence
 echo -e "${GREEN}Saving PM2 process list for boot autostart persistence...${NC}"
 pm2 save
 echo
@@ -90,10 +48,8 @@ echo
 echo -e "${GREEN}===================================================${NC}"
 echo -e "${GREEN}   All production services are running under PM2!${NC}"
 echo
-echo -e "   * Portal Website: Hosted on Cloudflare Pages"
-echo -e "   * Wiki Docs: Hosted on Cloudflare Pages"
-echo -e "   * Dashboard Frontend: Served statically by Caddy"
-echo -e "   * Dashboard Backend & WebSocket: Managed by PM2"
+echo -e "   * Discord Bot & WebSocket Server: Managed by PM2 (craft-core-bot)"
+echo -e "   * SQLite Database: /root/craft-core/discord-bot/src/database/database.db"
 echo
 echo -e "   ${YELLOW}To enable Linux boot-up autostart:${NC}"
 echo -e "   Run the following command to generate the systemd startup script:"

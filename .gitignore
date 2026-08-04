@@ -21,8 +21,6 @@ db_*.db-wal
 **/.env
 **/.env.*
 discord-bot/config.json
-web-dashboard/backend/.env
-web-dashboard/frontend/.env
 **/*.db-shm
 **/*.db-wal
 
