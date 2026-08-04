@@ -17,18 +17,8 @@ public class RetentionCommands {
                     ServerPlayer player = context.getSource().getPlayer();
                     if (player == null) return 0;
 
-                    TreasureChestManager.TreasureLocation active = TreasureChestManager.getActiveTreasure();
-                    if (active == null || active.opened) {
-                        player.sendSystemMessage(Component.literal("§e目前野外沒有活躍的藏寶箱。下一波藏寶箱即將刷新！"));
-                    } else {
-                        int minX = (active.x / 300) * 300;
-                        int maxX = minX + 300;
-                        int minZ = (active.z / 300) * 300;
-                        int maxZ = minZ + 300;
-                        player.sendSystemMessage(Component.literal(
-                                String.format("§6[🗺 最新藏寶圖線索] 野外藏寶箱目前地位於大致區域: §eX: %d ~ %d, Z: %d ~ %d§6！快前去尋寶！", minX, maxX, minZ, maxZ)
-                        ));
-                    }
+                    String hint = TreasureChestManager.getTreasureRadarHint(player);
+                    player.sendSystemMessage(Component.literal(hint));
                     return 1;
                 })
         );

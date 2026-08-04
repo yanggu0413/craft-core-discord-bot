@@ -1041,18 +1041,12 @@ public class MenuGuiManager {
 
         container.setItem(22, createGuiItem(Items.GOLDEN_APPLE, "§e🌐 全服每週大目標 (/bounty)", goalLore));
 
-        TreasureChestManager.TreasureLocation active = TreasureChestManager.getActiveTreasure();
-        String treasureHint = "目前無活躍寶箱，即將刷新！";
-        if (active != null && !active.opened) {
-            int minX = (active.x / 300) * 300;
-            int minZ = (active.z / 300) * 300;
-            treasureHint = String.format("區塊: X: %d ~ %d, Z: %d ~ %d", minX, minX + 300, minZ, minZ + 300);
-        }
+        String treasureHint = TreasureChestManager.getTreasureRadarHint(player);
 
-        container.setItem(24, createGuiItem(Items.FILLED_MAP, "§6🗺 野外藏寶圖線索 (/treasure)", List.of(
-                "§7提示: " + treasureHint,
+        container.setItem(24, createGuiItem(Items.FILLED_MAP, "§6🗺 野外藏寶圖線索", List.of(
+                treasureHint,
                 "",
-                "§e[點擊執行 /treasure]"
+                "§e[點擊發送即時雷達線索]"
         )));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->

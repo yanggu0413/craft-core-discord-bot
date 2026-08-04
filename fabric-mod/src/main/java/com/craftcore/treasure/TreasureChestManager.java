@@ -98,13 +98,53 @@ public class TreasureChestManager {
 
         activeTreasure = new TreasureLocation("minecraft:overworld", randX, randY, randZ, displayUuid);
 
-        int minX = (randX / 300) * 300;
-        int maxX = minX + 300;
-        int minZ = (randZ / 300) * 300;
-        int maxZ = minZ + 300;
+        int minX = (randX / 100) * 100;
+        int maxX = minX + 100;
+        int minZ = (randZ / 100) * 100;
+        int maxZ = minZ + 100;
 
-        String hint = String.format("§6[藏寶廣播] 野外神秘寶箱已刷新！天空將升起金色粒子光柱，大致區域: §eX: %d ~ %d, Z: %d ~ %d§6，快前去搜尋！", minX, maxX, minZ, maxZ);
+        String hint = String.format("§6[藏寶廣播] 🗺️ 野外神秘寶箱已刷新！天空升起金色粒子光柱，縮小範圍: §eX: %d ~ %d, Z: %d ~ %d§6（輸入 /treasure 可開啟定向羅盤雷達！）", minX, maxX, minZ, maxZ);
         server.getPlayerList().broadcastSystemMessage(Component.literal(hint), false);
+    }
+
+    public static String getTreasureRadarHint(ServerPlayer player) {
+        if (activeTreasure == null || activeTreasure.opened) {
+            return "§e目前野外尚無活躍寶箱，等待刷新中...";
+        }
+        if (player == null) return "§7請於遊戲內查看";
+
+        if (!player.level().dimension().identifier().toString().equals(activeTreasure.dimension)) {
+            int minX = (activeTreasure.x / 100) * 100;
+            int minZ = (activeTreasure.z / 100) * 100;
+            return String.format("§6[🗺 藏寶圖] 寶藏位於主世界 Overworld: §eX: %d ~ %d, Z: %d ~ %d", minX, minX + 100, minZ, minZ + 100);
+        }
+
+        double dx = activeTreasure.x - player.getX();
+        double dz = activeTreasure.z - player.getZ();
+        double dist = Math.sqrt(dx * dx + dz * dz);
+
+        double angle = Math.toDegrees(Math.atan2(-dx, dz));
+        if (angle < 0) angle += 360;
+
+        String dirStr;
+        if (angle >= 337.5 || angle < 22.5) dirStr = "⬇ 正南";
+        else if (angle >= 22.5 && angle < 67.5) dirStr = "↙ 西南";
+        else if (angle >= 67.5 && angle < 112.5) dirStr = "⬅ 正西";
+        else if (angle >= 112.5 && angle < 157.5) dirStr = "↖ 西北";
+        else if (angle >= 157.5 && angle < 202.5) dirStr = "⬆ 正北";
+        else if (angle >= 202.5 && angle < 247.5) dirStr = "↗ 東北";
+        else if (angle >= 247.5 && angle < 292.5) dirStr = "➡ 正東";
+        else dirStr = "↘ 東南";
+
+        if (dist <= 35) {
+            return String.format("§d✨ [強烈熱感應！] 寶箱就在您 %s 方向僅 %d 公尺！(高度 Y: %d)", dirStr, (int) dist, activeTreasure.y);
+        } else if (dist <= 300) {
+            return String.format("§a🧭 [羅盤精確感應] 寶箱在您的 %s 方向，距離約 %d 公尺 (高度 Y: %d)", dirStr, (int) dist, activeTreasure.y);
+        } else {
+            int minX = (activeTreasure.x / 100) * 100;
+            int minZ = (activeTreasure.z / 100) * 100;
+            return String.format("§6[🗺 藏寶圖] 範圍: §eX: %d ~ %d, Z: %d ~ %d §6(%s 方向 %dm)", minX, minX + 100, minZ, minZ + 100, dirStr, (int) dist);
+        }
     }
 
     private static void cleanupActiveDisplay(ServerLevel level) {
@@ -157,12 +197,12 @@ public class TreasureChestManager {
                         double cx = treasure.x + 0.5;
                         double cz = treasure.z + 0.5;
                         int startY = treasure.y + 1;
-                        int endY = Math.min(treasure.y + 45, 310);
+                        int endY = Math.min(treasure.y + 60, 310);
 
-                        for (int y = startY; y <= endY; y += 2) {
-                            overworld.sendParticles(ParticleTypes.END_ROD, cx, y, cz, 1, 0.05, 0.1, 0.05, 0.01);
-                            if (y % 4 == 0) {
-                                overworld.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, cx, y, cz, 2, 0.1, 0.1, 0.1, 0.02);
+                        for (int y = startY; y <= endY; y += 1) {
+                            overworld.sendParticles(ParticleTypes.END_ROD, cx, y, cz, 2, 0.05, 0.05, 0.05, 0.01);
+                            if (y % 3 == 0) {
+                                overworld.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, cx, y, cz, 3, 0.15, 0.15, 0.15, 0.02);
                             }
                         }
                     }
