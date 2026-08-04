@@ -2,6 +2,7 @@
 .gradle/
 build/
 .gradle_home/
+LuckPerms/
 fabric-mod/net/
 fabric-mod/read_utf16.py
 
