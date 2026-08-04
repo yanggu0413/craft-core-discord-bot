@@ -184,12 +184,12 @@ function CustomLanguageSwitcher({ lang, setLang }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-1.5 border border-zinc-200/90 rounded-lg px-3 py-1.5 text-xs font-extrabold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 transition-all shadow-2xs cursor-pointer"
+        className="flex items-center space-x-1 sm:space-x-1.5 border border-zinc-200/90 rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-extrabold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 transition-all shadow-2xs cursor-pointer shrink-0"
         aria-expanded={isOpen}
       >
-        <Globe className="w-3.5 h-3.5 text-blue-600" />
+        <Globe className="w-3.5 h-3.5 text-blue-600 shrink-0" />
         <span>{currentLang.label}</span>
-        <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-zinc-400 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
@@ -295,7 +295,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-zinc-800">
+    <div className="min-h-screen flex flex-col bg-white text-zinc-800 overflow-x-hidden w-full">
       <Head>
         <title>{t.title}</title>
         <meta name="description" content={t.metaDesc} />
@@ -318,10 +318,10 @@ export default function Home() {
       {/* Navigation Header */}
       <header className="sticky top-0 z-40 w-full border-b border-zinc-200 bg-white/95 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <Image src="/favicon.png" alt="CRAFT-CORE Logo" width={32} height={32} priority className="w-8 h-8 object-contain" />
-            <span className="font-black text-xl tracking-wider text-blue-600">CRAFT-CORE</span>
-            <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded">{t.badgeSurvival}</span>
+          <div className="flex items-center space-x-1.5 sm:space-x-2.5 min-w-0">
+            <Image src="/favicon.png" alt="CRAFT-CORE Logo" width={32} height={32} priority className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0" />
+            <span className="font-black text-base sm:text-xl tracking-wider text-blue-600 truncate">CRAFT-CORE</span>
+            <span className="hidden sm:inline-block text-xs bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded shrink-0">{t.badgeSurvival}</span>
           </div>
 
           {/* Desktop Navigation */}
@@ -346,16 +346,16 @@ export default function Home() {
           </nav>
 
           {/* Mobile Menu & Language Selector */}
-          <div className="flex md:hidden items-center space-x-3">
+          <div className="flex md:hidden items-center space-x-1.5 sm:space-x-3 shrink-0">
             {/* Custom Language Switcher Dropdown for Mobile */}
             <CustomLanguageSwitcher lang={lang} setLang={setLang} />
 
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 text-zinc-600 hover:text-blue-600 hover:bg-zinc-100 rounded-lg transition-colors"
+              className="p-1.5 sm:p-2 text-zinc-600 hover:text-blue-600 hover:bg-zinc-100 rounded-lg transition-colors shrink-0"
               aria-label="切換導覽選單"
             >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMenuOpen ? <X className="w-5 h-5 sm:w-6 sm:h-6" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
             </button>
           </div>
         </div>
@@ -397,38 +397,38 @@ export default function Home() {
 
       {/* Hero Section */}
       <section 
-        className="relative w-full h-[520px] bg-cover bg-center flex flex-col items-center justify-center text-center px-4"
+        className="relative w-full min-h-[460px] sm:h-[520px] bg-cover bg-center flex flex-col items-center justify-center text-center px-4 py-10"
         style={{ backgroundImage: `url('/hero-bg.webp')` }}
       >
         <div className="absolute inset-0 bg-black/50 z-0"></div>
 
-        <div className="relative z-10 max-w-3xl text-white">
-          <div className="text-sm font-extrabold tracking-widest text-blue-400 uppercase mb-3">
+        <div className="relative z-10 w-full max-w-3xl text-white flex flex-col items-center">
+          <div className="text-[11px] sm:text-xs md:text-sm font-extrabold tracking-wider text-blue-400 uppercase mb-3 px-2 leading-relaxed max-w-full break-words">
             {t.heroSubtitle}
           </div>
-          <h1 className="text-6xl md:text-8xl font-black tracking-tight leading-none mb-6 drop-shadow-md">
+          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tight leading-tight mb-4 sm:mb-6 drop-shadow-md break-words max-w-full">
             {t.heroTitle}
           </h1>
-          <p className="text-base md:text-lg font-medium opacity-90 mb-8 max-w-xl mx-auto leading-relaxed">
+          <p className="text-xs sm:text-base md:text-lg font-medium opacity-90 mb-8 max-w-xl mx-auto leading-relaxed px-2">
             {t.heroDesc}
           </p>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full max-w-[280px] sm:max-w-none">
             <button
               onClick={() => copyToClipboard('mc.craft-core.xyz', setCopiedGeneral)}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-extrabold shadow-lg transition-colors flex items-center justify-center space-x-2.5 cursor-pointer"
+              className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-3.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-extrabold shadow-lg transition-colors flex items-center justify-center space-x-2 cursor-pointer"
             >
-              {copiedGeneral ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiedGeneral ? <Check className="w-4 h-4 shrink-0" /> : <Copy className="w-4 h-4 shrink-0" />}
               <span>{copiedGeneral ? t.copiedIpBtn : t.copyIpBtn}</span>
             </button>
             <a
               href="https://discord.gg/XJZZwG7jR4"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-sm font-extrabold backdrop-blur-sm transition-colors flex items-center justify-center space-x-2.5"
+              className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs sm:text-sm font-extrabold backdrop-blur-sm transition-colors flex items-center justify-center space-x-2"
             >
-              <MessageSquare className="w-4 h-4 text-blue-400" />
+              <MessageSquare className="w-4 h-4 text-blue-400 shrink-0" />
               <span>{t.joinDiscordBtn}</span>
             </a>
           </div>
