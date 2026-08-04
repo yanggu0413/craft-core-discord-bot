@@ -109,14 +109,14 @@ public class MachineManager {
         ServerPlayer ownerPlayer = server != null ? server.getPlayerList().getPlayerByName(entry.owner) : null;
 
         if ("T3".equalsIgnoreCase(tier)) {
-            TitleManager.unlockTitle(entry.owner, "§6[⚙ 首席工程師]");
+            TitleManager.unlockTitle(entry.owner, "§6[首席工程師]");
             if (ownerPlayer != null) {
-                ownerPlayer.sendSystemMessage(Component.literal("§6[Craft-Core] 恭喜！您的機器「" + entry.name + "」已通過 T3 最高認證，解鎖稱號 §6[⚙ 首席工程師] §6並獲得 100% 免領地維護費！"));
+                ownerPlayer.sendSystemMessage(Component.literal("§6[Craft-Core] 恭喜！您的機器「" + entry.name + "」已通過 T3 最高認證，解鎖稱號 §6[首席工程師] §6並獲得 100% 免領地維護費！"));
             }
         } else if ("T2".equalsIgnoreCase(tier)) {
-            TitleManager.unlockTitle(entry.owner, "§b[🏭 工業大亨]");
+            TitleManager.unlockTitle(entry.owner, "§b[工業大亨]");
             if (ownerPlayer != null) {
-                ownerPlayer.sendSystemMessage(Component.literal("§b[Craft-Core] 恭喜！您的機器「" + entry.name + "」已通過 T2 認證，解鎖稱號 §b[🏭 工業大亨] §b並獲得 100% 免領地維護費！"));
+                ownerPlayer.sendSystemMessage(Component.literal("§b[Craft-Core] 恭喜！您的機器「" + entry.name + "」已通過 T2 認證，解鎖稱號 §b[工業大亨] §b並獲得 100% 免領地維護費！"));
             }
         } else {
             if (ownerPlayer != null) {

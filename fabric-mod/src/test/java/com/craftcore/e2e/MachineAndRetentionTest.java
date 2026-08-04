@@ -15,17 +15,17 @@ public class MachineAndRetentionTest {
 
     @BeforeEach
     public void setup() {
-        TitleManager.unlockTitle("TestPlayer", "§6[⚙️ 首席工程師]");
+        TitleManager.unlockTitle("TestPlayer", "§6[首席工程師]");
     }
 
     @Test
     public void testTitleManager() {
         Set<String> unlocked = TitleManager.getUnlockedTitles("TestPlayer");
-        assertTrue(unlocked.contains("§6[⚙️ 首席工程師]"));
+        assertTrue(unlocked.contains("§6[首席工程師]"));
 
-        boolean setSuccess = TitleManager.setActiveTitle("TestPlayer", "§6[⚙️ 首席工程師]");
+        boolean setSuccess = TitleManager.setActiveTitle("TestPlayer", "§6[首席工程師]");
         assertTrue(setSuccess);
-        assertEquals("§6[⚙️ 首席工程師]", TitleManager.getActiveTitle("TestPlayer"));
+        assertEquals("§6[首席工程師]", TitleManager.getActiveTitle("TestPlayer"));
     }
 
     @Test

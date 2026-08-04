@@ -221,18 +221,18 @@ public class GlobalGoalManager {
                 com.craftcore.economy.EconomyManager.addMoney(user, 5000.0);
                 int k = com.craftcore.economy.EconomyManager.getLotteryKeys(user);
                 com.craftcore.economy.EconomyManager.setLotteryKeys(user, k + 5);
-                TitleManager.unlockTitle(user, "§c[⚔ 全服英雄]");
+                TitleManager.unlockTitle(user, "§c[全服英雄]");
                 server.getPlayerList().broadcastSystemMessage(
-                    Component.literal("§e👑 冠軍貢獻者 §f" + user + " §e貢獻了 " + count + " 個進度！榮獲 $5000 + 5 鑰匙 + 【⚔ 全服英雄】稱號！"), false
+                    Component.literal("§e👑 冠軍貢獻者 §f" + user + " §e貢獻了 " + count + " 個進度！榮獲 $5000 + 5 鑰匙 + 【全服英雄】稱號！"), false
                 );
             } else if (rank <= 3) {
                 // Top 2~3: $2,500 + 3 keys + Title
                 com.craftcore.economy.EconomyManager.addMoney(user, 2500.0);
                 int k = com.craftcore.economy.EconomyManager.getLotteryKeys(user);
                 com.craftcore.economy.EconomyManager.setLotteryKeys(user, k + 3);
-                TitleManager.unlockTitle(user, "§e[🛡 核心貢獻者]");
+                TitleManager.unlockTitle(user, "§e[核心貢獻者]");
                 server.getPlayerList().broadcastSystemMessage(
-                    Component.literal("§6🥈 核心貢獻者 (第" + rank + "名) §f" + user + " §6貢獻了 " + count + " 個進度！榮獲 $2500 + 3 鑰匙 + 【🛡 核心貢獻者】稱號！"), false
+                    Component.literal("§6🥈 核心貢獻者 (第" + rank + "名) §f" + user + " §6貢獻了 " + count + " 個進度！榮獲 $2500 + 3 鑰匙 + 【核心貢獻者】稱號！"), false
                 );
             } else if (count >= MIN_CONTRIBUTION_THRESHOLD) {
                 // Normal qualified: $1,000 + 2 keys

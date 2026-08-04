@@ -250,9 +250,9 @@ public class TreasureChestManager {
             int currentKeys = com.craftcore.economy.EconomyManager.getLotteryKeys(playerName);
             com.craftcore.economy.EconomyManager.setLotteryKeys(playerName, currentKeys + 3);
             com.craftcore.economy.EconomyManager.addMoney(playerName, 1000.0);
-            TitleManager.unlockTitle(playerName, "§6[🗺 尋寶獵人]");
+            TitleManager.unlockTitle(playerName, "§6[尋寶獵人]");
 
-            String msg = String.format("§a🎉 [全服通告] 玩家 §e%s §a成功找到了野外藏寶箱！獲得 §d$1000 元金幣 + 3 把幸運鑰匙 §a並解鎖稱號 §6[🗺 尋寶獵人]§a！", playerName);
+            String msg = String.format("§a🎉 [全服通告] 玩家 §e%s §a成功找到了野外藏寶箱！獲得 §d$1000 元金幣 + 3 把幸運鑰匙 §a並解鎖稱號 §6[尋寶獵人]§a！", playerName);
             MinecraftServer srv = player.level().getServer();
             if (srv != null) {
                 srv.getPlayerList().broadcastSystemMessage(Component.literal(msg), false);
