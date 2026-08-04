@@ -278,7 +278,7 @@ export default function Home() {
                   }`}></span>
                 </span>
                 <span className="text-xl font-black tracking-tight">
-                  伺服器狀態：{serverStatus.loading ? '正在連線中...' : (serverStatus.online ? '正常 (Online)' : '關閉 (Offline)')}
+                  伺服器狀態：{serverStatus.loading ? '正在連線中...' : (serverStatus.online ? '正常' : '關閉')}
                 </span>
               </div>
 
@@ -333,7 +333,7 @@ export default function Home() {
             <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-8 text-left flex flex-col justify-between">
               <div>
                 <div className="flex items-center space-x-2 text-blue-600 mb-3">
-                  <span className="text-xs font-extrabold bg-blue-100 px-2.5 py-1 rounded">Java 版 (PC)</span>
+                  <span className="text-xs font-extrabold bg-blue-100 px-2.5 py-1 rounded">Java 版</span>
                 </div>
                 <p className="text-sm text-zinc-600 mb-8 leading-relaxed">
                   支援原版 Java 客戶端。採用 Fabric 框架架設，效能出眾。<strong className="text-blue-600 font-bold block mt-2">注意：支援 1.20 至 26.2 版本連入！</strong>
@@ -361,7 +361,7 @@ export default function Home() {
             <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-8 text-left flex flex-col justify-between">
               <div>
                 <div className="flex items-center space-x-2 text-blue-600 mb-3">
-                  <span className="text-xs font-extrabold bg-blue-100 px-2.5 py-1 rounded">基岩版 (BE)</span>
+                  <span className="text-xs font-extrabold bg-blue-100 px-2.5 py-1 rounded">基岩版</span>
                 </div>
                 <p className="text-sm text-zinc-600 mb-8 leading-relaxed">
                   支援手機、平板及 Win10 基岩版連入，請手動新增伺服器並指定端口進入。
