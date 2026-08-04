@@ -21,6 +21,7 @@ public class ModCommands {
             ExpressCommand.register(dispatcher);
             PvpCommand.register(dispatcher);
             HelpCommand.register(dispatcher);
+            CheckCommand.register(dispatcher);
         });
     }
 }

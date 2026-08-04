@@ -148,7 +148,7 @@ public class MenuGuiManager {
         fillBackground(container);
 
         // =========================================================
-        // Row 2: 核心功能 [Col 2, 4, 6, 8] -> Slots 10, 12, 14, 16
+        // 【直排 1】 (Col 2 -> Slots 10, 19, 28, 37): 🏛️ 核心經濟與交易
         // =========================================================
         container.setItem(10, createGuiItem(Items.EMERALD_BLOCK, "§a🏪 商店管理系統", List.of(
                 "§7查看個人箱子商店、擺攤與市場行情",
@@ -156,6 +156,29 @@ public class MenuGuiManager {
                 "§e[點擊開啟商店系統]"
         )));
 
+        container.setItem(19, createGuiItem(Items.PAPER, "§e📜 銀行支票中心", List.of(
+                "§7開立與兌現實體紙張支票",
+                "§7可交易、贈送或經由漏斗傳輸",
+                "",
+                "§e[點擊開啟支票中心 GUI]"
+        )));
+
+        container.setItem(28, createGuiItem(Items.CHEST, "§e📦 虛擬快遞箱", List.of(
+                "§7寄送跨服/離線物品包裹",
+                "§7接收玩家寄送物資與查看歷史紀錄",
+                "",
+                "§e[點擊開啟快遞箱選單]"
+        )));
+
+        container.setItem(37, createGuiItem(Items.HOPPER, "§c🗑 隨身垃圾桶", List.of(
+                "§7開啟 10 秒自動銷毀隨身垃圾桶",
+                "",
+                "§e[點擊開啟垃圾桶]"
+        )));
+
+        // =========================================================
+        // 【直排 2】 (Col 4 -> Slots 12, 21, 30, 39): 🧭 傳送與領地保全
+        // =========================================================
         container.setItem(12, createGuiItem(Items.COMPASS, "§e🧭 傳送與家園", List.of(
                 "§7傳送至個人家點、公共地標",
                 "§7隨機傳送與返回死亡地點",
@@ -163,37 +186,19 @@ public class MenuGuiManager {
                 "§e[點擊開啟傳送子選單]"
         )));
 
-        container.setItem(14, createGuiItem(Items.GRASS_BLOCK, "§b🛡 領地與密碼箱", List.of(
+        container.setItem(21, createGuiItem(Items.GRASS_BLOCK, "§b🛡 領地與密碼箱", List.of(
                 "§7管理個人領地、獲取圈地神杖",
                 "§7以及密碼鎖保險箱設定",
                 "",
                 "§e[點擊開啟領地子選單]"
         )));
 
-        container.setItem(16, createGuiItem(Items.CHEST, "§e📦 虛擬快遞箱", List.of(
-                "§7寄送跨服/離線物品包裹",
-                "§7接收玩家寄送物資與查看歷史紀錄",
-                "",
-                "§e[點擊開啟快遞箱選單]"
-        )));
-
-        // =========================================================
-        // Row 3: 社交與金流 [Col 2, 4, 6, 8] -> Slots 19, 21, 23, 25
-        // =========================================================
-        container.setItem(19, createGuiItem(Items.ENDER_PEARL, "§6🤝 玩家傳送請求", List.of(
+        container.setItem(30, createGuiItem(Items.ENDER_PEARL, "§6🤝 玩家傳送請求", List.of(
                 "§7點擊開啟線上玩家頭顱列表",
                 "§7發送對點傳送請求至目標玩家",
                 "§7受請求玩家可在聊天欄點擊 [接受]/[拒絕]",
                 "",
                 "§e[點擊開啟 TPA 選擇器]"
-        )));
-
-        container.setItem(21, createGuiItem(Items.GOLD_INGOT, "§6💸 玩家安全轉帳", List.of(
-                "§7點擊開啟線上玩家頭顱列表",
-                "§7選取玩家後在聊天欄輸入欲轉帳金額",
-                "§7系統將彈出確認點擊按鈕，點擊後才扣款",
-                "",
-                "§e[點擊開啟轉帳選擇器]"
         )));
 
         boolean pvpEnabled = com.craftcore.pvp.PvpManager.isPvpEnabled(player.getName().getString());
@@ -206,26 +211,19 @@ public class MenuGuiManager {
                 "",
                 "§e[點擊切換 PvP 狀態]"
         );
-        container.setItem(23, createGuiItem(pvpItem, pvpTitle, pvpLore));
-
-        container.setItem(25, createGuiItem(Items.DISPENSER, "§6💬 官方 Discord 社群", List.of(
-                "§7點擊開啟 Discord 社群與帳號綁定選單",
-                "§7獲取社群邀請連結或生成 6 位數綁定碼",
-                "",
-                "§e[點擊開啟 Discord 選單]"
-        )));
+        container.setItem(39, createGuiItem(pvpItem, pvpTitle, pvpLore));
 
         // =========================================================
-        // Row 4: 活動與統計 [Col 2, 4, 6, 8] -> Slots 28, 30, 32, 34
+        // 【直排 3】 (Col 6 -> Slots 14, 23, 32, 41): 🎰 社群與福利活動
         // =========================================================
-        container.setItem(28, createGuiItem(Items.NETHER_STAR, "§d🎰 福利中心", List.of(
+        container.setItem(14, createGuiItem(Items.NETHER_STAR, "§d🎰 福利中心", List.of(
                 "§7每日簽到、在線時數兌換鑰匙",
                 "§7幸運 9x3 轉盤抽獎與炫彩稱號",
                 "",
                 "§e[點擊開啟福利中心 GUI]"
         )));
 
-        container.setItem(30, createGuiItem(Items.DIAMOND_SWORD, "§c⚔ 任務與懸賞", List.of(
+        container.setItem(23, createGuiItem(Items.DIAMOND_SWORD, "§c⚔ 任務與懸賞", List.of(
                 "§7查看每日任務、全服大目標",
                 "§7與野外藏寶圖線索",
                 "",
@@ -239,25 +237,32 @@ public class MenuGuiManager {
                 "§e[點擊開啟排行榜 GUI]"
         )));
 
-        container.setItem(34, createGuiItem(Items.REDSTONE_BLOCK, "§6🏭 機器認證與免領地費", List.of(
-                "§7提交自動化機器認證申請",
-                "§7查看已通過認證之 T2/T3 免領地費機器",
+        container.setItem(41, createGuiItem(Items.DISPENSER, "§6💬 官方 Discord 社群", List.of(
+                "§7點擊開啟 Discord 社群與帳號綁定選單",
+                "§7獲取社群邀請連結或生成 6 位數綁定碼",
                 "",
-                "§e[點擊開啟機器認證子選單]"
+                "§e[點擊開啟 Discord 選單]"
         )));
 
         // =========================================================
-        // Row 5: 輔助工具與 OP 控制台 [Col 3, 5, 7] -> Slots 38, 40, 42
+        // 【直排 4】 (Col 8 -> Slots 16, 25, 34, 43): 🤖 機器與工具控制
         // =========================================================
-        container.setItem(38, createGuiItem(Items.ARMOR_STAND, "§f🤖 假人 (Bot) 控制台", List.of(
+        container.setItem(16, createGuiItem(Items.ARMOR_STAND, "§f🤖 假人 (Bot) 控制台", List.of(
                 "§7一鍵召喚/解散假人、切換掛機動作",
                 "§7與一鍵查看假人背包",
                 "",
                 "§e[點擊開啟假人子選單]"
         )));
 
+        container.setItem(25, createGuiItem(Items.REDSTONE_BLOCK, "§6🏭 機器認證與免領地費", List.of(
+                "§7提交自動化機器認證申請",
+                "§7查看已通過認證之 T2/T3 免領地費機器",
+                "",
+                "§e[點擊開啟機器認證子選單]"
+        )));
+
         if (isOp) {
-            container.setItem(40, createGuiItem(Items.BEACON, "§4🛠 管理員 (OP) 控制台", List.of(
+            container.setItem(34, createGuiItem(Items.BEACON, "§4🛠 管理員 (OP) 控制台", List.of(
                     "§c[OP 專屬權限]",
                     "§7全服玩家/假人背包與末影箱監看",
                     "§7機器認證審核、7z 地圖手動備份",
@@ -265,17 +270,17 @@ public class MenuGuiManager {
                     "§e[點擊開啟管理員主控台]"
             )));
         } else {
-            container.setItem(40, createGuiItem(Items.HOPPER, "§c🗑 隨身垃圾桶", List.of(
-                    "§7開啟 10 秒自動銷毀隨身垃圾桶",
+            container.setItem(34, createGuiItem(Items.BOOK, "§e📖 伺服器指南說明", List.of(
+                    "§7獲取全服功能、指令與領地保護教學",
                     "",
-                    "§e[點擊開啟垃圾桶]"
+                    "§e[點擊顯示線上文件網址]"
             )));
         }
 
-        container.setItem(42, createGuiItem(Items.HOPPER, "§c🗑 隨身垃圾桶", List.of(
-                "§7開啟 10 秒自動銷毀隨身垃圾桶",
+        container.setItem(43, createGuiItem(Items.BOOK, "§e📖 伺服器指南說明", List.of(
+                "§7點擊獲取線上玩家社群說明文件連結",
                 "",
-                "§e[點擊開啟垃圾桶]"
+                "§e[點擊前往 https://docs.craft-core.xyz]"
         )));
 
         // Row 6 (Slot 49): ❌ 關閉選單 (Col 5)
@@ -287,27 +292,37 @@ public class MenuGuiManager {
                     public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             MinecraftServer server = sp.level().getServer();
+                            // Col 1
                             if (slotId == 10) openShopMenu(sp);
-                            else if (slotId == 12) openTeleportMenu(sp);
-                            else if (slotId == 14) openClaimMenu(sp);
-                            else if (slotId == 16) com.craftcore.express.ExpressGuiManager.openExpressMainMenu(sp);
-                            else if (slotId == 19) openTpaPlayerSelectorMenu(sp);
-                            else if (slotId == 21) openPayPlayerSelectorMenu(sp);
-                            else if (slotId == 23) {
-                                com.craftcore.pvp.PvpManager.togglePvp(sp);
-                                openMainMenu(sp);
-                            }
-                            else if (slotId == 25) openDiscordMenu(sp);
-                            else if (slotId == 28) openWelfareCenterMenu(sp);
-                            else if (slotId == 30) openTaskBountyMenu(sp);
-                            else if (slotId == 32) openLeaderboardMenu(sp, "wealth");
-                            else if (slotId == 34) openMachineMenu(sp);
-                            else if (slotId == 38) openFakePlayerMenu(sp);
-                            else if (slotId == 40 && isOp) openAdminMenu(sp);
-                            else if (slotId == 40 || slotId == 42) {
+                            else if (slotId == 19) com.craftcore.check.CheckManager.openCheckMenu(sp);
+                            else if (slotId == 28) com.craftcore.express.ExpressGuiManager.openExpressMainMenu(sp);
+                            else if (slotId == 37) {
                                 if (server != null) {
                                     sp.closeContainer();
                                     server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "wastebin");
+                                }
+                            }
+                            // Col 2
+                            else if (slotId == 12) openTeleportMenu(sp);
+                            else if (slotId == 21) openClaimMenu(sp);
+                            else if (slotId == 30) openTpaPlayerSelectorMenu(sp);
+                            else if (slotId == 39) {
+                                com.craftcore.pvp.PvpManager.togglePvp(sp);
+                                openMainMenu(sp);
+                            }
+                            // Col 3
+                            else if (slotId == 14) openWelfareCenterMenu(sp);
+                            else if (slotId == 23) openTaskBountyMenu(sp);
+                            else if (slotId == 32) openLeaderboardMenu(sp, "wealth");
+                            else if (slotId == 41) openDiscordMenu(sp);
+                            // Col 4
+                            else if (slotId == 16) openFakePlayerMenu(sp);
+                            else if (slotId == 25) openMachineMenu(sp);
+                            else if (slotId == 34 && isOp) openAdminMenu(sp);
+                            else if (slotId == 34 || slotId == 43) {
+                                if (server != null) {
+                                    sp.closeContainer();
+                                    server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "help");
                                 }
                             }
                             else if (slotId == 49) sp.closeContainer();

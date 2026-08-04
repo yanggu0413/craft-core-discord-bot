@@ -25,6 +25,7 @@ export default defineConfig({
         items: [
           { text: '/menu 選單大廳指南', link: '/Mc-Menu-System' },
           { text: '箱子商店與全服市場', link: '/Mc-Shop-System' },
+          { text: '實體銀行支票系統', link: '/Mc-Cheque-System' },
           { text: '虛擬快遞箱系統', link: '/Mc-Virtual-Express' },
           { text: '箱子密碼鎖保險箱', link: '/Mc-Lockbox-Gui' },
           { text: '領地保護與極致防爆', link: '/Mc-Claim-Entity-Protection' },

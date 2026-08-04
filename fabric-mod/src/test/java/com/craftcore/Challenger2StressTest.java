@@ -24,7 +24,7 @@ public class Challenger2StressTest {
 
     @BeforeEach
     public void setUp() {
-        EconomyManager.setConfigPath(tempDir.resolve("economy_stress.json"));
+        EconomyManager.setConfigPath(tempDir.resolve("economy_stress_" + System.nanoTime() + ".json"));
         EconomyManager.clearAll();
         com.craftcore.util.AsyncSaveExecutor.flush();
     }
