@@ -20,6 +20,7 @@ public class ModCommands {
             MenuCommand.register(dispatcher);
             ExpressCommand.register(dispatcher);
             PvpCommand.register(dispatcher);
+            HelpCommand.register(dispatcher);
         });
     }
 }

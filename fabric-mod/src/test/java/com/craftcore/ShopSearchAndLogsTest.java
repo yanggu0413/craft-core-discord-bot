@@ -21,8 +21,9 @@ public class ShopSearchAndLogsTest {
 
     @BeforeEach
     public void setUp() {
-        ShopManager.setConfigPath(tempDir.resolve("shops.json"));
+        ShopManager.setConfigPath(tempDir.resolve("shops_" + System.nanoTime() + ".json"));
         ShopManager.clearAll();
+        com.craftcore.util.AsyncSaveExecutor.flush();
     }
 
     @Test
@@ -96,6 +97,8 @@ public class ShopSearchAndLogsTest {
 
     @Test
     public void testTransactionLogCapacityLimiting() {
+        ShopManager.setConfigPath(tempDir.resolve("shops_capacity.json"));
+        ShopManager.clearAll();
         String merchant = "merchant1";
         for (int i = 1; i <= 25; i++) {
             ShopManager.TransactionLog log = new ShopManager.TransactionLog(
