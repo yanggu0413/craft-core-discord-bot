@@ -21,6 +21,15 @@ public class RetentionCommands {
                     player.sendSystemMessage(Component.literal(hint));
                     return 1;
                 })
+                .then(Commands.literal("spawn")
+                        .requires(source -> !source.isPlayer() || source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
+                        .executes(context -> {
+                            net.minecraft.server.MinecraftServer server = context.getSource().getServer();
+                            TreasureChestManager.spawnWildernessTreasure(server);
+                            context.getSource().sendSystemMessage(Component.literal("§b[Craft-Core] §a已手動清除舊寶箱並於地表成功生成全新的野外藏寶箱！"));
+                            return 1;
+                        })
+                )
         );
 
         // /bounty

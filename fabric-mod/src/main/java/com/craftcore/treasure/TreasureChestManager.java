@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
@@ -56,29 +57,77 @@ public class TreasureChestManager {
         ServerLevel overworld = server.getLevel(ServerLevel.OVERWORLD);
         if (overworld == null) return;
 
-        // Clean up old active display entity if any
-        cleanupActiveDisplay(overworld);
+        // Clean up old active display entity and un-opened chest block if any
+        cleanupActiveTreasureBlockAndDisplay(overworld);
 
-        int randX = (random.nextInt(1000) + 500) * (random.nextBoolean() ? 1 : -1);
-        int randZ = (random.nextInt(1000) + 500) * (random.nextBoolean() ? 1 : -1);
+        int randX = 0;
+        int randZ = 0;
+        int randY = 0;
+        BlockPos surfacePos = null;
 
-        // Check claim collision
-        if (ClaimManager.getClaimAt(new BlockPos(randX, 0, randZ), overworld) != null) {
-            randX += 300;
-            randZ += 300;
+        // Try up to 15 random coordinates to find a clean, safe surface spot
+        for (int attempt = 0; attempt < 15; attempt++) {
+            int tx = (random.nextInt(1200) + 400) * (random.nextBoolean() ? 1 : -1);
+            int tz = (random.nextInt(1200) + 400) * (random.nextBoolean() ? 1 : -1);
+
+            if (ClaimManager.getClaimAt(new BlockPos(tx, 64, tz), overworld) != null) {
+                continue;
+            }
+
+            // Force load/generate chunk so heightmaps & block states are valid
+            overworld.getChunk(new BlockPos(tx, 64, tz));
+
+            // Scan from top world height (Y = 310) down to Y = 60 for topmost solid ground
+            int foundY = -1;
+            for (int y = 310; y >= 60; y--) {
+                BlockPos checkPos = new BlockPos(tx, y, tz);
+                var state = overworld.getBlockState(checkPos);
+
+                // Ignore air, bedrock, barriers, and leaves tag
+                if (!state.isAir() && !state.is(Blocks.BEDROCK) && !state.is(Blocks.BARRIER) && !state.is(BlockTags.LEAVES)) {
+                    foundY = y;
+                    break;
+                }
+            }
+
+            if (foundY >= 60) {
+                randX = tx;
+                randZ = tz;
+
+                // Handle liquids (water/lava): place a solid mossy cobblestone block underneath
+                BlockPos groundPos = new BlockPos(randX, foundY, randZ);
+                var groundState = overworld.getBlockState(groundPos);
+                if (groundState.is(Blocks.WATER) || groundState.is(Blocks.LAVA)
+                        || groundState.is(Blocks.SEAGRASS) || groundState.is(Blocks.TALL_SEAGRASS)
+                        || groundState.is(Blocks.KELP) || groundState.is(Blocks.KELP_PLANT)) {
+                    overworld.setBlock(groundPos, Blocks.MOSSY_COBBLESTONE.defaultBlockState(), 3);
+                }
+
+                randY = foundY + 1;
+                surfacePos = new BlockPos(randX, randY, randZ);
+                break;
+            }
         }
 
-        int randY = overworld.getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, new BlockPos(randX, 0, randZ)).getY();
-        BlockPos chestPos = new BlockPos(randX, randY, randZ);
+        // Safe fallback if loop failed to find ground
+        if (surfacePos == null) {
+            randX = 500;
+            randZ = 500;
+            randY = 71;
+            overworld.getChunk(new BlockPos(randX, 64, randZ));
+            overworld.setBlock(new BlockPos(randX, 70, randZ), Blocks.GRASS_BLOCK.defaultBlockState(), 3);
+            surfacePos = new BlockPos(randX, randY, randZ);
+        }
 
-        overworld.setBlock(chestPos, Blocks.CHEST.defaultBlockState(), 3);
-        if (overworld.getBlockEntity(chestPos) instanceof ChestBlockEntity chest) {
+        // Place Chest on surface
+        overworld.setBlock(surfacePos, Blocks.CHEST.defaultBlockState(), 3);
+        if (overworld.getBlockEntity(surfacePos) instanceof ChestBlockEntity chest) {
             chest.setItem(11, new ItemStack(Items.DIAMOND, 5));
             chest.setItem(13, new ItemStack(Items.GOLDEN_APPLE, 3));
             chest.setItem(15, new ItemStack(Items.EMERALD, 16));
         }
 
-        // Spawn Text Display Hologram
+        // Spawn Text Display Hologram above chest
         UUID displayUuid = null;
         try {
             @SuppressWarnings("unchecked")
@@ -103,7 +152,7 @@ public class TreasureChestManager {
         int minZ = (randZ / 100) * 100;
         int maxZ = minZ + 100;
 
-        String hint = String.format("§6[藏寶廣播] 🗺️ 野外神秘寶箱已刷新！天空升起金色粒子光柱，縮小範圍: §eX: %d ~ %d, Z: %d ~ %d§6（輸入 /treasure 可開啟定向羅盤雷達！）", minX, maxX, minZ, maxZ);
+        String hint = String.format("§6[藏寶廣播] 🗺️ 野外神秘寶箱已刷新於地表！天空升起金色粒子光柱，縮小範圍: §eX: %d ~ %d, Z: %d ~ %d §6(Y: %d)（輸入 /treasure 可開啟定向羅盤雷達！）", minX, maxX, minZ, maxZ, randY);
         server.getPlayerList().broadcastSystemMessage(Component.literal(hint), false);
     }
 
@@ -116,7 +165,7 @@ public class TreasureChestManager {
         if (!player.level().dimension().identifier().toString().equals(activeTreasure.dimension)) {
             int minX = (activeTreasure.x / 100) * 100;
             int minZ = (activeTreasure.z / 100) * 100;
-            return String.format("§6[🗺 藏寶圖] 寶藏位於主世界 Overworld: §eX: %d ~ %d, Z: %d ~ %d", minX, minX + 100, minZ, minZ + 100);
+            return String.format("§6[🗺 藏寶圖] 寶藏位於主世界 Overworld 地表: §eX: %d ~ %d, Z: %d ~ %d (高度 Y: %d)", minX, minX + 100, minZ, minZ + 100, activeTreasure.y);
         }
 
         double dx = activeTreasure.x - player.getX();
@@ -137,13 +186,13 @@ public class TreasureChestManager {
         else dirStr = "↘ 東南";
 
         if (dist <= 35) {
-            return String.format("§d✨ [強烈熱感應！] 寶箱就在您 %s 方向僅 %d 公尺！(高度 Y: %d)", dirStr, (int) dist, activeTreasure.y);
+            return String.format("§d✨ [強烈熱感應！] 寶箱就在您 %s 方向僅 %d 公尺地表！(高度 Y: %d)", dirStr, (int) dist, activeTreasure.y);
         } else if (dist <= 300) {
-            return String.format("§a🧭 [羅盤精確感應] 寶箱在您的 %s 方向，距離約 %d 公尺 (高度 Y: %d)", dirStr, (int) dist, activeTreasure.y);
+            return String.format("§a🧭 [羅盤精確感應] 寶箱在您的 %s 方向地表，距離約 %d 公尺 (高度 Y: %d)", dirStr, (int) dist, activeTreasure.y);
         } else {
             int minX = (activeTreasure.x / 100) * 100;
             int minZ = (activeTreasure.z / 100) * 100;
-            return String.format("§6[🗺 藏寶圖] 範圍: §eX: %d ~ %d, Z: %d ~ %d §6(%s 方向 %dm)", minX, minX + 100, minZ, minZ + 100, dirStr, (int) dist);
+            return String.format("§6[🗺 藏寶圖] 範圍: §eX: %d ~ %d, Z: %d ~ %d §6(%s 方向 %dm, 地表 Y: %d)", minX, minX + 100, minZ, minZ + 100, dirStr, (int) dist, activeTreasure.y);
         }
     }
 
@@ -155,6 +204,18 @@ public class TreasureChestManager {
                     entity.discard();
                 }
             } catch (Throwable ignored) {}
+        }
+    }
+
+    private static void cleanupActiveTreasureBlockAndDisplay(ServerLevel level) {
+        if (activeTreasure != null && level != null) {
+            if (!activeTreasure.opened) {
+                BlockPos oldPos = new BlockPos(activeTreasure.x, activeTreasure.y, activeTreasure.z);
+                if (level.getBlockState(oldPos).is(Blocks.CHEST)) {
+                    level.setBlock(oldPos, Blocks.AIR.defaultBlockState(), 3);
+                }
+            }
+            cleanupActiveDisplay(level);
         }
     }
 
