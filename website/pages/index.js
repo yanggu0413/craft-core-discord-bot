@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useState } from 'react';
-import { BookOpen, BarChart3, Copy, Check, ExternalLink, ShieldCheck, Mail, Sparkles, Server, MessageSquare, Play, HelpCircle, ClipboardList, Menu, X, Cpu } from 'lucide-react';
+import { BookOpen, Copy, Check, ShieldCheck, Mail, Sparkles, Server, MessageSquare, ClipboardList, Menu, X, Cpu, Compass, Banknote, Trophy, Gift } from 'lucide-react';
 
 export default function Home() {
   const [copiedJava, setCopiedJava] = useState(false);
@@ -27,7 +27,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-white text-zinc-800">
       <Head>
         <title>Craft-Core 原味生存｜Minecraft 伺服器｜高效能主機穩定營運</title>
-        <meta name="description" content="歡迎加入 Craft-Core Minecraft 原味生存伺服器！本伺服器支援 Java 版 (1.20 至 26.2) 與基岩最新版雙端互通連入。內含自主研發的箱子商店經濟系統、安全密碼箱、領地保護、每日任務與富豪排行榜，快來體驗最純粹的麥塊生存冒險！" />
+        <meta name="description" content="歡迎加入 Craft-Core Minecraft 原味生存伺服器！支援 Java 版 (1.20 至 26.2) 與基岩版雙端連入。內含箱子商店市場、實體銀行支票、野外定向尋寶、福利中心轉盤抽獎、領地極致防爆與全服排行榜！" />
         <meta name="keywords" content="Minecraft 伺服器, Minecraft 生存伺服器, 麥塊伺服器, 原味生存伺服器, 雙端互通伺服器, Java 基岩互通, Craft-Core, 麥塊生存, i7-13700" />
         <link rel="icon" href="/favicon.png" />
         <link rel="preload" href="/favicon.png" as="image" />
@@ -41,14 +41,11 @@ export default function Home() {
             <span className="font-black text-xl tracking-wider text-blue-600">CRAFT-CORE</span>
             <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded">原味生存</span>
           </div>
- 
+
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             <a href="https://docs.craft-core.xyz" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-zinc-600 hover:text-blue-600 transition-colors">
               官方維基
-            </a>
-            <a href="https://dash.craft-core.xyz" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-zinc-600 hover:text-blue-600 transition-colors">
-              玩家面板
             </a>
             <a href="https://discord.gg/XJZZwG7jR4" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-zinc-600 hover:text-blue-600 transition-colors">
               Discord
@@ -61,7 +58,7 @@ export default function Home() {
               立即加入
             </a>
           </nav>
- 
+
           {/* Mobile Menu Button */}
           <button 
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -71,7 +68,7 @@ export default function Home() {
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
- 
+
         {/* Mobile Menu Dropdown */}
         {isMenuOpen && (
           <div className="md:hidden border-b border-zinc-200 bg-white px-4 py-4 space-y-4 flex flex-col shadow-inner">
@@ -83,15 +80,6 @@ export default function Home() {
               className="text-sm font-bold text-zinc-600 hover:text-blue-600 transition-colors py-2 border-b border-zinc-100"
             >
               官方維基
-            </a>
-            <a 
-              href="https://dash.craft-core.xyz" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              onClick={() => setIsMenuOpen(false)}
-              className="text-sm font-bold text-zinc-600 hover:text-blue-600 transition-colors py-2 border-b border-zinc-100"
-            >
-              玩家面板
             </a>
             <a 
               href="https://discord.gg/XJZZwG7jR4" 
@@ -116,13 +104,12 @@ export default function Home() {
         )}
       </header>
 
-      {/* Hero Section with Custom Generated Background */}
+      {/* Hero Section */}
       <section 
-        className="relative w-full h-[540px] bg-cover bg-center flex flex-col items-center justify-center text-center px-4"
+        className="relative w-full h-[520px] bg-cover bg-center flex flex-col items-center justify-center text-center px-4"
         style={{ backgroundImage: `url('/hero-bg.jpg')` }}
       >
-        {/* Dark overlay mask for clean contrast */}
-        <div className="absolute inset-0 bg-black/45 z-0"></div>
+        <div className="absolute inset-0 bg-black/50 z-0"></div>
 
         <div className="relative z-10 max-w-3xl text-white">
           <div className="text-sm font-extrabold tracking-widest text-blue-400 uppercase mb-3">
@@ -132,7 +119,7 @@ export default function Home() {
             CRAFT-CORE
           </h1>
           <p className="text-base md:text-lg font-medium opacity-90 mb-8 max-w-xl mx-auto leading-relaxed">
-            一個很單純又簡單（？）的 MC 生存伺服器
+            最純粹的原味生存冒險 ‧ 豐富的視覺化選單與社群互動
           </p>
 
           {/* Action Buttons */}
@@ -158,76 +145,89 @@ export default function Home() {
       </section>
 
       {/* Main Content Area */}
-      <main className="max-w-4xl w-full mx-auto px-4 py-20 flex flex-col items-center">
+      <main className="max-w-4xl w-full mx-auto px-4 py-16 flex flex-col items-center">
         
-        {/* Features list (Taiwanese Server Style) */}
-        <section className="w-full max-w-2xl space-y-16 text-center mb-24">
-          
-          <div className="space-y-4">
-            <div className="flex justify-center text-blue-600">
-              <Server className="w-8 h-8" />
-            </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">自主研發經濟和商店系統</h2>
-            <p className="text-sm md:text-base text-zinc-600 max-w-lg mx-auto leading-relaxed">
-              享受最純粹的生存冒險，配合交易系統，讓你遊玩不無聊！
-            </p>
-          </div>
- 
-          <div className="space-y-4">
-            <div className="flex justify-center text-blue-600">
-              <ClipboardList className="w-8 h-8" />
-            </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">每日任務與生存挑戰</h2>
-            <p className="text-sm md:text-base text-zinc-600 max-w-lg mx-auto leading-relaxed">
-              在探索世界與建造的同時完成各種生存任務，輕鬆賺取遊戲幣、物資與抽獎鑰匙！
-            </p>
-          </div>
- 
-          <div className="space-y-4">
-            <div className="flex justify-center text-blue-600">
-              <Sparkles className="w-8 h-8" />
-            </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">實用指令與快捷 GUI</h2>
-            <p className="text-sm md:text-base text-zinc-600 max-w-lg mx-auto leading-relaxed">
-              支援經典實用指令 <code className="bg-zinc-100 text-blue-600 px-1.5 py-0.5 rounded font-mono text-xs md:text-sm">/home</code>、<code className="bg-zinc-100 text-blue-600 px-1.5 py-0.5 rounded font-mono text-xs md:text-sm">/tpa</code>、<code className="bg-zinc-100 text-blue-600 px-1.5 py-0.5 rounded font-mono text-xs md:text-sm">/back</code>、<code className="bg-zinc-100 text-blue-600 px-1.5 py-0.5 rounded font-mono text-xs md:text-sm">/spawn</code> 等，一鍵便捷操作。
-            </p>
-          </div>
- 
-          <div className="space-y-4">
-            <div className="flex justify-center text-blue-600">
-              <Mail className="w-8 h-8" />
-            </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">離線雲端郵箱快遞</h2>
-            <p className="text-sm md:text-base text-zinc-600 max-w-lg mx-auto leading-relaxed">
-              支援遊戲內或網頁端跨界發信，隨時傳遞物資給在線或離線好友，上線即自動派發通知。
-            </p>
-          </div>
- 
-          <div className="space-y-4">
-            <div className="flex justify-center text-blue-600">
-              <ShieldCheck className="w-8 h-8" />
-            </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">財產領地防爆保護</h2>
-            <p className="text-sm md:text-base text-zinc-600 max-w-lg mx-auto leading-relaxed">
-              自訂防爆、防噴、防破壞領地，密碼鎖直接與個人帳號綁定，並支持網頁後端即時配置管理。
-            </p>
+        {/* Core Features Grid */}
+        <section className="w-full mb-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-black tracking-tight mb-3">伺服器特色與全新玩法</h2>
+            <p className="text-sm text-zinc-500 max-w-md mx-auto">經典原味生存結合先進箱子 GUI，帶給您最順暢的冒險體驗</p>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex justify-center text-blue-600">
-              <Cpu className="w-8 h-8" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            {/* Feature 1 */}
+            <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-6 text-left space-y-3 shadow-sm hover:border-blue-300 transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                <Banknote className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold">箱子商店與實體銀行支票</h3>
+              <p className="text-sm text-zinc-600 leading-relaxed">
+                全服箱子市場一鍵遠端瀏覽，搭配實體紙張支票系統，隨時開立具備防偽標籤的支票進行交易與兌現。
+              </p>
             </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">高效能自架伺服器主機</h2>
-            <p className="text-sm md:text-base text-zinc-600 max-w-lg mx-auto leading-relaxed">
-              採用高效能 Intel Core i7-13700 處理器自架開服，極致單核效能與充足記憶體，保障多人連線流暢穩定！
-            </p>
+
+            {/* Feature 2 */}
+            <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-6 text-left space-y-3 shadow-sm hover:border-blue-300 transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                <Compass className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold">野外定向尋寶雷達</h3>
+              <p className="text-sm text-zinc-600 leading-relaxed">
+                每隔 2 小時地表自動刷新藏寶箱！配合 100x100 廣域提示、天空聲納脈衝與羅盤雷達，感受 10~25 分鐘的刺激尋寶趣。
+              </p>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-6 text-left space-y-3 shadow-sm hover:border-blue-300 transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                <Gift className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold">福利中心與動態轉盤抽獎</h3>
+              <p className="text-sm text-zinc-600 leading-relaxed">
+                每日簽到、遊玩時數自動換鑰匙！開啟 9x3 動態滾動轉盤，抽取豐富金幣、稀有道具與炫彩稱號。
+              </p>
+            </div>
+
+            {/* Feature 4 */}
+            <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-6 text-left space-y-3 shadow-sm hover:border-blue-300 transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                <Trophy className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold">全服排行榜與每週目標</h3>
+              <p className="text-sm text-zinc-600 leading-relaxed">
+                即時查看財富、鑰匙與簽到排行榜！每週全服共同挑戰，全員解鎖豪華紅包與限定獨家稱號。
+              </p>
+            </div>
+
+            {/* Feature 5 */}
+            <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-6 text-left space-y-3 shadow-sm hover:border-blue-300 transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold">領地極致防爆與保險箱</h3>
+              <p className="text-sm text-zinc-600 leading-relaxed">
+                完美的領地爆炸與流體完全隔離防護，搭配 4 位數密碼鎖保險箱，保障玩家財產絕對安全無虞。
+              </p>
+            </div>
+
+            {/* Feature 6 */}
+            <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-6 text-left space-y-3 shadow-sm hover:border-blue-300 transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                <Mail className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold">虛擬快遞與假人助手</h3>
+              <p className="text-sm text-zinc-600 leading-relaxed">
+                支援線上與離線物品快遞寄送 (`/express`)，以及可自訂掛機動作與看管背包的實用假人助手。
+              </p>
+            </div>
+
           </div>
- 
         </section>
- 
+
         {/* Dynamic MOTD Banner Container */}
-        <section className="w-full max-w-3xl border border-zinc-200 bg-zinc-50 rounded-xl overflow-hidden shadow-sm p-5 mb-24 text-center">
-          <h3 className="text-sm font-black text-zinc-500 uppercase tracking-wider mb-4">伺服器即時狀態</h3>
+        <section className="w-full max-w-3xl border border-zinc-200 bg-zinc-50 rounded-xl overflow-hidden shadow-sm p-5 mb-20 text-center">
+          <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider mb-4">伺服器即時連線狀態</h3>
           <div className="bg-black flex items-center justify-center p-3 rounded-lg border border-zinc-200 shadow-inner">
             <img 
               src="https://sr-api.sfirew.com/server/mc.craft-core.xyz/banner/motd.png?hl=tw&v=mpvEEcngwP" 
@@ -242,8 +242,8 @@ export default function Home() {
         </section>
 
         {/* Connection Guides (Java / Bedrock Specs) */}
-        <section id="join" className="w-full max-w-3xl text-center mb-20 scroll-mt-24">
-          <h2 className="text-3xl font-black tracking-tight mb-10">加入伺服器</h2>
+        <section id="join" className="w-full max-w-3xl text-center mb-16 scroll-mt-24">
+          <h2 className="text-3xl font-black tracking-tight mb-8">加入伺服器</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
@@ -254,7 +254,7 @@ export default function Home() {
                   <span className="text-xs font-extrabold bg-blue-100 px-2.5 py-1 rounded">Java 版 (PC)</span>
                 </div>
                 <p className="text-sm text-zinc-600 mb-8 leading-relaxed">
-                  支援原版 Java 客戶端。採用 Fabric 框架架設，效能出眾。<strong className="text-blue-600 font-bold block mt-2">注意：支援 1.20 至 26.2 版本連入，其餘版本皆無法加入！</strong>
+                  支援原版 Java 客戶端。採用 Fabric 框架架設，效能出眾。<strong className="text-blue-600 font-bold block mt-2">注意：支援 1.20 至 26.2 版本連入！</strong>
                 </p>
               </div>
               <div className="space-y-4">
@@ -315,14 +315,14 @@ export default function Home() {
             className="block w-full py-4 bg-white border border-zinc-200 hover:border-blue-500 rounded-xl text-sm font-bold text-center text-zinc-600 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center space-x-2"
           >
             <BookOpen className="w-4.5 h-4.5" />
-            <span>點我查看伺服器規章與詳細玩法介紹</span>
+            <span>點我查看伺服器規章與詳細玩家手冊</span>
           </a>
         </section>
 
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-zinc-200 bg-zinc-50 py-10 text-sm text-zinc-500">
+      <footer className="w-full border-t border-zinc-200 bg-zinc-50 py-8 text-sm text-zinc-500">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>&copy; {new Date().getFullYear()} Craft-Core 原味生存伺服器. 保留所有權利。</p>
           <div className="flex space-x-6">
