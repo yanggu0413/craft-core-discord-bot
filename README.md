@@ -1,75 +1,137 @@
-# 🛒 CraftCoreShop — 輕量級純服務端商店與經濟系統模組
+# ⚔️ Craft-Core 生態系統 (Minecraft Server Ecosystem)
 
-[![Minecraft Version](https://img.shields.io/badge/Minecraft-26.2-blue.svg)](https://minecraft.net)
-[![Platform](https://img.shields.io/badge/Platform-Fabric-orange.svg)](https://fabricmc.net)
-[![Loader](https://img.shields.io/badge/Loader-0.16.0+-darkgreen.svg)](https://fabricmc.net)
+<p alias="center">
+  <img src="https://img.shields.io/badge/Minecraft-1.21.4%20%2F%2026.2-brightgreen.svg" alt="Minecraft Version">
+  <img src="https://img.shields.io/badge/Platform-Fabric%20Loader-orange.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/Java-25-blue.svg" alt="Java Version">
+  <img src="https://img.shields.io/badge/Backend-Node.js%20%2F%20SQLite-darkgreen.svg" alt="Backend">
+  <img src="https://img.shields.io/badge/License-MIT-purple.svg" alt="License">
+</p>
 
-`CraftCoreShop` 是一款專為 Minecraft 伺服器設計的 **純服務端（Pure Server-side）** 商店與經濟系統 Fabric 模組。
+`Craft-Core` 是一套專為 **Minecraft 原味生存伺服器** 設計的純服務端（Pure Server-Side）核心生態系統。
 
-玩家無需在客端安裝任何模組或資源包，即可在遊戲內體驗到高畫質、帶發光效果的箱子商店懸浮物、與客端語系同步的繁體中文名稱、動態經濟回收系統，以及與 Discord 機器人的深度雙向資料串接。
-
----
-
-## ✨ 核心特色
-
-### 1. 📦 箱子商店系統（雙向收購與出售）
-*   **商店建立精靈**：手持商品左鍵點選箱子，聊天欄將彈出分步引導，讓您設定 **「出售價格」** 與 **「收購價格」**（輸入 0 即可停用單項）。
-*   **視覺展示**：
-  *   箱子前方自動貼上**發光高亮告示牌**，標示買賣價格、擁有者與商品名稱。
-  *   商品名稱與玩家的遊戲語言**自動翻譯同步**（例如：英文客戶端顯示 `Chest`，繁體中文客戶端顯示 `箱子`）。
-  *   箱子正上方生成 **`0.5` 倍縮小版** 漂浮懸浮物（Item Display），視覺效果精緻。
-*   **交易與預約系統**：當商店缺貨時，顧客可預付款項進行「預約」。商家補貨後，系統會自動快遞送貨給買家；買家亦可隨時取消預約並全額退款。
-*   **交易評分系統**：交易完成後彈出快速評分提示，顧客可一鍵評分（1-5 星），評分將顯示在 `/shop` 選單中。
-
-### 2. 🏪 商店瀏覽與遠端管理（`/shop`）
-*   **商店主選單**：查看全伺服器所有已註冊和營運中的商店，並支援依商品名稱過濾（`/shop search <商品>`）。
-*   **遠端功能**：點擊選單中的商店即可支付金幣進行**傳送**；商店主人可進行**遠端提領營收與自訂商店名稱**（基於生存經濟安全，已移除遠端開箱補貨功能）。
-
-### 3. ⚖️ 經濟回收與兌換系統（`/economy`）
-*   **動態物資回收**：將物資放入選單並點選綠色羊毛，即可兌換為虛擬金幣（煤炭: $10, 鐵錠: $50, 鑽石: $500 等）。
-*   **每日收購上限**：石頭類（石頭/深板岩等）與垃圾類（泥土/沙子等）均有每日 80 個的回收上限，超出部分會安全退回。
-*   **全服物價走勢（`/market`）**：統計全伺服器所有交易的均價與 7 天漲跌趨勢，並在 GUI 中即時渲染。
-*   **全服富豪榜（`/eco top`）**：展示全伺服器金幣餘額前 10 名的明星玩家。
-
-### 4. 🤖 Discord 機器人雙向連動 (WebSocket)
-*   **即時餘額與數據查詢**：在 Discord 頻道中點擊按鈕，即可查詢綁定的 Minecraft 帳號餘額與名下商店的經營數據。
-*   **連動富豪榜**：Discord 機器人可同步獲取遊戲內前 10 名玩家排行，並在 Discord 發送精美的 Embed 排行榜。
-*   **金幣離線郵寄**：在 Discord 執行金幣快遞郵寄，收件人上線時會自動將金幣發送至玩家帳號。
+玩家不需要在客户端安裝任何 Mod 或資源包，即可享受包含 **4x4 大廳箱子選單 GUI (`/menu`)**、**全服箱子商店與遙控市場 (`/shop`)**、**🎰 9x3 幸運轉盤抽獎**、**🏆 即時排行榜**、**📦 跨服離線虛擬快遞箱 (`/express`)**、**🛡️ 極致防爆防破壞領地與密碼箱 (`/padlock`)**、**🗺️ 定向羅盤尋寶雷達 (`/treasure`)**、**🤝 聊天欄一鍵確認轉帳與傳送 (`/pay`, `/tpa`)**、**⚔️ PvP 雙向防護切換 (`/pvp`)**、**🤖 假人全功能控制台 (`/bot`)** 與 **💬 Discord 6 位數綁定與雙向皮膚頭像聊天中樞**。
 
 ---
 
-## 🚀 快速啟動服務 (PM2 啟動腳本)
-本專案已配置整合 PM2 的 Windows 批次啟動腳本，可自動在背景開啟與管理各服務。
-1. **安裝 PM2**：
-   ```bash
-   npm install -g pm2
-   ```
-2. **啟動所有背景服務**：
-   在專案根目錄按兩下執行 `start_all.bat`，即可一鍵啟動 Discord 機器人、網頁後端與網頁前端。
-3. **管理服務**：
-   - 檢視狀態：`pm2 status`
-   - 查看日誌：`pm2 logs`
-   - 重啟服務：`pm2 restart all`
+## 📌 三大核心架構子項目 (Architecture Overview)
+
+```
+craft-core-shop/
+├── fabric-mod/            # [1] Minecraft Fabric 伺服器模組 (主伺服器核心中樞)
+├── paper-dc/              # [2] Minecraft Paper 插件 (次要 Paper 伺服器連動插件)
+└── discord-bot/           # [3] Node.js Discord 機器人 & WebSocket/SQLite 中樞
+```
+
+### 1. 👑 `fabric-mod/` — Fabric 伺服器核心模組
+- **環境版本**: Java 25 / Fabric Loader (Minecraft 1.21.4 / 26.2)。
+- **核心定位**: 服主主要營運之主伺服器核心模組，原生包辦所有遊戲內箱子 GUI 與生存經濟防護。
+- **目標實例**: `/opt/mcsmanager/daemon/data/InstanceData/e73c05307a6b4259bd052b88706757df/mods/`
+
+### 2. 📄 `paper-dc/` — Paper 伺服器連動插件 (`CraftCoreLink`)
+- **環境版本**: Java 21 / Paper API 1.21.1。
+- **核心定位**: 次要 Paper 伺服器插件，處理跨服帳號綁定、LuckPerms VIP 權限雙向同步與 Discord 訊息轉發。
+
+### 3. 🤖 `discord-bot/` — Discord 機器人與 WebSocket/SQLite 中樞
+- **環境版本**: Node.js / discord.js / PM2 (`craft-core-bot`)。
+- **核心定位**: Port 8080 WebSocket 伺服器 + SQLite `database.db` 資料庫。負責即時同步簽到鑰匙、離線包裹、客服單、統計資料與 Discord 皮膚頭像 Webhook 聊天。
 
 ---
 
-## 🛠️ 安裝與升級說明
+## ✨ 核心系統特色功能 (System Features)
 
-本模組相容於 **Minecraft 26.2 (Chaos Cubed)** 版本。
+### 📜 1. 4x4 完美分類主選單大廳 (`/menu`)
+- **對稱清爽美學**：採用 4x4 完美分類整齊網格（每列 4 個精確對齊，間隔灰色玻璃），絕不擠在一起。
+- **一鍵直達功能**：
+  - 🏪 商店管理系統 | 🧭 傳送與家園 | 🛡 領地與密碼箱 | 📦 虛擬快遞箱
+  - 🤝 玩家傳送請求 | 💸 玩家安全轉帳 | ⚔️ PvP 戰鬥切換 | 💬 Discord 社群
+  - 🎰 福利中心 | ⚔ 任務與懸賞 | 🏆 全服排行榜 | 🏭 機器認證與免領地費
+  - 🤖 假人控制台 | 🛠️ 管理員 OP 控制台 | 🗑️ 隨身垃圾桶
 
-### 伺服器端安裝
-1. 將編譯完成的 `craftcoreshop-v2.0.0.jar` 放入伺服器根目錄下的 `mods` 資料夾。
-2. 啟動伺服器，模組會自動在 `config/craft-core-shop/` 下生成配置檔。
+### 🏪 2. 箱子商店市場與店主遙控 (`/shop`)
+- **全服市場搜尋**：玩家可於 GUI 中瀏覽全服所有公開箱子商店，點擊即可傳送至商店現場。
+- **店主遙控台**：店主可在 GUI 中查看個人名下商店清單、累積營業額並一鍵提領營收益。
+- **告示牌與懸浮物**：商店建立時自動貼上發光高亮告示牌與 `0.5x` 物品懸浮實體（Item Display）。
 
-### 開發者環境
-- **Gradle**: `9.5.1` 或以上。
-- **Fabric Loom**: `1.17` 或以上。
-- **Mappings**: Mojang 官方映射 (`officialMojangMappings()`)。
+### 🎰 3. 福利中心與 9x3 幸運轉盤抽獎 (`/checkin`, `/luckydraw`)
+- **每日簽到**：每日點擊領取獎勵，自動累計連續簽到天數。
+- **遊戲時數兌換**：每在線累積 5 小時可自動兌換 1 把幸運抽獎鑰匙。
+- **9x3 滾動轉盤動畫**：消耗鑰匙開啟 9x3 動態滾動動畫，隨機獲得金幣、珍稀道具與炫彩頭頂稱號。
+
+### 🏆 4. 全服即時排行榜 (Leaderboards)
+- **多維度榜單**：提供 **💰 財富 Top 10**、**🔑 鑰匙 Top 10** 與 **📅 連續簽到 Top 10**。
+- **玩家皮膚頭像**：使用點擊玩家的皮膚頭像渲染榜單，顯示精確排名與 Lore 數值。
+
+### 📦 5. 跨服虛擬快遞箱系統 (`/express`)
+- **離線寄件**：玩家可將背包物資放入 9x6 虛擬箱子，指定線上或離線玩家完成物品寄送。
+- **離線收件箱**：收件人隨時開箱領取包裹，紀錄永久同步至 SQLite 資料庫。
+
+### 🛡️ 6. 極致防爆防破壞領地與密碼鎖 (`/claim`, `/padlock`)
+- **100% 爆炸免疫**：徹底阻擋外部 TNT、苦力怕 (Creeper)、凋零 (Wither)、風珠 (Wind Charge) 等所有來源之爆炸傷及領地內方塊。
+- **完整物理防護**：阻擋終界使者搬移方塊、活塞推拉、外側流體侵入，以及非 Trust 玩家對展示框、盔甲架與容器的存取。
+- **密碼鎖保險箱 (`/padlock`)**：箱子選單中可一鍵設定密碼鎖，提供安全自訂密碼解鎖與信任成員授權。
+
+### 🗺️ 7. 定向羅盤尋寶雷達 (`/treasure`)
+- **精確網格 (100x100)**：寶藏刷新於 Overworld 100x100 區域，天空升起密集金色粒子光柱。
+- **定向雷達感應**：執行 `/treasure` 可即時獲取方位角與距離（如 `寶箱在您的 ↗ 東北 方向，距離約 120 公尺`），靠近 35 公尺內觸發強烈熱感應。
+
+### 🤝 8. 安全金流與傳送機制 (`/pay`, `/tpa`)
+- **/pay 轉帳確認**：點擊頭顱選擇玩家後，於聊天框輸入金額，系統彈出 `[✔ 點擊確認轉帳]` 按鈕，防止誤轉。
+- **/tpa 點擊響應**：受請求玩家可在聊天欄直接點擊 `[✔ 點擊接受]` 或 `[❌ 點擊拒絕]`。
+
+### ⚔️ 9. PvP 雙向防護狀態切換 (`/pvp`)
+- **和平保護模式**：預設關閉 PvP，受系統保護免受其他玩家傷害，亦無法攻擊他人。
+- **戰鬥模式**：雙方皆開啟 `/pvp` 時始可互相戰鬥。
+
+### 🤖 10. 假人助手全功能控制台 (`/bot`)
+- **一鍵管理**：召喚、解散假人、一鍵傳送至身邊。
+- **動作與背包**：切換掛機打怪/連續點擊/挖掘動作，並支援 `/invsee` 查看與管理假人背包與末影箱。
+
+### 💬 11. Discord 帳號綁定與雙向皮膚頭像聊天
+- **6 位數驗證碼**：玩家於 `/menu -> Discord` 執行 `/discord link` 生成驗證碼，Discord 私訊機器人完成雙向綁定。
+- **玩家頭像 Webhook 聊天**：Minecraft 玩家聊天訊息會透過 Webhook 發送帶有該玩家 Minecraft 皮膚頭像的訊息至 Discord。
 
 ---
 
-## 📖 完整使用教學 (GitBook)
+## 🛠️ 開發與建置說明 (Build & Development)
 
-請造訪我們的 **[GitBook 線上文件網站]** 獲取最詳細的操作引導與管理員指令手冊。
-*(文檔已透過 GitSync 與專案根目錄的 `docs/` 資料夾自動同步)*
+### 1. 編譯 Fabric 模組 (`fabric-mod`)
+```bash
+cd fabric-mod
+./gradlew assemble
+```
+產出檔案位於：`fabric-mod/build/libs/craft-core-mod-2.5.0.jar`
 
+### 2. 編譯 Paper 插件 (`paper-dc`)
+```bash
+cd paper-dc
+./gradlew shadowJar
+```
+產出檔案位於：`paper-dc/build/libs/CraftCoreLink-1.1.0.jar`
+
+---
+
+## 🚀 服務啟動與營運 (Production Operations)
+
+專案內建 PM2 一鍵管理腳本，自動維護 Discord Bot 與 WebSocket / SQLite 服務：
+
+### Linux 正式環境
+```bash
+# 啟動 PM2 服務 (craft-core-bot)
+./start_all.sh
+
+# 查看運作狀態與日誌
+pm2 status
+pm2 logs craft-core-bot
+```
+
+### Windows 開發/測試環境
+```cmd
+start_all.bat
+```
+
+---
+
+## 📜 授權協議 (License)
+
+本專案採用 **[MIT License](LICENSE)** 開源授權。
