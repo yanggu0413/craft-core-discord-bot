@@ -4,7 +4,7 @@
 
 ---
 
-## 🎮 雙向連動設計
+## 雙向連動設計
 
 本伺服器採用「遊戲內箱子 GUI」與「Discord 機器人」連動設計，您的金幣、鑰匙與簽到天數會在兩大平台之間自動同步：
 
@@ -13,27 +13,27 @@
 
 ---
 
-## 🧭 玩家指南目錄
+## 玩家指南目錄
 
 您可以點選下方連結深入閱讀各單元的詳細教學：
 
-### 🎮 遊戲玩法與指令指南
-- [📜 /menu 選單大廳指南](Mc-Menu-System.md) — 4x4 全功能視覺化選單大廳。
-- [🏪 箱子商店與全服市場](Mc-Shop-System.md) — 擺攤建立、全服市場搜尋與店主遙控。
-- [📦 虛擬快遞箱系統](Mc-Virtual-Express.md) — 線上與離線物品快遞寄送 (`/express`)。
-- [🔐 箱子密碼鎖保險箱](Mc-Lockbox-Gui.md) — 密碼鎖設定與保險箱管理 (`/padlock`)。
-- [🛡️ 領地保護與極致防爆](Mc-Claim-Entity-Protection.md) — 圈地劃分、爆炸與實體完全防護。
-- [⚔️ PvP 和平與戰鬥模式](Mc-Pvp-System.md) — 和平保護與雙向戰鬥切換 (`/pvp`)。
-- [🗺️ 野外定向尋寶雷達](Mc-Treasure-Hunt.md) — 100x100 網格寶藏與羅盤尋寶雷達 (`/treasure`)。
-- [🤝 玩家轉帳與傳送指令](Mc-Teleport-Commands.md) — 傳送請求 (`/tpa`)、金幣轉帳 (`/pay`) 與家園。
-- [🎰 每日簽到與轉盤抽獎](Mc-Hourly-Lottery.md) — 簽到領獎與 9x3 轉盤大抽獎。
-- [⚔️ 每日任務與全服懸賞](Mc-Task-System.md) — 每日任務與全服共同目標。
-- [🏭 機器認證與免領地費](Mc-Machine-Certification.md) — 自動化設施認證與免領地費。
-- [🤖 假人助手與背包看管](Mc-Fake-Player.md) — 假人召喚、掛機動作與背包管理。
-- [🎒 /invsee 背包查看管理](Mc-InvSee-System.md) — 玩家與假人背包實時檢視。
-- [👑 頭頂炫彩稱號系統](Mc-Custom-Titles.md) — 稱號解鎖與配戴切換 (`/title`)。
-- [💡 迎賓小提示列表](Mc-Welcome-Tips.md) — 伺服器實用技巧匯整。
-- [🛠️ 管理員權限與維護](Mc-Admin-Management.md) — 管理員指令與維護說明。
+### 遊戲玩法與指令指南
+- [/menu 選單大廳指南](Mc-Menu-System) — 4x4 全功能視覺化選單大廳。
+- [箱子商店與全服市場](Mc-Shop-System) — 擺攤建立、全服市場搜尋與店主遙控。
+- [虛擬快遞箱系統](Mc-Virtual-Express) — 線上與離線物品快遞寄送 (`/express`)。
+- [箱子密碼鎖保險箱](Mc-Lockbox-Gui) — 密碼鎖設定與保險箱管理 (`/padlock`)。
+- [領地保護與極致防爆](Mc-Claim-Entity-Protection) — 圈地劃分、爆炸與實體完全防護。
+- [PvP 和平與戰鬥模式](Mc-Pvp-System) — 和平保護與雙向戰鬥切換 (`/pvp`)。
+- [野外定向尋寶雷達](Mc-Treasure-Hunt) — 100x100 網格寶藏與羅盤尋寶雷達 (`/treasure`)。
+- [玩家轉帳與傳送指令](Mc-Teleport-Commands) — 傳送請求 (`/tpa`)、金幣轉帳 (`/pay`) 與家園。
+- [每日簽到與轉盤抽獎](Mc-Hourly-Lottery) — 簽到領獎與 9x3 轉盤大抽獎。
+- [每日任務與全服懸賞](Mc-Task-System) — 每日任務與全服共同目標。
+- [機器認證與免領地費](Mc-Machine-Certification) — 自動化設施認證與免領地費。
+- [假人助手與背包看管](Mc-Fake-Player) — 假人召喚、掛機動作與背包管理。
+- [/invsee 背包查看管理](Mc-InvSee-System) — 玩家與假人背包實時檢視。
+- [頭頂炫彩稱號系統](Mc-Custom-Titles) — 稱號解鎖與配戴切換 (`/title`)。
+- [迎賓小提示列表](Mc-Welcome-Tips) — 伺服器實用技巧匯整。
+- [管理員權限與維護](Mc-Admin-Management) — 管理員指令與維護說明。
 
-### 💬 社群連動
-- [Discord 帳號綁定教學](Discord-Integration.md) — 帳號綁定與 Discord 機器人。
+### 社群連動
+- [Discord 帳號綁定教學](Discord-Integration) — 帳號綁定與 Discord 機器人。
