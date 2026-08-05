@@ -609,6 +609,12 @@ public class ChestShopEventHandler {
             }
             if (player instanceof ServerPlayer sp) {
                 ItemStack item = sp.getItemInHand(hand);
+                if (com.craftcore.mushroom.MushroomManager.isMushroom(item)) {
+                    com.craftcore.mushroom.MushroomManager.toggleAiChatMode(sp);
+                    sp.containerMenu.sendAllDataToRemote();
+                    sp.inventoryMenu.sendAllDataToRemote();
+                    return InteractionResult.SUCCESS;
+                }
                 if (item.is(net.minecraft.world.item.Items.PRISMARINE_CRYSTALS) && item.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && item.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME).getString().contains("釣魚大賽加速器")) {
                     if (com.craftcore.fish.FishingContestManager.applySpeedBuff(sp)) {
                         item.shrink(1);

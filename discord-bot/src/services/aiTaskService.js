@@ -1,7 +1,7 @@
 const config = require('../config');
 const logger = require('../utils/logger');
-const { getTaipeiDateString } = require('../utils/dateUtil');
-const db = require('../database/database');
+const { getTaipeiDateString } = require('../utils/dailyTasksHelper');
+const db = require('../database');
 
 const FALLBACK_TASKS = [
   {
@@ -131,7 +131,8 @@ async function generateTasksFromAi(retryCount = 0) {
     return FALLBACK_TASKS;
   }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   let currentPrompt = AI_TASK_PROMPT;
   for (let attempt = 1; attempt <= 3; attempt++) {
