@@ -15,6 +15,13 @@ public class MachineCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("machine")
+                .executes(context -> {
+                    ServerPlayer player = context.getSource().getPlayer();
+                    if (player != null) {
+                        com.craftcore.menu.MenuGuiManager.openMachineMenu(player);
+                    }
+                    return 1;
+                })
                 .then(Commands.literal("apply")
                         .then(Commands.argument("name", StringArgumentType.greedyString())
                                 .executes(context -> {

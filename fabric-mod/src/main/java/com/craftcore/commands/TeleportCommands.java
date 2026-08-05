@@ -68,8 +68,15 @@ dispatcher.register(Commands.literal("enderchest")
                     })
             );
 
-dispatcher.register(Commands.literal("tpa")
-                    .then(Commands.literal("cancel")
+        dispatcher.register(Commands.literal("tpa")
+                .executes(context -> {
+                    ServerPlayer player = context.getSource().getPlayer();
+                    if (player != null) {
+                        com.craftcore.menu.MenuGuiManager.openTpaPlayerSelectorMenu(player);
+                    }
+                    return 1;
+                })
+                .then(Commands.literal("cancel")
                             .executes(context -> handleTpaCancelCommand(context, null))
                             .then(Commands.argument("target", StringArgumentType.string())
                                     .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))

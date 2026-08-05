@@ -18,6 +18,13 @@ public class InvSeeCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("invsee")
+                .executes(context -> {
+                    ServerPlayer viewer = context.getSource().getPlayer();
+                    if (viewer != null) {
+                        com.craftcore.menu.MenuGuiManager.openPlayerSelectorMenu(viewer);
+                    }
+                    return 1;
+                })
                 .then(Commands.argument("target", StringArgumentType.word())
                         .suggests((context, builder) -> {
                             Set<String> candidates = new HashSet<>();

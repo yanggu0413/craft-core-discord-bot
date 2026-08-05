@@ -393,9 +393,15 @@ dispatcher.register(Commands.literal("checkin")
                 )
         );
 
-dispatcher.register(Commands.literal("pay")
-
-                     .then(Commands.argument("username", StringArgumentType.string())
+        dispatcher.register(Commands.literal("pay")
+                .executes(context -> {
+                    ServerPlayer player = context.getSource().getPlayer();
+                    if (player != null) {
+                        com.craftcore.menu.MenuGuiManager.openPayPlayerSelectorMenu(player);
+                    }
+                    return 1;
+                })
+                .then(Commands.argument("username", StringArgumentType.string())
 
                              .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
 
