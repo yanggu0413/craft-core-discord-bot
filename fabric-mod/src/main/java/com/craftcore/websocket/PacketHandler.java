@@ -520,6 +520,18 @@ public class PacketHandler {
                     });
                     break;
                 }
+                case "mushroom_ai_response": {
+                    Packet.MushroomAiResponsePayload payload = GSON.fromJson(payloadObj, Packet.MushroomAiResponsePayload.class);
+                    server.execute(() -> {
+                        net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
+                        if (player != null && payload.reply != null) {
+                            player.sendSystemMessage(Component.literal("§d[洋菇] §f" + payload.reply));
+                            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                                net.minecraft.sounds.SoundEvents.VILLAGER_AMBIENT, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
+                        }
+                    });
+                    break;
+                }
                 case "claims_query": {
                     if (!client.isAuthenticated()) break;
                     ClaimsQueryPayload payload = GSON.fromJson(payloadObj, ClaimsQueryPayload.class);

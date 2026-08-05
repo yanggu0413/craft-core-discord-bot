@@ -75,4 +75,9 @@ public class MushroomManagerTest {
         assertTrue(MushroomManager.isMushroom(stack));
         assertFalse(MushroomManager.isMushroom(new ItemStack(Items.DIAMOND)));
     }
+
+    @Test
+    public void testAiChatState() {
+        assertFalse(MushroomManager.isAiChatActive(null));
+    }
 }

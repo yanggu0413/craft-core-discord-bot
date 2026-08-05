@@ -148,6 +148,26 @@ public class ServerLifecycleHandler {
             if (com.craftcore.commands.EconomyCommands.handleChatMessage(sender, content)) {
                 return false;
             }
+            if (com.craftcore.mushroom.MushroomManager.isAiChatActive(sender)) {
+                if (content.equalsIgnoreCase("exit") || content.equalsIgnoreCase("退出") || content.equalsIgnoreCase("quit") || content.equalsIgnoreCase("/mushroom exit")) {
+                    com.craftcore.mushroom.MushroomManager.exitAiChatMode(sender);
+                    return false;
+                }
+                sender.sendSystemMessage(Component.literal("§e[你 -> 洋菇] §f" + content));
+                sender.sendSystemMessage(Component.literal("§7[洋菇正在思考中...]"));
+
+                CraftCoreWSClient client = CraftCoreMod.getWSClient();
+                if (client != null && client.isAuthenticated()) {
+                    client.send(new Packet("mushroom_ai_request", new Packet.MushroomAiRequestPayload(
+                            sender.getName().getString(),
+                            sender.getStringUUID(),
+                            content
+                    )));
+                } else {
+                    sender.sendSystemMessage(Component.literal("§d[洋菇] §c欸不是！伺服器與 Discord Bot 連線中斷中，洋菇無法通靈 666！"));
+                }
+                return false;
+            }
             return true;
         });
 

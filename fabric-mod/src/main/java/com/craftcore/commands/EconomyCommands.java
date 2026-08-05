@@ -186,6 +186,40 @@ public class EconomyCommands {
                             }))
             );
 
+        dispatcher.register(Commands.literal("mushroom")
+                .executes(context -> {
+                    ServerPlayer player = context.getSource().getPlayer();
+                    if (player != null) {
+                        com.craftcore.mushroom.MushroomManager.toggleAiChatMode(player);
+                    }
+                    return 1;
+                })
+                .then(Commands.literal("exit")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player != null) {
+                                com.craftcore.mushroom.MushroomManager.exitAiChatMode(player);
+                            }
+                            return 1;
+                        }))
+                .then(Commands.literal("clear")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player != null) {
+                                com.craftcore.mushroom.MushroomManager.exitAiChatMode(player);
+                                player.sendSystemMessage(Component.literal("§d[洋菇] §a已成功重置記憶與歷史紀錄！"));
+                                CraftCoreWSClient client = CraftCoreMod.getWSClient();
+                                if (client != null && client.isAuthenticated()) {
+                                    client.send(new Packet("mushroom_clear_request", new Packet.BindCodeRequestPayload(
+                                            player.getName().getString(),
+                                            player.getStringUUID()
+                                    )));
+                                }
+                            }
+                            return 1;
+                        }))
+        );
+
         dispatcher.register(Commands.literal("addmoney")
                     .requires(source -> !source.isPlayer() || source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
                     .then(Commands.argument("username", StringArgumentType.string())

@@ -36,6 +36,25 @@ public class Packet {
         }
     }
 
+    public static class MushroomAiRequestPayload {
+        public String username;
+        public String uuid;
+        public String message;
+
+        public MushroomAiRequestPayload(String username, String uuid, String message) {
+            this.username = username;
+            this.uuid = uuid;
+            this.message = message;
+        }
+    }
+
+    public static class MushroomAiResponsePayload {
+        public String username;
+        public String uuid;
+        public String reply;
+        public boolean success;
+    }
+
     public static class EventPayload {
         public String event_type; // "join", "leave", "death", "advancement"
         public String username;

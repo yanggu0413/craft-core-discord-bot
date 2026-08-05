@@ -342,8 +342,8 @@ public class ChestShopEventHandler {
 
         ItemStack heldItem = player.getItemInHand(hand);
         if (com.craftcore.mushroom.MushroomManager.isMushroom(heldItem)) {
-            player.sendSystemMessage(Component.literal("§c[Craft-Core] 【洋菇】為個人綁定物品，無法放置至地面！"));
             if (player instanceof ServerPlayer sp) {
+                com.craftcore.mushroom.MushroomManager.toggleAiChatMode(sp);
                 sp.containerMenu.sendAllDataToRemote();
                 sp.inventoryMenu.sendAllDataToRemote();
             }

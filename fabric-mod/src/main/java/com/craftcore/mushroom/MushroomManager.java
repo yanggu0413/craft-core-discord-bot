@@ -130,6 +130,36 @@ public class MushroomManager {
         }
     }
 
+    private static final Set<UUID> activeAiChatPlayers = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    public static boolean toggleAiChatMode(ServerPlayer player) {
+        if (player == null) return false;
+        UUID uuid = player.getUUID();
+        if (activeAiChatPlayers.contains(uuid)) {
+            activeAiChatPlayers.remove(uuid);
+            player.sendSystemMessage(Component.literal("§d[洋菇] §c對話已結束！有空再來找洋菇聊天喔～"));
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.VILLAGER_NO, SoundSource.PLAYERS, 1.0f, 1.0f);
+            return false;
+        } else {
+            activeAiChatPlayers.add(uuid);
+            player.sendSystemMessage(Component.literal("§d[洋菇] §a嘿嘿！你開啟了與洋菇的通靈對話～接下來在聊天室說話我都會回覆你喔！\n§7(再次右鍵【洋菇】或輸入 exit / 退出 即可結束)"));
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.VILLAGER_YES, SoundSource.PLAYERS, 1.0f, 1.0f);
+            return true;
+        }
+    }
+
+    public static boolean isAiChatActive(ServerPlayer player) {
+        return player != null && activeAiChatPlayers.contains(player.getUUID());
+    }
+
+    public static void exitAiChatMode(ServerPlayer player) {
+        if (player == null) return;
+        if (activeAiChatPlayers.remove(player.getUUID())) {
+            player.sendSystemMessage(Component.literal("§d[洋菇] §c對話已結束！有空再來找洋菇聊天喔～"));
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.VILLAGER_NO, SoundSource.PLAYERS, 1.0f, 1.0f);
+        }
+    }
+
     public static void startLoop(net.minecraft.server.MinecraftServer server) {
         scheduler.scheduleAtFixedRate(() -> {
             try {

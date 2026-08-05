@@ -43,6 +43,34 @@ async function handle(packet, discordClient) {
       await webhookService.sendChat(payload.sender, payload.uuid, payload.message, discordClient);
       break;
 
+    case 'mushroom_ai_request': {
+      const geminiService = require('../services/geminiService');
+      const mcWs = session.getMinecraftServerWs();
+      const reply = await geminiService.generateMushroomResponse(payload.username, payload.message);
+      if (mcWs && mcWs.readyState === 1) {
+        try {
+          mcWs.send(JSON.stringify({
+            type: 'mushroom_ai_response',
+            payload: {
+              username: payload.username,
+              uuid: payload.uuid,
+              reply: reply,
+              success: true
+            }
+          }));
+        } catch (err) {
+          logger.error('Failed to send mushroom_ai_response to Minecraft server', { error: err });
+        }
+      }
+      break;
+    }
+
+    case 'mushroom_clear_request': {
+      const geminiService = require('../services/geminiService');
+      geminiService.clearPlayerHistory(payload.username);
+      break;
+    }
+
     case 'event':
       await webhookService.sendEvent(payload.event_type, payload.username, payload.uuid, payload.details, discordClient);
       break;
