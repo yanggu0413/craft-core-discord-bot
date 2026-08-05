@@ -16,24 +16,42 @@ public class TitleCommand {
         dispatcher.register(Commands.literal("title")
                 .executes(context -> {
                     ServerPlayer player = context.getSource().getPlayer();
-                    if (player == null) return 0;
-                    String username = player.getName().getString();
-                    Set<String> unlocked = TitleManager.getUnlockedTitles(username);
-                    String active = TitleManager.getActiveTitle(username);
-
-                    player.sendSystemMessage(Component.literal("§b=== 您的個人解鎖稱號選單 ==="));
-                    player.sendSystemMessage(Component.literal("§7當前佩戴稱號: " + (active.isEmpty() ? "§8(無)" : active)));
-
-                    if (unlocked.isEmpty()) {
-                        player.sendSystemMessage(Component.literal("§7您目前尚未解鎖任何頭頂稱號。參與整點活動、尋寶或機器認證即可解鎖！"));
-                    } else {
-                        player.sendSystemMessage(Component.literal("§e已解鎖稱號清單:"));
-                        for (String t : unlocked) {
-                            player.sendSystemMessage(Component.literal("  - " + t + " §7(輸入 /title set \"" + t + "\" 佩戴)"));
-                        }
+                    if (player != null) {
+                        com.craftcore.menu.MenuGuiManager.openWelfareTitleMenu(player);
                     }
                     return 1;
                 })
+                .then(Commands.literal("gui")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player != null) {
+                                com.craftcore.menu.MenuGuiManager.openWelfareTitleMenu(player);
+                            }
+                            return 1;
+                        })
+                )
+                .then(Commands.literal("list")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player == null) return 0;
+                            String username = player.getName().getString();
+                            Set<String> unlocked = TitleManager.getUnlockedTitles(username);
+                            String active = TitleManager.getActiveTitle(username);
+
+                            player.sendSystemMessage(Component.literal("§b=== 您的個人解鎖稱號選單 ==="));
+                            player.sendSystemMessage(Component.literal("§7當前佩戴稱號: " + (active.isEmpty() ? "§8(無)" : active)));
+
+                            if (unlocked.isEmpty()) {
+                                player.sendSystemMessage(Component.literal("§7您目前尚未解鎖任何頭頂稱號。參與整點活動、尋寶或機器認證即可解鎖！"));
+                            } else {
+                                player.sendSystemMessage(Component.literal("§e已解鎖稱號清單:"));
+                                for (String t : unlocked) {
+                                    player.sendSystemMessage(Component.literal("  - " + t + " §7(輸入 /title set \"" + t + "\" 佩戴)"));
+                                }
+                            }
+                            return 1;
+                        })
+                )
                 .then(Commands.literal("set")
                         .then(Commands.argument("name", StringArgumentType.greedyString())
                                 .suggests((context, builder) -> {

@@ -23,12 +23,23 @@ public class ClaimCommand {
         dispatcher.register(Commands.literal("claim")
                     .executes(context -> {
                         ServerPlayer player = context.getSource().getPlayer();
-                        if (player == null) {
-                            context.getSource().sendSystemMessage(Component.literal("此指令只能由遊戲內玩家執行。"));
-                            return 0;
+                        if (player != null) {
+                            com.craftcore.menu.MenuGuiManager.openClaimMenu(player);
                         }
-                        return ClaimManager.purchaseClaim(player);
+                        return 1;
                     })
+                    .then(Commands.literal("buy")
+                            .executes(context -> {
+                                ServerPlayer player = context.getSource().getPlayer();
+                                return player != null ? ClaimManager.purchaseClaim(player) : 0;
+                            })
+                    )
+                    .then(Commands.literal("create")
+                            .executes(context -> {
+                                ServerPlayer player = context.getSource().getPlayer();
+                                return player != null ? ClaimManager.purchaseClaim(player) : 0;
+                            })
+                    )
                     .then(Commands.literal("hud")
                             .executes(ClaimCommand::toggleHud)
                     )
