@@ -17,6 +17,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ServerPlayer.class)
 public class ServerPlayerEntityMixin {
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onPlayerTick(CallbackInfo ci) {
+        ServerPlayer player = (ServerPlayer) (Object) this;
+        com.craftcore.fish.FishingContestManager.tickPlayerBuffs(player);
+    }
+
     @Inject(method = "die", at = @At("HEAD"))
     private void onPlayerDeath(DamageSource damageSource, CallbackInfo ci) {
         ServerPlayer player = (ServerPlayer) (Object) this;

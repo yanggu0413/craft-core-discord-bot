@@ -92,6 +92,35 @@ public class FishingContestManager {
     private static final Map<UUID, Long> speedBuffExpirationMap = new ConcurrentHashMap<>();
     private static final Map<UUID, Long> giantFishBuffExpirationMap = new ConcurrentHashMap<>();
     private static final Map<UUID, PartyMatch> partyMatches = new ConcurrentHashMap<>();
+    private static final Set<UUID> playersInFishingDimension = ConcurrentHashMap.newKeySet();
+
+    public static void tickPlayerBuffs(ServerPlayer player) {
+        if (player == null) return;
+        UUID uuid = player.getUUID();
+        boolean inFishingDim = player.level().dimension().equals(FISHING_DIMENSION_KEY);
+
+        if (inFishingDim) {
+            if (!playersInFishingDimension.contains(uuid)) {
+                playersInFishingDimension.add(uuid);
+                // Apply infinite duration (level 255) status effects ONCE upon entering dimension
+                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.REGENERATION, net.minecraft.world.effect.MobEffectInstance.INFINITE_DURATION, 255, false, false, true));
+                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.RESISTANCE, net.minecraft.world.effect.MobEffectInstance.INFINITE_DURATION, 255, false, false, true));
+                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE, net.minecraft.world.effect.MobEffectInstance.INFINITE_DURATION, 255, false, false, true));
+                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SATURATION, net.minecraft.world.effect.MobEffectInstance.INFINITE_DURATION, 255, false, false, true));
+                player.sendSystemMessage(Component.literal("§a✨ [釣魚維度保護] 已進入釣魚專屬維度！自動獲得無限時效 (等級 255) 回復、抗性、抗火與飽食 BUFF！"));
+            }
+        } else {
+            if (playersInFishingDimension.contains(uuid)) {
+                playersInFishingDimension.remove(uuid);
+                // Clear the 4 dimension status effects when leaving
+                player.removeEffect(net.minecraft.world.effect.MobEffects.REGENERATION);
+                player.removeEffect(net.minecraft.world.effect.MobEffects.RESISTANCE);
+                player.removeEffect(net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE);
+                player.removeEffect(net.minecraft.world.effect.MobEffects.SATURATION);
+                player.sendSystemMessage(Component.literal("§e[釣魚維度保護] 已離開釣魚維度，自動清除維度專屬 BUFF。"));
+            }
+        }
+    }
 
     public static boolean isContestActive() {
         return active;
