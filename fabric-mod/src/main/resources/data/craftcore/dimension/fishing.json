@@ -1,0 +1,11 @@
+{
+  "type": "craftcore:fishing",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "layers": [],
+      "biome": "minecraft:warm_ocean",
+      "structure_overrides": []
+    }
+  }
+}
