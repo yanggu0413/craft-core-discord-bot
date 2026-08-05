@@ -60,6 +60,7 @@ public class FishingContestManager {
         public String hostName;
         public UUID hostUuid;
         public List<UUID> members = new ArrayList<>();
+        public Set<UUID> pendingRequests = ConcurrentHashMap.newKeySet();
         public Map<UUID, Double> scores = new HashMap<>();
         public boolean active = false;
         public int durationMinutes = 10;
@@ -374,20 +375,152 @@ public class FishingContestManager {
     }
 
     public static boolean joinPartyMatch(ServerPlayer player, String hostName) {
-        for (PartyMatch match : partyMatches.values()) {
-            if (match.hostName.equalsIgnoreCase(hostName)) {
-                if (!match.members.contains(player.getUUID())) {
-                    match.members.add(player.getUUID());
-                    match.scores.put(player.getUUID(), 0.0);
-                    partyMatches.put(player.getUUID(), match);
-                    if (match.bossBar != null) match.bossBar.addPlayer(player);
-                    player.sendSystemMessage(Component.literal("§a[釣魚組隊] 成功加入 " + hostName + " 的比賽房間！"));
-                    return true;
-                }
+        return requestJoinPartyMatch(player, hostName);
+    }
+
+    public static boolean requestJoinPartyMatch(ServerPlayer applicant, String hostName) {
+        if (applicant == null || hostName == null) return false;
+        MinecraftServer server = applicant.level().getServer();
+        if (server == null) return false;
+
+        PartyMatch match = null;
+        for (PartyMatch m : partyMatches.values()) {
+            if (m.hostName.equalsIgnoreCase(hostName)) {
+                match = m;
+                break;
             }
         }
-        player.sendSystemMessage(Component.literal("§c[釣魚組隊] 找不到玩家 " + hostName + " 創建的比賽房間！"));
-        return false;
+
+        if (match == null) {
+            applicant.sendSystemMessage(Component.literal("§c[釣魚組隊] 找不到玩家 " + hostName + " 創建的比賽房間！"));
+            return false;
+        }
+
+        if (match.active) {
+            applicant.sendSystemMessage(Component.literal("§c[釣魚組隊] 該房間比賽已在進行中，無法申請加入！"));
+            return false;
+        }
+
+        if (match.members.contains(applicant.getUUID())) {
+            applicant.sendSystemMessage(Component.literal("§e[釣魚組隊] 您已經在此房間中！"));
+            return false;
+        }
+
+        if (match.pendingRequests.contains(applicant.getUUID())) {
+            applicant.sendSystemMessage(Component.literal("§e[釣魚組隊] 您已向房主發送過加入申請，請耐心等待房主審核同意！"));
+            return false;
+        }
+
+        match.pendingRequests.add(applicant.getUUID());
+        applicant.sendSystemMessage(Component.literal("§b[釣魚組隊] 成功向房主 §e" + match.hostName + " §b發送加入請求，等待房主審核同意..."));
+
+        ServerPlayer hostPlayer = server.getPlayerList().getPlayer(match.hostUuid);
+        if (hostPlayer != null) {
+            String appName = applicant.getName().getString();
+            hostPlayer.sendSystemMessage(Component.literal("§6📩 [組隊申請通知] 玩家 §e" + appName + " §6申請加入您的釣魚對抗房間！"));
+            
+            net.minecraft.network.chat.ClickEvent acceptClick = new net.minecraft.network.chat.ClickEvent.RunCommand("/fish party accept " + appName);
+            net.minecraft.network.chat.ClickEvent denyClick = new net.minecraft.network.chat.ClickEvent.RunCommand("/fish party deny " + appName);
+
+            Component acceptBtn = Component.literal(" §a[✔ 點擊同意]").withStyle(s -> s.withClickEvent(acceptClick));
+            Component denyBtn = Component.literal(" §c[✖ 點擊拒絕]").withStyle(s -> s.withClickEvent(denyClick));
+
+            hostPlayer.sendSystemMessage(Component.literal("§7審核操作: ").append(acceptBtn).append(denyBtn));
+            hostPlayer.playSound(SoundEvents.NOTE_BLOCK_BELL.value(), 1.0f, 1.2f);
+        }
+
+        return true;
+    }
+
+    public static boolean acceptJoinRequest(ServerPlayer host, String applicantName) {
+        if (host == null || applicantName == null) return false;
+        MinecraftServer server = host.level().getServer();
+        if (server == null) return false;
+
+        PartyMatch match = partyMatches.get(host.getUUID());
+        if (match == null || !match.hostUuid.equals(host.getUUID())) {
+            host.sendSystemMessage(Component.literal("§c[釣魚組隊] 您不是房主，無法審核申請！"));
+            return false;
+        }
+
+        ServerPlayer applicantPlayer = server.getPlayerList().getPlayerByName(applicantName);
+        UUID targetUuid = null;
+
+        for (UUID uuid : match.pendingRequests) {
+            ServerPlayer p = server.getPlayerList().getPlayer(uuid);
+            if (p != null && p.getName().getString().equalsIgnoreCase(applicantName)) {
+                targetUuid = uuid;
+                break;
+            }
+        }
+
+        if (targetUuid == null && applicantPlayer != null && match.pendingRequests.contains(applicantPlayer.getUUID())) {
+            targetUuid = applicantPlayer.getUUID();
+        }
+
+        if (targetUuid == null) {
+            host.sendSystemMessage(Component.literal("§c[釣魚組隊] 未找到玩家 " + applicantName + " 的待審核加入申請！"));
+            return false;
+        }
+
+        match.pendingRequests.remove(targetUuid);
+        match.members.add(targetUuid);
+        match.scores.put(targetUuid, 0.0);
+        partyMatches.put(targetUuid, match);
+
+        if (match.bossBar != null && applicantPlayer != null) {
+            match.bossBar.addPlayer(applicantPlayer);
+        }
+
+        host.sendSystemMessage(Component.literal("§a[釣魚組隊] 已同意玩家 §e" + applicantName + " §a加入您的對抗房間！目前人數: " + match.members.size() + " 人。"));
+
+        if (applicantPlayer != null) {
+            applicantPlayer.sendSystemMessage(Component.literal("§a🎉 [釣魚組隊] 房主 §e" + match.hostName + " §a同意了您的加入請求！您已正式進入房間！"));
+            applicantPlayer.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.2f);
+        }
+
+        return true;
+    }
+
+    public static boolean denyJoinRequest(ServerPlayer host, String applicantName) {
+        if (host == null || applicantName == null) return false;
+        MinecraftServer server = host.level().getServer();
+        if (server == null) return false;
+
+        PartyMatch match = partyMatches.get(host.getUUID());
+        if (match == null || !match.hostUuid.equals(host.getUUID())) {
+            host.sendSystemMessage(Component.literal("§c[釣魚組隊] 您不是房主，無法審核申請！"));
+            return false;
+        }
+
+        ServerPlayer applicantPlayer = server.getPlayerList().getPlayerByName(applicantName);
+        UUID targetUuid = null;
+
+        for (UUID uuid : match.pendingRequests) {
+            ServerPlayer p = server.getPlayerList().getPlayer(uuid);
+            if (p != null && p.getName().getString().equalsIgnoreCase(applicantName)) {
+                targetUuid = uuid;
+                break;
+            }
+        }
+
+        if (targetUuid == null && applicantPlayer != null && match.pendingRequests.contains(applicantPlayer.getUUID())) {
+            targetUuid = applicantPlayer.getUUID();
+        }
+
+        if (targetUuid == null) {
+            host.sendSystemMessage(Component.literal("§c[釣魚組隊] 未找到玩家 " + applicantName + " 的待審核加入申請！"));
+            return false;
+        }
+
+        match.pendingRequests.remove(targetUuid);
+        host.sendSystemMessage(Component.literal("§e[釣魚組隊] 已拒絕玩家 §e" + applicantName + " §e的加入請求。"));
+
+        if (applicantPlayer != null) {
+            applicantPlayer.sendSystemMessage(Component.literal("§c[釣魚組隊] 房主 §e" + match.hostName + " §c拒絕了您的加入請求。"));
+        }
+
+        return true;
     }
 
     public static void startPartyMatch(ServerPlayer host) {
@@ -1027,7 +1160,7 @@ public class FishingContestManager {
                                     // Parse host name from "🏠 <HostName> 的對抗房間"
                                     if (rawName.startsWith("🏠 ") && rawName.endsWith(" 的對抗房間")) {
                                         String hostName = rawName.substring(3, rawName.length() - 7).trim();
-                                        if (joinPartyMatch(sp, hostName)) {
+                                        if (requestJoinPartyMatch(sp, hostName)) {
                                             openPartyGui(sp);
                                         }
                                         return;
@@ -1051,29 +1184,64 @@ public class FishingContestManager {
         PartyMatch match = partyMatches.get(player.getUUID());
 
         if (match == null) {
-            container.setItem(11, createGuiItem(Items.NETHER_STAR, "§a➕ 創建全新比賽房間 (單人/多人)", List.of(
-                    "§7點擊創建預設 10 分鐘比賽房間",
-                    "§7可自己一人單人刷榜，或邀請好友加入競賽！",
-                    "",
-                    "§a[點擊創建比賽房間]"
+            // Status Slot 4
+            container.setItem(4, createGuiItem(Items.COMPASS, "§e🎮 釣魚組隊房間 - 未加入房間", List.of(
+                    "§7您目前尚未創建或加入任何對抗房間",
+                    "§7點擊下方按鈕可快速創建房間或瀏覽線上房間"
             )));
-            container.setItem(15, createGuiItem(Items.PAPER, "§b✉️ 加入好友房間指令", List.of(
-                    "§7請在聊天欄輸入指令: §e/fish party join <房主名稱>",
-                    "§7加入好友房間一起組隊釣魚競賽！"
+
+            // Direct Create buttons with duration
+            container.setItem(10, createGuiItem(Items.CLOCK, "§a➕ 創建 5 分鐘快釣房", List.of("§7時長: 5 分鐘", "", "§a[點擊創建]")));
+            container.setItem(11, createGuiItem(Items.CLOCK, "§a➕ 創建 10 分鐘標準房", List.of("§7時長: 10 分鐘", "", "§a[點擊創建]")));
+            container.setItem(12, createGuiItem(Items.CLOCK, "§a➕ 創建 15 分鐘拉鋸房", List.of("§7時長: 15 分鐘", "", "§a[點擊創建]")));
+            container.setItem(13, createGuiItem(Items.CLOCK, "§a➕ 創建 30 分鐘馬拉松房", List.of("§7時長: 30 分鐘", "", "§a[點擊創建]")));
+
+            // Visual Open Rooms List GUI button
+            container.setItem(15, createGuiItem(Items.CHEST, "§b🚪 瀏覽全服線上開放房間 GUI", List.of(
+                    "§7即時顯示全服所有玩家創建的組隊房間",
+                    "§7點擊即可發送加入申請（需房主同意）！",
+                    "",
+                    "§e[點擊開啟線上房間卡片列表]"
             )));
         } else {
             boolean isHost = match.hostUuid.equals(player.getUUID());
-            container.setItem(11, createGuiItem(Items.PLAYER_HEAD, "§6🎮 房間狀態: " + (match.active ? "§a[比賽中]" : "§e[等待中]"), List.of(
+            container.setItem(4, createGuiItem(Items.PLAYER_HEAD, "§6🎮 房間狀態: " + (match.active ? "§a[比賽中]" : "§e[等待中]"), List.of(
                     "§7房主: §f" + match.hostName,
-                    "§7當前人數: §f" + match.members.size() + " 人 " + (match.isSolo() ? "§7(單人保護模式)" : "§b(多人戰術模式)"),
-                    "§7比賽時長: §f" + match.durationMinutes + " 分鐘"
+                    "§7當前人數: §e" + match.members.size() + " 人",
+                    "§7當前設定時長: §b" + match.durationMinutes + " 分鐘"
             )));
 
             if (isHost && !match.active) {
-                container.setItem(13, createGuiItem(Items.EMERALD_BLOCK, "§a▶️ 開啟房間比賽！", List.of("§7點擊立即啟動倒數並開始計分", "", "§a[點擊開始比賽]")));
-            }
+                // Interactive Duration Select Buttons
+                container.setItem(10, createGuiItem(Items.CLOCK, "§e⏱️ 切換時長: 5 分鐘 " + (match.durationMinutes == 5 ? "§a[已選定]" : ""), List.of("§7點擊直接改為 5 分鐘")));
+                container.setItem(11, createGuiItem(Items.CLOCK, "§e⏱️ 切換時長: 10 分鐘 " + (match.durationMinutes == 10 ? "§a[已選定]" : ""), List.of("§7點擊直接改為 10 分鐘")));
+                container.setItem(12, createGuiItem(Items.CLOCK, "§e⏱️ 切換時長: 15 分鐘 " + (match.durationMinutes == 15 ? "§a[已選定]" : ""), List.of("§7點擊直接改為 15 分鐘")));
+                container.setItem(13, createGuiItem(Items.CLOCK, "§e⏱️ 切換時長: 30 分鐘 " + (match.durationMinutes == 30 ? "§a[已選定]" : ""), List.of("§7點擊直接改為 30 分鐘")));
 
-            container.setItem(15, createGuiItem(Items.BARRIER, "§c🚪 退出目前房間", List.of("§7退出目前比賽房間", "", "§c[點擊退出房間]")));
+                // Pending requests slot 14
+                int pendingCount = match.pendingRequests.size();
+                container.setItem(14, createGuiItem(Items.PAPER, "§6📩 待審核加入申請列表 " + (pendingCount > 0 ? "§a[" + pendingCount + " 筆]" : "§7[0 筆]"), List.of(
+                        "§7玩家申請加入房間時需經由房主審核同意",
+                        "§7當前待審核申請: §e" + pendingCount + " 筆",
+                        "",
+                        "§e[點擊開啟申請審核 GUI]"
+                )));
+
+                container.setItem(15, createGuiItem(Items.EMERALD_BLOCK, "§a▶️ 一鍵開啟房間對抗賽", List.of(
+                        "§7房間人數需滿 2 人以上即可開啟",
+                        "§7當前人數: §e" + match.members.size() + " / 2+",
+                        "",
+                        "§a[點擊開始比賽]"
+                )));
+                container.setItem(16, createGuiItem(Items.BARRIER, "§c🚪 解散目前房間", List.of("§7點擊一鍵解散房間", "", "§c[點擊解散]")));
+            } else {
+                container.setItem(13, createGuiItem(Items.CHEST, "§b👥 房間成員資訊", List.of(
+                        "§7房主: §f" + match.hostName,
+                        "§7人數: §e" + match.members.size() + " 人",
+                        "§7時長: §b" + match.durationMinutes + " 分鐘"
+                )));
+                container.setItem(15, createGuiItem(Items.BARRIER, "§c🚪 退出目前房間", List.of("§7退出目前比賽房間", "", "§c[點擊退出房間]")));
+            }
         }
 
         container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回釣魚大廳", List.of("§7返回上一頁")));
@@ -1084,29 +1252,103 @@ public class FishingContestManager {
                     public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             if (match == null) {
-                                if (slotId == 11) {
-                                    createPartyMatch(sp, 10);
-                                    openPartyGui(sp);
-                                    return;
-                                }
+                                if (slotId == 10) { createPartyMatch(sp, 5); openPartyGui(sp); return; }
+                                if (slotId == 11) { createPartyMatch(sp, 10); openPartyGui(sp); return; }
+                                if (slotId == 12) { createPartyMatch(sp, 15); openPartyGui(sp); return; }
+                                if (slotId == 13) { createPartyMatch(sp, 30); openPartyGui(sp); return; }
+                                if (slotId == 15) { openJoinPartyListGui(sp); return; }
                             } else {
-                                if (slotId == 13 && match.hostUuid.equals(sp.getUUID()) && !match.active) {
-                                    startPartyMatch(sp);
-                                    sp.closeContainer();
-                                    return;
-                                }
-                                if (slotId == 15) {
-                                    partyMatches.remove(sp.getUUID());
-                                    if (match.bossBar != null) match.bossBar.removePlayer(sp);
-                                    sp.sendSystemMessage(Component.literal("§c[釣魚組隊] 已退出目前比賽房間。"));
-                                    openPartyGui(sp);
-                                    return;
+                                boolean isHost = match.hostUuid.equals(sp.getUUID());
+                                if (isHost && !match.active) {
+                                    if (slotId == 10) { match.durationMinutes = 5; sp.sendSystemMessage(Component.literal("§a[釣魚組隊] 已將房間比賽時間切換為 5 分鐘！")); openPartyGui(sp); return; }
+                                    if (slotId == 11) { match.durationMinutes = 10; sp.sendSystemMessage(Component.literal("§a[釣魚組隊] 已將房間比賽時間切換為 10 分鐘！")); openPartyGui(sp); return; }
+                                    if (slotId == 12) { match.durationMinutes = 15; sp.sendSystemMessage(Component.literal("§a[釣魚組隊] 已將房間比賽時間切換為 15 分鐘！")); openPartyGui(sp); return; }
+                                    if (slotId == 13) { match.durationMinutes = 30; sp.sendSystemMessage(Component.literal("§a[釣魚組隊] 已將房間比賽時間切換為 30 分鐘！")); openPartyGui(sp); return; }
+                                    if (slotId == 14) { openPendingRequestsGui(sp); return; }
+                                    if (slotId == 15) {
+                                        startPartyMatch(sp);
+                                        openPartyGui(sp);
+                                        return;
+                                    }
+                                    if (slotId == 16) {
+                                        partyMatches.remove(sp.getUUID());
+                                        sp.sendSystemMessage(Component.literal("§c[釣魚組隊] 已解散比賽房間。"));
+                                        openPartyGui(sp);
+                                        return;
+                                    }
+                                } else {
+                                    if (slotId == 15) {
+                                        partyMatches.remove(sp.getUUID());
+                                        if (match.bossBar != null) match.bossBar.removePlayer(sp);
+                                        sp.sendSystemMessage(Component.literal("§c[釣魚組隊] 已退出目前比賽房間。"));
+                                        openPartyGui(sp);
+                                        return;
+                                    }
                                 }
                             }
                             if (slotId == 22) { openFishGui(sp); return; }
                         }
                     }
-                }, Component.literal("§8❖ 🎮 組隊/房間比賽大廳 ❖")));
+                }, Component.literal("§8❖ 🎮 組隊/房間對抗大廳 ❖")));
+    }
+
+    public static void openPendingRequestsGui(ServerPlayer host) {
+        if (host == null) return;
+        PartyMatch match = partyMatches.get(host.getUUID());
+        if (match == null || !match.hostUuid.equals(host.getUUID())) {
+            host.sendSystemMessage(Component.literal("§c[釣魚組隊] 您不是房主，無法審核申請！"));
+            return;
+        }
+
+        SimpleContainer container = new SimpleContainer(27);
+        ItemStack border = createGuiItem(getItem("minecraft:gray_stained_glass_pane"), " ", null);
+        for (int i = 0; i < 27; i++) {
+            container.setItem(i, border);
+        }
+
+        MinecraftServer server = host.level().getServer();
+        int slot = 10;
+        for (UUID applicantUuid : match.pendingRequests) {
+            if (slot >= 17) break;
+            ServerPlayer applicantPlayer = (server != null) ? server.getPlayerList().getPlayer(applicantUuid) : null;
+            String appName = (applicantPlayer != null) ? applicantPlayer.getName().getString() : "未知玩家 (" + applicantUuid.toString().substring(0, 8) + ")";
+
+            container.setItem(slot, createGuiItem(Items.PLAYER_HEAD, "§e📩 申請人: " + appName, List.of(
+                    "§7點擊滑鼠左鍵: §a[✔ 同意加入]",
+                    "§7點擊滑鼠右鍵: §c[✖ 拒絕申請]"
+            )));
+            slot++;
+        }
+
+        container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回組隊大廳", List.of("§7返回上一頁")));
+
+        host.openMenu(new SimpleMenuProvider((syncId, inv, p) ->
+                new ReadOnlyFishMenuHandler(MenuType.GENERIC_9x3, syncId, inv, container, 3) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 22) { openPartyGui(sp); return; }
+
+                            ItemStack item = container.getItem(slotId);
+                            if (!item.isEmpty() && item.is(Items.PLAYER_HEAD)) {
+                                Component nameComp = item.get(DataComponents.CUSTOM_NAME);
+                                if (nameComp != null) {
+                                    String str = nameComp.getString();
+                                    if (str.startsWith("§e📩 申請人: ")) {
+                                        String appName = str.substring("§e📩 申請人: ".length()).trim();
+                                        if (button == 1) { // Right click = deny
+                                            denyJoinRequest(sp, appName);
+                                        } else { // Left click = accept
+                                            acceptJoinRequest(sp, appName);
+                                        }
+                                        openPendingRequestsGui(sp);
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }, Component.literal("§8❖ 📩 房主審核加入申請面板 ❖")));
     }
 
     public static void openHallOfFameGui(ServerPlayer player) {

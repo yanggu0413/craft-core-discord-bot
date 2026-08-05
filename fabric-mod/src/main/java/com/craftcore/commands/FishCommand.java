@@ -98,7 +98,31 @@ public class FishCommand {
                                             ServerPlayer player = context.getSource().getPlayer();
                                             String host = StringArgumentType.getString(context, "host");
                                             if (player != null) {
-                                                FishingContestManager.joinPartyMatch(player, host);
+                                                FishingContestManager.requestJoinPartyMatch(player, host);
+                                            }
+                                            return 1;
+                                        })
+                                )
+                        )
+                        .then(Commands.literal("accept")
+                                .then(Commands.argument("applicant", StringArgumentType.word())
+                                        .executes(context -> {
+                                            ServerPlayer player = context.getSource().getPlayer();
+                                            String applicant = StringArgumentType.getString(context, "applicant");
+                                            if (player != null) {
+                                                FishingContestManager.acceptJoinRequest(player, applicant);
+                                            }
+                                            return 1;
+                                        })
+                                )
+                        )
+                        .then(Commands.literal("deny")
+                                .then(Commands.argument("applicant", StringArgumentType.word())
+                                        .executes(context -> {
+                                            ServerPlayer player = context.getSource().getPlayer();
+                                            String applicant = StringArgumentType.getString(context, "applicant");
+                                            if (player != null) {
+                                                FishingContestManager.denyJoinRequest(player, applicant);
                                             }
                                             return 1;
                                         })
