@@ -9,10 +9,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.List;
+
 @Mixin(NaturalSpawner.class)
 public class NaturalSpawnerMixin {
     @Inject(method = "spawnForChunk", at = @At("HEAD"), cancellable = true)
-    private static void onSpawnForChunk(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState spawnState, boolean spawnFriendlies, boolean spawnMonsters, boolean spawnSpawners, CallbackInfo ci) {
+    private static void onSpawnForChunk(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState spawnState, List<?> spawnCategories, CallbackInfo ci) {
         if (level != null && level.dimension().equals(FishingContestManager.FISHING_DIMENSION_KEY)) {
             ci.cancel();
         }
