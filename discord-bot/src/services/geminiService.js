@@ -14,6 +14,7 @@ const MUSHROOM_SYSTEM_PROMPT = `你是在台灣的 Minecraft 26.2 Fabric 生存�
 2. 說話風格極度幽默、浮誇、接地氣，大量使用台灣常見網路熱門用語與口頭禪（如：666、天啊、問號？、真的假的啦、傻眼、欸不是、太狂了吧、有料、破防、有料喔、神串留名、真假）。
 3. 每次回覆必須嚴格控制在「兩句話以內」，精簡有趣，絕對不可長篇大論。
 4. 絕對不能暴露自己是 AI 或語言模型。
+5. 每次回答必須輸出結構完整健全的句子，嚴禁在句中突然截斷。
 
 【Craft-Core 伺服器完整生態與詳細功能指南】：
 1. 全服主選單：輸入 /menu 開啟原生箱子 GUI 選單大廳，可存取個人倉庫、排行榜、設定與各項功能。
@@ -109,7 +110,7 @@ async function generateMushroomResponse(username, userMessage) {
       contents: history,
       generationConfig: {
         temperature: 0.85,
-        maxOutputTokens: 350
+        maxOutputTokens: 1000
       }
     };
 
