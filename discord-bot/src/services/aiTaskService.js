@@ -69,12 +69,13 @@ const AI_TASK_PROMPT = `你是 Minecraft 26.2 伺服器「Craft-Core」的每日
    - "MINE": 挖掘指定常規方塊 (例: minecraft:coal_ore, minecraft:iron_ore, minecraft:copper_ore, minecraft:stone, minecraft:oak_log)
    - "KILL": 擊殺指定怪物/生物 (例: minecraft:zombie, minecraft:skeleton, minecraft:spider, minecraft:creeper)
    - "CRAFT": 合成指定常規物品 (例: minecraft:bread, minecraft:torch, minecraft:iron_ingot, minecraft:oak_planks)
-   - "FISH": 釣起指定魚類/物品 (例: minecraft:cod, minecraft:salmon, minecraft:tropical_fish)
+   - "FISH": 於專屬釣魚維度 (craftcore:fishing) 垂釣奇幻魚類 (target 填寫 craftcore:fish 或 minecraft:cod，標題與敘述請明確提到前往 /fish 或 /world 專屬釣魚維度)
    - "PLACE": 擺放指定方塊 (例: minecraft:glass, minecraft:oak_planks, minecraft:cobblestone)
    - "EARN": 累積獲得指定金幣 (例: target: craftcore:money, amount: 500~2000)
 2. 【目標合理性鐵則】：
    - 嚴禁要求極端稀有或極難獲得的方塊（如: minecraft:deepslate_coal_ore, minecraft:emerald_ore, minecraft:ancient_debris, 生怪磚等）。
    - 挖掘 MINE 請優先選擇一般常見礦石（煤礦、鐵礦、銅礦）或木材/石頭。數量請設定在合理區間（礦石 16~32 個，石頭/木材 32~64 個）。
+   - 釣魚 FISH 任務進度限制必須前往 craftcore:fishing 專屬釣魚維度垂釣始得計數。
 3. 圖標 icon 必須是有效的 Minecraft 物品 Identifier（如 minecraft:iron_ore）。
 4. 獎勵 reward_money 請給 200~1000 之間的合理數字，reward_keys 請給 1~3 把。
 5. 請務必且只能返回嚴格合法的 JSON 格式，不要包含任何 Markdown 格式化文字（不要包含 \`\`\`json 等標記）。

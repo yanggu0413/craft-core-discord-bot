@@ -30,8 +30,8 @@ public abstract class FishingHookMixin {
     private void onRetrieve(ItemStack stack, CallbackInfoReturnable<Integer> cir) {
         Player owner = getPlayerOwner();
         if (owner instanceof ServerPlayer player) {
-            if (this.nibble > 0) { // Catching something
-                AiDailyTaskManager.updateProgress(player, "FISH", "minecraft:cod", 1);
+            if (this.nibble > 0 && player.level().dimension().identifier().toString().equals("craftcore:fishing")) { // Catching something in fishing dimension
+                AiDailyTaskManager.updateProgress(player, "FISH", "craftcore:fish", 1);
             }
         }
     }

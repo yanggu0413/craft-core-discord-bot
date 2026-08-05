@@ -165,6 +165,8 @@ public class AiDailyTaskManager {
             matchesTarget = true;
         } else if (type.equalsIgnoreCase("EARN")) {
             matchesTarget = true;
+        } else if (type.equalsIgnoreCase("FISH")) {
+            matchesTarget = true;
         }
 
         if (!matchesTarget) return;
