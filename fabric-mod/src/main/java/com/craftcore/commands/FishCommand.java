@@ -29,6 +29,15 @@ public class FishCommand {
                             return 1;
                         })
                 )
+                .then(Commands.literal("solo")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player != null) {
+                                FishingContestManager.toggleSoloMode(player);
+                            }
+                            return 1;
+                        })
+                )
                 .then(Commands.literal("sell")
                         .executes(context -> {
                             ServerPlayer player = context.getSource().getPlayer();

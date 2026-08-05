@@ -93,6 +93,10 @@ public class FishingContestManager {
     private static final Map<UUID, Long> giantFishBuffExpirationMap = new ConcurrentHashMap<>();
     private static final Map<UUID, PartyMatch> partyMatches = new ConcurrentHashMap<>();
     private static final Set<UUID> playersInFishingDimension = ConcurrentHashMap.newKeySet();
+    private static final Set<UUID> soloPlayers = ConcurrentHashMap.newKeySet();
+    private static final Map<UUID, Double> soloBestScores = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> soloFishCounts = new ConcurrentHashMap<>();
+    private static final Map<UUID, ServerBossEvent> soloBossBars = new ConcurrentHashMap<>();
 
     public static void tickPlayerBuffs(ServerPlayer player) {
         if (player == null) return;
@@ -116,6 +120,15 @@ public class FishingContestManager {
                 player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SATURATION, net.minecraft.world.effect.MobEffectInstance.INFINITE_DURATION, 255, false, false, true));
                 player.sendSystemMessage(Component.literal("§a✨ [釣魚維度保護] 已進入釣魚專屬維度！自動獲得無限時效 (等級 255) 回復、抗性、抗火與飽食 BUFF！"));
                 checkAndGiveStarterRod(player);
+
+                if (soloPlayers.contains(uuid)) {
+                    ServerBossEvent soloBar = soloBossBars.get(uuid);
+                    if (soloBar != null && !soloBar.getPlayers().contains(player)) {
+                        soloBar.addPlayer(player);
+                    }
+                } else if (active && bossBar != null && !bossBar.getPlayers().contains(player)) {
+                    bossBar.addPlayer(player);
+                }
             }
         } else {
             if (playersInFishingDimension.contains(uuid)) {
@@ -126,6 +139,20 @@ public class FishingContestManager {
                 player.removeEffect(net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE);
                 player.removeEffect(net.minecraft.world.effect.MobEffects.SATURATION);
                 player.sendSystemMessage(Component.literal("§e[釣魚維度保護] 已離開釣魚維度，自動清除維度專屬 BUFF。"));
+
+                // AUTOMATICALLY REMOVE PLAYER FROM ALL BOSSBARS WHEN LEAVING DIMENSION
+                if (bossBar != null) {
+                    bossBar.removePlayer(player);
+                }
+                for (PartyMatch match : partyMatches.values()) {
+                    if (match.bossBar != null) {
+                        match.bossBar.removePlayer(player);
+                    }
+                }
+                ServerBossEvent soloBar = soloBossBars.get(uuid);
+                if (soloBar != null) {
+                    soloBar.removePlayer(player);
+                }
             }
         }
     }
@@ -606,6 +633,24 @@ public class FishingContestManager {
             }
         }
 
+        // Update solo mode score if in solo mode
+        if (soloPlayers.contains(player.getUUID())) {
+            UUID uuid = player.getUUID();
+            double currentBest = soloBestScores.getOrDefault(uuid, 0.0);
+            if (lengthCm > currentBest) {
+                soloBestScores.put(uuid, lengthCm);
+                player.sendSystemMessage(Component.literal(String.format("§a🌿 [單人悠閒釣魚] 刷新個人單次紀錄！新長度: §e%.1f cm §a(原: %.1f cm)", lengthCm, currentBest)));
+            }
+            int count = soloFishCounts.getOrDefault(uuid, 0) + 1;
+            soloFishCounts.put(uuid, count);
+
+            ServerBossEvent soloBar = soloBossBars.get(uuid);
+            if (soloBar != null) {
+                soloBar.setName(Component.literal(String.format("§a🌿 [單人悠閒釣魚] 👑 個人最高: §e%.1f cm §a| 🎣 總捕獲: §e%d 條",
+                        soloBestScores.getOrDefault(uuid, 0.0), count)));
+            }
+        }
+
         updateHallOfFame(fish);
         FishCodexManager.onCatchFish(player, fishName, lengthCm);
 
@@ -648,10 +693,49 @@ public class FishingContestManager {
         }
     }
 
+    public static void toggleSoloMode(ServerPlayer player) {
+        if (player == null) return;
+        UUID uuid = player.getUUID();
+        if (soloPlayers.contains(uuid)) {
+            soloPlayers.remove(uuid);
+            ServerBossEvent soloBar = soloBossBars.remove(uuid);
+            if (soloBar != null) {
+                soloBar.removePlayer(player);
+                soloBar.setVisible(false);
+            }
+            player.sendSystemMessage(Component.literal("§e🌿 [單人悠閒釣魚] 已關閉單人模式，恢復參加全服/房間大賽。"));
+            if (active && bossBar != null && player.level().dimension().equals(FISHING_DIMENSION_KEY)) {
+                bossBar.addPlayer(player);
+            }
+        } else {
+            soloPlayers.add(uuid);
+            if (bossBar != null) {
+                bossBar.removePlayer(player);
+            }
+            for (PartyMatch m : partyMatches.values()) {
+                if (m.bossBar != null) m.bossBar.removePlayer(player);
+            }
+            ServerBossEvent soloBar = new ServerBossEvent(UUID.randomUUID(),
+                    Component.literal(String.format("§a🌿 [單人悠閒釣魚] 👑 個人最高: §e%.1f cm §a| 🎣 總捕獲: §e%d 條",
+                            soloBestScores.getOrDefault(uuid, 0.0), soloFishCounts.getOrDefault(uuid, 0))),
+                    BossEvent.BossBarColor.GREEN, BossEvent.BossBarOverlay.PROGRESS);
+            soloBar.setProgress(1.0f);
+            soloBar.setVisible(true);
+            soloBar.addPlayer(player);
+            soloBossBars.put(uuid, soloBar);
+            player.sendSystemMessage(Component.literal("§a🌿 [單人悠閒釣魚] 已為您開啟單人悠閒釣魚模式！無時間限制，免疫長度偷取與交換干擾！"));
+        }
+    }
+
     public static void applyThief(ServerPlayer thiefPlayer, ServerPlayer targetPlayer) {
         if (thiefPlayer == null || targetPlayer == null) return;
         UUID tUuid = thiefPlayer.getUUID();
         UUID vUuid = targetPlayer.getUUID();
+
+        if (soloPlayers.contains(tUuid) || soloPlayers.contains(vUuid)) {
+            thiefPlayer.sendSystemMessage(Component.literal("§c[單人保護] 單人悠閒模式下的玩家不允許使用或受影響於長度偷取與交換道具！"));
+            return;
+        }
 
         Double vScore = serverScores.get(vUuid);
         if (vScore != null && vScore > 0) {
@@ -670,6 +754,11 @@ public class FishingContestManager {
         if (p1 == null || p2 == null) return;
         UUID u1 = p1.getUUID();
         UUID u2 = p2.getUUID();
+
+        if (soloPlayers.contains(u1) || soloPlayers.contains(u2)) {
+            p1.sendSystemMessage(Component.literal("§c[單人保護] 單人悠閒模式下的玩家不允許使用或受影響於長度偷取與交換道具！"));
+            return;
+        }
 
         double score1 = serverScores.getOrDefault(u1, 0.0);
         double score2 = serverScores.getOrDefault(u2, 0.0);
