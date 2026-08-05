@@ -115,6 +115,7 @@ public class FishingContestManager {
                 player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE, net.minecraft.world.effect.MobEffectInstance.INFINITE_DURATION, 255, false, false, true));
                 player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SATURATION, net.minecraft.world.effect.MobEffectInstance.INFINITE_DURATION, 255, false, false, true));
                 player.sendSystemMessage(Component.literal("§a✨ [釣魚維度保護] 已進入釣魚專屬維度！自動獲得無限時效 (等級 255) 回復、抗性、抗火與飽食 BUFF！"));
+                checkAndGiveStarterRod(player);
             }
         } else {
             if (playersInFishingDimension.contains(uuid)) {
@@ -126,6 +127,34 @@ public class FishingContestManager {
                 player.removeEffect(net.minecraft.world.effect.MobEffects.SATURATION);
                 player.sendSystemMessage(Component.literal("§e[釣魚維度保護] 已離開釣魚維度，自動清除維度專屬 BUFF。"));
             }
+        }
+    }
+
+    public static void checkAndGiveStarterRod(ServerPlayer player) {
+        if (player == null) return;
+        boolean hasRod = false;
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
+            if (!stack.isEmpty() && stack.is(Items.FISHING_ROD)) {
+                hasRod = true;
+                break;
+            }
+        }
+
+        if (!hasRod) {
+            ItemStack rod = new ItemStack(Items.FISHING_ROD);
+            rod.set(DataComponents.CUSTOM_NAME, Component.literal("§b🎣 釣魚大都會 - 幸運釣竿"));
+            rod.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+            rod.set(DataComponents.LORE, new ItemLore(List.of(
+                    Component.literal("§7系統免費贈送的新手專用釣竿"),
+                    Component.literal("§7於 craftcore:fishing 專屬釣魚維度垂釣"),
+                    Component.literal(""),
+                    Component.literal("§a[幸運釣手專屬裝備]")
+            )));
+
+            player.getInventory().add(rod);
+            player.sendSystemMessage(Component.literal("§a🎁 [釣魚好禮] 歡迎來到釣魚維度！檢測到您未攜帶釣竿，系統已自動為您發放【🎣 幸運釣竿】！"));
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
         }
     }
 
