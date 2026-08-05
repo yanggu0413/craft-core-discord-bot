@@ -1049,7 +1049,7 @@ public class MenuGuiManager {
         SimpleContainer container = new SimpleContainer(54);
         clearInnerGrid(container);
 
-        container.setItem(4, createGuiItem(Items.ARMOR_STAND, "§a➕ 召喚新假人 (/bot spawn)", List.of(
+        container.setItem(4, createGuiItem(Items.ARMOR_STAND, "§a➕ 召喚新假人 (/fp <名稱> spawn)", List.of(
                 "§7在您當前位置召喚新假人助手",
                 "",
                 "§e[點擊執行召喚]"
