@@ -20,7 +20,9 @@
     "ItemStackMixin",
     "ItemMixin",
     "BlockItemMixin",
-    "FishingHookMixin"
+    "FishingHookMixin",
+    "MobSpawnMixin",
+    "NaturalSpawnerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
