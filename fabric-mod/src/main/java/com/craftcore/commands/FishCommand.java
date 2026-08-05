@@ -20,6 +20,15 @@ public class FishCommand {
                     }
                     return 1;
                 })
+                .then(Commands.literal("rod")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player != null) {
+                                FishingContestManager.giveFishingRod(player);
+                            }
+                            return 1;
+                        })
+                )
                 .then(Commands.literal("tp")
                         .executes(context -> {
                             ServerPlayer player = context.getSource().getPlayer();

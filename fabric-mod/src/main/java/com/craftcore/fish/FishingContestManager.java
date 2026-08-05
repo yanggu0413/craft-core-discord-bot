@@ -1012,43 +1012,52 @@ public class FishingContestManager {
         public abstract void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker);
     }
 
+    public static void giveFishingRod(ServerPlayer player) {
+        if (player == null) return;
+        ItemStack rod = new ItemStack(Items.FISHING_ROD);
+        rod.set(DataComponents.CUSTOM_NAME, Component.literal("§b🎣 奇幻冒險釣魚竿"));
+        rod.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+        rod.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§7專屬奇幻釣魚維度神功竿"),
+                Component.literal("§7可於 craftcore:fishing 維度釣獲全奇幻魚種"),
+                Component.literal(""),
+                Component.literal("§a[免費新手贊助發放]")
+        )));
+        if (!player.getInventory().add(rod)) {
+            player.drop(rod, false);
+        }
+        player.sendSystemMessage(Component.literal("§a[釣魚系統] 成功領取【§b🎣 奇幻冒險釣魚竿§a】！祝您滿載而歸！"));
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
+    }
+
     public static void openFishGui(ServerPlayer player) {
         if (player == null) return;
         SimpleContainer container = new SimpleContainer(27);
+        com.craftcore.menu.MenuGuiManager.fillBackground(container);
 
-        ItemStack border = createGuiItem(getItem("minecraft:gray_stained_glass_pane"), " ", null);
-        for (int i = 0; i < 27; i++) {
-            container.setItem(i, border);
-        }
+        // Slot 4: Header
+        container.setItem(4, createGuiItem(Items.FISHING_ROD, "§6🎣 奇幻釣魚大廳", List.of(
+                "§7體驗專屬釣魚維度、組隊對抗與奇幻圖鑑集滿"
+        )));
 
-        // Slot 10: Teleport to craftcore:fishing dimension
-        container.setItem(10, createGuiItem(Items.ENDER_PEARL, "§a🚀 傳送至專屬釣魚虛空維度", List.of(
+        // Slot 10: Free Fishing Rod
+        container.setItem(10, createGuiItem(Items.FISHING_ROD, "§a🎣 一鍵免費領取釣魚竿 (/fish rod)", List.of(
+                "§7一鍵免費領取基礎釣魚竿",
+                "§7即可前往釣魚維度展開冒險！",
+                "",
+                "§a[點擊免費領取釣魚竿]"
+        )));
+
+        // Slot 11: Teleport to craftcore:fishing dimension
+        container.setItem(11, createGuiItem(Items.ENDER_PEARL, "§a🚀 傳送至奇幻釣魚維度 (/fish tp)", List.of(
                 "§7維度 ID: §ecraftcore:fishing",
-                "§7全虛空背景、釣起 100% 奇幻 NBT 魚類",
+                "§7永晝晴空、無雨平靜，可捕獲 20 種奇幻魚類",
                 "",
                 "§a[點擊立即傳送至釣魚維度]"
         )));
 
-        // Slot 12: Party Match Lobby
-        PartyMatch match = partyMatches.get(player.getUUID());
-        String partyInfo = (match != null) ? "§a[已加入/房主: " + match.hostName + "]" : "§7[未加入/點擊開房]";
-        container.setItem(12, createGuiItem(Items.FISHING_ROD, "§b🎮 自由組隊房間對抗大廳", List.of(
-                "§7狀態: " + partyInfo,
-                "§7可直接選擇 5/10/15/30 分鐘開房",
-                "§7可 1 秒一鍵加入全服線上開放房間卡片列表",
-                "",
-                "§e[點擊開啟組隊/房間比賽 GUI]"
-        )));
-
-        // Slot 14: Hall of Fame
-        container.setItem(14, createGuiItem(Items.GOLD_BLOCK, "§6🏆 歷史釣王名人堂榜單", List.of(
-                "§7記錄全服有史以來釣起的最高巨魚排行榜",
-                "",
-                "§e[點擊查看歷史 Top 50 名人堂]"
-        )));
-
-        // Slot 16: Fish Sell Shop
-        container.setItem(16, createGuiItem(Items.GOLD_NUGGET, "§a💰 奇幻售魚商店 (/fish sell)", List.of(
+        // Slot 12: Fish Sell Shop
+        container.setItem(12, createGuiItem(Items.GOLD_NUGGET, "§a💰 奇幻售魚商店 (/fish sell)", List.of(
                 "§7底價 $20 + 長度 $0.3/cm + 重量 $0.4/kg",
                 "§7單條最高封頂可售出 $300 元金幣",
                 "",
@@ -1056,9 +1065,9 @@ public class FishingContestManager {
                 "§a[右鍵點擊: 一鍵全售背包內魚類]"
         )));
 
-        // Slot 18: Fish Codex
+        // Slot 13: Fish Codex
         int unlocked = FishCodexManager.getUnlockedCount(player.getUUID());
-        container.setItem(18, createGuiItem(Items.BOOK, "§b📖 奇幻魚類圖鑑冊 (/fish codex)", List.of(
+        container.setItem(13, createGuiItem(Items.BOOK, "§b📖 奇幻魚類圖鑑冊 (/fish codex)", List.of(
                 "§7記錄 20 種奇幻魚類解鎖狀態與個人最大紀錄",
                 "§7當前進度: §e" + unlocked + " / 20",
                 "§7解鎖 100% 全圖鑑獲得稱號: §b[海王]",
@@ -1066,36 +1075,43 @@ public class FishingContestManager {
                 "§e[點擊開啟圖鑑冊]"
         )));
 
-        // Slot 20: Solo Mode Toggle
+        // Slot 14: Party Match Lobby
+        PartyMatch match = partyMatches.get(player.getUUID());
+        String partyInfo = (match != null) ? "§a[已加入/房主: " + match.hostName + "]" : "§7[未加入/點擊開房]";
+        container.setItem(14, createGuiItem(Items.PRISMARINE_CRYSTALS, "§b🎮 自由組隊房間對抗大廳", List.of(
+                "§7狀態: " + partyInfo,
+                "§7可直接選擇 5/10/15/30 分鐘開房對抗",
+                "",
+                "§e[點擊開啟組隊/房間比賽 GUI]"
+        )));
+
+        // Slot 15: Hall of Fame
+        container.setItem(15, createGuiItem(Items.GOLD_BLOCK, "§6🏆 歷史釣王名人堂榜單", List.of(
+                "§7記錄全服有史以來釣起的最高巨魚排行榜",
+                "",
+                "§e[點擊查看歷史 Top 50 名人堂]"
+        )));
+
+        // Slot 16: Solo Mode Toggle
         boolean isSolo = soloPlayers.contains(player.getUUID());
-        container.setItem(20, createGuiItem(Items.SLIME_BALL, "§a🌿 單人悠閒釣魚模式 " + (isSolo ? "§a[開啟中]" : "§c[未開啟]"), List.of(
-                "§7無時間限制、獨立紀錄單次釣魚 Session 數據",
-                "§7免疫長度偷取、交換與詛咒爆破干擾",
-                "§7適合獨自輕鬆垂釣",
+        container.setItem(16, createGuiItem(Items.SLIME_BALL, "§a🌿 單人悠閒釣魚模式 " + (isSolo ? "§a[開啟中]" : "§c[未開啟]"), List.of(
+                "§7無時間限制、免疫長度偷取與干擾道具",
                 "",
                 "§e[點擊切換 單人悠閒釣魚模式]"
         )));
 
-        // Slot 22: BossBar Toggle
-        boolean bossBarVis = (bossBar != null && bossBar.getPlayers().contains(player));
-        container.setItem(22, createGuiItem(Items.COMPASS, "§e📊 BossBar 抬頭資訊 " + (bossBarVis ? "§a[已顯示]" : "§c[已隱藏]"), List.of(
-                "§7切換頂部大賽狀態與倒數 BossBar",
-                "",
-                "§e[點擊切換 BossBar 顯示]"
-        )));
-
-        // Slot 24: Back to menu
-        container.setItem(24, createGuiItem(Items.ARROW, "§a⬅ 返回 /menu 大廳", List.of("§7點擊返回主選單")));
+        // Slot 22: Back to menu, Slot 26: Close
+        container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回 /menu 大廳", List.of("§7點擊返回主選單")));
+        container.setItem(26, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((syncId, inv, p) ->
                 new ReadOnlyFishMenuHandler(MenuType.GENERIC_9x3, syncId, inv, container, 3) {
                     @Override
                     public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
-                            if (slotId == 10) { sp.closeContainer(); teleportToFishingDimension(sp); return; }
-                            if (slotId == 12) { openPartyGui(sp); return; }
-                            if (slotId == 14) { openHallOfFameGui(sp); return; }
-                            if (slotId == 16) {
+                            if (slotId == 10) { giveFishingRod(sp); return; }
+                            if (slotId == 11) { sp.closeContainer(); teleportToFishingDimension(sp); return; }
+                            if (slotId == 12) {
                                 if (button == 1) { // Right click
                                     FishSellManager.sellAllInventoryFish(sp);
                                 } else { // Left click
@@ -1104,27 +1120,25 @@ public class FishingContestManager {
                                 openFishGui(sp);
                                 return;
                             }
-                            if (slotId == 18) { FishCodexManager.openCodexGui(sp); return; }
-                            if (slotId == 20) {
+                            if (slotId == 13) { FishCodexManager.openCodexGui(sp); return; }
+                            if (slotId == 14) { openPartyGui(sp); return; }
+                            if (slotId == 15) { openHallOfFameGui(sp); return; }
+                            if (slotId == 16) {
                                 toggleSoloMode(sp);
                                 openFishGui(sp);
                                 return;
                             }
                             if (slotId == 22) {
-                                if (bossBar != null) {
-                                    if (bossBar.getPlayers().contains(sp)) bossBar.removePlayer(sp);
-                                    else bossBar.addPlayer(sp);
-                                }
-                                openFishGui(sp);
+                                com.craftcore.menu.MenuGuiManager.openMainMenu(sp);
                                 return;
                             }
-                            if (slotId == 24) {
-                                com.craftcore.menu.MenuGuiManager.openMainMenu(sp);
+                            if (slotId == 26) {
+                                sp.closeContainer();
                                 return;
                             }
                         }
                     }
-                }, Component.literal("§8❖ 🎣 奇幻釣魚大都會大廳 (/fish) ❖")));
+                }, Component.literal("§8❖ 🎣 奇幻釣魚大廳 ❖")));
     }
 
     public static void openJoinPartyListGui(ServerPlayer player) {

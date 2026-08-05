@@ -108,7 +108,7 @@ public class MenuGuiManager {
         return stack;
     }
 
-    private static void fillBackground(SimpleContainer container) {
+    public static void fillBackground(SimpleContainer container) {
         ItemStack border = createGuiItem(getItem("minecraft:gray_stained_glass_pane"), " ", null);
         for (int i = 0; i < container.getContainerSize(); i++) {
             container.setItem(i, border.copy());
