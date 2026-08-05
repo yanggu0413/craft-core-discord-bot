@@ -22,7 +22,8 @@
     "BlockItemMixin",
     "FishingHookMixin",
     "MobSpawnMixin",
-    "NaturalSpawnerMixin"
+    "NaturalSpawnerMixin",
+    "ServerLevelMixin"
   ],
   "injectors": {
     "defaultRequire": 1
