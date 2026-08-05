@@ -883,10 +883,10 @@ public class FishingContestManager {
         // Slot 12: Party Match Lobby
         PartyMatch match = partyMatches.get(player.getUUID());
         String partyInfo = (match != null) ? "§a[已加入/房主: " + match.hostName + "]" : "§7[未加入/點擊開房]";
-        container.setItem(12, createGuiItem(Items.FISHING_ROD, "§b🎮 自由組隊/單人比賽大廳", List.of(
+        container.setItem(12, createGuiItem(Items.FISHING_ROD, "§b🎮 自由組隊房間對抗大廳", List.of(
                 "§7狀態: " + partyInfo,
-                "§7組隊模式: 允許使用偷取器與交換器",
-                "§7單人模式: 僅爆個人加速/磁鐵 BUFF",
+                "§7可直接選擇 5/10/15/30 分鐘開房",
+                "§7可 1 秒一鍵加入全服線上開放房間卡片列表",
                 "",
                 "§e[點擊開啟組隊/房間比賽 GUI]"
         )));
@@ -917,16 +917,26 @@ public class FishingContestManager {
                 "§e[點擊開啟圖鑑冊]"
         )));
 
-        // Slot 20: BossBar Toggle
+        // Slot 20: Solo Mode Toggle
+        boolean isSolo = soloPlayers.contains(player.getUUID());
+        container.setItem(20, createGuiItem(Items.SLIME_BALL, "§a🌿 單人悠閒釣魚模式 " + (isSolo ? "§a[開啟中]" : "§c[未開啟]"), List.of(
+                "§7無時間限制、獨立紀錄單次釣魚 Session 數據",
+                "§7免疫長度偷取、交換與詛咒爆破干擾",
+                "§7適合獨自輕鬆垂釣",
+                "",
+                "§e[點擊切換 單人悠閒釣魚模式]"
+        )));
+
+        // Slot 22: BossBar Toggle
         boolean bossBarVis = (bossBar != null && bossBar.getPlayers().contains(player));
-        container.setItem(20, createGuiItem(Items.COMPASS, "§e📊 BossBar 抬頭資訊 " + (bossBarVis ? "§a[已顯示]" : "§c[已隱藏]"), List.of(
+        container.setItem(22, createGuiItem(Items.COMPASS, "§e📊 BossBar 抬頭資訊 " + (bossBarVis ? "§a[已顯示]" : "§c[已隱藏]"), List.of(
                 "§7切換頂部大賽狀態與倒數 BossBar",
                 "",
                 "§e[點擊切換 BossBar 顯示]"
         )));
 
-        // Slot 22: Back to menu
-        container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回 /menu 大廳", List.of("§7點擊返回主選單")));
+        // Slot 24: Back to menu
+        container.setItem(24, createGuiItem(Items.ARROW, "§a⬅ 返回 /menu 大廳", List.of("§7點擊返回主選單")));
 
         player.openMenu(new SimpleMenuProvider((syncId, inv, p) ->
                 new ReadOnlyFishMenuHandler(MenuType.GENERIC_9x3, syncId, inv, container, 3) {
@@ -947,6 +957,11 @@ public class FishingContestManager {
                             }
                             if (slotId == 18) { FishCodexManager.openCodexGui(sp); return; }
                             if (slotId == 20) {
+                                toggleSoloMode(sp);
+                                openFishGui(sp);
+                                return;
+                            }
+                            if (slotId == 22) {
                                 if (bossBar != null) {
                                     if (bossBar.getPlayers().contains(sp)) bossBar.removePlayer(sp);
                                     else bossBar.addPlayer(sp);
@@ -954,10 +969,74 @@ public class FishingContestManager {
                                 openFishGui(sp);
                                 return;
                             }
-                            if (slotId == 22) { com.craftcore.menu.MenuGuiManager.openMainMenu(sp); return; }
+                            if (slotId == 24) {
+                                com.craftcore.menu.MenuGuiManager.openMainMenu(sp);
+                                return;
+                            }
                         }
                     }
-                }, Component.literal("§8❖ 🎣 釣魚大都會與專屬維度 ❖")));
+                }, Component.literal("§8❖ 🎣 奇幻釣魚大都會大廳 (/fish) ❖")));
+    }
+
+    public static void openJoinPartyListGui(ServerPlayer player) {
+        if (player == null) return;
+        SimpleContainer container = new SimpleContainer(54);
+
+        ItemStack border = createGuiItem(getItem("minecraft:gray_stained_glass_pane"), " ", null);
+        for (int i = 0; i < 54; i++) {
+            container.setItem(i, border);
+        }
+
+        // Get unique open matches
+        List<PartyMatch> openMatches = partyMatches.values().stream()
+                .distinct()
+                .toList();
+
+        int slot = 10;
+        for (PartyMatch m : openMatches) {
+            if (slot >= 44) break;
+            if (slot % 9 == 0 || slot % 9 == 8) slot++;
+
+            List<String> lore = List.of(
+                    "§7房主名稱: §f" + m.hostName,
+                    "§7當前人數: §e" + m.members.size() + " 人",
+                    "§7設定時間: §b" + m.durationMinutes + " 分鐘",
+                    "§7比賽狀態: " + (m.active ? "§c[比賽進行中]" : "§a[開放加入中]"),
+                    "",
+                    m.active ? "§c[比賽已開始 - 無法加入]" : "§a[點擊 1 秒一鍵加入此房間]"
+            );
+
+            container.setItem(slot, createGuiItem(Items.PLAYER_HEAD, "§6🏠 " + m.hostName + " 的對抗房間", lore));
+            slot++;
+        }
+
+        container.setItem(49, createGuiItem(Items.ARROW, "§a⬅ 返回組隊大廳", List.of("§7返回上一頁")));
+
+        player.openMenu(new SimpleMenuProvider((syncId, inv, p) ->
+                new ReadOnlyFishMenuHandler(MenuType.GENERIC_9x6, syncId, inv, container, 6) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 49) { openPartyGui(sp); return; }
+
+                            ItemStack clicked = container.getItem(slotId);
+                            if (!clicked.isEmpty() && clicked.is(Items.PLAYER_HEAD)) {
+                                Component nameComp = clicked.get(DataComponents.CUSTOM_NAME);
+                                if (nameComp != null) {
+                                    String rawName = nameComp.getString();
+                                    // Parse host name from "🏠 <HostName> 的對抗房間"
+                                    if (rawName.startsWith("🏠 ") && rawName.endsWith(" 的對抗房間")) {
+                                        String hostName = rawName.substring(3, rawName.length() - 7).trim();
+                                        if (joinPartyMatch(sp, hostName)) {
+                                            openPartyGui(sp);
+                                        }
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }, Component.literal("§8❖ 🚪 全服線上開放房間卡片列表 ❖")));
     }
 
     public static void openPartyGui(ServerPlayer player) {
