@@ -201,13 +201,14 @@ async function handle(packet, discordClient) {
         binding = await UserRepository.getBindingByMcUsername(username);
       }
       if (!binding) {
+        const fallbackKeys = typeof mod_keys === 'number' ? Math.max(0, mod_keys) : 0;
         session.send({
           type: 'luckydraw_response',
           payload: {
             username,
             success: false,
-            keysLeft: 0,
-            keysCount: 0,
+            keysLeft: fallbackKeys,
+            keysCount: fallbackKeys,
             message: '§c[Craft-Core] 您尚未綁定 Discord 帳號！請先在遊戲內輸入 /discord link 取得驗證碼，並於 Discord 完成綁定。'
           }
         });
@@ -220,6 +221,7 @@ async function handle(packet, discordClient) {
       const modKeysVal = typeof mod_keys === 'number' ? Math.max(0, mod_keys) : 0;
       if (modKeysVal > currentDbKeys) {
         currentDbKeys = modKeysVal;
+        await UserRepository.updateKeys(discordId, currentDbKeys);
       }
 
       if (currentDbKeys < 1) {
@@ -353,7 +355,10 @@ async function handle(packet, discordClient) {
       try {
         const UserRepository = require('../database/repositories/UserRepository');
         const OfflineMailRepository = require('../database/repositories/OfflineMailRepository');
-        const binding = await UserRepository.getBindingByMcUsername(username);
+        let binding = await UserRepository.getBindingByMcUuid(uuid);
+        if (!binding) {
+          binding = await UserRepository.getBindingByMcUsername(username);
+        }
         let hasCheckedIn = false;
         let keysCount = 0;
         if (binding) {

@@ -17,19 +17,13 @@ public class LevelMixin {
     @Inject(method = "destroyBlock", at = @At("HEAD"), cancellable = true)
     private void onDestroyBlock(BlockPos pos, boolean drop, Entity entity, int maxUpdateDepth, CallbackInfoReturnable<Boolean> cir) {
         Level level = (Level) (Object) this;
-        if (!(entity instanceof net.minecraft.server.level.ServerPlayer)) {
-            com.craftcore.claim.ClaimManager.Claim claim = com.craftcore.claim.ClaimManager.getClaimAt(pos, level);
-            if (claim != null && claim.explosion_protection) {
-                cir.setReturnValue(false);
-                return;
-            }
-        }
         BlockState state = level.getBlockState(pos);
         BlockEntity blockEntity = level.getBlockEntity(pos);
         Player player = (entity instanceof Player p) ? p : DailyTaskManager.getActiveMiningPlayer();
         if (player != null) {
             DailyTaskManager.handleBlockBreak(level, player, pos, state, blockEntity);
             if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                com.craftcore.achievement.CustomAchievementManager.onBlockBroken(serverPlayer);
                 boolean triggered = com.craftcore.antixray.HoneypotTrapManager.checkAndTriggerTrap(serverPlayer, pos);
                 if (triggered) {
                     com.craftcore.antixray.HoneypotTrapManager.generateTrapForPlayer(serverPlayer);

@@ -320,6 +320,11 @@ public class Packet {
     public static class PlayerKeysUpdatePayload {
         public String username;
         public int keys;
+
+        public PlayerKeysUpdatePayload(String username, int keys) {
+            this.username = username;
+            this.keys = keys;
+        }
     }
 
     public static class ClaimsQueryPayload {

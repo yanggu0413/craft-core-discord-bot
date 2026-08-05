@@ -25,9 +25,15 @@ public class PlayerAdvancementTrackerMixin {
             PlayerAdvancements tracker = (PlayerAdvancements) (Object) this;
             AdvancementProgress progress = tracker.getOrStartProgress(advancement);
             if (progress.isDone()) {
+                String advId = advancement.id().toString();
+                String username = player.getName().getString();
+
+                if (advId.startsWith("craftcore:")) {
+                    handleCraftCoreReward(username, advId);
+                }
+
                 advancement.value().display().ifPresent(display -> {
                     if (display.shouldAnnounceChat()) {
-                        String username = player.getName().getString();
                         String uuid = player.getStringUUID();
                         String title = display.getTitle().getString();
                         String description = display.getDescription().getString();
@@ -42,6 +48,79 @@ public class PlayerAdvancementTrackerMixin {
                         }
                     }
                 });
+            }
+        }
+    }
+
+    private void handleCraftCoreReward(String username, String advId) {
+        switch (advId) {
+            case "craftcore:diamond_1000" -> {
+                com.craftcore.economy.EconomyManager.addMoney(username, 40000);
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已獲得 $40,000 元金幣！"));
+            }
+            case "craftcore:mace_pig_fall" -> {
+                com.craftcore.economy.EconomyManager.addMoney(username, 6666);
+                com.craftcore.title.TitleManager.unlockTitle(username, "§c[重鎚大師]");
+                com.craftcore.title.TitleManager.setActiveTitle(username, "§c[重鎚大師]");
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已獲得 $6,666 元金幣，並解鎖且自動佩戴稱號 §c[重鎚大師]§a！"));
+            }
+            case "craftcore:mine_10000" -> {
+                com.craftcore.economy.EconomyManager.addMoney(username, 40000);
+                com.craftcore.title.TitleManager.unlockTitle(username, "§e[挖掘機]");
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已獲得 $40,000 元金幣，並解鎖稱號 §e[挖掘機]§a！"));
+            }
+            case "craftcore:breed_30" -> {
+                com.craftcore.economy.EconomyManager.addMoney(username, 3000);
+                com.craftcore.title.TitleManager.unlockTitle(username, "§a[繁殖高手]");
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已獲得 $3,000 元金幣，並解鎖稱號 §a[繁殖高手]§a！"));
+            }
+            case "craftcore:eat_100_spider_eyes" -> {
+                com.craftcore.economy.EconomyManager.addMoney(username, 10000);
+                com.craftcore.title.TitleManager.unlockTitle(username, "§d[蜘蛛人]");
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已獲得 $10,000 元金幣，並解鎖稱號 §d[蜘蛛人]§a！"));
+            }
+            case "craftcore:play_100_days" -> {
+                com.craftcore.economy.EconomyManager.addMoney(username, 200000);
+                com.craftcore.title.TitleManager.unlockTitle(username, "§6[老玩家]");
+                com.craftcore.title.TitleManager.setActiveTitle(username, "§6[老玩家]");
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已獲得 $200,000 元金幣，並解鎖且自動佩戴稱號 §6[老玩家]§a！"));
+            }
+            case "craftcore:jump_10000" -> {
+                com.craftcore.economy.EconomyManager.addMoney(username, 8888);
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已獲得 $8,888 元金幣！"));
+            }
+            case "craftcore:elytra_10000" -> {
+                com.craftcore.economy.EconomyManager.addMoney(username, 6767);
+                com.craftcore.title.TitleManager.unlockTitle(username, "§b[一隻鳥]");
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已獲得 $6,767 元金幣，並解鎖稱號 §b[一隻鳥]§a！"));
+            }
+            case "craftcore:hit_bedrock" -> {
+                com.craftcore.economy.EconomyManager.addMoney(username, 500);
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已獲得 $500 元金幣！"));
+            }
+            case "craftcore:look_down_10m" -> {
+                com.craftcore.economy.EconomyManager.addMoney(username, 1500);
+                com.craftcore.title.TitleManager.unlockTitle(username, "§8[低頭族]");
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已獲得 $1,500 元金幣，並解鎖稱號 §8[低頭族]§a！"));
+            }
+            case "craftcore:express_30" -> {
+                com.craftcore.title.TitleManager.unlockTitle(username, "§e[黑貓宅急便]");
+                com.craftcore.title.TitleManager.setActiveTitle(username, "§e[黑貓宅急便]");
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已解鎖且自動佩戴稱號 §e[黑貓宅急便]§a！"));
+            }
+            case "craftcore:checkin_30_days" -> {
+                com.craftcore.economy.EconomyManager.addMoney(username, 3031);
+                com.craftcore.title.TitleManager.unlockTitle(username, "§e[我愛簽到]");
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已獲得 $3,031 元金幣，並解鎖稱號 §e[我愛簽到]§a！"));
+            }
+            case "craftcore:millionaire" -> {
+                com.craftcore.title.TitleManager.unlockTitle(username, "§6[百萬富翁]");
+                com.craftcore.title.TitleManager.setActiveTitle(username, "§6[百萬富翁]");
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：已解鎖且自動佩戴稱號 §6[百萬富翁]§a！"));
+            }
+            case "craftcore:end_370k" -> {
+                com.craftcore.economy.EconomyManager.addMoney(username, 100000);
+                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§b[Craft-Core] §a成就獎勵：成功抵達終界 370,000 格極限！已獲得 $100,000 元金幣！"));
             }
         }
     }

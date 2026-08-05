@@ -41,4 +41,13 @@ public class ServerPlayerEntityMixin {
         // 使用 player.getDisplayName() (由 PlayerMixin 統一加上單一 [AFK] 或 [服主] 標籤)，避免重複雙重 [服主]
         cir.setReturnValue(player.getDisplayName());
     }
+
+    @Inject(method = "drop(Lnet/minecraft/world/item/ItemStack;ZZ)Lnet/minecraft/world/entity/item/ItemEntity;", at = @At("HEAD"), cancellable = true, require = 0)
+    private void onDropItem(net.minecraft.world.item.ItemStack stack, boolean retainOwnership, boolean includeName, CallbackInfoReturnable<net.minecraft.world.entity.item.ItemEntity> cir) {
+        if (com.craftcore.mushroom.MushroomManager.isMushroom(stack)) {
+            ServerPlayer player = (ServerPlayer) (Object) this;
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 【洋菇】為個人綁定物品，無法丟棄！"));
+            cir.setReturnValue(null);
+        }
+    }
 }

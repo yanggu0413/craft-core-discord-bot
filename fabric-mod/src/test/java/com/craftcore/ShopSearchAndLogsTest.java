@@ -21,8 +21,14 @@ public class ShopSearchAndLogsTest {
 
     @BeforeEach
     public void setUp() {
+        com.craftcore.util.AsyncSaveExecutor.flush();
         ShopManager.setConfigPath(tempDir.resolve("shops_" + System.nanoTime() + ".json"));
         ShopManager.clearAll();
+        com.craftcore.util.AsyncSaveExecutor.flush();
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    public void tearDown() {
         com.craftcore.util.AsyncSaveExecutor.flush();
     }
 
@@ -134,9 +140,14 @@ public class ShopSearchAndLogsTest {
 
         // Force save
         ShopManager.saveLogs();
+        com.craftcore.util.AsyncSaveExecutor.flush();
 
         // Clear in-memory logs by changing path to a different subdirectory
-        ShopManager.setConfigPath(tempDir.resolve("temp_subdir").resolve("shops.json"));
+        Path subDir = tempDir.resolve("temp_subdir");
+        try {
+            java.nio.file.Files.createDirectories(subDir);
+        } catch (Throwable ignored) {}
+        ShopManager.setConfigPath(subDir.resolve("shops.json"));
         assertEquals(0, ShopManager.getMerchantLogs(merchant).size());
 
         // Restore path and load

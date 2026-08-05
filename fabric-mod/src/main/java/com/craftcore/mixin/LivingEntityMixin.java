@@ -18,6 +18,9 @@ public class LivingEntityMixin {
     private void onEntityDeath(DamageSource damageSource, CallbackInfo ci) {
         LivingEntity entity = (LivingEntity) (Object) this;
         DailyTaskManager.handleEntityKill(entity, damageSource);
+        if (damageSource.getEntity() instanceof net.minecraft.server.level.ServerPlayer attacker) {
+            com.craftcore.achievement.CustomAchievementManager.checkMacePigKill(attacker, entity, attacker.fallDistance);
+        }
     }
 
     @Inject(method = "isPushable", at = @At("HEAD"), cancellable = true)

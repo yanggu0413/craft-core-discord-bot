@@ -75,14 +75,112 @@ public class ClaimManager {
     public static final Map<String, String> playerCornerADim = new ConcurrentHashMap<>();
     public static final Map<String, String> playerCornerBDim = new ConcurrentHashMap<>();
 
+    public static class TransferRequest {
+        public String fromPlayer;
+        public String toPlayer;
+        public String claimId;
+        public String claimName;
+        public long timestamp;
+
+        public TransferRequest(String fromPlayer, String toPlayer, String claimId, String claimName) {
+            this.fromPlayer = fromPlayer;
+            this.toPlayer = toPlayer;
+            this.claimId = claimId;
+            this.claimName = claimName;
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
+
+    private static final Map<String, TransferRequest> pendingTransfers = new ConcurrentHashMap<>();
+
+    public static void addTransferRequest(String fromPlayer, String toPlayer, String claimId, String claimName) {
+        pendingTransfers.put(toPlayer.toLowerCase(), new TransferRequest(fromPlayer, toPlayer, claimId, claimName));
+    }
+
+    public static TransferRequest getTransferRequest(String toPlayer) {
+        TransferRequest req = pendingTransfers.get(toPlayer.toLowerCase());
+        if (req != null && System.currentTimeMillis() - req.timestamp > 120000) {
+            pendingTransfers.remove(toPlayer.toLowerCase());
+            return null;
+        }
+        return req;
+    }
+
+    public static void removeTransferRequest(String toPlayer) {
+        pendingTransfers.remove(toPlayer.toLowerCase());
+    }
+
+    public static boolean transferClaim(String claimId, String newOwner) {
+        Claim claim = claims.get(claimId);
+        if (claim == null) return false;
+        claim.owner = newOwner;
+        save();
+        return true;
+    }
+
+    private static Path hudPrefsPath;
+    private static final Map<UUID, Boolean> playerHudPrefs = new ConcurrentHashMap<>();
+    private static int tickCounter = 0;
+
     static {
         try {
             configPath = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir()
                     .resolve("craft-core-shop").resolve("claims.json");
+            hudPrefsPath = configPath.getParent().resolve("claim_hud.json");
         } catch (Throwable e) {
             configPath = Path.of("config", "craft-core-shop", "claims.json");
+            hudPrefsPath = Path.of("config", "craft-core-shop", "claim_hud.json");
         }
         load();
+        loadHudPrefs();
+    }
+
+    public static synchronized void loadHudPrefs() {
+        if (hudPrefsPath != null && Files.exists(hudPrefsPath)) {
+            try (BufferedReader reader = Files.newBufferedReader(hudPrefsPath)) {
+                Map<String, Boolean> map = GSON.fromJson(reader, new TypeToken<Map<String, Boolean>>(){}.getType());
+                if (map != null) {
+                    playerHudPrefs.clear();
+                    for (Map.Entry<String, Boolean> entry : map.entrySet()) {
+                        try {
+                            playerHudPrefs.put(UUID.fromString(entry.getKey()), entry.getValue());
+                        } catch (Exception ignored) {}
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("[CraftCore] Failed to load claim_hud.json: " + e.getMessage());
+            }
+        }
+    }
+
+    public static synchronized void saveHudPrefs() {
+        Map<String, Boolean> map = new ConcurrentHashMap<>();
+        for (Map.Entry<UUID, Boolean> entry : playerHudPrefs.entrySet()) {
+            map.put(entry.getKey().toString(), entry.getValue());
+        }
+        AsyncSaveExecutor.submit(() -> {
+            if (hudPrefsPath != null) {
+                try {
+                    Files.createDirectories(hudPrefsPath.getParent());
+                    try (BufferedWriter writer = Files.newBufferedWriter(hudPrefsPath)) {
+                        GSON.toJson(map, writer);
+                    }
+                } catch (Exception e) {
+                    System.err.println("[CraftCore] Failed to save claim_hud.json: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    public static boolean isHudEnabled(UUID uuid) {
+        return playerHudPrefs.getOrDefault(uuid, true);
+    }
+
+    public static boolean toggleHud(UUID uuid) {
+        boolean next = !isHudEnabled(uuid);
+        playerHudPrefs.put(uuid, next);
+        saveHudPrefs();
+        return next;
     }
 
     public static synchronized void load() {
@@ -456,6 +554,9 @@ public class ClaimManager {
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             long now = System.currentTimeMillis();
+            tickCounter++;
+            boolean isTick10 = (tickCounter % 10 == 0);
+
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 BlockPos pos = player.blockPosition();
                 Level world = player.level();
@@ -476,6 +577,24 @@ public class ClaimManager {
                         player.sendSystemMessage(Component.literal("§c[領地系統] 🚫 你已被禁止進入 [" + claimName + "]！"));
                         player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§c§l🚫 禁止進入！")));
                         player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("§e你已被禁止進入領地 [" + claimName + "]")));
+                    }
+                }
+
+                // Render ActionBar Claim HUD (if enabled by player)
+                if (isTick10 && isHudEnabled(player.getUUID())) {
+                    Claim claim = getClaimAt(pos, world);
+                    if (claim != null) {
+                        String claimName = claim.name != null ? claim.name : claim.id;
+                        String ownerStr = claim.owner != null ? claim.owner : "未知";
+                        player.sendSystemMessage(
+                            Component.literal("§e❖ 當前領地: §f[" + claimName + "] §7| §e領主: §f" + ownerStr + " §7(§a保護中§7)"),
+                            true
+                        );
+                    } else {
+                        player.sendSystemMessage(
+                            Component.literal("§7❖ 當前地區: 荒野 §7(無領地)"),
+                            true
+                        );
                     }
                 }
             }

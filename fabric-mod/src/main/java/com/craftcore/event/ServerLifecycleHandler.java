@@ -43,6 +43,7 @@ public class ServerLifecycleHandler {
             com.craftcore.backup.BackupManager.startAutoBackupLoop(server);
             com.craftcore.lottery.HourlyLotteryManager.startHourlyLoop(server);
             com.craftcore.treasure.TreasureChestManager.startLoop(server);
+            com.craftcore.mushroom.MushroomManager.startLoop(server);
         });
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
@@ -71,6 +72,7 @@ public class ServerLifecycleHandler {
                 com.craftcore.economy.EconomyManager.checkAndDeliverOfflineNotifications(player);
                 com.craftcore.task.DailyTaskManager.checkAndAutoClaimTasks(player);
                 FirstJoinManager.checkAndHandleFirstJoin(player);
+                com.craftcore.mushroom.MushroomManager.checkAndGiveMushroom(player);
 
                 // 2. 發送隨機迎賓小提示 (Welcome Tip) 與限時活動通知
                 getGreetingScheduler().schedule(() -> {

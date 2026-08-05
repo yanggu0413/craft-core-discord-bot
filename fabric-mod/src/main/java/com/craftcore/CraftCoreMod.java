@@ -24,6 +24,7 @@ public class CraftCoreMod implements ModInitializer {
         com.craftcore.claim.ClaimManager.registerEvents();
         com.craftcore.pvp.PvpManager.loadConfig();
         com.craftcore.event.CheckEventHandler.register();
+        com.craftcore.achievement.CustomAchievementManager.register();
     }
 
     public static synchronized void startWSClient(MinecraftServer server) {

@@ -482,35 +482,30 @@ public class PacketHandler {
                     String queryId = payloadObj != null && payloadObj.has("query_id") ? payloadObj.get("query_id").getAsString() : null;
                     server.execute(() -> {
                         net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
-                        if (player == null) {
-                            System.err.println("[CraftCore] Luckydraw failed: Player " + payload.username + " is offline.");
-                            return;
-                        }
-                        if (payload.success) {
-                            if (player.getInventory().getFreeSlot() == -1) {
-                                player.sendSystemMessage(Component.literal("§c[Craft-Core] 抽獎失敗：您的背包已滿，無法放置獎勵物品！"));
-                                return;
-                            }
+                        if (player != null) {
                             com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
-                            net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
-                                net.minecraft.resources.Identifier.parse(payload.item)
-                            ).map(net.minecraft.core.Holder::value).orElse(net.minecraft.world.item.Items.AIR);
-                            if (itemObj != null && itemObj != net.minecraft.world.item.Items.AIR) {
-                                net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(itemObj, payload.amount);
-                                player.getInventory().add(stack);
+                            boolean handledInGui = com.craftcore.menu.MenuGuiManager.handleLuckyDrawResponse(payload);
+                            if (!handledInGui && payload.success) {
+                                net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                                    net.minecraft.resources.Identifier.parse(payload.item)
+                                ).map(net.minecraft.core.Holder::value).orElse(net.minecraft.world.item.Items.AIR);
+                                if (itemObj != null && itemObj != net.minecraft.world.item.Items.AIR) {
+                                    net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(itemObj, payload.amount);
+                                    if (!player.getInventory().add(stack)) {
+                                        player.drop(stack, false);
+                                    }
+                                }
+                                player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                                    net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
+                                String trans = com.craftcore.shop.TranslationManager.getTranslatedName(payload.item);
+                                player.sendSystemMessage(Component.literal("§b[Craft-Core] §a幸運大抽獎成功！恭喜獲得 " + trans + " x" + payload.amount + "！"));
+                            } else if (!handledInGui && !payload.success) {
+                                player.sendSystemMessage(Component.literal(payload.message));
                             }
-                            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                                net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
-                            String trans = com.craftcore.shop.TranslationManager.getTranslatedName(payload.item);
-                            player.sendSystemMessage(Component.literal("§b[Craft-Core] §a幸運大抽獎成功！恭喜獲得 " + trans + " x" + payload.amount + "！"));
-                        } else {
-                            com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
-                            player.sendSystemMessage(Component.literal(payload.message));
                         }
                         if (queryId != null) {
                             client.send(new Packet("generic_response", new GenericActionResponsePayload(queryId, true, "Luckydraw processed", 0.0)));
                         }
-                        com.craftcore.menu.MenuGuiManager.handleLuckyDrawResponse(payload);
                     });
                     break;
                 }
@@ -623,7 +618,9 @@ public class PacketHandler {
                         }
 
                         int currentKeys = com.craftcore.economy.EconomyManager.getLotteryKeys(payload.username);
-                        com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, currentKeys + keysToAdd);
+                        int newTotalKeys = currentKeys + keysToAdd;
+                        com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, newTotalKeys);
+                        client.send(new Packet("player_keys_update", new Packet.PlayerKeysUpdatePayload(payload.username, newTotalKeys)));
 
                         client.send(new Packet("playtime_exchange_response", new PlaytimeExchangeResponsePayload(payload.query_id, true, keysToAdd, ticksToDeduct, "成功兌換 " + keysToAdd + " 把鑰匙！")));
                     });
@@ -739,7 +736,12 @@ public class PacketHandler {
                 case "join_response": {
                     JoinResponsePayload payload = GSON.fromJson(payloadObj, JoinResponsePayload.class);
                     server.execute(() -> {
-                        com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, payload.keysCount);
+                        int localKeys = com.craftcore.economy.EconomyManager.getLotteryKeys(payload.username);
+                        int finalKeys = Math.max(localKeys, payload.keysCount);
+                        com.craftcore.economy.EconomyManager.setLotteryKeys(payload.username, finalKeys);
+                        if (localKeys > payload.keysCount) {
+                            client.send(new Packet("player_keys_update", new Packet.PlayerKeysUpdatePayload(payload.username, finalKeys)));
+                        }
                         net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
                         if (player != null) {
                             com.craftcore.task.DailyTaskManager.displayGreetingCard(player, payload.hasCheckedIn, payload.pendingMailCount);

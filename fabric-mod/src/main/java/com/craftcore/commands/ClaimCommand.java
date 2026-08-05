@@ -29,8 +29,26 @@ public class ClaimCommand {
                         }
                         return ClaimManager.purchaseClaim(player);
                     })
+                    .then(Commands.literal("hud")
+                            .executes(ClaimCommand::toggleHud)
+                    )
+                    .then(Commands.literal("actionbar")
+                            .executes(ClaimCommand::toggleHud)
+                    )
                     .then(Commands.literal("list")
                             .executes(ClaimCommand::listClaims)
+                    )
+                    .then(Commands.literal("transfer")
+                            .then(Commands.argument("target", StringArgumentType.string())
+                                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
+                                    .executes(context -> handleTransferClaim(context, StringArgumentType.getString(context, "target"), null))
+                                    .then(Commands.argument("claimName", StringArgumentType.string())
+                                            .executes(context -> handleTransferClaim(context, StringArgumentType.getString(context, "target"), StringArgumentType.getString(context, "claimName")))
+                                    )
+                            )
+                    )
+                    .then(Commands.literal("accept")
+                            .executes(ClaimCommand::handleAcceptTransfer)
                     )
                     .then(Commands.literal("tool")
                             .executes(ClaimCommand::giveClaimTool)
@@ -179,5 +197,104 @@ public class ClaimCommand {
         }
         player.sendSystemMessage(Component.literal("§a[Craft-Core] 成功發放 §6[🛡 領地圈地神杖]§a！手持木鋤左鍵/右鍵點擊方塊即可選擇領地對角點。"));
         return 1;
+    }
+
+    private static int toggleHud(CommandContext<CommandSourceStack> context) {
+        ServerPlayer player = context.getSource().getPlayer();
+        if (player == null) {
+            context.getSource().sendSystemMessage(Component.literal("此指令只能由遊戲內玩家執行。"));
+            return 0;
+        }
+        boolean enabled = ClaimManager.toggleHud(player.getUUID());
+        player.sendSystemMessage(Component.literal("§b[Craft-Core] " + (enabled ? "§a已開啟快捷欄上方領地提示 (ActionBar)！" : "§c已關閉快捷欄上方領地提示 (ActionBar)。")));
+        return 1;
+    }
+
+    private static int handleTransferClaim(CommandContext<CommandSourceStack> context, String targetName, String targetClaimName) {
+        ServerPlayer sender = context.getSource().getPlayer();
+        if (sender == null) return 0;
+
+        String senderName = sender.getName().getString();
+        if (senderName.equalsIgnoreCase(targetName)) {
+            sender.sendSystemMessage(Component.literal("§c[Craft-Core] 您不能將領地轉讓給自己！"));
+            return 0;
+        }
+
+        ServerPlayer targetPlayer = context.getSource().getServer().getPlayerList().getPlayerByName(targetName);
+        if (targetPlayer == null) {
+            sender.sendSystemMessage(Component.literal("§c[Craft-Core] 找不到目標線上玩家：" + targetName));
+            return 0;
+        }
+
+        ClaimManager.Claim claimToTransfer = null;
+        if (targetClaimName != null && !targetClaimName.isEmpty()) {
+            for (ClaimManager.Claim c : ClaimManager.getPlayerClaims(senderName)) {
+                if (targetClaimName.equalsIgnoreCase(c.name) || targetClaimName.equalsIgnoreCase(c.id)) {
+                    claimToTransfer = c;
+                    break;
+                }
+            }
+        } else {
+            claimToTransfer = ClaimManager.getClaimAt(sender.blockPosition(), sender.level());
+        }
+
+        if (claimToTransfer == null) {
+            sender.sendSystemMessage(Component.literal("§c[Craft-Core] 找不到您擁有的指定領地，請站在該領地內或指定領地名稱！"));
+            return 0;
+        }
+
+        boolean isOp = sender.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);
+        if (!claimToTransfer.owner.equalsIgnoreCase(senderName) && !isOp) {
+            sender.sendSystemMessage(Component.literal("§c[Craft-Core] 您不是該領地的擁有者，無法發起轉讓！"));
+            return 0;
+        }
+
+        String displayName = (claimToTransfer.name != null ? claimToTransfer.name : claimToTransfer.id);
+        ClaimManager.addTransferRequest(senderName, targetName, claimToTransfer.id, displayName);
+
+        sender.sendSystemMessage(Component.literal("§a[Craft-Core] 已向玩家 §e" + targetName + " §a發送領地 §f[" + displayName + "] §a轉讓請求，等待對方確認！"));
+        targetPlayer.sendSystemMessage(Component.literal("§6=================================================="));
+        targetPlayer.sendSystemMessage(Component.literal("§e[Craft-Core] 玩家 §f" + senderName + " §e想將領地 §f[" + displayName + "] §e轉讓給您！"));
+        targetPlayer.sendSystemMessage(Component.literal("§7接收領地需支付 §a$30 §7元手續費（由系統銷毀）。"));
+        targetPlayer.sendSystemMessage(Component.literal("§a請在 2 分鐘內輸入 §e/claim accept §a確認接收！"));
+        targetPlayer.sendSystemMessage(Component.literal("§6=================================================="));
+        return 1;
+    }
+
+    private static int handleAcceptTransfer(CommandContext<CommandSourceStack> context) {
+        ServerPlayer receiver = context.getSource().getPlayer();
+        if (receiver == null) return 0;
+
+        String receiverName = receiver.getName().getString();
+        ClaimManager.TransferRequest req = ClaimManager.getTransferRequest(receiverName);
+
+        if (req == null) {
+            receiver.sendSystemMessage(Component.literal("§c[Craft-Core] 您目前沒有待處理的領地轉讓請求！"));
+            return 0;
+        }
+
+        double balance = com.craftcore.economy.EconomyManager.getBalance(receiverName);
+        if (balance < 30.0) {
+            receiver.sendSystemMessage(Component.literal("§c[Craft-Core] 您的餘額不足 $30 元 (目前: $" + String.format("%.2f", balance) + ")，無法接收領地！"));
+            return 0;
+        }
+
+        // Deduct $30 fee and destroy
+        com.craftcore.economy.EconomyManager.removeMoney(receiverName, 30.0);
+        boolean success = ClaimManager.transferClaim(req.claimId, receiverName);
+
+        if (success) {
+            ClaimManager.removeTransferRequest(receiverName);
+            receiver.sendSystemMessage(Component.literal("§b[Craft-Core] §a您已成功支付 $30 元手續費，並成為領地 §f[" + req.claimName + "] §a的新領主！"));
+
+            ServerPlayer sender = context.getSource().getServer().getPlayerList().getPlayerByName(req.fromPlayer);
+            if (sender != null) {
+                sender.sendSystemMessage(Component.literal("§b[Craft-Core] §a玩家 §e" + receiverName + " §a已接受您的領地轉讓，領地 §f[" + req.claimName + "] §a已順利移交！"));
+            }
+            return 1;
+        } else {
+            receiver.sendSystemMessage(Component.literal("§c[Craft-Core] 轉讓失敗，找不到該領地資料。"));
+            return 0;
+        }
     }
 }

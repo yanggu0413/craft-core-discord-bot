@@ -17,7 +17,7 @@ craft-core-shop/
 
 ### [1] `fabric-mod/` — Fabric 伺服器模組 (主伺服器核心)
 - **語言與環境**: Java 25 / Fabric Loader (Minecraft 1.21.4 / 26.2)。
-- **建置命令**: `./gradlew build` ➔ 產出 `build/libs/craft-core-mod-2.5.1.jar`。
+- **建置命令**: `./gradlew build` ➔ 產出 `build/libs/craft-core-mod-2.5.7.jar`。
 - **目標實例路徑**: `/opt/mcsmanager/daemon/data/InstanceData/e73c05307a6b4259bd052b88706757df/mods/`。
 - **核心功能**:
   - **選單與介面**: 全服選單大廳 (`/menu`)、商店市場/遙控 (`/shop`)、福利中心抽獎/簽到 (`/checkin`, `/luckydraw`)、全服排行榜、虛擬快遞箱 (`/express`)、假人控制台、領地與密碼箱管理。
@@ -51,7 +51,7 @@ craft-core-shop/
 
 | 服務 / 組件 | 主機實體路徑 (Remote Path) | 說明與注意細節 |
 |---|---|---|
-| 👑 **Fabric 伺服器 (主)** | `/opt/mcsmanager/daemon/data/InstanceData/e73c05307a6b4259bd052b88706757df/` | **服主主要營運伺服器**。模組放置於 `mods/craft-core-mod-2.5.1.jar`。資料檔位於 `config/craft-core-shop/`。 |
+| 👑 **Fabric 伺服器 (主)** | `/opt/mcsmanager/daemon/data/InstanceData/e73c05307a6b4259bd052b88706757df/` | **服主主要營運伺服器**。模組放置於 `mods/craft-core-mod-2.5.7.jar`。資料檔位於 `config/craft-core-shop/`。 |
 | 📄 **Paper 伺服器 (次)** | `/opt/mcsmanager/daemon/data/InstanceData/2010082ee9374bebbdf2be4bab7fe169/` | 次要 Paper 伺服器。插件放置於 `plugins/CraftCoreLink-1.1.0.jar`。 |
 | 🤖 **Discord Bot 服務** | `/root/craft-core/discord-bot/` | PM2 管理進程 `craft-core-bot` (含 Port 8080 WS 伺服器與 SQLite `database.db`)。 |
 

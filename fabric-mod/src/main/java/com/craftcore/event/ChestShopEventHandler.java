@@ -336,11 +336,24 @@ public class ChestShopEventHandler {
     }
 
     public static InteractionResult handleUseBlock(Player player, Level world, InteractionHand hand, BlockHitResult hitResult) {
-        if (world.isClientSide() || hand != InteractionHand.MAIN_HAND) {
+        if (world.isClientSide()) {
             return InteractionResult.PASS;
         }
 
         ItemStack heldItem = player.getItemInHand(hand);
+        if (com.craftcore.mushroom.MushroomManager.isMushroom(heldItem)) {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 【洋菇】為個人綁定物品，無法放置至地面！"));
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
+            return InteractionResult.FAIL;
+        }
+
+        if (hand != InteractionHand.MAIN_HAND) {
+            return InteractionResult.PASS;
+        }
+
         if (!heldItem.isEmpty() && heldItem.is(net.minecraft.world.item.Items.HOPPER)) {
             BlockPos placePos = hitResult.getBlockPos().relative(hitResult.getDirection());
             String dimension = world.dimension().identifier().toString();
@@ -400,15 +413,7 @@ public class ChestShopEventHandler {
             }
         }
 
-        BlockPos placePos = pos.relative(hitResult.getDirection());
-        if (!player.getItemInHand(hand).isEmpty()) {
-            if (!ClaimManager.checkPermission((ServerPlayer) player, placePos, world, "build")) {
-                player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有建造方塊的權限！"));
-                return InteractionResult.FAIL;
-            }
-        }
-
-        // Check sign edit protection first
+        // Check sign / chest shop interaction first
         // Textual check signature: instanceof net.minecraft.world.level.block.AbstractSignBlock
         if (isSign(state)) {
             ShopManager.Shop shop = findShopFromSign(world, pos);
@@ -453,6 +458,14 @@ public class ChestShopEventHandler {
                         }
                     }
                 }
+            }
+        }
+
+        BlockPos placePos = pos.relative(hitResult.getDirection());
+        if (!player.getItemInHand(hand).isEmpty()) {
+            if (!ClaimManager.checkPermission((ServerPlayer) player, placePos, world, "build")) {
+                player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有建造方塊的權限！"));
+                return InteractionResult.FAIL;
             }
         }
 

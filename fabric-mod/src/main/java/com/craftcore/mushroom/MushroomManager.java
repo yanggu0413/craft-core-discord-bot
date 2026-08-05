@@ -1,0 +1,148 @@
+package com.craftcore.mushroom;
+
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.component.ResolvableProfile;
+
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+public class MushroomManager {
+
+    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+    public static ItemStack createMushroomStack() {
+        ItemStack head = new ItemStack(Items.PLAYER_HEAD);
+
+        // 1. Profile for skull (im_little_rory) with full Mojang texture Base64
+        com.google.common.collect.Multimap<String, com.mojang.authlib.properties.Property> map = com.google.common.collect.HashMultimap.create();
+        map.put("textures", new com.mojang.authlib.properties.Property(
+                "textures",
+                "ewogICJ0aW1lc3RhbXAiIDogMTc4NTkwODE3ODkzMiwKICAicHJvZmlsZUlkIiA6ICI3OTk2YzM3OGNlYmU0Y2JmOGZhMzA2NDI4MzYwMWYxMiIsCiAgInByb2ZpbGVOYW1lIiA6ICJpbV9saXR0bGVfcm9yeSIsCiAgInRleHR1cmVzIiA6IHsKICAgICJTS0lOIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS84YTQ0NjQ4MTMyZjZjMGNkZWE4MTVhMjEyMDc3YjJkZTQ4MDNmNmU0OTk5MWFiYWFmNzUxZDNlNDIxYmIzMzE4IgogICAgfSwKICAgICJDQVBFIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS81ZWM5MzBjZGQyNjI5Yzg3NzE2NTVjNjBlZWJlYjg2N2I0YjY1NTliMGU2ZDNiYzcxYzQwYzk2MzQ3ZmEwM2YwIgogICAgfQogIH0KfQ=="
+        ));
+        com.mojang.authlib.properties.PropertyMap propertyMap = new com.mojang.authlib.properties.PropertyMap(map);
+        com.mojang.authlib.GameProfile gameProfile = new com.mojang.authlib.GameProfile(
+                UUID.fromString("7996c378-cebe-4cbf-8fa3-064283601f12"),
+                "im_little_rory",
+                propertyMap
+        );
+        head.set(DataComponents.PROFILE, ResolvableProfile.createResolved(gameProfile));
+
+        // 2. Custom Name: 【洋菇】
+        head.set(DataComponents.CUSTOM_NAME, Component.literal("§d【洋菇】"));
+
+        // 3. Lore
+        head.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§7這是一顆看起來非常鮮美的洋菇。"),
+                Component.literal("§7但不知為何，總覺得哪裡怪怪的……"),
+                Component.literal("§7真的沒打錯嗎？")
+        )));
+
+        // 4. Enchantment Glint
+        head.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+
+        // 5. Custom Data tag for 100% accurate identification
+        CompoundTag tag = new CompoundTag();
+        tag.putBoolean("craftcore_is_mushroom", true);
+        head.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+
+        // 6. Enforce max stack size = 1
+        head.set(DataComponents.MAX_STACK_SIZE, 1);
+
+        return head;
+    }
+
+    public static boolean isMushroom(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        if (stack.getItem() != Items.PLAYER_HEAD) return false;
+
+        CustomData customData = stack.get(DataComponents.CUSTOM_DATA);
+        if (customData != null) {
+            CompoundTag nbt = customData.copyTag();
+            if (nbt.getBoolean("craftcore_is_mushroom").orElse(false)) {
+                return true;
+            }
+        }
+
+        Component name = stack.get(DataComponents.CUSTOM_NAME);
+        if (name != null && name.getString().contains("洋菇")) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public static boolean hasMushroomInInventory(ServerPlayer player) {
+        if (player == null || player.getInventory() == null) return false;
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
+            if (isMushroom(stack)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void enforceSingleMushroom(ServerPlayer player) {
+        if (player == null || player.getInventory() == null) return;
+        boolean foundOne = false;
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
+            if (isMushroom(stack)) {
+                if (!foundOne) {
+                    foundOne = true;
+                    if (stack.getCount() > 1) {
+                        stack.setCount(1);
+                    }
+                } else {
+                    player.getInventory().setItem(i, ItemStack.EMPTY);
+                }
+            }
+        }
+    }
+
+    public static void checkAndGiveMushroom(ServerPlayer player) {
+        if (player == null) return;
+
+        // First enforce strictly only 1 mushroom exists in inventory
+        enforceSingleMushroom(player);
+
+        if (hasMushroomInInventory(player)) return;
+
+        int freeSlot = player.getInventory().getFreeSlot();
+        if (freeSlot != -1) {
+            ItemStack mushroom = createMushroomStack();
+            player.getInventory().add(mushroom);
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.8f, 1.2f);
+            player.sendSystemMessage(Component.literal("§b[Craft-Core] §a獲得了神秘物品 §d【洋菇】§a！"));
+        } else {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您的背包空間不足，無法獲得【洋菇】，將於 30 秒後重新嘗試！"));
+        }
+    }
+
+    public static void startLoop(net.minecraft.server.MinecraftServer server) {
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                if (server != null) {
+                    server.execute(() -> {
+                        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                            checkAndGiveMushroom(player);
+                        }
+                    });
+                }
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
+        }, 5, 30, TimeUnit.SECONDS);
+    }
+}

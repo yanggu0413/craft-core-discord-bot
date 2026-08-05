@@ -16,7 +16,10 @@
     "EndermanLeaveBlockGoalMixin",
     "PistonStructureResolverMixin",
     "FlowingFluidMixin",
-    "BasePressurePlateBlockMixin"
+    "BasePressurePlateBlockMixin",
+    "ItemStackMixin",
+    "ItemMixin",
+    "BlockItemMixin"
   ],
   "injectors": {
     "defaultRequire": 1

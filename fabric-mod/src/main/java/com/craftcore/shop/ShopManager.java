@@ -300,11 +300,18 @@ public class ShopManager {
 
     public static synchronized void saveLogs() {
         if (logsConfigPath != null) {
+            Path targetPath = logsConfigPath;
+            Map<String, List<TransactionLog>> snapshot;
+            synchronized (merchantLogs) {
+                snapshot = new java.util.HashMap<>(merchantLogs);
+            }
             AsyncSaveExecutor.submit(() -> {
                 try {
-                    Files.createDirectories(logsConfigPath.getParent());
-                    try (BufferedWriter writer = Files.newBufferedWriter(logsConfigPath)) {
-                        GSON.toJson(merchantLogs, writer);
+                    if (targetPath.getParent() != null) {
+                        Files.createDirectories(targetPath.getParent());
+                    }
+                    try (BufferedWriter writer = Files.newBufferedWriter(targetPath)) {
+                        GSON.toJson(snapshot, writer);
                     }
                 } catch (IOException e) {
                     System.err.println("[CraftCore] Failed to save transaction logs: " + e.getMessage());

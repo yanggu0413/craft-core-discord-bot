@@ -26,8 +26,14 @@ public class CheckManagerTest {
 
     @BeforeEach
     public void setUp() {
+        com.craftcore.util.AsyncSaveExecutor.flush();
         EconomyManager.setConfigPath(tempDir.resolve("economy_check_" + System.nanoTime() + ".json"));
         EconomyManager.clearAll();
+        com.craftcore.util.AsyncSaveExecutor.flush();
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    public void tearDown() {
         com.craftcore.util.AsyncSaveExecutor.flush();
     }
 

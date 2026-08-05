@@ -162,6 +162,27 @@ dispatcher.register(Commands.literal("rtp")
 dispatcher.register(Commands.literal("wastebin")
                     .executes(context -> handleWastebinCommand(context))
             );
+
+dispatcher.register(Commands.literal("world")
+                    .then(Commands.argument("dimension", StringArgumentType.string())
+                            .suggests((context, builder) -> {
+                                java.util.List<String> list = new java.util.ArrayList<>();
+                                list.add("overworld");
+                                list.add("nether");
+                                list.add("end");
+                                if (context.getSource().getServer() != null) {
+                                    for (ServerLevel level : context.getSource().getServer().getAllLevels()) {
+                                        String dimId = level.dimension().identifier().toString();
+                                        if (!list.contains(dimId)) {
+                                            list.add(dimId);
+                                        }
+                                    }
+                                }
+                                return SharedSuggestionProvider.suggest(list, builder);
+                            })
+                            .executes(context -> handleWorldCommand(context, StringArgumentType.getString(context, "dimension")))
+                    )
+            );
     }
 
     private static int handleTpaCommand(com.mojang.brigadier.context.CommandContext<CommandSourceStack> context, boolean tpahere) {
@@ -468,6 +489,89 @@ dispatcher.register(Commands.literal("wastebin")
             return true;
         }
     }
+    private static int handleWorldCommand(com.mojang.brigadier.context.CommandContext<CommandSourceStack> context, String inputDim) {
+        ServerPlayer player = context.getSource().getPlayer();
+        if (player == null) {
+            context.getSource().sendSystemMessage(Component.literal("此指令只能由遊戲內玩家執行。"));
+            return 0;
+        }
 
-    
+        String cleanInput = inputDim.toLowerCase().trim();
+        String targetDimId;
+
+        if (cleanInput.equals("overworld") || cleanInput.equals("world") || cleanInput.equals("main")) {
+            targetDimId = "minecraft:overworld";
+        } else if (cleanInput.equals("nether") || cleanInput.equals("the_nether")) {
+            targetDimId = "minecraft:the_nether";
+        } else if (cleanInput.equals("end") || cleanInput.equals("the_end")) {
+            targetDimId = "minecraft:the_end";
+        } else if (!cleanInput.contains(":")) {
+            targetDimId = "minecraft:" + cleanInput;
+        } else {
+            targetDimId = cleanInput;
+        }
+
+        String currentDimId = player.level().dimension().identifier().toString();
+        if (currentDimId.equalsIgnoreCase(targetDimId)) {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您目前已經在該世界維度中！"));
+            return 0;
+        }
+
+        ServerLevel destLevel = null;
+        if (context.getSource().getServer() != null) {
+            for (ServerLevel level : context.getSource().getServer().getAllLevels()) {
+                if (level.dimension().identifier().toString().equalsIgnoreCase(targetDimId)) {
+                    destLevel = level;
+                    break;
+                }
+            }
+        }
+
+        if (destLevel == null) {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 找不到未載入的世界維度：" + inputDim));
+            return 0;
+        }
+
+        // 1. Record location for /back
+        com.craftcore.teleport.BackManager.recordLocation(player);
+
+        // 2. Record current dimension location
+        com.craftcore.teleport.DimensionLocationManager.recordCurrentDimensionLocation(player);
+
+        // 3. Get last recorded location in target dimension
+        com.craftcore.teleport.DimensionLocationManager.DimPos lastPos = com.craftcore.teleport.DimensionLocationManager.getLastLocation(player, targetDimId);
+
+        double targetX, targetY, targetZ;
+        float targetYaw, targetPitch;
+
+        if (lastPos != null) {
+            com.craftcore.teleport.DimensionLocationManager.DimPos safePos = com.craftcore.teleport.DimensionLocationManager.findSafePos(destLevel, lastPos);
+            targetX = safePos.x;
+            targetY = safePos.y;
+            targetZ = safePos.z;
+            targetYaw = safePos.yaw;
+            targetPitch = safePos.pitch;
+        } else {
+            com.craftcore.teleport.DimensionLocationManager.DimPos defaultPos = new com.craftcore.teleport.DimensionLocationManager.DimPos(0.5, 100.0, 0.5, player.getYRot(), player.getXRot());
+            com.craftcore.teleport.DimensionLocationManager.DimPos safePos = com.craftcore.teleport.DimensionLocationManager.findSafePos(destLevel, defaultPos);
+            targetX = safePos.x;
+            targetY = safePos.y;
+            targetZ = safePos.z;
+            targetYaw = safePos.yaw;
+            targetPitch = safePos.pitch;
+        }
+
+        player.teleportTo(destLevel, targetX, targetY, targetZ, java.util.Collections.emptySet(), targetYaw, targetPitch, true);
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(), net.minecraft.sounds.SoundEvents.ENDERMAN_TELEPORT, net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 1.0f);
+
+        String dimDisplayName = switch (targetDimId) {
+            case "minecraft:overworld" -> "主世界 (Overworld)";
+            case "minecraft:the_nether" -> "地獄 (Nether)";
+            case "minecraft:the_end" -> "終界 (End)";
+            default -> targetDimId;
+        };
+
+        player.sendSystemMessage(Component.literal("§b[Craft-Core] §a成功切換至世界：" + dimDisplayName + "！"));
+        return 1;
+    }
 }

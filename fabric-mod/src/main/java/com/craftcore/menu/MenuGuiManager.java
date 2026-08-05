@@ -475,11 +475,32 @@ public class MenuGuiManager {
             container.setItem(s, createGuiItem(randomItem, "§f" + randomItem.getName(new ItemStack(randomItem)).getString(), null));
         }
 
-        // Start Spin Button (Slot 18)
-        container.setItem(18, createGuiItem(Items.NETHER_STAR, "§a🎰 開始抽獎 (消耗 1 把鑰匙)", List.of(
+        // Batch Draw Buttons (Slots 18, 19, 20, 21)
+        container.setItem(18, createGuiItem(Items.NETHER_STAR, "§a🎰 1 抽 (消耗 1 把鑰匙)", List.of(
                 "§7目前擁有鑰匙: §e" + keys + " 把",
                 "",
-                "§e[點擊啟動轉盤抽獎]"
+                "§e[點擊啟動單次轉盤抽獎]"
+        )));
+
+        container.setItem(19, createGuiItem(Items.GOLD_INGOT, "§e🎰 5 連抽 (消耗 5 把鑰匙)", List.of(
+                "§7一次進行 5 次抽獎並彙整發放獎勵",
+                "§7目前擁有鑰匙: §e" + keys + " 把",
+                "",
+                "§e[點擊執行 5 連抽]"
+        )));
+
+        container.setItem(20, createGuiItem(Items.DIAMOND, "§6🎰 10 連抽 (消耗 10 把鑰匙)", List.of(
+                "§7一次進行 10 次抽獎並彙整發放獎勵",
+                "§7目前擁有鑰匙: §e" + keys + " 把",
+                "",
+                "§e[點擊執行 10 連抽]"
+        )));
+
+        container.setItem(21, createGuiItem(Items.NETHERITE_INGOT, "§d🎰 全部連抽 (消耗所有鑰匙)", List.of(
+                "§7一次消耗您擁有的全部鑰匙並結算",
+                "§7目前擁有鑰匙: §e" + keys + " 把",
+                "",
+                "§d[點擊執行全部連抽]"
         )));
 
         // Navigation (Slot 25 返回福利中心, Slot 26 關閉選單)
@@ -518,6 +539,26 @@ public class MenuGuiManager {
                                 }
 
                                 startLuckyDrawAnimation(session);
+                                return;
+                            }
+
+                            if (slotId == 19) {
+                                com.craftcore.commands.EconomyCommands.executeBatchLotteryInGame(sp, 5);
+                                sp.closeContainer();
+                                return;
+                            }
+
+                            if (slotId == 20) {
+                                com.craftcore.commands.EconomyCommands.executeBatchLotteryInGame(sp, 10);
+                                sp.closeContainer();
+                                return;
+                            }
+
+                            if (slotId == 21) {
+                                int currentKeys = EconomyManager.getLotteryKeys(sp.getName().getString());
+                                com.craftcore.commands.EconomyCommands.executeBatchLotteryInGame(sp, currentKeys);
+                                sp.closeContainer();
+                                return;
                             }
                         }
                     }
@@ -553,16 +594,22 @@ public class MenuGuiManager {
                         if (step[0] >= totalSteps) {
                             if (session.winningItem != null && !session.winningItem.isEmpty()) {
                                 session.container.setItem(13, session.winningItem);
+                                if (!session.player.getInventory().add(session.winningItem)) {
+                                    session.player.drop(session.winningItem, false);
+                                }
+                                String itemName = session.winningItem.getHoverName().getString();
+                                int amount = session.winningItem.getCount();
+                                session.player.sendSystemMessage(Component.literal("§b[Craft-Core] §a幸運大抽獎成功！恭喜獲得 " + itemName + " x" + amount + "！"));
                             }
                             try {
                                 session.player.level().playSound(null, session.player.getX(), session.player.getY(), session.player.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0f, 1.0f);
                             } catch (Throwable ignored) {}
 
                             int updatedKeys = EconomyManager.getLotteryKeys(session.player.getName().getString());
-                            session.container.setItem(18, createGuiItem(Items.NETHER_STAR, "§a🎰 開始抽獎 (消耗 1 把鑰匙)", List.of(
+                            session.container.setItem(18, createGuiItem(Items.NETHER_STAR, "§a🎰 1 抽 (消耗 1 把鑰匙)", List.of(
                                     "§7目前擁有鑰匙: §e" + updatedKeys + " 把",
                                     "",
-                                    "§e[點擊啟動轉盤抽獎]"
+                                    "§e[點擊啟動單次轉盤抽獎]"
                             )));
 
                             session.isSpinning = false;
@@ -579,8 +626,8 @@ public class MenuGuiManager {
         session.future = luckyDrawScheduler.schedule(tickTask, 60, TimeUnit.MILLISECONDS);
     }
 
-    public static void handleLuckyDrawResponse(LuckydrawResponsePayload payload) {
-        if (payload == null || payload.username == null) return;
+    public static boolean handleLuckyDrawResponse(LuckydrawResponsePayload payload) {
+        if (payload == null || payload.username == null) return false;
         for (LuckyDrawSession session : activeLuckyDraws.values()) {
             if (session != null && session.player != null && session.player.getName().getString().equalsIgnoreCase(payload.username)) {
                 if (payload.success && payload.item != null) {
@@ -591,9 +638,10 @@ public class MenuGuiManager {
                         }
                     } catch (Throwable ignored) {}
                 }
-                break;
+                return true;
             }
         }
+        return false;
     }
 
     // =========================================================
@@ -1190,6 +1238,14 @@ public class MenuGuiManager {
                 "§a[點擊直接領取神杖]"
         )));
 
+        boolean hudEnabled = ClaimManager.isHudEnabled(player.getUUID());
+        container.setItem(22, createGuiItem(Items.COMPASS, "§e🧭 ActionBar 領地抬頭提示 " + (hudEnabled ? "§a[已開啟]" : "§c[已關閉]"), List.of(
+                "§7在快捷欄與血條正上方動態顯示",
+                "§7您目前所在領地與領主資訊",
+                "",
+                "§e[點擊切換開啟 / 關閉 (指令: /claim hud)]"
+        )));
+
         container.setItem(24, createGuiItem(Items.EMERALD, "§a💰 購買圈選領地 (/claim)", List.of(
                 "§7圈選完成後，點擊創建並購買此領地",
                 "",
@@ -1221,6 +1277,12 @@ public class MenuGuiManager {
                             if (slotId == 45) { openMainMenu(sp); return; }
                             if (slotId == 49) { sp.closeContainer(); return; }
                             if (slotId == 20) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim tool"); return; }
+                            if (slotId == 22) {
+                                boolean enabled = ClaimManager.toggleHud(sp.getUUID());
+                                sp.sendSystemMessage(Component.literal("§b[Craft-Core] " + (enabled ? "§a已開啟快捷欄上方領地提示 (ActionBar)！" : "§c已關閉快捷欄上方領地提示 (ActionBar)。")));
+                                openClaimMenu(sp);
+                                return;
+                            }
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim"); return; }
 
                             if (slotId == 4 && standingClaim != null && (standingClaim.owner.equalsIgnoreCase(username) || isOp)) {

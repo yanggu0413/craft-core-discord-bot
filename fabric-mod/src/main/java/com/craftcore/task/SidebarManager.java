@@ -85,25 +85,34 @@ public class SidebarManager {
             player.connection.send(new ClientboundSetDisplayObjectivePacket(DisplaySlot.SIDEBAR, objective)); // DISPLAY
         }
  
-        // 2. Clear old lines to prevent leaks
-        List<String> oldLines = previousLines.get(uuid);
-        if (oldLines != null) {
-            for (String oldLine : oldLines) {
-                scoreboard.resetSinglePlayerScore(() -> oldLine, objective);
-                player.connection.send(new net.minecraft.network.protocol.game.ClientboundResetScorePacket(oldLine, objectiveName));
-            }
-        }
- 
-        // 3. Prepare new lines with premium styling
+        // 2. Prepare new lines with premium styling
+        int ping = (player.connection != null) ? player.connection.latency() : 0;
+        String pingColor = ping <= 50 ? "§a" : (ping <= 120 ? "§e" : "§c");
+
         List<String> newLines = new ArrayList<>();
         newLines.add("§7§m----------------");
         newLines.add("§7• §f玩家: §e" + username);
         newLines.add("§7• §f座標: §a" + player.getBlockX() + ", " + player.getBlockY() + ", " + player.getBlockZ());
         newLines.add("§7• §f餘額: §a$" + String.format("%,d", (int)EconomyManager.getBalance(username)) + " 元");
         newLines.add("§7• §f鑰匙: §b🔑 " + EconomyManager.getLotteryKeys(username) + " 把");
+        newLines.add("§7• §f延遲: " + pingColor + ping + " ms");
         newLines.add("§7• §f效能: §d" + String.format("%.1f", tps) + " TPS");
         newLines.add("§7§m---------------- "); // Space at the end to make it distinct from first line
- 
+
+        // Skip packet updates if lines haven't changed to save bandwidth
+        List<String> oldLines = previousLines.get(uuid);
+        if (oldLines != null && oldLines.equals(newLines)) {
+            return;
+        }
+
+        // 3. Clear old lines
+        if (oldLines != null) {
+            for (String oldLine : oldLines) {
+                scoreboard.resetSinglePlayerScore(() -> oldLine, objective);
+                player.connection.send(new net.minecraft.network.protocol.game.ClientboundResetScorePacket(oldLine, objectiveName));
+            }
+        }
+
         // 4. Set scores in descending order
         for (int i = 0; i < newLines.size(); i++) {
             String lineText = newLines.get(i);
@@ -119,10 +128,10 @@ public class SidebarManager {
                 Optional.empty()
             ));
         }
- 
+
         // 5. Save previous lines
         previousLines.put(uuid, newLines);
- 
+
         // 6. Force client display slot update to sidebar
         player.connection.send(new ClientboundSetDisplayObjectivePacket(DisplaySlot.SIDEBAR, objective));
     }

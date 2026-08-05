@@ -160,11 +160,12 @@ public class EconomyCommands {
                 })
         );
 
-dispatcher.register(Commands.literal("luckydraw")
+        dispatcher.register(Commands.literal("luckydraw")
                     .executes(context -> {
                         ServerPlayer player = context.getSource().getPlayer();
                         if (player == null) return 0;
-                        return handleLuckyDrawCommand(player, 1);
+                        com.craftcore.menu.MenuGuiManager.openLuckyDrawGui(player);
+                        return 1;
                     })
                     .then(Commands.argument("count", com.mojang.brigadier.arguments.StringArgumentType.string())
                             .executes(context -> {
@@ -185,72 +186,42 @@ dispatcher.register(Commands.literal("luckydraw")
                             }))
             );
 
-dispatcher.register(Commands.literal("addmoney")
-
+        dispatcher.register(Commands.literal("addmoney")
                     .requires(source -> !source.isPlayer() || source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
-
                     .then(Commands.argument("username", StringArgumentType.string())
-
+                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
                             .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.0))
-
                                     .executes(context -> {
-
                                         String username = StringArgumentType.getString(context, "username");
-
                                         double amount = DoubleArgumentType.getDouble(context, "amount");
-
                                         boolean success = com.craftcore.economy.EconomyManager.addMoney(username, amount);
-
                                         if (success) {
-
                                             context.getSource().sendSystemMessage(Component.literal("§b[Craft-Core] §a成功將 $" + amount + " 加至玩家 " + username + " 的帳戶！"));
-
                                             return 1;
-
                                         } else {
-
                                             context.getSource().sendSystemMessage(Component.literal("§c[Craft-Core] 加金幣失敗！"));
-
                                             return 0;
-
                                         }
-
                                     })))
-
             );
 
-dispatcher.register(Commands.literal("removemoney")
-
+        dispatcher.register(Commands.literal("removemoney")
                     .requires(source -> !source.isPlayer() || source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
-
                     .then(Commands.argument("username", StringArgumentType.string())
-
+                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
                             .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.0))
-
                                     .executes(context -> {
-
                                         String username = StringArgumentType.getString(context, "username");
-
                                         double amount = DoubleArgumentType.getDouble(context, "amount");
-
                                         boolean success = com.craftcore.economy.EconomyManager.removeMoney(username, amount);
-
                                         if (success) {
-
                                             context.getSource().sendSystemMessage(Component.literal("§b[Craft-Core] §a成功將 $" + amount + " 自玩家 " + username + " 的帳戶中扣除！"));
-
                                             return 1;
-
                                         } else {
-
                                             context.getSource().sendSystemMessage(Component.literal("§c[Craft-Core] 扣除金幣失敗！"));
-
                                             return 0;
-
                                         }
-
                                     })))
-
             );
 
 dispatcher.register(Commands.literal("economy")
@@ -531,11 +502,8 @@ dispatcher.register(Commands.literal("pay")
             return 0;
         }
 
-        CraftCoreWSClient client = CraftCoreMod.getWSClient();
-        if (client != null && client.isAuthenticated()) {
-            String uuid = player.getStringUUID();
-            client.send(new Packet("luckydraw_request", new Packet.LuckydrawRequestPayload(username, uuid, currentKeys)));
-            player.sendSystemMessage(Component.literal("§b[Craft-Core] §f正在送出抽獎請求..."));
+        if (count == 1) {
+            com.craftcore.menu.MenuGuiManager.openLuckyDrawGui(player);
             return 1;
         } else {
             return executeBatchLotteryInGame(player, count);
