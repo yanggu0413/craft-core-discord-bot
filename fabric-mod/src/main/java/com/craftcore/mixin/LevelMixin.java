@@ -23,6 +23,8 @@ public class LevelMixin {
         if (player != null) {
             DailyTaskManager.handleBlockBreak(level, player, pos, state, blockEntity);
             if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                String blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
+                com.craftcore.task.AiDailyTaskManager.updateProgress(serverPlayer, "MINE", blockId, 1);
                 com.craftcore.achievement.CustomAchievementManager.onBlockBroken(serverPlayer);
                 boolean triggered = com.craftcore.antixray.HoneypotTrapManager.checkAndTriggerTrap(serverPlayer, pos);
                 if (triggered) {

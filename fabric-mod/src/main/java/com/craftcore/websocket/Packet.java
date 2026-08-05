@@ -104,6 +104,13 @@ public class Packet {
         public String message;
     }
 
+    public static class DailyAiTasksResponsePayload {
+        public String query_id;
+        public String date;
+        public List<com.craftcore.task.AiDailyTaskManager.AiTask> tasks;
+        public boolean success;
+    }
+
     public static class WhitelistActionPayload {
         public String action; // "add", "remove"
         public String username;

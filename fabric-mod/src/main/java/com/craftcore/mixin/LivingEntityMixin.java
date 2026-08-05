@@ -19,6 +19,8 @@ public class LivingEntityMixin {
         LivingEntity entity = (LivingEntity) (Object) this;
         DailyTaskManager.handleEntityKill(entity, damageSource);
         if (damageSource.getEntity() instanceof net.minecraft.server.level.ServerPlayer attacker) {
+            String entityId = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
+            com.craftcore.task.AiDailyTaskManager.updateProgress(attacker, "KILL", entityId, 1);
             com.craftcore.achievement.CustomAchievementManager.checkMacePigKill(attacker, entity, attacker.fallDistance);
         }
     }

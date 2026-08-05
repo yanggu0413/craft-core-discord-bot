@@ -223,11 +223,11 @@ public class MenuGuiManager {
                 "§e[點擊開啟福利中心 GUI]"
         )));
 
-        container.setItem(30, createGuiItem(Items.DIAMOND_SWORD, "§c⚔ 任務與懸賞", List.of(
-                "§7查看每日任務、全服大目標",
-                "§7與野外藏寶圖線索",
+        container.setItem(30, createGuiItem(Items.DIAMOND_SWORD, "§c⚔ 每日 AI 任務中心", List.of(
+                "§7查看與接取 Gemini AI 每日專屬任務",
+                "§7畫面上方 BossBar 即時追蹤任務進度",
                 "",
-                "§e[點擊開啟任務子選單]"
+                "§e[點擊開啟每日 AI 任務 GUI]"
         )));
 
         container.setItem(32, createGuiItem(Items.GOLD_BLOCK, "§6🏆 全服排行榜", List.of(
@@ -312,7 +312,7 @@ public class MenuGuiManager {
                             }
                             // 橫排 3 (Slots 28, 30, 32, 34)
                             else if (slotId == 28) openWelfareCenterMenu(sp);
-                            else if (slotId == 30) openTaskBountyMenu(sp);
+                            else if (slotId == 30) com.craftcore.task.AiDailyTaskManager.openTaskGui(sp);
                             else if (slotId == 32) openLeaderboardMenu(sp, "wealth");
                             else if (slotId == 34) openDiscordMenu(sp);
                             // 橫排 4 (Slots 37, 39, 41, 43)

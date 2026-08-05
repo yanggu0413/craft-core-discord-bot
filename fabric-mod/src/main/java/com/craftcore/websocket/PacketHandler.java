@@ -47,6 +47,7 @@ public class PacketHandler {
                         System.out.println("[CraftCore] Authenticated successfully: " + payload.message);
                         client.setAuthenticated(true);
                         com.craftcore.event.ServerLifecycleHandler.startTelemetryLoop(server, client);
+                        com.craftcore.task.AiDailyTaskManager.requestTasksFromWebsocket();
                     } else {
                         System.err.println("[CraftCore] Authentication failed: " + payload.message);
                         client.setAuthenticated(false);
@@ -530,6 +531,13 @@ public class PacketHandler {
                                 net.minecraft.sounds.SoundEvents.VILLAGER_AMBIENT, net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
                         }
                     });
+                    break;
+                }
+                case "daily_ai_tasks_response": {
+                    Packet.DailyAiTasksResponsePayload payload = GSON.fromJson(payloadObj, Packet.DailyAiTasksResponsePayload.class);
+                    if (payload != null && payload.tasks != null && !payload.tasks.isEmpty()) {
+                        com.craftcore.task.AiDailyTaskManager.setDailyTasks(payload.tasks);
+                    }
                     break;
                 }
                 case "claims_query": {

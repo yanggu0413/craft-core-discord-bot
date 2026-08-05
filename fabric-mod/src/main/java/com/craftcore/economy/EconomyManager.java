@@ -3,6 +3,7 @@ package com.craftcore.economy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import net.minecraft.server.level.ServerPlayer;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -306,6 +307,15 @@ public class EconomyManager {
             PlayerData data = getOrCreate(username);
             data.balance = round2(data.balance + round2(amount));
             save();
+            if (com.craftcore.event.ServerLifecycleHandler.serverInstance != null) {
+                net.minecraft.server.MinecraftServer srv = com.craftcore.event.ServerLifecycleHandler.serverInstance;
+                srv.execute(() -> {
+                    ServerPlayer player = srv.getPlayerList().getPlayerByName(username);
+                    if (player != null) {
+                        com.craftcore.task.AiDailyTaskManager.updateProgress(player, "EARN", "craftcore:money", (int) amount);
+                    }
+                });
+            }
             return true;
         } finally {
             lock.unlock();

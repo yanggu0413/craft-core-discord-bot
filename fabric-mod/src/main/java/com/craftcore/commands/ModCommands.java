@@ -22,6 +22,7 @@ public class ModCommands {
             PvpCommand.register(dispatcher);
             HelpCommand.register(dispatcher);
             CheckCommand.register(dispatcher);
+            TaskCommand.register(dispatcher);
         });
     }
 }

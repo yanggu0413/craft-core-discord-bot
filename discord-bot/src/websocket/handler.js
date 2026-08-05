@@ -71,6 +71,28 @@ async function handle(packet, discordClient) {
       break;
     }
 
+    case 'daily_ai_tasks_query': {
+      const aiTaskService = require('../services/aiTaskService');
+      const mcWs = session.getMinecraftServerWs();
+      const tasks = await aiTaskService.getOrGenerateDailyTasks();
+      if (mcWs && mcWs.readyState === 1) {
+        try {
+          mcWs.send(JSON.stringify({
+            type: 'daily_ai_tasks_response',
+            payload: {
+              query_id: payload ? payload.query_id : null,
+              date: getTaipeiDateString(),
+              tasks: tasks,
+              success: true
+            }
+          }));
+        } catch (err) {
+          logger.error('Failed to send daily_ai_tasks_response to Minecraft server', { error: err });
+        }
+      }
+      break;
+    }
+
     case 'event':
       await webhookService.sendEvent(payload.event_type, payload.username, payload.uuid, payload.details, discordClient);
       break;
