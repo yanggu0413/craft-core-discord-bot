@@ -179,11 +179,13 @@ public class MenuGuiManager {
         // =========================================================
         // 【橫排 2】 Row 3 (Slots 19, 21, 23, 25): 🧭 傳送與領地保全
         // =========================================================
-        container.setItem(19, createGuiItem(Items.COMPASS, "§e🧭 傳送與家園", List.of(
-                "§7傳送至個人家點、公共地標",
-                "§7隨機傳送與返回死亡地點",
+        container.setItem(19, createGuiItem(Items.COMPASS, "§e🌐 世界與維度切換中心 (/world)", List.of(
+                "§7傳送至全服各個特製維度與世界",
+                "§7• 🌍 主世界 Spawn / 🔥 下界 / 🌌 終界",
+                "§7• 🎣 奇幻釣魚維度 (craftcore:fishing)",
+                "§7• ⛏️ 資源採礦世界 (craftcore:mining)",
                 "",
-                "§e[點擊開啟傳送子選單]"
+                "§e[點擊開啟 /world 維度切換 GUI]"
         )));
 
         container.setItem(21, createGuiItem(Items.GRASS_BLOCK, "§b🛡 領地與密碼箱", List.of(
@@ -303,7 +305,7 @@ public class MenuGuiManager {
                                 }
                             }
                             // 橫排 2 (Slots 19, 21, 23, 25)
-                            else if (slotId == 19) openTeleportMenu(sp);
+                            else if (slotId == 19) com.craftcore.commands.WorldCommand.openWorldMenu(sp);
                             else if (slotId == 21) openClaimMenu(sp);
                             else if (slotId == 23) openTpaPlayerSelectorMenu(sp);
                             else if (slotId == 25) {

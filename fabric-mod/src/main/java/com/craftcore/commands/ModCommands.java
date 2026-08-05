@@ -28,6 +28,7 @@ public class ModCommands {
             LockboxCommand.register(dispatcher);
             VeinCommand.register(dispatcher);
             MiningCommand.register(dispatcher);
+            WorldCommand.register(dispatcher);
         });
     }
 }
