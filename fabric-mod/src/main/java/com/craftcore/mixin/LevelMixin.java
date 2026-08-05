@@ -26,6 +26,7 @@ public class LevelMixin {
                 String blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
                 com.craftcore.task.AiDailyTaskManager.updateProgress(serverPlayer, "MINE", blockId, 1);
                 com.craftcore.achievement.CustomAchievementManager.onBlockBroken(serverPlayer);
+                com.craftcore.vein.VeinMinerManager.onBlockBreak(serverPlayer, pos, state);
                 boolean triggered = com.craftcore.antixray.HoneypotTrapManager.checkAndTriggerTrap(serverPlayer, pos);
                 if (triggered) {
                     com.craftcore.antixray.HoneypotTrapManager.generateTrapForPlayer(serverPlayer);

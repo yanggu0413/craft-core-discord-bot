@@ -1259,6 +1259,12 @@ public class MenuGuiManager {
                 "§a[點擊購買領地 (/claim)]"
         )));
 
+        container.setItem(16, createGuiItem(Items.DIAMOND_PICKAXE, "§6⛏️ 連鎖挖掘與砍樹控制台 (/vein)", List.of(
+                "§7設定、切換連鎖砍樹與連鎖採礦獨立開關",
+                "",
+                "§e[點擊開啟連鎖挖掘控制 GUI]"
+        )));
+
         container.setItem(26, createGuiItem(Items.TRIPWIRE_HOOK, "§6🔒 密碼箱控制台 (/padlock)", List.of(
                 "§7設定、修改或解鎖您正前方的箱子密碼鎖",
                 "",
@@ -1296,6 +1302,7 @@ public class MenuGuiManager {
                                 openClaimMenu(sp);
                                 return;
                             }
+                            if (slotId == 16) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "vein"); return; }
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim"); return; }
                             if (slotId == 26) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "padlock"); return; }
 
