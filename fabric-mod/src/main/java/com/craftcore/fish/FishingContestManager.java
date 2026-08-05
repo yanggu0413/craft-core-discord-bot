@@ -273,6 +273,22 @@ public class FishingContestManager {
                         server.execute(() -> startContest(server, 20));
                     }
                 }
+                if (server != null) {
+                    server.execute(() -> {
+                        ServerLevel fishingLevel = server.getLevel(FISHING_DIMENSION_KEY);
+                        if (fishingLevel != null) {
+                            net.minecraft.world.level.saveddata.WeatherData wd = fishingLevel.getWeatherData();
+                            if (wd != null && (wd.isRaining() || wd.isThundering())) {
+                                wd.setRaining(false);
+                                wd.setThundering(false);
+                                wd.setRainTime(0);
+                                wd.setThunderTime(0);
+                                wd.setClearWeatherTime(120000);
+                                wd.setDirty();
+                            }
+                        }
+                    });
+                }
             } catch (Throwable t) {
                 System.err.println("[CraftCore] Error in FishingContest timer loop: " + t.getMessage());
             }
