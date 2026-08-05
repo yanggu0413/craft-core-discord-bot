@@ -75,27 +75,40 @@ public class MiningDimensionManager {
             return;
         }
 
-        int randX = (random.nextInt(2000) + 100) * (random.nextBoolean() ? 1 : -1);
-        int randZ = (random.nextInt(2000) + 100) * (random.nextBoolean() ? 1 : -1);
-
-        // Force chunk loading
-        miningLevel.getChunk(new BlockPos(randX, 64, randZ));
-
+        int randX = 0;
+        int randZ = 0;
         int targetY = 70;
-        for (int y = 310; y >= 60; y--) {
-            BlockPos check = new BlockPos(randX, y, randZ);
-            var state = miningLevel.getBlockState(check);
-            if (!state.isAir() && !state.is(Blocks.BEDROCK) && !state.is(Blocks.BARRIER)) {
-                targetY = y + 1;
-                break;
+        boolean foundLand = false;
+
+        for (int attempt = 0; attempt < 30; attempt++) {
+            randX = (random.nextInt(2000) + 100) * (random.nextBoolean() ? 1 : -1);
+            randZ = (random.nextInt(2000) + 100) * (random.nextBoolean() ? 1 : -1);
+
+            // Force chunk loading
+            miningLevel.getChunk(new BlockPos(randX, 64, randZ));
+
+            for (int y = 310; y >= 60; y--) {
+                BlockPos check = new BlockPos(randX, y, randZ);
+                var state = miningLevel.getBlockState(check);
+                if (!state.getFluidState().isEmpty()) continue; // Skip ocean, sea, water, lava!
+
+                if (!state.isAir() && !state.is(Blocks.BEDROCK) && !state.is(Blocks.BARRIER)) {
+                    targetY = y + 1;
+                    var aboveState = miningLevel.getBlockState(new BlockPos(randX, targetY, randZ));
+                    if (aboveState.getFluidState().isEmpty()) {
+                        foundLand = true;
+                        break;
+                    }
+                }
             }
+            if (foundLand) break;
         }
 
         player.teleportTo(miningLevel, randX + 0.5, targetY, randZ + 0.5, Set.of(), player.getYRot(), player.getXRot(), false);
         player.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 100, 255, false, false, false));
         player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 100, 0, false, false, false));
         player.playSound(SoundEvents.ENDERMAN_TELEPORT, 1.0f, 1.0f);
-        player.sendSystemMessage(Component.literal(String.format("§a⛏️ [資源採礦世界] 成功為您隨機傳送落點至 X: %d, Y: %d, Z: %d！祝您採礦大豐收！", randX, targetY, randZ)));
+        player.sendSystemMessage(Component.literal(String.format("§a⛏️ [資源採礦世界] 成功為您隨機傳送落點至陸地 X: %d, Y: %d, Z: %d！祝您採礦大豐收！", randX, targetY, randZ)));
     }
 
     public static void evacuatePlayers(MinecraftServer server) {
