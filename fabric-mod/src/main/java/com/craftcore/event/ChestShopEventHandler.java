@@ -470,6 +470,11 @@ public class ChestShopEventHandler {
         }
 
         if (state.getBlock() instanceof ChestBlock) {
+            if (player instanceof ServerPlayer sp && com.craftcore.treasure.TreasureChestManager.checkAndClaimTreasure(sp, pos)) {
+                sp.playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                return InteractionResult.PASS;
+            }
+
             String coords = pos.getX() + "," + pos.getY() + "," + pos.getZ();
             String dimension = world.dimension().identifier().toString();
             String key = dimension + ":" + coords;

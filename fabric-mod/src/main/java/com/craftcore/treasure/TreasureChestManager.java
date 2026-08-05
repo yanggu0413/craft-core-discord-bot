@@ -217,6 +217,12 @@ public class TreasureChestManager {
                 net.minecraft.world.entity.Entity entity = level.getEntity(activeTreasure.displayUuid);
                 if (entity != null) {
                     entity.discard();
+                } else {
+                    BlockPos pos = new BlockPos(activeTreasure.x, activeTreasure.y, activeTreasure.z);
+                    net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(pos).inflate(3.0);
+                    for (Display.TextDisplay td : level.getEntitiesOfClass(Display.TextDisplay.class, box)) {
+                        if (td != null) td.discard();
+                    }
                 }
             } catch (Throwable ignored) {}
         }
