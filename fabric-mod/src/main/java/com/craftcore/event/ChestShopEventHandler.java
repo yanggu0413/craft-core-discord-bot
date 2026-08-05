@@ -598,6 +598,29 @@ public class ChestShopEventHandler {
             return InteractionResult.PASS;
         });
 
+        net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
+            if (world.isClientSide() || hand != InteractionHand.MAIN_HAND) {
+                return InteractionResult.PASS;
+            }
+            if (player instanceof ServerPlayer sp) {
+                ItemStack item = sp.getItemInHand(hand);
+                if (item.is(net.minecraft.world.item.Items.PRISMARINE_CRYSTALS) && item.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && item.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME).getString().contains("釣魚大賽加速器")) {
+                    item.shrink(1);
+                    com.craftcore.fish.FishingContestManager.applySpeedBuff(sp);
+                    return InteractionResult.SUCCESS;
+                }
+                if (item.is(net.minecraft.world.item.Items.TRIDENT) && item.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && item.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME).getString().contains("釣魚大賽長度偷取器")) {
+                    com.craftcore.fish.FishingContestManager.openTargetSelectorGui(sp, "THIEF");
+                    return InteractionResult.SUCCESS;
+                }
+                if (item.is(net.minecraft.world.item.Items.NETHER_STAR) && item.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && item.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME).getString().contains("釣魚大賽長度交換器")) {
+                    com.craftcore.fish.FishingContestManager.openTargetSelectorGui(sp, "SWAP");
+                    return InteractionResult.SUCCESS;
+                }
+            }
+            return InteractionResult.PASS;
+        });
+
         // 7. Claim Living Entity Damage Protection (ServerLivingEntityEvents.ALLOW_DAMAGE)
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
             if (entity.level().isClientSide()) return true;

@@ -23,12 +23,25 @@ public abstract class FishingHookMixin {
     @Shadow
     private int nibble;
 
+    @Shadow
+    private int timeUntilHooked;
+
     @Inject(method = "retrieve", at = @At("HEAD"))
     private void onRetrieve(ItemStack stack, CallbackInfoReturnable<Integer> cir) {
         Player owner = getPlayerOwner();
         if (owner instanceof ServerPlayer player) {
             if (this.nibble > 0) { // Catching something
                 AiDailyTaskManager.updateProgress(player, "FISH", "minecraft:cod", 1);
+            }
+        }
+    }
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onTick(org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        Player owner = getPlayerOwner();
+        if (owner instanceof ServerPlayer player && FishingContestManager.hasSpeedBuff(player.getUUID())) {
+            if (this.timeUntilHooked > 1) {
+                this.timeUntilHooked--; // Double speed ticking for wait time
             }
         }
     }

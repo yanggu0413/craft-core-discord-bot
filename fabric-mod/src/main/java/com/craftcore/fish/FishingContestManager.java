@@ -202,11 +202,95 @@ public class FishingContestManager {
         bossBar.setProgress((float) secondsRemaining / 1200.0f);
     }
 
+    private static final Map<UUID, Long> speedBuffExpirationMap = new ConcurrentHashMap<>();
+
+    public static boolean hasSpeedBuff(UUID uuid) {
+        Long expire = speedBuffExpirationMap.get(uuid);
+        if (expire == null) return false;
+        if (System.currentTimeMillis() > expire) {
+            speedBuffExpirationMap.remove(uuid);
+            return false;
+        }
+        return true;
+    }
+
+    public static void applySpeedBuff(ServerPlayer player) {
+        if (player == null) return;
+        speedBuffExpirationMap.put(player.getUUID(), System.currentTimeMillis() + (3 * 60 * 1000));
+        player.sendSystemMessage(Component.literal("§a⚡ [釣魚大賽] 您已啟動【急速垂釣 BUFF】！未來 3 分鐘上鉤速度提升 50%！"));
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0f, 1.5f);
+    }
+
     public static ItemStack onPlayerCatchFish(ServerPlayer player, ItemStack originalCatch) {
         if (player == null || !active) return originalCatch;
 
         String username = player.getName().getString();
         currentContestCountMap.put(username, currentContestCountMap.getOrDefault(username, 0) + 1);
+
+        double roll = Math.random();
+        if (roll < 0.15) { // 15% Tactical Item or Trap
+            double itemRoll = Math.random();
+            if (itemRoll < 0.33) { // 5% Fishing Speed Booster
+                ItemStack booster = new ItemStack(Items.PRISMARINE_CRYSTALS);
+                booster.set(DataComponents.CUSTOM_NAME, Component.literal("§a⚡ 釣魚大賽加速器"));
+                booster.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+                booster.set(DataComponents.LORE, new ItemLore(List.of(
+                        Component.literal("§7手持右鍵使用，啟動 3 分鐘急速垂釣 BUFF"),
+                        Component.literal("§7上鉤速度提升 50%！"),
+                        Component.literal(""),
+                        Component.literal("§e[手持右鍵立即啟動]")
+                )));
+                player.sendSystemMessage(Component.literal("§a🎉 [釣魚大賽] 幸運釣獲戰術道具：【⚡ 釣魚大賽加速器】！手持右鍵即可使用！"));
+                player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
+                return booster;
+            } else if (itemRoll < 0.60) { // 4% Length Thief
+                ItemStack thief = new ItemStack(Items.TRIDENT);
+                thief.set(DataComponents.CUSTOM_NAME, Component.literal("§c🗡 釣魚大賽長度偷取器"));
+                thief.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+                thief.set(DataComponents.LORE, new ItemLore(List.of(
+                        Component.literal("§7手持右鍵開啟玩家選單，強行偷取指定玩家 1%~30% 的長度！"),
+                        Component.literal(""),
+                        Component.literal("§e[手持右鍵開啟指定目標選單]")
+                )));
+                player.sendSystemMessage(Component.literal("§c🎉 [釣魚大賽] 幸運釣獲心機戰術道具：【🗡 釣魚大賽長度偷取器】！手持右鍵即可使用！"));
+                player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
+                return thief;
+            } else if (itemRoll < 0.87) { // 4% Trap Bomb (Instant Trigger)
+                double curBest = currentContestBestMap.getOrDefault(username, 0.0);
+                if (curBest > 0) {
+                    double percent = 0.05 + Math.random() * 0.10; // 5% ~ 15%
+                    double deduct = curBest * percent;
+                    double newBest = Math.max(0.0, curBest - deduct);
+                    currentContestBestMap.put(username, newBest);
+
+                    // Re-sort Top Fish
+                    currentTopFishList.removeIf(f -> f.playername.equalsIgnoreCase(username));
+                    if (newBest > 0) {
+                        currentTopFishList.add(new CaughtFish(username, "詛咒陷阱殘留紀錄", newBest, 1.0, "陷阱扣除"));
+                    }
+                    currentTopFishList.sort((a, b) -> Double.compare(b.lengthCm, a.lengthCm));
+                    updateBossBarTitle();
+
+                    player.sendSystemMessage(Component.literal(String.format("§c💥 [釣魚大賽陷阱] 糟了！您釣到了【詛咒陷阱炸彈】，個人最高紀錄損失了 %.1f cm (%.1f%%)！", deduct, percent * 100)));
+                    player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.0f, 1.0f);
+                } else {
+                    player.sendSystemMessage(Component.literal("§c💥 [釣魚大賽陷阱] 您釣到了【詛咒陷阱炸彈】，好在您目前尚無長度紀錄，躲過一劫！"));
+                }
+                return new ItemStack(Items.TNT);
+            } else { // 2% Length Swapper
+                ItemStack swapper = new ItemStack(Items.NETHER_STAR);
+                swapper.set(DataComponents.CUSTOM_NAME, Component.literal("§d🔄 釣魚大賽長度交換器"));
+                swapper.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+                swapper.set(DataComponents.LORE, new ItemLore(List.of(
+                        Component.literal("§7手持右鍵開啟玩家選單，強行與指定玩家交換最高長度紀錄！"),
+                        Component.literal(""),
+                        Component.literal("§e[手持右鍵開啟指定目標選單]")
+                )));
+                player.sendSystemMessage(Component.literal("§d🎉 [釣魚大賽] 獲得超級戰術道具：【🔄 釣魚大賽長度交換器】！手持右鍵即可使用！"));
+                player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
+                return swapper;
+            }
+        }
 
         // Generate fish length & type
         double rand = Math.random();
@@ -642,6 +726,134 @@ public class FishingContestManager {
                     }
                 }
             }, Component.literal("§8❖ 🏆 釣魚名人堂 ❖")));
+    }
+
+    // =========================================================
+    // Target Selector GUI for Length Swapper & Length Thief
+    // =========================================================
+    public static void openTargetSelectorGui(ServerPlayer user, String itemAction) {
+        if (user == null || user.level().getServer() == null) return;
+        MinecraftServer server = user.level().getServer();
+        List<ServerPlayer> players = new ArrayList<>(server.getPlayerList().getPlayers());
+
+        SimpleContainer container = new SimpleContainer(27);
+        ItemStack glass = createGuiItem(getItemFromIdentifier("minecraft:gray_stained_glass_pane"), " ", List.of());
+        for (int i = 0; i < 27; i++) {
+            container.setItem(i, glass);
+        }
+
+        String actionTitle = "SWAP".equalsIgnoreCase(itemAction) ? "§d🔄 選擇長度交換目標玩家" : "§c🗡 選擇長度偷取目標玩家";
+        container.setItem(4, createGuiItem(Items.PLAYER_HEAD, actionTitle, List.of("§7點擊下方線上玩家頭顱施放戰術道具")));
+
+        int slot = 9;
+        Map<Integer, String> slotPlayerMap = new HashMap<>();
+        for (ServerPlayer p : players) {
+            if (slot >= 26) break;
+            String name = p.getName().getString();
+            if (name.equalsIgnoreCase(user.getName().getString())) continue;
+
+            slotPlayerMap.put(slot, name);
+            double targetBest = currentContestBestMap.getOrDefault(name, 0.0);
+            container.setItem(slot++, createGuiItem(Items.PLAYER_HEAD, "§e" + name, List.of(
+                    "§7目前最高紀錄: §a" + (targetBest > 0 ? String.format("%.1f", targetBest) + " cm" : "無紀錄"),
+                    "",
+                    "§e[點擊對該玩家施放道具]"
+            )));
+        }
+
+        container.setItem(26, createGuiItem(Items.BARRIER, "§c❌ 取消使用", List.of("§7點擊關閉選單")));
+
+        user.openMenu(new SimpleMenuProvider((syncId, inv, p) ->
+            new ReadOnlyFishMenuHandler(MenuType.GENERIC_9x3, syncId, inv, container, 3) {
+                @Override
+                public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                    if (clicker instanceof ServerPlayer sp) {
+                        if (slotId == 26) { sp.closeContainer(); return; }
+
+                        String targetName = slotPlayerMap.get(slotId);
+                        if (targetName != null) {
+                            sp.closeContainer();
+                            if ("SWAP".equalsIgnoreCase(itemAction)) {
+                                executeLengthSwap(sp, targetName);
+                            } else {
+                                executeLengthThief(sp, targetName);
+                            }
+                        }
+                    }
+                }
+            }, Component.literal("§8❖ " + actionTitle + " ❖")));
+    }
+
+    public static void executeLengthSwap(ServerPlayer user, String targetName) {
+        if (user == null) return;
+        String userName = user.getName().getString();
+        double userBest = currentContestBestMap.getOrDefault(userName, 0.0);
+        double targetBest = currentContestBestMap.getOrDefault(targetName, 0.0);
+
+        currentContestBestMap.put(userName, targetBest);
+        currentContestBestMap.put(targetName, userBest);
+
+        // Consume Item from hand
+        if (user.getMainHandItem().is(Items.NETHER_STAR)) {
+            user.getMainHandItem().shrink(1);
+        }
+
+        // Re-sort leaderboard
+        refreshTopList(userName, targetName);
+
+        // Broadcast
+        if (serverInstance != null) {
+            serverInstance.getPlayerList().broadcastSystemMessage(Component.literal(String.format(
+                    "§c⚔ [釣魚大賽心機戰況] 玩家 §e%s §c使用了【🔄 長度交換器】，強行與 §e%s §c交換了長度紀錄！(§e%.1f cm §c⇄ §e%.1f cm)",
+                    userName, targetName, userBest, targetBest
+            )), false);
+        }
+    }
+
+    public static void executeLengthThief(ServerPlayer user, String targetName) {
+        if (user == null) return;
+        String userName = user.getName().getString();
+        double userBest = currentContestBestMap.getOrDefault(userName, 0.0);
+        double targetBest = currentContestBestMap.getOrDefault(targetName, 0.0);
+
+        if (targetBest <= 0) {
+            user.sendSystemMessage(Component.literal("§c[釣魚大賽] 該玩家目前尚無長度紀錄，無法偷取！"));
+            return;
+        }
+
+        double percent = 0.01 + Math.random() * 0.29; // 1% ~ 30%
+        double stolen = targetBest * percent;
+
+        currentContestBestMap.put(userName, userBest + stolen);
+        currentContestBestMap.put(targetName, Math.max(0.0, targetBest - stolen));
+
+        // Consume Item from hand
+        if (user.getMainHandItem().is(Items.TRIDENT)) {
+            user.getMainHandItem().shrink(1);
+        }
+
+        // Re-sort leaderboard
+        refreshTopList(userName, targetName);
+
+        // Broadcast
+        if (serverInstance != null) {
+            serverInstance.getPlayerList().broadcastSystemMessage(Component.literal(String.format(
+                    "§c⚔ [釣魚大賽心機戰況] 玩家 §e%s §c使用了【🗡 長度偷取器】，從 §e%s §c身上強行偷走了 §a%.1f cm §c(%.1f%%) 的長度！",
+                    userName, targetName, stolen, percent * 100
+            )), false);
+        }
+    }
+
+    private static void refreshTopList(String user1, String user2) {
+        double b1 = currentContestBestMap.getOrDefault(user1, 0.0);
+        double b2 = currentContestBestMap.getOrDefault(user2, 0.0);
+
+        currentTopFishList.removeIf(f -> f.playername.equalsIgnoreCase(user1) || f.playername.equalsIgnoreCase(user2));
+        if (b1 > 0) currentTopFishList.add(new CaughtFish(user1, "戰術道具調整紀錄", b1, 1.0, "戰術調整"));
+        if (b2 > 0) currentTopFishList.add(new CaughtFish(user2, "戰術道具調整紀錄", b2, 1.0, "戰術調整"));
+
+        currentTopFishList.sort((a, b) -> Double.compare(b.lengthCm, a.lengthCm));
+        updateBossBarTitle();
     }
 
     private static Item getItemFromIdentifier(String idStr) {
