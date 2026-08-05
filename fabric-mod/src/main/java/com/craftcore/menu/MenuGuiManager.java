@@ -318,8 +318,8 @@ public class MenuGuiManager {
                             // 橫排 4 (Slots 37, 39, 41, 43)
                             else if (slotId == 37) openFakePlayerMenu(sp);
                             else if (slotId == 39) openMachineMenu(sp);
-                            else if (slotId == 41 && isOp) openAdminMenu(sp);
-                            else if (slotId == 41 || slotId == 43) {
+                            else if (slotId == 43) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "mining"); return; }
+                            else if (slotId == 41) {
                                 if (server != null) {
                                     sp.closeContainer();
                                     server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "help");

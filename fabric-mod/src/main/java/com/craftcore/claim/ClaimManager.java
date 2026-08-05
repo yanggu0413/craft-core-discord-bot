@@ -349,6 +349,12 @@ public class ClaimManager {
 
         boolean isOp = player.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);
 
+        // 0. Disable Claims in Mining & Fishing Dimensions
+        if (dimA.contains("craftcore:mining") || dimA.contains("craftcore:fishing")) {
+            player.sendSystemMessage(Component.literal("§c[專屬維度保護] 釣魚世界與採礦世界專供全服自由活動，禁止劃分領地！"));
+            return 0;
+        }
+
         // 1. World Spawn Protection Radius (150 blocks from 0,0 in Overworld)
         if (dimA.equalsIgnoreCase("minecraft:overworld") && !isOp) {
             int minX = Math.min(a.getX(), b.getX());

@@ -156,6 +156,12 @@ public class LockboxManager {
             Level world = player.level();
             BlockState state = world.getBlockState(pos);
 
+            String dimId = world.dimension().identifier().toString();
+            if (dimId.contains("craftcore:mining") || dimId.contains("craftcore:fishing")) {
+                player.sendSystemMessage(Component.literal("§c[專屬維度保護] 釣魚世界與採礦世界專供全服自由活動，禁止設定私人密碼箱！"));
+                return 0;
+            }
+
             if (state.getBlock() instanceof ChestBlock) {
                 String key = getLockboxKey(world, pos);
                 Lockbox existing = lockboxes.get(key);
