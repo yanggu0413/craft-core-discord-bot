@@ -1259,6 +1259,12 @@ public class MenuGuiManager {
                 "§a[點擊購買領地 (/claim)]"
         )));
 
+        container.setItem(26, createGuiItem(Items.TRIPWIRE_HOOK, "§6🔒 密碼箱控制台 (/padlock)", List.of(
+                "§7設定、修改或解鎖您正前方的箱子密碼鎖",
+                "",
+                "§e[點擊開啟密碼箱控制 GUI]"
+        )));
+
         List<ClaimManager.Claim> myClaims = ClaimManager.getPlayerClaims(username);
         int[] claimSlots = { 28, 29, 30, 31, 32, 33, 34 };
         int claimIdx = 0;
@@ -1291,6 +1297,7 @@ public class MenuGuiManager {
                                 return;
                             }
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim"); return; }
+                            if (slotId == 26) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "padlock"); return; }
 
                             if (slotId == 4 && standingClaim != null && (standingClaim.owner.equalsIgnoreCase(username) || isOp)) {
                                 openClaimDetailGui(sp, standingClaim);

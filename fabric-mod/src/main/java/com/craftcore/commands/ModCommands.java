@@ -25,6 +25,7 @@ public class ModCommands {
             TaskCommand.register(dispatcher);
             TrailCommand.register(dispatcher);
             FishCommand.register(dispatcher);
+            LockboxCommand.register(dispatcher);
         });
     }
 }
