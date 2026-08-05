@@ -3,11 +3,11 @@ package com.craftcore.commands;
 import com.craftcore.fish.FishingContestManager;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.Permissions;
 
 public class FishCommand {
 
@@ -20,34 +20,82 @@ public class FishCommand {
                     }
                     return 1;
                 })
-                .then(Commands.literal("start")
-                        .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_OWNER))
+                .then(Commands.literal("tp")
                         .executes(context -> {
                             ServerPlayer player = context.getSource().getPlayer();
-                            if (player != null && player.level().getServer() != null) {
-                                FishingContestManager.startContest(player.level().getServer(), 20);
+                            if (player != null) {
+                                FishingContestManager.teleportToFishingDimension(player);
                             }
                             return 1;
                         })
-                        .then(Commands.argument("minutes", IntegerArgumentType.integer(1, 120))
+                )
+                .then(Commands.literal("party")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player != null) {
+                                FishingContestManager.openPartyGui(player);
+                            }
+                            return 1;
+                        })
+                        .then(Commands.literal("create")
                                 .executes(context -> {
-                                    int mins = IntegerArgumentType.getInteger(context, "minutes");
                                     ServerPlayer player = context.getSource().getPlayer();
-                                    if (player != null && player.level().getServer() != null) {
-                                        FishingContestManager.startContest(player.level().getServer(), mins);
+                                    if (player != null) {
+                                        FishingContestManager.createPartyMatch(player, 10);
+                                    }
+                                    return 1;
+                                })
+                                .then(Commands.argument("minutes", IntegerArgumentType.integer(1, 60))
+                                        .executes(context -> {
+                                            ServerPlayer player = context.getSource().getPlayer();
+                                            int min = IntegerArgumentType.getInteger(context, "minutes");
+                                            if (player != null) {
+                                                FishingContestManager.createPartyMatch(player, min);
+                                            }
+                                            return 1;
+                                        })
+                                )
+                        )
+                        .then(Commands.literal("join")
+                                .then(Commands.argument("host", StringArgumentType.word())
+                                        .executes(context -> {
+                                            ServerPlayer player = context.getSource().getPlayer();
+                                            String host = StringArgumentType.getString(context, "host");
+                                            if (player != null) {
+                                                FishingContestManager.joinPartyMatch(player, host);
+                                            }
+                                            return 1;
+                                        })
+                                )
+                        )
+                        .then(Commands.literal("start")
+                                .executes(context -> {
+                                    ServerPlayer player = context.getSource().getPlayer();
+                                    if (player != null) {
+                                        FishingContestManager.startPartyMatch(player);
                                     }
                                     return 1;
                                 })
                         )
                 )
-                .then(Commands.literal("stop")
-                        .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_OWNER))
+                .then(Commands.literal("start")
+                        .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
                         .executes(context -> {
-                            ServerPlayer player = context.getSource().getPlayer();
-                            if (player != null) {
-                                FishingContestManager.endContest();
-                                player.sendSystemMessage(Component.literal("§a[管理員] 已手動強制結束釣魚大賽！"));
-                            }
+                            FishingContestManager.startContest(context.getSource().getServer(), 20);
+                            return 1;
+                        })
+                        .then(Commands.argument("minutes", IntegerArgumentType.integer(1, 120))
+                                .executes(context -> {
+                                    int min = IntegerArgumentType.getInteger(context, "minutes");
+                                    FishingContestManager.startContest(context.getSource().getServer(), min);
+                                    return 1;
+                                })
+                        )
+                )
+                .then(Commands.literal("stop")
+                        .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER))
+                        .executes(context -> {
+                            FishingContestManager.stopContest(context.getSource().getServer());
                             return 1;
                         })
                 )

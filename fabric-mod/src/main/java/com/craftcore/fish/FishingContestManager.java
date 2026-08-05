@@ -1,13 +1,15 @@
 package com.craftcore.fish;
 
-import com.craftcore.economy.EconomyManager;
 import com.craftcore.title.TitleManager;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerBossEvent;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -20,12 +22,13 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.ItemLore;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
-import java.time.ZonedDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,47 +38,64 @@ import java.util.concurrent.TimeUnit;
 
 public class FishingContestManager {
 
+    public static final ResourceKey<Level> FISHING_DIMENSION_KEY = ResourceKey.create(Registries.DIMENSION, Identifier.parse("craftcore:fishing"));
+
     public static class CaughtFish {
-        public String playername;
+        public String fisherman;
         public String fishName;
         public double lengthCm;
         public double weightKg;
-        public String timestamp;
+        public String caughtTime;
 
-        public CaughtFish(String playername, String fishName, double lengthCm, double weightKg, String timestamp) {
-            this.playername = playername;
+        public CaughtFish(String fisherman, String fishName, double lengthCm, double weightKg, String caughtTime) {
+            this.fisherman = fisherman;
             this.fishName = fishName;
             this.lengthCm = lengthCm;
             this.weightKg = weightKg;
-            this.timestamp = timestamp;
+            this.caughtTime = caughtTime;
         }
     }
 
-    public static class HallOfFameEntry {
-        public String date;
-        public String winnerName;
-        public String fishName;
-        public double lengthCm;
+    public static class PartyMatch {
+        public String hostName;
+        public UUID hostUuid;
+        public List<UUID> members = new ArrayList<>();
+        public Map<UUID, Double> scores = new HashMap<>();
+        public boolean active = false;
+        public int durationMinutes = 10;
+        public long endTime = 0L;
+        public ServerBossEvent bossBar;
 
-        public HallOfFameEntry(String date, String winnerName, String fishName, double lengthCm) {
-            this.date = date;
-            this.winnerName = winnerName;
-            this.fishName = fishName;
-            this.lengthCm = lengthCm;
+        public PartyMatch(ServerPlayer host, int durationMinutes) {
+            this.hostName = host.getName().getString();
+            this.hostUuid = host.getUUID();
+            this.durationMinutes = durationMinutes;
+            this.members.add(host.getUUID());
+            this.scores.put(host.getUUID(), 0.0);
+            this.bossBar = new ServerBossEvent(UUID.randomUUID(), Component.literal("§b[釣魚比賽] " + hostName + " 的房間比賽準備中..."), BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.PROGRESS);
+            this.bossBar.addPlayer(host);
+        }
+
+        public boolean isSolo() {
+            return members.size() <= 1;
         }
     }
 
     private static boolean active = false;
     private static int secondsRemaining = 0;
-    private static final Map<String, Double> currentContestBestMap = new ConcurrentHashMap<>();
-    private static final Map<String, Integer> currentContestCountMap = new ConcurrentHashMap<>();
-    private static final List<CaughtFish> currentTopFishList = new ArrayList<>();
-    private static final List<HallOfFameEntry> hallOfFame = new ArrayList<>();
-    private static final Set<UUID> bossBarDisabledPlayers = ConcurrentHashMap.newKeySet();
-
-    private static ServerBossEvent bossBar = null;
     private static ScheduledExecutorService scheduler = null;
-    private static MinecraftServer serverInstance = null;
+
+    private static final Map<UUID, Double> serverScores = new ConcurrentHashMap<>();
+    private static final List<CaughtFish> hallOfFame = Collections.synchronizedList(new ArrayList<>());
+    private static ServerBossEvent bossBar = null;
+
+    private static final Map<UUID, Long> speedBuffExpirationMap = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> giantFishBuffExpirationMap = new ConcurrentHashMap<>();
+    private static final Map<UUID, PartyMatch> partyMatches = new ConcurrentHashMap<>();
+
+    public static boolean isContestActive() {
+        return active;
+    }
 
     public static boolean isActive() {
         return active;
@@ -85,125 +105,252 @@ public class FishingContestManager {
         return secondsRemaining;
     }
 
-    public static Map<String, Double> getCurrentContestBestMap() {
-        return currentContestBestMap;
+    public static Map<UUID, Double> getCurrentContestBestMap() {
+        return serverScores;
     }
 
-    public static List<CaughtFish> getCurrentTopFishList() {
-        return currentTopFishList;
+    public static List<Map.Entry<UUID, Double>> getCurrentTopFishList() {
+        return serverScores.entrySet().stream()
+                .sorted(Map.Entry.<UUID, Double>comparingByValue().reversed())
+                .toList();
     }
 
-    public static List<HallOfFameEntry> getHallOfFame() {
+    public static List<CaughtFish> getHallOfFame() {
         return hallOfFame;
     }
 
-    public static boolean isBossBarDisabled(UUID uuid) {
-        return bossBarDisabledPlayers.contains(uuid);
+    public static ResourceKey<Level> getFishingDimensionKey() {
+        return FISHING_DIMENSION_KEY;
     }
 
-    public static void toggleBossBar(UUID uuid) {
-        if (bossBarDisabledPlayers.contains(uuid)) {
-            bossBarDisabledPlayers.remove(uuid);
-        } else {
-            bossBarDisabledPlayers.add(uuid);
-            if (bossBar != null) {
-                ServerPlayer p = serverInstance != null ? serverInstance.getPlayerList().getPlayer(uuid) : null;
-                if (p != null) bossBar.removePlayer(p);
+    // Teleport to craftcore:fishing dimension
+    public static void teleportToFishingDimension(ServerPlayer player) {
+        if (player == null) return;
+        MinecraftServer server = player.level().getServer();
+        if (server == null) return;
+
+        ServerLevel fishingLevel = server.getLevel(FISHING_DIMENSION_KEY);
+        if (fishingLevel == null) {
+            player.sendSystemMessage(Component.literal("§c[釣魚系統] 釣魚維度 craftcore:fishing 正在加載中，請稍後再試！"));
+            return;
+        }
+
+        // Ensure safe spawn platform at (0, 64, 0)
+        net.minecraft.core.BlockPos center = new net.minecraft.core.BlockPos(0, 64, 0);
+        if (fishingLevel.getBlockState(center).isAir()) {
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    fishingLevel.setBlock(new net.minecraft.core.BlockPos(x, 64, z), Blocks.SMOOTH_QUARTZ.defaultBlockState(), 3);
+                }
+            }
+            // Add water pool for fishing testing around platform
+            for (int x = -5; x <= 5; x++) {
+                for (int z = 3; z <= 8; z++) {
+                    fishingLevel.setBlock(new net.minecraft.core.BlockPos(x, 64, z), Blocks.WATER.defaultBlockState(), 3);
+                    fishingLevel.setBlock(new net.minecraft.core.BlockPos(x, 63, z), Blocks.PRISMARINE.defaultBlockState(), 3);
+                }
             }
         }
+
+        player.teleportTo(fishingLevel, 0.5, 65.0, 0.5, Set.of(), player.getYRot(), player.getXRot(), false);
+        player.playSound(SoundEvents.ENDERMAN_TELEPORT, 1.0f, 1.0f);
+        player.sendSystemMessage(Component.literal("§a🌊 [釣魚大廳] 成功傳送至專屬釣魚虛空維度 (craftcore:fishing)！"));
     }
 
     public static void startLoop(MinecraftServer server) {
-        serverInstance = server;
         if (scheduler != null && !scheduler.isShutdown()) return;
-
         scheduler = Executors.newSingleThreadScheduledExecutor();
+
+        bossBar = new ServerBossEvent(UUID.randomUUID(), Component.literal("§b[釣魚大賽] 準備中..."), BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.PROGRESS);
+
         scheduler.scheduleAtFixedRate(() -> {
-            if (serverInstance == null) return;
-
-            ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Taipei"));
-            // Auto start at 20:00
-            if (!active && now.getHour() == 20 && now.getMinute() == 0 && now.getSecond() == 0) {
-                serverInstance.execute(() -> startContest(serverInstance, 20));
+            try {
+                ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Taipei"));
+                if (now.getHour() == 20 && now.getMinute() == 0 && now.getSecond() < 5 && !active) {
+                    if (server != null) {
+                        server.execute(() -> startContest(server, 20));
+                    }
+                }
+            } catch (Throwable t) {
+                System.err.println("[CraftCore] Error in FishingContest timer loop: " + t.getMessage());
             }
+        }, 0, 5, TimeUnit.SECONDS);
 
-            if (active) {
-                secondsRemaining--;
-                serverInstance.execute(FishingContestManager::tickContest);
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                if (active && secondsRemaining > 0) {
+                    secondsRemaining--;
+                    if (server != null) {
+                        server.execute(() -> updateBossBar(server));
+                    }
+                    if (secondsRemaining <= 0) {
+                        if (server != null) {
+                            server.execute(() -> stopContest(server));
+                        }
+                    }
+                }
+
+                // Tick party matches
+                for (PartyMatch match : partyMatches.values()) {
+                    if (match.active) {
+                        long left = (match.endTime - System.currentTimeMillis()) / 1000;
+                        if (left <= 0) {
+                            endPartyMatch(match, server);
+                        } else {
+                            updatePartyBossBar(match, server, (int) left);
+                        }
+                    }
+                }
+            } catch (Throwable t) {
+                System.err.println("[CraftCore] Error in FishingContest countdown loop: " + t.getMessage());
             }
         }, 1, 1, TimeUnit.SECONDS);
     }
 
-    public static void startContest(MinecraftServer server, int durationMinutes) {
-        serverInstance = server;
+    public static synchronized void startContest(MinecraftServer server, int minutes) {
         active = true;
-        secondsRemaining = durationMinutes * 60;
-        currentContestBestMap.clear();
-        currentContestCountMap.clear();
-        currentTopFishList.clear();
+        secondsRemaining = minutes * 60;
+        serverScores.clear();
+
+        bossBar.setName(Component.literal("§b🎣 [全服釣魚大賽] 進行中！倒數: " + minutes + " 分鐘 | 等待第一條巨魚上鉤！"));
+        bossBar.setProgress(1.0f);
+        bossBar.setVisible(true);
+
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            bossBar.addPlayer(player);
+        }
+
+        String broadcastMsg = String.format("§b🎉 [全服通告] 每日 20:00 全服釣魚大賽正式開始！限時 %d 分鐘！請輸入 /fish tp 前往釣魚維度挑戰釣起全服最大巨魚！", minutes);
+        server.getPlayerList().broadcastSystemMessage(Component.literal(broadcastMsg), false);
+    }
+
+    public static synchronized void stopContest(MinecraftServer server) {
+        if (!active) return;
+        active = false;
+        secondsRemaining = 0;
 
         if (bossBar != null) {
+            bossBar.setVisible(false);
             bossBar.removeAllPlayers();
         }
 
-        bossBar = new ServerBossEvent(
-                UUID.randomUUID(),
-                Component.literal("§b[🎣 釣魚大賽] §f倒數 " + formatTime(secondsRemaining) + " | 尚無榜單紀錄"),
-                BossEvent.BossBarColor.BLUE,
-                BossEvent.BossBarOverlay.PROGRESS
-        );
-
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (!bossBarDisabledPlayers.contains(player.getUUID())) {
-                bossBar.addPlayer(player);
-            }
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 1.0f, 1.0f);
-            player.sendSystemMessage(Component.literal("§e🎪================== 🎣 全服限時釣魚熱潮大賽開始！ ==================🎪"));
-            player.sendSystemMessage(Component.literal("§f大賽時長：§a" + durationMinutes + " 分鐘 §f| 輸入 §b/fish §f開啟大賽即時排行榜！"));
-            player.sendSystemMessage(Component.literal("§f釣起特產魚類比拼【單條最大長度 (cm)】，前三名將獲贈高額金幣、鑰匙與限時稱號 §b[釣聖]§f！"));
-            player.sendSystemMessage(Component.literal("§e🎪========================================================================🎪"));
-        }
+        server.getPlayerList().broadcastSystemMessage(Component.literal("§b🏁 [釣魚大賽] 比賽時間結束！正在結算全服排名..."), false);
+        settleRewards(server);
     }
 
-    private static void tickContest() {
-        if (!active || serverInstance == null) return;
+    private static void updateBossBar(MinecraftServer server) {
+        if (bossBar == null || !active) return;
 
-        if (secondsRemaining <= 0) {
-            endContest();
-            return;
-        }
+        int min = secondsRemaining / 60;
+        int sec = secondsRemaining % 60;
 
-        // Update BossBar players
-        if (bossBar != null) {
-            for (ServerPlayer player : serverInstance.getPlayerList().getPlayers()) {
-                if (!bossBarDisabledPlayers.contains(player.getUUID()) && !bossBar.getPlayers().contains(player)) {
-                    bossBar.addPlayer(player);
-                }
-            }
-            updateBossBarTitle();
-        }
-    }
-
-    private static void updateBossBarTitle() {
-        if (bossBar == null) return;
-        StringBuilder sb = new StringBuilder();
-        sb.append("§b[🎣 釣魚大賽] §f倒數 ").append(formatTime(secondsRemaining)).append(" | ");
-
-        if (currentTopFishList.isEmpty()) {
-            sb.append("§7尚無紀錄");
-        } else {
-            String[] medals = {"🥇 ", "🥈 ", "🥉 "};
-            for (int i = 0; i < Math.min(3, currentTopFishList.size()); i++) {
-                CaughtFish fish = currentTopFishList.get(i);
-                sb.append(medals[i]).append("§f").append(fish.playername).append(" (§e").append(String.format("%.1f", fish.lengthCm)).append("cm§f) ");
+        String leaderStr = "尚無紀錄";
+        if (!serverScores.isEmpty()) {
+            Map.Entry<UUID, Double> top = serverScores.entrySet().stream()
+                    .max(Map.Entry.comparingByValue())
+                    .orElse(null);
+            if (top != null) {
+                ServerPlayer topPlayer = server.getPlayerList().getPlayer(top.getKey());
+                String name = (topPlayer != null) ? topPlayer.getName().getString() : "未知選手";
+                leaderStr = String.format("%s (%.1f cm)", name, top.getValue());
             }
         }
-        bossBar.setName(Component.literal(sb.toString()));
+
+        bossBar.setName(Component.literal(String.format("§b🎣 [釣魚大賽] 倒數: %02d:%02d | 👑 當前第一: §e%s", min, sec, leaderStr)));
         bossBar.setProgress((float) secondsRemaining / 1200.0f);
     }
 
-    private static final Map<UUID, Long> speedBuffExpirationMap = new ConcurrentHashMap<>();
-    private static final Map<UUID, Long> giantFishBuffExpirationMap = new ConcurrentHashMap<>();
+    // Party Match methods
+    public static PartyMatch getPartyMatch(UUID playerUuid) {
+        return partyMatches.get(playerUuid);
+    }
+
+    public static PartyMatch createPartyMatch(ServerPlayer host, int durationMinutes) {
+        PartyMatch match = new PartyMatch(host, durationMinutes);
+        partyMatches.put(host.getUUID(), match);
+        host.sendSystemMessage(Component.literal("§a[釣魚組隊] 已成功創建房間！人數: 1 人。輸入 /fish party start 即可隨時開始比賽！"));
+        return match;
+    }
+
+    public static boolean joinPartyMatch(ServerPlayer player, String hostName) {
+        for (PartyMatch match : partyMatches.values()) {
+            if (match.hostName.equalsIgnoreCase(hostName)) {
+                if (!match.members.contains(player.getUUID())) {
+                    match.members.add(player.getUUID());
+                    match.scores.put(player.getUUID(), 0.0);
+                    partyMatches.put(player.getUUID(), match);
+                    if (match.bossBar != null) match.bossBar.addPlayer(player);
+                    player.sendSystemMessage(Component.literal("§a[釣魚組隊] 成功加入 " + hostName + " 的比賽房間！"));
+                    return true;
+                }
+            }
+        }
+        player.sendSystemMessage(Component.literal("§c[釣魚組隊] 找不到玩家 " + hostName + " 創建的比賽房間！"));
+        return false;
+    }
+
+    public static void startPartyMatch(ServerPlayer host) {
+        PartyMatch match = partyMatches.get(host.getUUID());
+        if (match == null || !match.hostUuid.equals(host.getUUID())) {
+            host.sendSystemMessage(Component.literal("§c[釣魚組隊] 您不是房主，無法開啟比賽！"));
+            return;
+        }
+        match.active = true;
+        match.endTime = System.currentTimeMillis() + (match.durationMinutes * 60 * 1000L);
+        for (UUID memberUuid : match.members) {
+            ServerPlayer p = host.level().getServer().getPlayerList().getPlayer(memberUuid);
+            if (p != null) {
+                p.sendSystemMessage(Component.literal("§b🎉 [釣魚比賽] 房間比賽正式開始！限時 " + match.durationMinutes + " 分鐘！衝刺最大巨魚長度！"));
+                p.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.2f);
+            }
+        }
+    }
+
+    private static void updatePartyBossBar(PartyMatch match, MinecraftServer server, int secondsLeft) {
+        if (match.bossBar == null) return;
+        int min = secondsLeft / 60;
+        int sec = secondsLeft % 60;
+
+        String leaderStr = "尚無紀錄";
+        if (!match.scores.isEmpty()) {
+            Map.Entry<UUID, Double> top = match.scores.entrySet().stream()
+                    .max(Map.Entry.comparingByValue())
+                    .orElse(null);
+            if (top != null && top.getValue() > 0) {
+                ServerPlayer topPlayer = server.getPlayerList().getPlayer(top.getKey());
+                String name = (topPlayer != null) ? topPlayer.getName().getString() : "未知選手";
+                leaderStr = String.format("%s (%.1f cm)", name, top.getValue());
+            }
+        }
+
+        match.bossBar.setName(Component.literal(String.format("§b🎮 [房間釣魚賽] 剩餘: %02d:%02d | 👑 當前第一: §e%s", min, sec, leaderStr)));
+    }
+
+    private static void endPartyMatch(PartyMatch match, MinecraftServer server) {
+        match.active = false;
+        if (match.bossBar != null) {
+            match.bossBar.setVisible(false);
+            match.bossBar.removeAllPlayers();
+        }
+
+        List<Map.Entry<UUID, Double>> sorted = match.scores.entrySet().stream()
+                .filter(e -> e.getValue() > 0)
+                .sorted(Map.Entry.<UUID, Double>comparingByValue().reversed())
+                .toList();
+
+        for (UUID memberUuid : match.members) {
+            partyMatches.remove(memberUuid);
+            ServerPlayer p = server.getPlayerList().getPlayer(memberUuid);
+            if (p != null) {
+                p.sendSystemMessage(Component.literal("§b🏁 [釣魚比賽] 房間比賽時間到！已完美結算！"));
+                if (!sorted.isEmpty()) {
+                    ServerPlayer winner = server.getPlayerList().getPlayer(sorted.get(0).getKey());
+                    String winnerName = winner != null ? winner.getName().getString() : "冠軍";
+                    p.sendSystemMessage(Component.literal(String.format("§6🏆 [比賽結果] 冠軍: §e%s §6(%.1f cm)！", winnerName, sorted.get(0).getValue())));
+                }
+            }
+        }
+    }
 
     public static boolean hasSpeedBuff(UUID uuid) {
         Long expire = speedBuffExpirationMap.get(uuid);
@@ -252,28 +399,35 @@ public class FishingContestManager {
     }
 
     public static ItemStack onPlayerCatchFish(ServerPlayer player, ItemStack originalCatch) {
-        if (player == null || !active) return originalCatch;
+        if (player == null) return originalCatch;
+        boolean inFishingDim = player.level().dimension().equals(FISHING_DIMENSION_KEY);
+
+        // User requested: "20:00 大賽期間只有位於 craftcore:fishing 釣魚維度內的玩家才會計分"
+        if (!inFishingDim && !active) {
+            return originalCatch; // Overworld normal catch
+        }
 
         String username = player.getName().getString();
-        currentContestCountMap.put(username, currentContestCountMap.getOrDefault(username, 0) + 1);
+        PartyMatch match = partyMatches.get(player.getUUID());
+        boolean isSoloMode = (match == null || match.isSolo());
 
-        double roll = Math.random();
-        if (roll < 0.20) { // 20% Tactical Item or Trap
+        // Tactical item drop chance (20% total chance inside fishing dimension or contest)
+        if (Math.random() < 0.20) {
             double itemRoll = Math.random();
-            if (itemRoll < 0.20) { // 4% Fishing Speed Booster
+            if (itemRoll < 0.35) { // 7% Speed Booster
                 ItemStack booster = new ItemStack(Items.PRISMARINE_CRYSTALS);
                 booster.set(DataComponents.CUSTOM_NAME, Component.literal("§a⚡ 釣魚大賽加速器"));
                 booster.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
                 booster.set(DataComponents.LORE, new ItemLore(List.of(
-                        Component.literal("§7手持右鍵使用，啟動 3 分鐘急速垂釣 BUFF"),
-                        Component.literal("§7上鉤速度提升 50%！"),
+                        Component.literal("§7手持右鍵使用，啟動 3 分鐘【急速垂釣 BUFF】"),
+                        Component.literal("§7期間釣魚上鉤等待時間減少 50%！"),
                         Component.literal(""),
-                        Component.literal("§e[手持右鍵立即啟動]")
+                        Component.literal("§e[手持右鍵開啟 BUFF]")
                 )));
-                player.sendSystemMessage(Component.literal("§a🎉 [釣魚大賽] 幸運釣獲戰術道具：【⚡ 釣魚大賽加速器】！手持右鍵即可使用！"));
+                player.sendSystemMessage(Component.literal("§6🎉 [釣魚大賽] 幸運釣獲戰術道具：【⚡ 釣魚大賽加速器】！手持右鍵即可使用！"));
                 player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
                 return booster;
-            } else if (itemRoll < 0.40) { // 4% Giant Fish Magnet
+            } else if (itemRoll < 0.60) { // 5% Giant Fish Magnet
                 ItemStack magnet = new ItemStack(Items.HEART_OF_THE_SEA);
                 magnet.set(DataComponents.CUSTOM_NAME, Component.literal("§6🧲 釣魚大賽巨魚磁鐵"));
                 magnet.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
@@ -281,191 +435,73 @@ public class FishingContestManager {
                         Component.literal("§7手持右鍵使用，啟動 3 分鐘【巨魚引力 BUFF】"),
                         Component.literal("§7期間釣起的魚類尺寸額外增加 +30%~60%！"),
                         Component.literal(""),
-                        Component.literal("§e[手持右鍵開啟 BUFF (與加速器互斥)]")
+                        Component.literal("§e[手持右鍵開啟 BUFF]")
                 )));
                 player.sendSystemMessage(Component.literal("§6🎉 [釣魚大賽] 幸運釣獲戰術道具：【🧲 釣魚大賽巨魚磁鐵】！手持右鍵即可使用！"));
                 player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
                 return magnet;
-            } else if (itemRoll < 0.60) { // 4% Length Thief
-                ItemStack thief = new ItemStack(Items.TRIDENT);
-                thief.set(DataComponents.CUSTOM_NAME, Component.literal("§c🗡 釣魚大賽長度偷取器"));
-                thief.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
-                thief.set(DataComponents.LORE, new ItemLore(List.of(
-                        Component.literal("§7手持右鍵開啟玩家選單，強行偷取指定玩家 1%~30% 的長度！"),
+            } else if (!isSoloMode && itemRoll < 0.75) { // 3% Length Thief (Only in multiplayer mode)
+                ItemStack trident = new ItemStack(Items.TRIDENT);
+                trident.set(DataComponents.CUSTOM_NAME, Component.literal("§b🗡 釣魚大賽長度偷取器"));
+                trident.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+                trident.set(DataComponents.LORE, new ItemLore(List.of(
+                        Component.literal("§7手持右鍵開啟玩家選單，選擇對手偷取長度！"),
+                        Component.literal("§7隨機強奪目標當前最高長度的 1% ~ 30% 併入自己！"),
                         Component.literal(""),
-                        Component.literal("§e[手持右鍵開啟指定目標選單]")
+                        Component.literal("§e[手持右鍵選擇打擊對手]")
                 )));
-                player.sendSystemMessage(Component.literal("§c🎉 [釣魚大賽] 幸運釣獲心機戰術道具：【🗡 釣魚大賽長度偷取器】！手持右鍵即可使用！"));
+                player.sendSystemMessage(Component.literal("§6🎉 [釣魚大賽] 幸運釣獲戰術道具：【🗡 釣魚大賽長度偷取器】！"));
                 player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
-                return thief;
-            } else if (itemRoll < 0.80) { // 4% Trap Bomb (Instant Trigger)
-                double curBest = currentContestBestMap.getOrDefault(username, 0.0);
-                if (curBest > 0) {
-                    double percent = 0.05 + Math.random() * 0.10; // 5% ~ 15%
-                    double deduct = curBest * percent;
-                    double newBest = Math.max(0.0, curBest - deduct);
-                    currentContestBestMap.put(username, newBest);
-
-                    // Re-sort Top Fish
-                    currentTopFishList.removeIf(f -> f.playername.equalsIgnoreCase(username));
-                    if (newBest > 0) {
-                        currentTopFishList.add(new CaughtFish(username, "詛咒陷阱殘留紀錄", newBest, 1.0, "陷阱扣除"));
-                    }
-                    currentTopFishList.sort((a, b) -> Double.compare(b.lengthCm, a.lengthCm));
-                    updateBossBarTitle();
-
-                    player.sendSystemMessage(Component.literal(String.format("§c💥 [釣魚大賽陷阱] 糟了！您釣到了【詛咒陷阱炸彈】，個人最高紀錄損失了 %.1f cm (%.1f%%)！", deduct, percent * 100)));
-                    player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.0f, 1.0f);
-                } else {
-                    player.sendSystemMessage(Component.literal("§c💥 [釣魚大賽陷阱] 您釣到了【詛咒陷阱炸彈】，好在您目前尚無長度紀錄，躲過一劫！"));
-                }
+                return trident;
+            } else if (!isSoloMode && itemRoll < 0.85) { // 2% Length Swapper (Only in multiplayer mode)
+                ItemStack star = new ItemStack(Items.NETHER_STAR);
+                star.set(DataComponents.CUSTOM_NAME, Component.literal("§d🔄 釣魚大賽長度交換器"));
+                star.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+                star.set(DataComponents.LORE, new ItemLore(List.of(
+                        Component.literal("§7手持右鍵開啟玩家選單，選擇對手交換長度！"),
+                        Component.literal("§7直接與指定對手強制對調目前的最高紀錄長度！"),
+                        Component.literal(""),
+                        Component.literal("§e[手持右鍵選擇交換目標]")
+                )));
+                player.sendSystemMessage(Component.literal("§6🎉 [釣魚大賽] 幸運釣獲戰術道具：【🔄 釣魚大賽長度交換器】！"));
+                player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
+                return star;
+            } else { // Trap Bomb
+                player.sendSystemMessage(Component.literal("§c💥 [釣魚陷阱！] 糟糕！您鉤中了【💣 詛咒陷阱彈】！爆破扣除您當前最高紀錄長度 5%~15%！"));
+                player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 1.0f, 1.0f);
+                applyTrapPenalty(player);
                 return new ItemStack(Items.TNT);
-            } else { // 4% Length Swapper
-                ItemStack swapper = new ItemStack(Items.NETHER_STAR);
-                swapper.set(DataComponents.CUSTOM_NAME, Component.literal("§d🔄 釣魚大賽長度交換器"));
-                swapper.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
-                swapper.set(DataComponents.LORE, new ItemLore(List.of(
-                        Component.literal("§7手持右鍵開啟玩家選單，強行與指定玩家交換最高長度紀錄！"),
-                        Component.literal(""),
-                        Component.literal("§e[手持右鍵開啟指定目標選單]")
-                )));
-                player.sendSystemMessage(Component.literal("§d🎉 [釣魚大賽] 獲得超級戰術道具：【🔄 釣魚大賽長度交換器】！手持右鍵即可使用！"));
-                player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
-                return swapper;
             }
         }
 
-        // Generate fish length & type
-        double rand = Math.random();
+        // Generate Fantasy NBT Fish
+        int index = (int) (Math.random() * 20);
         String fishName;
         Item itemType;
         double lengthCm;
         double weightKg;
 
-        // 20 Unique Contest Fish Species Pool
-        int choice = (int) (Math.random() * 20);
-
-        switch (choice) {
-            case 0 -> {
-                fishName = "深海大馬哈魚";
-                itemType = Items.COD;
-                lengthCm = 20.0 + Math.random() * 45.0;
-                weightKg = 1.0 + Math.random() * 5.0;
-            }
-            case 1 -> {
-                fishName = "巨型野生鮭魚";
-                itemType = Items.SALMON;
-                lengthCm = 45.0 + Math.random() * 40.0;
-                weightKg = 3.0 + Math.random() * 8.0;
-            }
-            case 2 -> {
-                fishName = "黃金炫光神仙魚";
-                itemType = Items.TROPICAL_FISH;
-                lengthCm = 70.0 + Math.random() * 65.0;
-                weightKg = 5.0 + Math.random() * 15.0;
-            }
-            case 3 -> {
-                fishName = "深海大王烏賊";
-                itemType = Items.PUFFERFISH;
-                lengthCm = 100.0 + Math.random() * 120.0;
-                weightKg = 20.0 + Math.random() * 50.0;
-            }
-            case 4 -> {
-                fishName = "遠古巨齒鯊幼崽";
-                itemType = Items.PRISMARINE_CRYSTALS;
-                lengthCm = 120.0 + Math.random() * 130.0;
-                weightKg = 35.0 + Math.random() * 70.0;
-            }
-            case 5 -> {
-                fishName = "亞特蘭提斯水晶魚";
-                itemType = Items.PRISMARINE_SHARD;
-                lengthCm = 80.0 + Math.random() * 80.0;
-                weightKg = 12.0 + Math.random() * 25.0;
-            }
-            case 6 -> {
-                fishName = "電擊雷霆鰻魚";
-                itemType = Items.GLOW_INK_SAC;
-                lengthCm = 60.0 + Math.random() * 80.0;
-                weightKg = 8.0 + Math.random() * 18.0;
-            }
-            case 7 -> {
-                fishName = "帝王翡翠錦鯉";
-                itemType = Items.TROPICAL_FISH;
-                lengthCm = 90.0 + Math.random() * 90.0;
-                weightKg = 15.0 + Math.random() * 30.0;
-            }
-            case 8 -> {
-                fishName = "深淵紫焰海龍";
-                itemType = Items.DRAGON_BREATH;
-                lengthCm = 150.0 + Math.random() * 150.0;
-                weightKg = 50.0 + Math.random() * 100.0;
-            }
-            case 9 -> {
-                fishName = "極地寒冰鱈魚";
-                itemType = Items.ICE;
-                lengthCm = 30.0 + Math.random() * 45.0;
-                weightKg = 2.0 + Math.random() * 6.0;
-            }
-            case 10 -> {
-                fishName = "地獄熔岩金槍魚";
-                itemType = Items.MAGMA_CREAM;
-                lengthCm = 50.0 + Math.random() * 60.0;
-                weightKg = 6.0 + Math.random() * 14.0;
-            }
-            case 11 -> {
-                fishName = "終界星光水母";
-                itemType = Items.ENDER_PEARL;
-                lengthCm = 110.0 + Math.random() * 100.0;
-                weightKg = 25.0 + Math.random() * 45.0;
-            }
-            case 12 -> {
-                fishName = "七彩虹光小丑魚";
-                itemType = Items.TROPICAL_FISH;
-                lengthCm = 45.0 + Math.random() * 50.0;
-                weightKg = 4.0 + Math.random() * 9.0;
-            }
-            case 13 -> {
-                fishName = "鑽石琉璃飛魚";
-                itemType = Items.DIAMOND;
-                lengthCm = 85.0 + Math.random() * 85.0;
-                weightKg = 10.0 + Math.random() * 20.0;
-            }
-            case 14 -> {
-                fishName = "幽靈海盜骷髏魚";
-                itemType = Items.BONE;
-                lengthCm = 55.0 + Math.random() * 70.0;
-                weightKg = 7.0 + Math.random() * 16.0;
-            }
-            case 15 -> {
-                fishName = "翡翠海藻海馬";
-                itemType = Items.SEAGRASS;
-                lengthCm = 25.0 + Math.random() * 30.0;
-                weightKg = 0.5 + Math.random() * 2.0;
-            }
-            case 16 -> {
-                fishName = "海幻星辰神仙魚";
-                itemType = Items.AMETHYST_SHARD;
-                lengthCm = 95.0 + Math.random() * 95.0;
-                weightKg = 18.0 + Math.random() * 35.0;
-            }
-            case 17 -> {
-                fishName = "深海霸王帝王蟹";
-                itemType = Items.NAUTILUS_SHELL;
-                lengthCm = 40.0 + Math.random() * 60.0;
-                weightKg = 10.0 + Math.random() * 25.0;
-            }
-            case 18 -> {
-                fishName = "日光耀斑翻車魚";
-                itemType = Items.GLOWSTONE_DUST;
-                lengthCm = 130.0 + Math.random() * 150.0;
-                weightKg = 40.0 + Math.random() * 90.0;
-            }
-            default -> { // case 19
-                fishName = "虛空黑洞旗魚";
-                itemType = Items.NETHER_STAR;
-                lengthCm = 160.0 + Math.random() * 160.0;
-                weightKg = 60.0 + Math.random() * 120.0;
-            }
+        switch (index) {
+            case 0 -> { fishName = "遠古巨齒鯊幼崽"; itemType = Items.TROPICAL_FISH; lengthCm = 150.0 + Math.random() * 100.0; weightKg = 80.0 + Math.random() * 70.0; }
+            case 1 -> { fishName = "深淵紫焰海龍"; itemType = Items.PUFFERFISH; lengthCm = 120.0 + Math.random() * 90.0; weightKg = 50.0 + Math.random() * 60.0; }
+            case 2 -> { fishName = "炫彩幻光水母"; itemType = Items.SALMON; lengthCm = 80.0 + Math.random() * 70.0; weightKg = 20.0 + Math.random() * 30.0; }
+            case 3 -> { fishName = "黃金璀璨大旗魚"; itemType = Items.COD; lengthCm = 140.0 + Math.random() * 110.0; weightKg = 70.0 + Math.random() * 80.0; }
+            case 4 -> { fishName = "翡翠毒刺河豚"; itemType = Items.PUFFERFISH; lengthCm = 40.0 + Math.random() * 45.0; weightKg = 10.0 + Math.random() * 15.0; }
+            case 5 -> { fishName = "烈焰熔岩翻車魚"; itemType = Items.COOKED_SALMON; lengthCm = 130.0 + Math.random() * 90.0; weightKg = 90.0 + Math.random() * 110.0; }
+            case 6 -> { fishName = "雷霆電擊大鯰魚"; itemType = Items.COOKED_COD; lengthCm = 110.0 + Math.random() * 70.0; weightKg = 40.0 + Math.random() * 50.0; }
+            case 7 -> { fishName = "冰霜晶鑽珍珠魚"; itemType = Items.TROPICAL_FISH; lengthCm = 60.0 + Math.random() * 50.0; weightKg = 15.0 + Math.random() * 20.0; }
+            case 8 -> { fishName = "幽靈鬼魅赤魟"; itemType = Items.SALMON; lengthCm = 95.0 + Math.random() * 65.0; weightKg = 30.0 + Math.random() * 40.0; }
+            case 9 -> { fishName = "泰坦霸王海怪幼體"; itemType = Items.COD; lengthCm = 180.0 + Math.random() * 120.0; weightKg = 120.0 + Math.random() * 130.0; }
+            case 10 -> { fishName = "翡翠珍珠龍吐珠"; itemType = Items.TROPICAL_FISH; lengthCm = 70.0 + Math.random() * 40.0; weightKg = 18.0 + Math.random() * 15.0; }
+            case 11 -> { fishName = "暗黑吞噬大王烏賊"; itemType = Items.PUFFERFISH; lengthCm = 160.0 + Math.random() * 100.0; weightKg = 100.0 + Math.random() * 90.0; }
+            case 12 -> { fishName = "星空幻影蝶魚"; itemType = Items.TROPICAL_FISH; lengthCm = 50.0 + Math.random() * 35.0; weightKg = 8.0 + Math.random() * 12.0; }
+            case 13 -> { fishName = "王者金鱗大錦鯉"; itemType = Items.COD; lengthCm = 90.0 + Math.random() * 60.0; weightKg = 25.0 + Math.random() * 35.0; }
+            case 14 -> { fishName = "寒冰藍霜大馬哈魚"; itemType = Items.SALMON; lengthCm = 105.0 + Math.random() * 55.0; weightKg = 35.0 + Math.random() * 45.0; }
+            case 15 -> { fishName = "紫晶幻夢海馬"; itemType = Items.TROPICAL_FISH; lengthCm = 35.0 + Math.random() * 30.0; weightKg = 5.0 + Math.random() * 8.0; }
+            case 16 -> { fishName = "熔岩巨甲龜幼崽"; itemType = Items.PUFFERFISH; lengthCm = 115.0 + Math.random() * 75.0; weightKg = 85.0 + Math.random() * 95.0; }
+            case 17 -> { fishName = "鑽石光華飛魚"; itemType = Items.TROPICAL_FISH; lengthCm = 65.0 + Math.random() * 45.0; weightKg = 12.0 + Math.random() * 18.0; }
+            case 18 -> { fishName = "狂暴赤紅霸王鮭"; itemType = Items.SALMON; lengthCm = 135.0 + Math.random() * 85.0; weightKg = 65.0 + Math.random() * 75.0; }
+            default -> { fishName = "虛空黑洞旗魚"; itemType = Items.NETHER_STAR; lengthCm = 160.0 + Math.random() * 160.0; weightKg = 60.0 + Math.random() * 120.0; }
         }
 
         // Apply Giant Fish Magnet Buff (+30% ~ +60% length)
@@ -478,146 +514,158 @@ public class FishingContestManager {
         String timeStr = ZonedDateTime.now(ZoneId.of("Asia/Taipei")).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
         CaughtFish fish = new CaughtFish(username, fishName, lengthCm, weightKg, timeStr);
 
-        // Create Custom Item
-        ItemStack customFishStack = new ItemStack(itemType);
-        customFishStack.set(DataComponents.CUSTOM_NAME, Component.literal("§b" + fishName));
-        customFishStack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
-        customFishStack.set(DataComponents.LORE, new ItemLore(List.of(
-                Component.literal("§7§o" + getFishDesc(fishName)),
+        // Update server contest score if active
+        if (active && inFishingDim) {
+            double currentBest = serverScores.getOrDefault(player.getUUID(), 0.0);
+            if (lengthCm > currentBest) {
+                serverScores.put(player.getUUID(), lengthCm);
+                player.sendSystemMessage(Component.literal(String.format("§b🎉 [全服大賽] 刷新個人最高紀錄！新長度: §e%.1f cm §b(原: %.1f cm)", lengthCm, currentBest)));
+            }
+        }
+
+        // Update party match score if in party match
+        if (match != null && match.active) {
+            double currentBest = match.scores.getOrDefault(player.getUUID(), 0.0);
+            if (lengthCm > currentBest) {
+                match.scores.put(player.getUUID(), lengthCm);
+                player.sendSystemMessage(Component.literal(String.format("§b🎉 [房間比賽] 刷新房間最高紀錄！新長度: §e%.1f cm §b(原: %.1f cm)", lengthCm, currentBest)));
+            }
+        }
+
+        updateHallOfFame(fish);
+
+        ItemStack customFish = new ItemStack(itemType);
+        customFish.set(DataComponents.CUSTOM_NAME, Component.literal("§6★ " + fishName));
+        customFish.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+        customFish.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal(String.format("§7釣魚勇士: §f%s", username)),
+                Component.literal(String.format("§7魚類尺寸: §e%.1f cm", lengthCm)),
+                Component.literal(String.format("§7魚類重量: §b%.1f kg", weightKg)),
+                Component.literal(String.format("§7垂釣時間: §8%s", timeStr)),
                 Component.literal(""),
-                Component.literal("§f● 尺寸長度: §e" + String.format("%.1f", lengthCm) + " cm"),
-                Component.literal("§f● 體重重量: §a" + String.format("%.1f", weightKg) + " kg"),
-                Component.literal("§f● 釣獲時間: §7" + timeStr),
-                Component.literal(""),
-                Component.literal("§e[🎣 2026 釣魚大賽特產認證]")
+                Component.literal("§e[來自 craftcore:fishing 專屬釣魚維度]")
         )));
 
-        // Update leaderboard
-        double prevBest = currentContestBestMap.getOrDefault(username, 0.0);
-        if (lengthCm > prevBest) {
-            currentContestBestMap.put(username, lengthCm);
-            player.sendSystemMessage(Component.literal("§b[Craft-Core] §a🎉 破紀錄！您釣起了 【" + fishName + "】 (" + String.format("%.1f", lengthCm) + " cm)！已更新您的個人最佳紀錄！"));
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0f, 1.2f);
-        } else {
-            player.sendSystemMessage(Component.literal("§b[Craft-Core] 成功釣起 【" + fishName + "】 (" + String.format("%.1f", lengthCm) + " cm)！"));
-        }
-
-        // Re-sort Top Fish
-        currentTopFishList.removeIf(f -> f.playername.equalsIgnoreCase(username));
-        currentTopFishList.add(fish);
-        currentTopFishList.sort((a, b) -> Double.compare(b.lengthCm, a.lengthCm));
-
-        updateBossBarTitle();
-        return customFishStack;
+        player.sendSystemMessage(Component.literal(String.format("§a🎣 [釣魚成功] 釣獲戰利品：§6【%s】§a(尺寸: §e%.1f cm§a, 重量: §b%.1f kg§a)！", fishName, lengthCm, weightKg)));
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.FISHING_BOBBER_RETRIEVE, SoundSource.PLAYERS, 1.0f, 1.2f);
+        return customFish;
     }
 
-    public static void endContest() {
-        if (!active) return;
-        active = false;
-        secondsRemaining = 0;
-
-        if (bossBar != null) {
-            bossBar.setColor(BossEvent.BossBarColor.YELLOW);
-            bossBar.setName(Component.literal("§a🎉 釣魚大賽已圓滿結束！恭喜獲勝玩家！"));
-            scheduler.schedule(() -> {
-                if (bossBar != null) {
-                    bossBar.removeAllPlayers();
-                    bossBar = null;
-                }
-            }, 5, TimeUnit.SECONDS);
+    private static void applyTrapPenalty(ServerPlayer player) {
+        if (player == null) return;
+        Double curServer = serverScores.get(player.getUUID());
+        if (curServer != null && curServer > 0) {
+            double penalty = 0.05 + Math.random() * 0.10;
+            double newScore = Math.max(0, curServer * (1.0 - penalty));
+            serverScores.put(player.getUUID(), newScore);
+            player.sendSystemMessage(Component.literal(String.format("§c💥 陷阱爆炸！您的全服大賽最高長度已被扣除 %.0f%%，剩餘: %.1f cm", penalty * 100, newScore)));
         }
 
-        if (serverInstance == null) return;
-
-        // Broadcast Results
-        serverInstance.getPlayerList().broadcastSystemMessage(Component.literal("§e🎪================== 🎣 全服釣魚大賽圓滿結束 ==================🎪"), false);
-
-        if (currentTopFishList.isEmpty()) {
-            serverInstance.getPlayerList().broadcastSystemMessage(Component.literal("§7本次大賽尚無玩家釣起魚類。"), false);
-        } else {
-            for (int i = 0; i < Math.min(3, currentTopFishList.size()); i++) {
-                CaughtFish fish = currentTopFishList.get(i);
-                String medal = i == 0 ? "🥇 冠軍" : (i == 1 ? "🥈 亞軍" : "🥉 季軍");
-                serverInstance.getPlayerList().broadcastSystemMessage(Component.literal(
-                        String.format("§f%s：§e%s §f| 魚種：§b%s §f(§a%.1f cm§f)", medal, fish.playername, fish.fishName, fish.lengthCm)
-                ), false);
-
-                // Distribute Rewards
-                if (i == 0) {
-                    EconomyManager.addMoney(fish.playername, 3000);
-                    int curKeys = EconomyManager.getLotteryKeys(fish.playername);
-                    EconomyManager.setLotteryKeys(fish.playername, curKeys + 5);
-                    TitleManager.unlockTitle(fish.playername, "§b[釣聖]");
-                    TitleManager.setActiveTitle(fish.playername, "§b[釣聖]");
-
-                    // Record to Hall of Fame
-                    String dateStr = ZonedDateTime.now(ZoneId.of("Asia/Taipei")).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                    hallOfFame.add(0, new HallOfFameEntry(dateStr, fish.playername, fish.fishName, fish.lengthCm));
-                } else if (i == 1) {
-                    EconomyManager.addMoney(fish.playername, 1500);
-                    int curKeys = EconomyManager.getLotteryKeys(fish.playername);
-                    EconomyManager.setLotteryKeys(fish.playername, curKeys + 3);
-                    TitleManager.unlockTitle(fish.playername, "§e[釣魚高手]");
-                } else {
-                    EconomyManager.addMoney(fish.playername, 800);
-                    int curKeys = EconomyManager.getLotteryKeys(fish.playername);
-                    EconomyManager.setLotteryKeys(fish.playername, curKeys + 2);
-                }
-            }
-
-            // Participation Rewards
-            for (Map.Entry<String, Integer> entry : currentContestCountMap.entrySet()) {
-                String u = entry.getKey();
-                if (entry.getValue() > 0) {
-                    boolean isTop3 = false;
-                    for (int i = 0; i < Math.min(3, currentTopFishList.size()); i++) {
-                        if (currentTopFishList.get(i).playername.equalsIgnoreCase(u)) {
-                            isTop3 = true;
-                            break;
-                        }
-                    }
-                    if (!isTop3) {
-                        EconomyManager.addMoney(u, 200);
-                        int curKeys = EconomyManager.getLotteryKeys(u);
-                        EconomyManager.setLotteryKeys(u, curKeys + 1);
-                        ServerPlayer sp = serverInstance.getPlayerList().getPlayerByName(u);
-                        if (sp != null) {
-                            sp.sendSystemMessage(Component.literal("§b[Craft-Core] 獲得釣魚大賽參與獎：$200 金幣與 1 把鑰匙！"));
-                        }
-                    }
-                }
+        PartyMatch match = partyMatches.get(player.getUUID());
+        if (match != null && match.active) {
+            Double curParty = match.scores.get(player.getUUID());
+            if (curParty != null && curParty > 0) {
+                double penalty = 0.05 + Math.random() * 0.10;
+                double newScore = Math.max(0, curParty * (1.0 - penalty));
+                match.scores.put(player.getUUID(), newScore);
+                player.sendSystemMessage(Component.literal(String.format("§c💥 陷阱爆炸！您的房間比賽最高長度已被扣除 %.0f%%，剩餘: %.1f cm", penalty * 100, newScore)));
             }
         }
-        serverInstance.getPlayerList().broadcastSystemMessage(Component.literal("§e🎪========================================================================🎪"), false);
     }
 
-    private static String formatTime(int totalSecs) {
-        int m = totalSecs / 60;
-        int s = totalSecs % 60;
-        return String.format("%02d:%02d", m, s);
+    public static void applyThief(ServerPlayer thiefPlayer, ServerPlayer targetPlayer) {
+        if (thiefPlayer == null || targetPlayer == null) return;
+        UUID tUuid = thiefPlayer.getUUID();
+        UUID vUuid = targetPlayer.getUUID();
+
+        Double vScore = serverScores.get(vUuid);
+        if (vScore != null && vScore > 0) {
+            double stealPct = 0.01 + Math.random() * 0.29; // 1% ~ 30%
+            double stolenAmt = vScore * stealPct;
+            serverScores.put(vUuid, vScore - stolenAmt);
+            serverScores.put(tUuid, serverScores.getOrDefault(tUuid, 0.0) + stolenAmt);
+
+            thiefPlayer.sendSystemMessage(Component.literal(String.format("§a🗡 [長度偷取] 成功從玩家 %s 偷取 %.1f cm (%.0f%%) 長度！", targetPlayer.getName().getString(), stolenAmt, stealPct * 100)));
+            targetPlayer.sendSystemMessage(Component.literal(String.format("§c🗡 [長度偷取警告] 糟糕！玩家 %s 使用長度偷取器偷走了您 %.1f cm 的長度紀錄！", thiefPlayer.getName().getString(), stolenAmt)));
+            thiefPlayer.level().playSound(null, thiefPlayer.getX(), thiefPlayer.getY(), thiefPlayer.getZ(), SoundEvents.WITCH_CELEBRATE, SoundSource.PLAYERS, 1.0f, 1.2f);
+        }
     }
 
-    private static String getFishDesc(String name) {
-        if (name.contains("巨齒鯊")) return "遠古海洋霸主巨齒鯊的幼崽！";
-        if (name.contains("水晶魚")) return "來自失落古城亞特蘭提斯的耀眼晶石魚！";
-        if (name.contains("鰻魚")) return "渾身閃耀藍色高壓電弧的危險鰻魚！";
-        if (name.contains("錦鯉")) return "象徵極致好運與財富的帝王翡翠錦鯉！";
-        if (name.contains("海龍")) return "傳說棲息於深淵底部的烈焰海龍！";
-        if (name.contains("寒冰鱈魚")) return "結凍於北極萬年冰川底部的冰晶鱈魚！";
-        if (name.contains("金槍魚")) return "適應地獄熔岩高溫環境的奇幻金槍魚！";
-        if (name.contains("水母")) return "飄浮於終界星空中的炫彩星光水母！";
-        if (name.contains("小丑魚")) return "身上的彩虹光芒會隨著水流變幻！";
-        if (name.contains("飛魚")) return "能夠短暫飛躍海面的晶瑩琉璃飛魚！";
-        if (name.contains("骷髏魚")) return "沉沒海盜船骷髏亡靈化身的死靈魚！";
-        if (name.contains("海馬")) return "藏匿於深海巨型海藻叢中的翡翠海馬！";
-        if (name.contains("星辰神仙魚")) return "閃耀著紫水晶星辰波光的絕美神仙魚！";
-        if (name.contains("帝王蟹")) return "擁有強大螯足的深海海底霸王！";
-        if (name.contains("翻車魚")) return "吸收太陽耀斑熱量的巨大翻車魚！";
-        if (name.contains("旗魚")) return "穿梭於虛空黑洞裂隙的極速旗魚！";
-        if (name.contains("烏賊")) return "來自萬米深海的傳說巨獸！";
-        if (name.contains("黃金炫光")) return "全身散發金黃耀眼光輝的神聖魚種！";
-        if (name.contains("鮭魚")) return "肉質鮮美的野生肥美巨鮭！";
-        return "活動特產深海大馬哈魚。";
+    public static void applySwap(ServerPlayer p1, ServerPlayer p2) {
+        if (p1 == null || p2 == null) return;
+        UUID u1 = p1.getUUID();
+        UUID u2 = p2.getUUID();
+
+        double score1 = serverScores.getOrDefault(u1, 0.0);
+        double score2 = serverScores.getOrDefault(u2, 0.0);
+
+        serverScores.put(u1, score2);
+        serverScores.put(u2, score1);
+
+        p1.sendSystemMessage(Component.literal(String.format("§d🔄 [長度交換] 成功與玩家 %s 強制交換最高長度！您當前長度變更為: %.1f cm", p2.getName().getString(), score2)));
+        p2.sendSystemMessage(Component.literal(String.format("§d🔄 [長度交換警告] 玩家 %s 對您使用了長度交換器！您當前長度變更為: %.1f cm", p1.getName().getString(), score1)));
+        p1.level().playSound(null, p1.getX(), p1.getY(), p1.getZ(), SoundEvents.PLAYER_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.2f);
+    }
+
+    private static synchronized void updateHallOfFame(CaughtFish fish) {
+        hallOfFame.add(fish);
+        hallOfFame.sort((f1, f2) -> Double.compare(f2.lengthCm, f1.lengthCm));
+        if (hallOfFame.size() > 50) {
+            hallOfFame.remove(hallOfFame.size() - 1);
+        }
+    }
+
+    private static void settleRewards(MinecraftServer server) {
+        if (serverScores.isEmpty()) {
+            server.getPlayerList().broadcastSystemMessage(Component.literal("§b[釣魚大賽] 本次大賽無玩家鉤中巨魚。下次加油！"), false);
+            return;
+        }
+
+        List<Map.Entry<UUID, Double>> sorted = serverScores.entrySet().stream()
+                .sorted(Map.Entry.<UUID, Double>comparingByValue().reversed())
+                .toList();
+
+        server.getPlayerList().broadcastSystemMessage(Component.literal("§6🏆 ===== 20:00 全服釣魚大賽最終排行榜 ===== 🏆"), false);
+
+        for (int i = 0; i < sorted.size(); i++) {
+            Map.Entry<UUID, Double> entry = sorted.get(i);
+            ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
+            String name = (player != null) ? player.getName().getString() : "離線選手";
+            double score = entry.getValue();
+
+            int rank = i + 1;
+            if (rank == 1) {
+                server.getPlayerList().broadcastSystemMessage(Component.literal(String.format("§e🥇 第一名: §f%s §e(%.1f cm) ➔ 獎勵: $3,000 元 + 5 把鑰匙 + 稱號 [釣聖]", name, score)), false);
+                if (player != null) {
+                    com.craftcore.economy.EconomyManager.addMoney(name, 3000.0);
+                    int k = com.craftcore.economy.EconomyManager.getLotteryKeys(name);
+                    com.craftcore.economy.EconomyManager.setLotteryKeys(name, k + 5);
+                    TitleManager.unlockTitle(name, "§b[釣聖]");
+                }
+            } else if (rank == 2) {
+                server.getPlayerList().broadcastSystemMessage(Component.literal(String.format("§f🥈 第二名: §f%s §f(%.1f cm) ➔ 獎勵: $1,500 元 + 3 把鑰匙 + 稱號 [釣魚高手]", name, score)), false);
+                if (player != null) {
+                    com.craftcore.economy.EconomyManager.addMoney(name, 1500.0);
+                    int k = com.craftcore.economy.EconomyManager.getLotteryKeys(name);
+                    com.craftcore.economy.EconomyManager.setLotteryKeys(name, k + 3);
+                    TitleManager.unlockTitle(name, "§e[釣魚高手]");
+                }
+            } else if (rank == 3) {
+                server.getPlayerList().broadcastSystemMessage(Component.literal(String.format("§6🥉 第三名: §f%s §6(%.1f cm) ➔ 獎勵: $800 元 + 2 把鑰匙", name, score)), false);
+                if (player != null) {
+                    com.craftcore.economy.EconomyManager.addMoney(name, 800.0);
+                    int k = com.craftcore.economy.EconomyManager.getLotteryKeys(name);
+                    com.craftcore.economy.EconomyManager.setLotteryKeys(name, k + 2);
+                }
+            } else {
+                if (player != null) {
+                    com.craftcore.economy.EconomyManager.addMoney(name, 200.0);
+                    int k = com.craftcore.economy.EconomyManager.getLotteryKeys(name);
+                    com.craftcore.economy.EconomyManager.setLotteryKeys(name, k + 1);
+                    player.sendSystemMessage(Component.literal(String.format("§a[釣魚大賽] 感謝參與！第 %d 名 (%.1f cm) 獲得參與獎: $200 元 + 1 把鑰匙！", rank, score)));
+                }
+            }
+        }
     }
 
     private static abstract class ReadOnlyFishMenuHandler extends ChestMenu {
@@ -647,267 +695,235 @@ public class FishingContestManager {
         public abstract void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker);
     }
 
-    // =========================================================
-    // GUI Page 1: Contest Dashboard & Real-Time Top 10
-    // =========================================================
     public static void openFishGui(ServerPlayer player) {
         if (player == null) return;
-        UUID uuid = player.getUUID();
-        String username = player.getName().getString();
-
         SimpleContainer container = new SimpleContainer(27);
-        ItemStack glass = createGuiItem(getItemFromIdentifier("minecraft:gray_stained_glass_pane"), " ", List.of());
+
+        ItemStack border = createGuiItem(getItem("minecraft:gray_stained_glass_pane"), " ", null);
         for (int i = 0; i < 27; i++) {
-            container.setItem(i, glass);
+            container.setItem(i, border);
         }
 
-        // Slot 4: Contest Status Indicator
-        String statusTitle = active ? "§a🎣 釣魚大賽進行中 (倒數 " + formatTime(secondsRemaining) + ")" : "§c🎣 釣魚大賽未開始 (每日 20:00 自動開啟)";
-        List<String> statusLore = List.of(
-                "§7每天台北時間 20:00 自動開啟 20 分鐘大賽",
-                "§7比賽比拼【單條最大長度 (cm)】",
+        // Slot 10: Teleport to craftcore:fishing dimension
+        container.setItem(10, createGuiItem(Items.ENDER_PEARL, "§a🚀 傳送至專屬釣魚虛空維度", List.of(
+                "§7維度 ID: §ecraftcore:fishing",
+                "§7全虛空背景、釣起 100% 奇幻 NBT 魚類",
                 "",
-                "§f冠軍獎勵: §a$3,000 金幣 §f+ §e5 鑰匙 §f+ 稱號 §b[釣聖]"
-        );
-        container.setItem(4, createGuiItem(Items.FISHING_ROD, statusTitle, statusLore));
-
-        // Slot 11: Real-time Leaderboard Top 10
-        List<String> lbLore = new ArrayList<>();
-        if (currentTopFishList.isEmpty()) {
-            lbLore.add("§7目前尚無榜單紀錄");
-        } else {
-            String[] medals = {"🥇 ", "🥈 ", "🥉 ", "4. ", "5. ", "6. ", "7. ", "8. ", "9. ", "10. "};
-            for (int i = 0; i < Math.min(10, currentTopFishList.size()); i++) {
-                CaughtFish f = currentTopFishList.get(i);
-                lbLore.add(medals[i] + "§f" + f.playername + " §7- §b" + f.fishName + " (§e" + String.format("%.1f", f.lengthCm) + "cm§7)");
-            }
-        }
-        container.setItem(11, createGuiItem(Items.PAPER, "§e🏆 本次大賽即時 Top 10", lbLore));
-
-        // Slot 13: Personal Best
-        double myBest = currentContestBestMap.getOrDefault(username, 0.0);
-        int myCount = currentContestCountMap.getOrDefault(username, 0);
-        container.setItem(13, createGuiItem(Items.PLAYER_HEAD, "§b👤 我的本次大賽成績", List.of(
-                "§7個人最大紀錄: §e" + (myBest > 0 ? String.format("%.1f", myBest) + " cm" : "無紀錄"),
-                "§7累積釣魚數量: §a" + myCount + " 尾",
-                "",
-                "§a[比賽期間拿起釣竿即可參加]"
+                "§a[點擊立即傳送至釣魚維度]"
         )));
 
-        // Slot 15: BossBar Toggle
-        boolean bbOff = isBossBarDisabled(uuid);
-        container.setItem(15, createGuiItem(Items.COMPASS, "§e🧭 頂部排行榜 BossBar " + (bbOff ? "§c[已關閉]" : "§a[已開啟]"), List.of(
-                "§7開關畫面上方的比賽即時倒數 BossBar",
+        // Slot 12: Party Match Lobby
+        PartyMatch match = partyMatches.get(player.getUUID());
+        String partyInfo = (match != null) ? "§a[已加入/房主: " + match.hostName + "]" : "§7[未加入/點擊開房]";
+        container.setItem(12, createGuiItem(Items.FISHING_ROD, "§b🎮 自由組隊/單人比賽大廳", List.of(
+                "§7狀態: " + partyInfo,
+                "§7組隊模式: 允許使用偷取器與交換器",
+                "§7單人模式: 僅爆個人加速/磁鐵 BUFF",
                 "",
-                "§e[點擊切換開啟 / 關閉]"
+                "§e[點擊開啟組隊/房間比賽 GUI]"
         )));
 
-        // Slot 22: Hall of Fame Button
-        container.setItem(22, createGuiItem(Items.GOLD_BLOCK, "§6🏆 釣魚名人堂 (Hall of Fame)", List.of(
-                "§7查看歷屆釣魚大賽冠軍玩家與傳奇紀錄",
+        // Slot 14: Hall of Fame
+        container.setItem(14, createGuiItem(Items.GOLD_BLOCK, "§6🏆 歷史釣王名人堂榜單", List.of(
+                "§7記錄全服有史以來釣起的最高巨魚排行榜",
                 "",
-                "§e[點擊開啟名人堂]"
+                "§e[點擊查看歷史 Top 50 名人堂]"
         )));
 
-        // Slot 26: Close
-        container.setItem(26, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉介面")));
+        // Slot 16: BossBar Toggle
+        boolean bossBarVis = (bossBar != null && bossBar.getPlayers().contains(player));
+        container.setItem(16, createGuiItem(Items.COMPASS, "§e📊 BossBar 抬頭資訊 " + (bossBarVis ? "§a[已顯示]" : "§c[已隱藏]"), List.of(
+                "§7切換頂部大賽狀態與倒數 BossBar",
+                "",
+                "§e[點擊切換 BossBar 顯示]"
+        )));
+
+        // Slot 22: Back to menu
+        container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回 /menu 大廳", List.of("§7點擊返回主選單")));
 
         player.openMenu(new SimpleMenuProvider((syncId, inv, p) ->
-            new ReadOnlyFishMenuHandler(MenuType.GENERIC_9x3, syncId, inv, container, 3) {
-                @Override
-                public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
-                    if (clicker instanceof ServerPlayer sp) {
-                        if (slotId == 15) {
-                            toggleBossBar(sp.getUUID());
-                            sp.sendSystemMessage(Component.literal("§a[釣魚大賽] 已切換頂部 BossBar 顯示狀態！"));
-                            openFishGui(sp);
-                        } else if (slotId == 22) {
-                            openHallOfFameGui(sp);
-                        } else if (slotId == 26) {
-                            sp.closeContainer();
+                new ReadOnlyFishMenuHandler(MenuType.GENERIC_9x3, syncId, inv, container, 3) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 10) { sp.closeContainer(); teleportToFishingDimension(sp); return; }
+                            if (slotId == 12) { openPartyGui(sp); return; }
+                            if (slotId == 14) { openHallOfFameGui(sp); return; }
+                            if (slotId == 16) {
+                                if (bossBar != null) {
+                                    if (bossBar.getPlayers().contains(sp)) bossBar.removePlayer(sp);
+                                    else bossBar.addPlayer(sp);
+                                }
+                                openFishGui(sp);
+                                return;
+                            }
+                            if (slotId == 22) { com.craftcore.menu.MenuGuiManager.openMainMenu(sp); return; }
                         }
                     }
-                }
-            }, Component.literal("§8❖ 🎣 全服釣魚熱潮大賽 (/fish) ❖")));
+                }, Component.literal("§8❖ 🎣 釣魚大都會與專屬維度 ❖")));
     }
 
-    // =========================================================
-    // GUI Page 2: Hall of Fame
-    // =========================================================
-    public static void openHallOfFameGui(ServerPlayer player) {
+    public static void openPartyGui(ServerPlayer player) {
         if (player == null) return;
-
         SimpleContainer container = new SimpleContainer(27);
-        ItemStack glass = createGuiItem(getItemFromIdentifier("minecraft:gray_stained_glass_pane"), " ", List.of());
+
+        ItemStack border = createGuiItem(getItem("minecraft:gray_stained_glass_pane"), " ", null);
         for (int i = 0; i < 27; i++) {
-            container.setItem(i, glass);
+            container.setItem(i, border);
         }
 
-        container.setItem(4, createGuiItem(Items.GOLDEN_HELMET, "§6🏆 歷屆釣魚冠軍名人堂", List.of("§7展現歷屆全服釣魚大賽頂尖王者！")));
+        PartyMatch match = partyMatches.get(player.getUUID());
 
-        int[] slots = {10, 11, 12, 13, 14, 15, 16};
-        if (hallOfFame.isEmpty()) {
-            container.setItem(13, createGuiItem(Items.BOOK, "§7尚無名人堂紀錄", List.of("§7第一屆釣魚大賽冠軍得主即將誕生！")));
+        if (match == null) {
+            container.setItem(11, createGuiItem(Items.NETHER_STAR, "§a➕ 創建全新比賽房間 (單人/多人)", List.of(
+                    "§7點擊創建預設 10 分鐘比賽房間",
+                    "§7可自己一人單人刷榜，或邀請好友加入競賽！",
+                    "",
+                    "§a[點擊創建比賽房間]"
+            )));
+            container.setItem(15, createGuiItem(Items.PAPER, "§b✉️ 加入好友房間指令", List.of(
+                    "§7請在聊天欄輸入指令: §e/fish party join <房主名稱>",
+                    "§7加入好友房間一起組隊釣魚競賽！"
+            )));
         } else {
-            for (int i = 0; i < Math.min(7, hallOfFame.size()); i++) {
-                HallOfFameEntry entry = hallOfFame.get(i);
-                container.setItem(slots[i], createGuiItem(Items.DIAMOND, "§b👑 " + entry.winnerName + " (" + entry.date + ")", List.of(
-                        "§7奪冠魚種: §f" + entry.fishName,
-                        "§7奪冠長度: §e" + String.format("%.1f", entry.lengthCm) + " cm",
-                        "",
-                        "§6[獲得稱號: 釣聖]"
+            boolean isHost = match.hostUuid.equals(player.getUUID());
+            container.setItem(11, createGuiItem(Items.PLAYER_HEAD, "§6🎮 房間狀態: " + (match.active ? "§a[比賽中]" : "§e[等待中]"), List.of(
+                    "§7房主: §f" + match.hostName,
+                    "§7當前人數: §f" + match.members.size() + " 人 " + (match.isSolo() ? "§7(單人保護模式)" : "§b(多人戰術模式)"),
+                    "§7比賽時長: §f" + match.durationMinutes + " 分鐘"
+            )));
+
+            if (isHost && !match.active) {
+                container.setItem(13, createGuiItem(Items.EMERALD_BLOCK, "§a▶️ 開啟房間比賽！", List.of("§7點擊立即啟動倒數並開始計分", "", "§a[點擊開始比賽]")));
+            }
+
+            container.setItem(15, createGuiItem(Items.BARRIER, "§c🚪 退出目前房間", List.of("§7退出目前比賽房間", "", "§c[點擊退出房間]")));
+        }
+
+        container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回釣魚大廳", List.of("§7返回上一頁")));
+
+        player.openMenu(new SimpleMenuProvider((syncId, inv, p) ->
+                new ReadOnlyFishMenuHandler(MenuType.GENERIC_9x3, syncId, inv, container, 3) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (match == null) {
+                                if (slotId == 11) {
+                                    createPartyMatch(sp, 10);
+                                    openPartyGui(sp);
+                                    return;
+                                }
+                            } else {
+                                if (slotId == 13 && match.hostUuid.equals(sp.getUUID()) && !match.active) {
+                                    startPartyMatch(sp);
+                                    sp.closeContainer();
+                                    return;
+                                }
+                                if (slotId == 15) {
+                                    partyMatches.remove(sp.getUUID());
+                                    if (match.bossBar != null) match.bossBar.removePlayer(sp);
+                                    sp.sendSystemMessage(Component.literal("§c[釣魚組隊] 已退出目前比賽房間。"));
+                                    openPartyGui(sp);
+                                    return;
+                                }
+                            }
+                            if (slotId == 22) { openFishGui(sp); return; }
+                        }
+                    }
+                }, Component.literal("§8❖ 🎮 組隊/房間比賽大廳 ❖")));
+    }
+
+    public static void openHallOfFameGui(ServerPlayer player) {
+        if (player == null) return;
+        SimpleContainer container = new SimpleContainer(54);
+
+        ItemStack border = createGuiItem(getItem("minecraft:gray_stained_glass_pane"), " ", null);
+        for (int i = 0; i < 54; i++) {
+            container.setItem(i, border);
+        }
+
+        synchronized (hallOfFame) {
+            int slot = 0;
+            for (CaughtFish fish : hallOfFame) {
+                if (slot >= 45) break;
+                container.setItem(slot++, createGuiItem(Items.TROPICAL_FISH, "§6★ " + fish.fishName, List.of(
+                        "§7垂釣勇士: §f" + fish.fisherman,
+                        String.format("§7魚類尺寸: §e%.1f cm", fish.lengthCm),
+                        String.format("§7魚類重量: §b%.1f kg", fish.weightKg),
+                        "§7紀錄時間: §8" + fish.caughtTime
                 )));
             }
         }
 
-        container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回大賽主頁", List.of("§7點擊返回 /fish 主頁")));
-        container.setItem(26, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉介面")));
+        container.setItem(49, createGuiItem(Items.ARROW, "§a⬅ 返回釣魚主頁", List.of("§7返回上一頁")));
 
         player.openMenu(new SimpleMenuProvider((syncId, inv, p) ->
-            new ReadOnlyFishMenuHandler(MenuType.GENERIC_9x3, syncId, inv, container, 3) {
-                @Override
-                public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
-                    if (clicker instanceof ServerPlayer sp) {
-                        if (slotId == 22) {
-                            openFishGui(sp);
-                        } else if (slotId == 26) {
-                            sp.closeContainer();
+                new ReadOnlyFishMenuHandler(MenuType.GENERIC_9x6, syncId, inv, container, 6) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 49) { openFishGui(sp); return; }
                         }
                     }
-                }
-            }, Component.literal("§8❖ 🏆 釣魚名人堂 ❖")));
+                }, Component.literal("§8❖ 🏆 歷史釣王 Top 50 名人堂 ❖")));
     }
 
-    // =========================================================
-    // Target Selector GUI for Length Swapper & Length Thief
-    // =========================================================
-    public static void openTargetSelectorGui(ServerPlayer user, String itemAction) {
-        if (user == null || user.level().getServer() == null) return;
-        MinecraftServer server = user.level().getServer();
-        List<ServerPlayer> players = new ArrayList<>(server.getPlayerList().getPlayers());
+    public static void openTargetSelectorGui(ServerPlayer attacker, String itemType) {
+        if (attacker == null) return;
+        MinecraftServer server = attacker.level().getServer();
+        if (server == null) return;
 
-        SimpleContainer container = new SimpleContainer(27);
-        ItemStack glass = createGuiItem(getItemFromIdentifier("minecraft:gray_stained_glass_pane"), " ", List.of());
-        for (int i = 0; i < 27; i++) {
-            container.setItem(i, glass);
+        SimpleContainer container = new SimpleContainer(54);
+        ItemStack border = createGuiItem(getItem("minecraft:gray_stained_glass_pane"), " ", null);
+        for (int i = 0; i < 54; i++) {
+            container.setItem(i, border);
         }
 
-        String actionTitle = "SWAP".equalsIgnoreCase(itemAction) ? "§d🔄 選擇長度交換目標玩家" : "§c🗡 選擇長度偷取目標玩家";
-        container.setItem(4, createGuiItem(Items.PLAYER_HEAD, actionTitle, List.of("§7點擊下方線上玩家頭顱施放戰術道具")));
+        List<ServerPlayer> targets = server.getPlayerList().getPlayers().stream()
+                .filter(p -> !p.getUUID().equals(attacker.getUUID()))
+                .toList();
 
-        int slot = 9;
-        Map<Integer, String> slotPlayerMap = new HashMap<>();
-        for (ServerPlayer p : players) {
-            if (slot >= 26) break;
-            String name = p.getName().getString();
-            if (name.equalsIgnoreCase(user.getName().getString())) continue;
-
-            slotPlayerMap.put(slot, name);
-            double targetBest = currentContestBestMap.getOrDefault(name, 0.0);
-            container.setItem(slot++, createGuiItem(Items.PLAYER_HEAD, "§e" + name, List.of(
-                    "§7目前最高紀錄: §a" + (targetBest > 0 ? String.format("%.1f", targetBest) + " cm" : "無紀錄"),
+        int slot = 0;
+        for (ServerPlayer target : targets) {
+            if (slot >= 45) break;
+            String tName = target.getName().getString();
+            double tScore = serverScores.getOrDefault(target.getUUID(), 0.0);
+            container.setItem(slot++, createGuiItem(Items.PLAYER_HEAD, "§e🎯 對手: " + tName, List.of(
+                    String.format("§7當前最高長度: §e%.1f cm", tScore),
                     "",
-                    "§e[點擊對該玩家施放道具]"
+                    "§e[點擊對此玩家使用 " + (itemType.equals("THIEF") ? "長度偷取器" : "長度交換器") + "]"
             )));
         }
 
-        container.setItem(26, createGuiItem(Items.BARRIER, "§c❌ 取消使用", List.of("§7點擊關閉選單")));
-
-        user.openMenu(new SimpleMenuProvider((syncId, inv, p) ->
-            new ReadOnlyFishMenuHandler(MenuType.GENERIC_9x3, syncId, inv, container, 3) {
-                @Override
-                public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
-                    if (clicker instanceof ServerPlayer sp) {
-                        if (slotId == 26) { sp.closeContainer(); return; }
-
-                        String targetName = slotPlayerMap.get(slotId);
-                        if (targetName != null) {
-                            sp.closeContainer();
-                            if ("SWAP".equalsIgnoreCase(itemAction)) {
-                                executeLengthSwap(sp, targetName);
-                            } else {
-                                executeLengthThief(sp, targetName);
+        attacker.openMenu(new SimpleMenuProvider((syncId, inv, p) ->
+                new ReadOnlyFishMenuHandler(MenuType.GENERIC_9x6, syncId, inv, container, 6) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            ItemStack clicked = container.getItem(slotId);
+                            if (clicked != null && clicked.has(DataComponents.CUSTOM_NAME)) {
+                                String name = clicked.get(DataComponents.CUSTOM_NAME).getString();
+                                if (name.startsWith("§e🎯 對手: ")) {
+                                    String targetName = name.replace("§e🎯 對手: ", "").trim();
+                                    ServerPlayer targetPlayer = server.getPlayerList().getPlayerByName(targetName);
+                                    if (targetPlayer != null) {
+                                        sp.closeContainer();
+                                        if (itemType.equals("THIEF")) {
+                                            sp.getMainHandItem().shrink(1);
+                                            applyThief(sp, targetPlayer);
+                                        } else if (itemType.equals("SWAPPER")) {
+                                            sp.getMainHandItem().shrink(1);
+                                            applySwap(sp, targetPlayer);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            }, Component.literal("§8❖ " + actionTitle + " ❖")));
+                }, Component.literal("§8❖ 🎯 選擇打擊對手 ❖")));
     }
 
-    public static void executeLengthSwap(ServerPlayer user, String targetName) {
-        if (user == null) return;
-        String userName = user.getName().getString();
-        double userBest = currentContestBestMap.getOrDefault(userName, 0.0);
-        double targetBest = currentContestBestMap.getOrDefault(targetName, 0.0);
-
-        currentContestBestMap.put(userName, targetBest);
-        currentContestBestMap.put(targetName, userBest);
-
-        // Consume Item from hand
-        if (user.getMainHandItem().is(Items.NETHER_STAR)) {
-            user.getMainHandItem().shrink(1);
-        }
-
-        // Re-sort leaderboard
-        refreshTopList(userName, targetName);
-
-        // Broadcast
-        if (serverInstance != null) {
-            serverInstance.getPlayerList().broadcastSystemMessage(Component.literal(String.format(
-                    "§c⚔ [釣魚大賽心機戰況] 玩家 §e%s §c使用了【🔄 長度交換器】，強行與 §e%s §c交換了長度紀錄！(§e%.1f cm §c⇄ §e%.1f cm)",
-                    userName, targetName, userBest, targetBest
-            )), false);
-        }
-    }
-
-    public static void executeLengthThief(ServerPlayer user, String targetName) {
-        if (user == null) return;
-        String userName = user.getName().getString();
-        double userBest = currentContestBestMap.getOrDefault(userName, 0.0);
-        double targetBest = currentContestBestMap.getOrDefault(targetName, 0.0);
-
-        if (targetBest <= 0) {
-            user.sendSystemMessage(Component.literal("§c[釣魚大賽] 該玩家目前尚無長度紀錄，無法偷取！"));
-            return;
-        }
-
-        double percent = 0.01 + Math.random() * 0.29; // 1% ~ 30%
-        double stolen = targetBest * percent;
-
-        currentContestBestMap.put(userName, userBest + stolen);
-        currentContestBestMap.put(targetName, Math.max(0.0, targetBest - stolen));
-
-        // Consume Item from hand
-        if (user.getMainHandItem().is(Items.TRIDENT)) {
-            user.getMainHandItem().shrink(1);
-        }
-
-        // Re-sort leaderboard
-        refreshTopList(userName, targetName);
-
-        // Broadcast
-        if (serverInstance != null) {
-            serverInstance.getPlayerList().broadcastSystemMessage(Component.literal(String.format(
-                    "§c⚔ [釣魚大賽心機戰況] 玩家 §e%s §c使用了【🗡 長度偷取器】，從 §e%s §c身上強行偷走了 §a%.1f cm §c(%.1f%%) 的長度！",
-                    userName, targetName, stolen, percent * 100
-            )), false);
-        }
-    }
-
-    private static void refreshTopList(String user1, String user2) {
-        double b1 = currentContestBestMap.getOrDefault(user1, 0.0);
-        double b2 = currentContestBestMap.getOrDefault(user2, 0.0);
-
-        currentTopFishList.removeIf(f -> f.playername.equalsIgnoreCase(user1) || f.playername.equalsIgnoreCase(user2));
-        if (b1 > 0) currentTopFishList.add(new CaughtFish(user1, "戰術道具調整紀錄", b1, 1.0, "戰術調整"));
-        if (b2 > 0) currentTopFishList.add(new CaughtFish(user2, "戰術道具調整紀錄", b2, 1.0, "戰術調整"));
-
-        currentTopFishList.sort((a, b) -> Double.compare(b.lengthCm, a.lengthCm));
-        updateBossBarTitle();
-    }
-
-    private static Item getItemFromIdentifier(String idStr) {
-        if (idStr == null || idStr.isEmpty()) return Items.BOOK;
+    private static Item getItem(String idStr) {
         try {
             return BuiltInRegistries.ITEM.getValue(Identifier.parse(idStr));
         } catch (Throwable t) {
