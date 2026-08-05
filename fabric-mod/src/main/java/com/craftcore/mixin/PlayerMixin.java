@@ -27,6 +27,15 @@ public abstract class PlayerMixin {
             return;
         }
 
+        if (level.dimension().equals(com.craftcore.mining.MiningDimensionManager.MINING_DIMENSION_KEY)) {
+            if (source.getEntity() instanceof ServerPlayer attacker) {
+                attacker.sendSystemMessage(Component.literal("§c[採礦保護區] 資源採礦世界內強制 0 PvP！禁止玩家相互攻擊。"));
+                cir.setReturnValue(false);
+                return;
+            }
+            // Allow mobs, fall, lava, drowning, hunger damage normally in mining dimension
+        }
+
         if (AfkManager.isAfk(player)) {
             cir.setReturnValue(false); // Completely invulnerable when AFK
             return;
