@@ -1159,6 +1159,12 @@ public class MenuGuiManager {
                 "§7已解鎖數量: §a" + unlocked.size() + " 個"
         )));
 
+        container.setItem(15, createGuiItem(Items.NETHER_STAR, "§e✨ 稱號炫彩粒子控制台 (/trail)", List.of(
+                "§7獨立自訂足跡、環繞光環、攻擊與放置粒子",
+                "",
+                "§e[點擊開啟粒子特效 GUI]"
+        )));
+
         int slot = 19;
         for (String title : unlocked) {
             if (slot >= 44) break;
@@ -1177,11 +1183,12 @@ public class MenuGuiManager {
                         if (clicker instanceof ServerPlayer sp) {
                             if (slotId == 45) { openWelfareCenterMenu(sp); return; }
                             if (slotId == 49) { sp.closeContainer(); return; }
+                            if (slotId == 15) { com.craftcore.trail.ParticleTrailManager.openTrailGui(sp); return; }
 
                             ItemStack clickedStack = container.getItem(slotId);
                             if (clickedStack != null && clickedStack.has(DataComponents.CUSTOM_NAME)) {
                                 String titleName = clickedStack.get(DataComponents.CUSTOM_NAME).getString();
-                                if (!titleName.equals("頭頂稱號狀態") && !titleName.equals("⬅ 返回福利中心")) {
+                                if (!titleName.equals("頭頂稱號狀態") && !titleName.equals("⬅ 返回福利中心") && !titleName.contains("稱號炫彩粒子控制台")) {
                                     TitleManager.setActiveTitle(sp.getName().getString(), titleName);
                                     sp.sendSystemMessage(Component.literal("§a成功切換頭頂稱號為: " + titleName));
                                     openWelfareTitleMenu(sp);
