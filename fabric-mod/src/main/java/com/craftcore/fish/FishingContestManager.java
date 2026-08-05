@@ -203,6 +203,7 @@ public class FishingContestManager {
     }
 
     private static final Map<UUID, Long> speedBuffExpirationMap = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> giantFishBuffExpirationMap = new ConcurrentHashMap<>();
 
     public static boolean hasSpeedBuff(UUID uuid) {
         Long expire = speedBuffExpirationMap.get(uuid);
@@ -221,6 +222,23 @@ public class FishingContestManager {
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0f, 1.5f);
     }
 
+    public static boolean hasGiantFishBuff(UUID uuid) {
+        Long expire = giantFishBuffExpirationMap.get(uuid);
+        if (expire == null) return false;
+        if (System.currentTimeMillis() > expire) {
+            giantFishBuffExpirationMap.remove(uuid);
+            return false;
+        }
+        return true;
+    }
+
+    public static void applyGiantFishBuff(ServerPlayer player) {
+        if (player == null) return;
+        giantFishBuffExpirationMap.put(player.getUUID(), System.currentTimeMillis() + (5 * 60 * 1000));
+        player.sendSystemMessage(Component.literal("§6🧲 [釣魚大賽] 您已啟動【巨魚引力 BUFF】！未來 5 分鐘釣起的魚類尺寸增幅 30%~60%！"));
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0f, 1.8f);
+    }
+
     public static ItemStack onPlayerCatchFish(ServerPlayer player, ItemStack originalCatch) {
         if (player == null || !active) return originalCatch;
 
@@ -228,9 +246,9 @@ public class FishingContestManager {
         currentContestCountMap.put(username, currentContestCountMap.getOrDefault(username, 0) + 1);
 
         double roll = Math.random();
-        if (roll < 0.15) { // 15% Tactical Item or Trap
+        if (roll < 0.20) { // 20% Tactical Item or Trap
             double itemRoll = Math.random();
-            if (itemRoll < 0.33) { // 5% Fishing Speed Booster
+            if (itemRoll < 0.20) { // 4% Fishing Speed Booster
                 ItemStack booster = new ItemStack(Items.PRISMARINE_CRYSTALS);
                 booster.set(DataComponents.CUSTOM_NAME, Component.literal("§a⚡ 釣魚大賽加速器"));
                 booster.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
@@ -243,6 +261,19 @@ public class FishingContestManager {
                 player.sendSystemMessage(Component.literal("§a🎉 [釣魚大賽] 幸運釣獲戰術道具：【⚡ 釣魚大賽加速器】！手持右鍵即可使用！"));
                 player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
                 return booster;
+            } else if (itemRoll < 0.40) { // 4% Giant Fish Magnet
+                ItemStack magnet = new ItemStack(Items.HEART_OF_THE_SEA);
+                magnet.set(DataComponents.CUSTOM_NAME, Component.literal("§6🧲 釣魚大賽巨魚磁鐵"));
+                magnet.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+                magnet.set(DataComponents.LORE, new ItemLore(List.of(
+                        Component.literal("§7手持右鍵使用，啟動 5 分鐘【巨魚引力 BUFF】"),
+                        Component.literal("§7期間釣起的魚類尺寸額外增加 +30%~60%！"),
+                        Component.literal(""),
+                        Component.literal("§e[手持右鍵立即啟動]")
+                )));
+                player.sendSystemMessage(Component.literal("§6🎉 [釣魚大賽] 幸運釣獲戰術道具：【🧲 釣魚大賽巨魚磁鐵】！手持右鍵即可使用！"));
+                player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
+                return magnet;
             } else if (itemRoll < 0.60) { // 4% Length Thief
                 ItemStack thief = new ItemStack(Items.TRIDENT);
                 thief.set(DataComponents.CUSTOM_NAME, Component.literal("§c🗡 釣魚大賽長度偷取器"));
@@ -255,7 +286,7 @@ public class FishingContestManager {
                 player.sendSystemMessage(Component.literal("§c🎉 [釣魚大賽] 幸運釣獲心機戰術道具：【🗡 釣魚大賽長度偷取器】！手持右鍵即可使用！"));
                 player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
                 return thief;
-            } else if (itemRoll < 0.87) { // 4% Trap Bomb (Instant Trigger)
+            } else if (itemRoll < 0.80) { // 4% Trap Bomb (Instant Trigger)
                 double curBest = currentContestBestMap.getOrDefault(username, 0.0);
                 if (curBest > 0) {
                     double percent = 0.05 + Math.random() * 0.10; // 5% ~ 15%
@@ -277,7 +308,7 @@ public class FishingContestManager {
                     player.sendSystemMessage(Component.literal("§c💥 [釣魚大賽陷阱] 您釣到了【詛咒陷阱炸彈】，好在您目前尚無長度紀錄，躲過一劫！"));
                 }
                 return new ItemStack(Items.TNT);
-            } else { // 2% Length Swapper
+            } else { // 4% Length Swapper
                 ItemStack swapper = new ItemStack(Items.NETHER_STAR);
                 swapper.set(DataComponents.CUSTOM_NAME, Component.literal("§d🔄 釣魚大賽長度交換器"));
                 swapper.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
@@ -423,6 +454,13 @@ public class FishingContestManager {
                 lengthCm = 160.0 + Math.random() * 160.0;
                 weightKg = 60.0 + Math.random() * 120.0;
             }
+        }
+
+        // Apply Giant Fish Magnet Buff (+30% ~ +60% length)
+        if (hasGiantFishBuff(player.getUUID())) {
+            double mult = 1.30 + Math.random() * 0.30;
+            lengthCm *= mult;
+            player.sendSystemMessage(Component.literal(String.format("§6🧲 [巨魚引力增幅] 磁鐵生效！本條魚長度增幅 +%.0f%% 放大至 %.1f cm！", (mult - 1.0) * 100, lengthCm)));
         }
 
         String timeStr = ZonedDateTime.now(ZoneId.of("Asia/Taipei")).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));

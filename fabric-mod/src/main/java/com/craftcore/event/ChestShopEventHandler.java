@@ -609,6 +609,11 @@ public class ChestShopEventHandler {
                     com.craftcore.fish.FishingContestManager.applySpeedBuff(sp);
                     return InteractionResult.SUCCESS;
                 }
+                if (item.is(net.minecraft.world.item.Items.HEART_OF_THE_SEA) && item.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && item.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME).getString().contains("釣魚大賽巨魚磁鐵")) {
+                    item.shrink(1);
+                    com.craftcore.fish.FishingContestManager.applyGiantFishBuff(sp);
+                    return InteractionResult.SUCCESS;
+                }
                 if (item.is(net.minecraft.world.item.Items.TRIDENT) && item.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && item.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME).getString().contains("釣魚大賽長度偷取器")) {
                     com.craftcore.fish.FishingContestManager.openTargetSelectorGui(sp, "THIEF");
                     return InteractionResult.SUCCESS;
