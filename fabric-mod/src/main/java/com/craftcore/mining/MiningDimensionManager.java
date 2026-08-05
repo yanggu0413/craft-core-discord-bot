@@ -70,6 +70,23 @@ public class MiningDimensionManager {
                         server.execute(() -> server.getPlayerList().broadcastSystemMessage(Component.literal("§c[資源世界預告] 距離採礦世界週自動重置剩餘 1 分鐘！即將執行撤離傳送！"), false));
                     }
                 }
+
+                if (server != null) {
+                    server.execute(() -> {
+                        ServerLevel miningLevel = server.getLevel(MINING_DIMENSION_KEY);
+                        if (miningLevel != null) {
+                            net.minecraft.world.level.saveddata.WeatherData wd = miningLevel.getWeatherData();
+                            if (wd != null && (wd.isRaining() || wd.isThundering())) {
+                                wd.setRaining(false);
+                                wd.setThundering(false);
+                                wd.setRainTime(0);
+                                wd.setThunderTime(0);
+                                wd.setClearWeatherTime(120000);
+                                wd.setDirty();
+                            }
+                        }
+                    });
+                }
                 if (now.getDayOfWeek() == DayOfWeek.MONDAY && now.getHour() == 4 && now.getMinute() == 0 && now.getSecond() < 10) {
                     if (server != null) {
                         server.execute(() -> {
