@@ -525,6 +525,11 @@ public class PacketHandler {
                     Packet.MushroomAiResponsePayload payload = GSON.fromJson(payloadObj, Packet.MushroomAiResponsePayload.class);
                     server.execute(() -> {
                         net.minecraft.server.level.ServerPlayer player = getPlayerCaseInsensitive(server, payload.username);
+                        if (player == null && payload.uuid != null) {
+                            try {
+                                player = server.getPlayerList().getPlayer(java.util.UUID.fromString(payload.uuid));
+                            } catch (Throwable ignored) {}
+                        }
                         if (player != null && payload.reply != null) {
                             player.sendSystemMessage(Component.literal("§d[洋菇] §f" + payload.reply));
                             player.level().playSound(null, player.getX(), player.getY(), player.getZ(),

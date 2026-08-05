@@ -45,7 +45,7 @@ async function handle(packet, discordClient) {
 
     case 'mushroom_ai_request': {
       const geminiService = require('../services/geminiService');
-      const mcWs = session.getMinecraftServerWs();
+      const mcWs = session.getConnection();
       const reply = await geminiService.generateMushroomResponse(payload.username, payload.message);
       if (mcWs && mcWs.readyState === 1) {
         try {
@@ -73,7 +73,7 @@ async function handle(packet, discordClient) {
 
     case 'daily_ai_tasks_query': {
       const aiTaskService = require('../services/aiTaskService');
-      const mcWs = session.getMinecraftServerWs();
+      const mcWs = session.getConnection();
       const tasks = await aiTaskService.getOrGenerateDailyTasks();
       if (mcWs && mcWs.readyState === 1) {
         try {
