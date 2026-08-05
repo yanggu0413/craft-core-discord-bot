@@ -215,26 +215,130 @@ public class FishingContestManager {
         double lengthCm;
         double weightKg;
 
-        if (rand < 0.20) { // 20% Giant Squid
-            fishName = "深海大王烏賊";
-            itemType = Items.PUFFERFISH;
-            lengthCm = 100.0 + Math.random() * 120.0;
-            weightKg = 20.0 + Math.random() * 50.0;
-        } else if (rand < 0.50) { // 30% Gold Angel Fish
-            fishName = "黃金炫光神仙魚";
-            itemType = Items.TROPICAL_FISH;
-            lengthCm = 70.0 + Math.random() * 65.0;
-            weightKg = 5.0 + Math.random() * 15.0;
-        } else if (rand < 0.75) { // 25% Salmon
-            fishName = "巨型野生鮭魚";
-            itemType = Items.SALMON;
-            lengthCm = 45.0 + Math.random() * 40.0;
-            weightKg = 3.0 + Math.random() * 8.0;
-        } else { // 25% Cod
-            fishName = "深海大馬哈魚";
-            itemType = Items.COD;
-            lengthCm = 20.0 + Math.random() * 45.0;
-            weightKg = 1.0 + Math.random() * 5.0;
+        // 20 Unique Contest Fish Species Pool
+        int choice = (int) (Math.random() * 20);
+
+        switch (choice) {
+            case 0 -> {
+                fishName = "深海大馬哈魚";
+                itemType = Items.COD;
+                lengthCm = 20.0 + Math.random() * 45.0;
+                weightKg = 1.0 + Math.random() * 5.0;
+            }
+            case 1 -> {
+                fishName = "巨型野生鮭魚";
+                itemType = Items.SALMON;
+                lengthCm = 45.0 + Math.random() * 40.0;
+                weightKg = 3.0 + Math.random() * 8.0;
+            }
+            case 2 -> {
+                fishName = "黃金炫光神仙魚";
+                itemType = Items.TROPICAL_FISH;
+                lengthCm = 70.0 + Math.random() * 65.0;
+                weightKg = 5.0 + Math.random() * 15.0;
+            }
+            case 3 -> {
+                fishName = "深海大王烏賊";
+                itemType = Items.PUFFERFISH;
+                lengthCm = 100.0 + Math.random() * 120.0;
+                weightKg = 20.0 + Math.random() * 50.0;
+            }
+            case 4 -> {
+                fishName = "遠古巨齒鯊幼崽";
+                itemType = Items.PRISMARINE_CRYSTALS;
+                lengthCm = 120.0 + Math.random() * 130.0;
+                weightKg = 35.0 + Math.random() * 70.0;
+            }
+            case 5 -> {
+                fishName = "亞特蘭提斯水晶魚";
+                itemType = Items.PRISMARINE_SHARD;
+                lengthCm = 80.0 + Math.random() * 80.0;
+                weightKg = 12.0 + Math.random() * 25.0;
+            }
+            case 6 -> {
+                fishName = "電擊雷霆鰻魚";
+                itemType = Items.GLOW_INK_SAC;
+                lengthCm = 60.0 + Math.random() * 80.0;
+                weightKg = 8.0 + Math.random() * 18.0;
+            }
+            case 7 -> {
+                fishName = "帝王翡翠錦鯉";
+                itemType = Items.TROPICAL_FISH;
+                lengthCm = 90.0 + Math.random() * 90.0;
+                weightKg = 15.0 + Math.random() * 30.0;
+            }
+            case 8 -> {
+                fishName = "深淵紫焰海龍";
+                itemType = Items.DRAGON_BREATH;
+                lengthCm = 150.0 + Math.random() * 150.0;
+                weightKg = 50.0 + Math.random() * 100.0;
+            }
+            case 9 -> {
+                fishName = "極地寒冰鱈魚";
+                itemType = Items.ICE;
+                lengthCm = 30.0 + Math.random() * 45.0;
+                weightKg = 2.0 + Math.random() * 6.0;
+            }
+            case 10 -> {
+                fishName = "地獄熔岩金槍魚";
+                itemType = Items.MAGMA_CREAM;
+                lengthCm = 50.0 + Math.random() * 60.0;
+                weightKg = 6.0 + Math.random() * 14.0;
+            }
+            case 11 -> {
+                fishName = "終界星光水母";
+                itemType = Items.ENDER_PEARL;
+                lengthCm = 110.0 + Math.random() * 100.0;
+                weightKg = 25.0 + Math.random() * 45.0;
+            }
+            case 12 -> {
+                fishName = "七彩虹光小丑魚";
+                itemType = Items.TROPICAL_FISH;
+                lengthCm = 45.0 + Math.random() * 50.0;
+                weightKg = 4.0 + Math.random() * 9.0;
+            }
+            case 13 -> {
+                fishName = "鑽石琉璃飛魚";
+                itemType = Items.DIAMOND;
+                lengthCm = 85.0 + Math.random() * 85.0;
+                weightKg = 10.0 + Math.random() * 20.0;
+            }
+            case 14 -> {
+                fishName = "幽靈海盜骷髏魚";
+                itemType = Items.BONE;
+                lengthCm = 55.0 + Math.random() * 70.0;
+                weightKg = 7.0 + Math.random() * 16.0;
+            }
+            case 15 -> {
+                fishName = "翡翠海藻海馬";
+                itemType = Items.SEAGRASS;
+                lengthCm = 25.0 + Math.random() * 30.0;
+                weightKg = 0.5 + Math.random() * 2.0;
+            }
+            case 16 -> {
+                fishName = "海幻星辰神仙魚";
+                itemType = Items.AMETHYST_SHARD;
+                lengthCm = 95.0 + Math.random() * 95.0;
+                weightKg = 18.0 + Math.random() * 35.0;
+            }
+            case 17 -> {
+                fishName = "深海霸王帝王蟹";
+                itemType = Items.NAUTILUS_SHELL;
+                lengthCm = 40.0 + Math.random() * 60.0;
+                weightKg = 10.0 + Math.random() * 25.0;
+            }
+            case 18 -> {
+                fishName = "日光耀斑翻車魚";
+                itemType = Items.GLOWSTONE_DUST;
+                lengthCm = 130.0 + Math.random() * 150.0;
+                weightKg = 40.0 + Math.random() * 90.0;
+            }
+            default -> { // case 19
+                fishName = "虛空黑洞旗魚";
+                itemType = Items.NETHER_STAR;
+                lengthCm = 160.0 + Math.random() * 160.0;
+                weightKg = 60.0 + Math.random() * 120.0;
+            }
         }
 
         String timeStr = ZonedDateTime.now(ZoneId.of("Asia/Taipei")).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
@@ -360,11 +464,26 @@ public class FishingContestManager {
     }
 
     private static String getFishDesc(String name) {
-        if (name.contains("洋菇")) return "服主羊咕口袋裡放太久忘記吃的發霉小洋菇...";
+        if (name.contains("巨齒鯊")) return "遠古海洋霸主巨齒鯊的幼崽！";
+        if (name.contains("水晶魚")) return "來自失落古城亞特蘭提斯的耀眼晶石魚！";
+        if (name.contains("鰻魚")) return "渾身閃耀藍色高壓電弧的危險鰻魚！";
+        if (name.contains("錦鯉")) return "象徵極致好運與財富的帝王翡翠錦鯉！";
+        if (name.contains("海龍")) return "傳說棲息於深淵底部的烈焰海龍！";
+        if (name.contains("寒冰鱈魚")) return "結凍於北極萬年冰川底部的冰晶鱈魚！";
+        if (name.contains("金槍魚")) return "適應地獄熔岩高溫環境的奇幻金槍魚！";
+        if (name.contains("水母")) return "飄浮於終界星空中的炫彩星光水母！";
+        if (name.contains("小丑魚")) return "身上的彩虹光芒會隨著水流變幻！";
+        if (name.contains("飛魚")) return "能夠短暫飛躍海面的晶瑩琉璃飛魚！";
+        if (name.contains("骷髏魚")) return "沉沒海盜船骷髏亡靈化身的死靈魚！";
+        if (name.contains("海馬")) return "藏匿於深海巨型海藻叢中的翡翠海馬！";
+        if (name.contains("星辰神仙魚")) return "閃耀著紫水晶星辰波光的絕美神仙魚！";
+        if (name.contains("帝王蟹")) return "擁有強大螯足的深海海底霸王！";
+        if (name.contains("翻車魚")) return "吸收太陽耀斑熱量的巨大翻車魚！";
+        if (name.contains("旗魚")) return "穿梭於虛空黑洞裂隙的極速旗魚！";
         if (name.contains("烏賊")) return "來自萬米深海的傳說巨獸！";
-        if (name.contains("神仙魚")) return "全身散發金黃耀眼光輝的神聖魚種！";
+        if (name.contains("黃金炫光")) return "全身散發金黃耀眼光輝的神聖魚種！";
         if (name.contains("鮭魚")) return "肉質鮮美的野生肥美巨鮭！";
-        return "活動特產深海魚類。";
+        return "活動特產深海大馬哈魚。";
     }
 
     private static abstract class ReadOnlyFishMenuHandler extends ChestMenu {
