@@ -605,13 +605,15 @@ public class ChestShopEventHandler {
             if (player instanceof ServerPlayer sp) {
                 ItemStack item = sp.getItemInHand(hand);
                 if (item.is(net.minecraft.world.item.Items.PRISMARINE_CRYSTALS) && item.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && item.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME).getString().contains("釣魚大賽加速器")) {
-                    item.shrink(1);
-                    com.craftcore.fish.FishingContestManager.applySpeedBuff(sp);
+                    if (com.craftcore.fish.FishingContestManager.applySpeedBuff(sp)) {
+                        item.shrink(1);
+                    }
                     return InteractionResult.SUCCESS;
                 }
                 if (item.is(net.minecraft.world.item.Items.HEART_OF_THE_SEA) && item.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && item.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME).getString().contains("釣魚大賽巨魚磁鐵")) {
-                    item.shrink(1);
-                    com.craftcore.fish.FishingContestManager.applyGiantFishBuff(sp);
+                    if (com.craftcore.fish.FishingContestManager.applyGiantFishBuff(sp)) {
+                        item.shrink(1);
+                    }
                     return InteractionResult.SUCCESS;
                 }
                 if (item.is(net.minecraft.world.item.Items.TRIDENT) && item.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && item.get(net.minecraft.core.component.DataComponents.CUSTOM_NAME).getString().contains("釣魚大賽長度偷取器")) {

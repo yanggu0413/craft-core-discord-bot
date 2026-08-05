@@ -215,11 +215,17 @@ public class FishingContestManager {
         return true;
     }
 
-    public static void applySpeedBuff(ServerPlayer player) {
-        if (player == null) return;
-        speedBuffExpirationMap.put(player.getUUID(), System.currentTimeMillis() + (3 * 60 * 1000));
+    public static boolean applySpeedBuff(ServerPlayer player) {
+        if (player == null) return false;
+        UUID uuid = player.getUUID();
+        if (hasGiantFishBuff(uuid)) {
+            player.sendSystemMessage(Component.literal("§c[釣魚大賽] 您目前已擁有【巨魚引力 BUFF】，無法同時疊加多個大賽 BUFF！請等當前 BUFF 結束後再使用。"));
+            return false;
+        }
+        speedBuffExpirationMap.put(uuid, System.currentTimeMillis() + (3 * 60 * 1000));
         player.sendSystemMessage(Component.literal("§a⚡ [釣魚大賽] 您已啟動【急速垂釣 BUFF】！未來 3 分鐘上鉤速度提升 50%！"));
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0f, 1.5f);
+        return true;
     }
 
     public static boolean hasGiantFishBuff(UUID uuid) {
@@ -232,11 +238,17 @@ public class FishingContestManager {
         return true;
     }
 
-    public static void applyGiantFishBuff(ServerPlayer player) {
-        if (player == null) return;
-        giantFishBuffExpirationMap.put(player.getUUID(), System.currentTimeMillis() + (5 * 60 * 1000));
-        player.sendSystemMessage(Component.literal("§6🧲 [釣魚大賽] 您已啟動【巨魚引力 BUFF】！未來 5 分鐘釣起的魚類尺寸增幅 30%~60%！"));
+    public static boolean applyGiantFishBuff(ServerPlayer player) {
+        if (player == null) return false;
+        UUID uuid = player.getUUID();
+        if (hasSpeedBuff(uuid)) {
+            player.sendSystemMessage(Component.literal("§c[釣魚大賽] 您目前已擁有【急速垂釣 BUFF】，無法同時疊加多個大賽 BUFF！請等當前 BUFF 結束後再使用。"));
+            return false;
+        }
+        giantFishBuffExpirationMap.put(uuid, System.currentTimeMillis() + (3 * 60 * 1000));
+        player.sendSystemMessage(Component.literal("§6🧲 [釣魚大賽] 您已啟動【巨魚引力 BUFF】！未來 3 分鐘釣起的魚類尺寸增幅 30%~60%！"));
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1.0f, 1.8f);
+        return true;
     }
 
     public static ItemStack onPlayerCatchFish(ServerPlayer player, ItemStack originalCatch) {
@@ -266,10 +278,10 @@ public class FishingContestManager {
                 magnet.set(DataComponents.CUSTOM_NAME, Component.literal("§6🧲 釣魚大賽巨魚磁鐵"));
                 magnet.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
                 magnet.set(DataComponents.LORE, new ItemLore(List.of(
-                        Component.literal("§7手持右鍵使用，啟動 5 分鐘【巨魚引力 BUFF】"),
+                        Component.literal("§7手持右鍵使用，啟動 3 分鐘【巨魚引力 BUFF】"),
                         Component.literal("§7期間釣起的魚類尺寸額外增加 +30%~60%！"),
                         Component.literal(""),
-                        Component.literal("§e[手持右鍵立即啟動]")
+                        Component.literal("§e[手持右鍵開啟 BUFF (與加速器互斥)]")
                 )));
                 player.sendSystemMessage(Component.literal("§6🎉 [釣魚大賽] 幸運釣獲戰術道具：【🧲 釣魚大賽巨魚磁鐵】！手持右鍵即可使用！"));
                 player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
