@@ -215,11 +215,11 @@ public class FishingContestManager {
         double lengthCm;
         double weightKg;
 
-        if (rand < 0.05) { // 5% Secret Junk Shoe
-            fishName = "服主掉落的破舊靴子";
-            itemType = Items.LEATHER_BOOTS;
+        if (rand < 0.05) { // 5% Secret Stale Mushroom
+            fishName = "服主羊咕掉落的發霉洋菇";
+            itemType = Items.RED_MUSHROOM;
             lengthCm = 0.1;
-            weightKg = 0.5;
+            weightKg = 0.01;
         } else if (rand < 0.20) { // 15% Giant Squid
             fishName = "深海大王烏賊";
             itemType = Items.PUFFERFISH;
@@ -365,7 +365,7 @@ public class FishingContestManager {
     }
 
     private static String getFishDesc(String name) {
-        if (name.contains("靴子")) return "服主羊咕不小心掉進水裡的舊靴子...";
+        if (name.contains("洋菇")) return "服主羊咕口袋裡放太久忘記吃的發霉小洋菇...";
         if (name.contains("烏賊")) return "來自萬米深海的傳說巨獸！";
         if (name.contains("神仙魚")) return "全身散發金黃耀眼光輝的神聖魚種！";
         if (name.contains("鮭魚")) return "肉質鮮美的野生肥美巨鮭！";
