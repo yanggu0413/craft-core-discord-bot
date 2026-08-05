@@ -24,6 +24,7 @@ public class ModCommands {
             CheckCommand.register(dispatcher);
             TaskCommand.register(dispatcher);
             TrailCommand.register(dispatcher);
+            FishCommand.register(dispatcher);
         });
     }
 }

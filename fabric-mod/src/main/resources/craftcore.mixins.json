@@ -19,7 +19,8 @@
     "BasePressurePlateBlockMixin",
     "ItemStackMixin",
     "ItemMixin",
-    "BlockItemMixin"
+    "BlockItemMixin",
+    "FishingHookMixin"
   ],
   "injectors": {
     "defaultRequire": 1

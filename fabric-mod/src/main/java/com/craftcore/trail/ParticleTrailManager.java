@@ -118,6 +118,8 @@ public class ParticleTrailManager {
 
     public static ParticleOptions getParticleForTitle(String title) {
         if (title == null) return null;
+        if (title.contains("釣聖")) return ParticleTypes.BUBBLE;
+        if (title.contains("釣魚高手")) return ParticleTypes.FISHING;
         if (title.contains("老玩家")) return ParticleTypes.WAX_ON;
         if (title.contains("百萬富翁")) return ParticleTypes.HAPPY_VILLAGER;
         if (title.contains("重鎚大師")) return ParticleTypes.WITCH;
@@ -132,6 +134,8 @@ public class ParticleTrailManager {
 
     public static String getParticleNameForTitle(String title) {
         if (title == null) return "無特效";
+        if (title.contains("釣聖")) return "海浪泡泡 (BUBBLE)";
+        if (title.contains("釣魚高手")) return "垂釣水波 (FISHING)";
         if (title.contains("老玩家")) return "黃金耀斑 (WAX_ON)";
         if (title.contains("百萬富翁")) return "閃耀綠寶石 (HAPPY_VILLAGER)";
         if (title.contains("重鎚大師")) return "女巫紫氣 (WITCH)";
