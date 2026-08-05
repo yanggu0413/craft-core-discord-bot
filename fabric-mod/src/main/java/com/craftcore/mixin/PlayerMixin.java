@@ -19,6 +19,14 @@ public abstract class PlayerMixin {
     @Inject(method = "hurtServer", at = @At("HEAD"), cancellable = true)
     private void onHurt(ServerLevel level, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
         Player player = (Player) (Object) this;
+        if (level.dimension().equals(com.craftcore.fish.FishingContestManager.FISHING_DIMENSION_KEY)) {
+            if (source.getEntity() instanceof ServerPlayer attacker) {
+                attacker.sendSystemMessage(Component.literal("§c[釣魚保護區] 釣魚專屬維度內強制 0 PvP！禁止玩家相互攻擊。"));
+            }
+            cir.setReturnValue(false);
+            return;
+        }
+
         if (AfkManager.isAfk(player)) {
             cir.setReturnValue(false); // Completely invulnerable when AFK
             return;

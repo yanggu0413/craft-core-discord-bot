@@ -100,6 +100,13 @@ public class FishingContestManager {
         boolean inFishingDim = player.level().dimension().equals(FISHING_DIMENSION_KEY);
 
         if (inFishingDim) {
+            if (player.getY() < -10.0) {
+                ServerLevel fishingLevel = (ServerLevel) player.level();
+                player.teleportTo(fishingLevel, 0.5, 65.0, 0.5, Set.of(), player.getYRot(), player.getXRot(), false);
+                player.playSound(SoundEvents.ENDERMAN_TELEPORT, 1.0f, 1.0f);
+                player.sendSystemMessage(Component.literal("§e🕳️ [虛空救援] 意外跌落虛空！已為您安全傳送回釣魚重生平台。"));
+            }
+
             if (!playersInFishingDimension.contains(uuid)) {
                 playersInFishingDimension.add(uuid);
                 // Apply infinite duration (level 255) status effects ONCE upon entering dimension
@@ -562,6 +569,7 @@ public class FishingContestManager {
         }
 
         updateHallOfFame(fish);
+        FishCodexManager.onCatchFish(player, fishName, lengthCm);
 
         ItemStack customFish = new ItemStack(itemType);
         customFish.set(DataComponents.CUSTOM_NAME, Component.literal("§6★ " + fishName));
@@ -759,9 +767,28 @@ public class FishingContestManager {
                 "§e[點擊查看歷史 Top 50 名人堂]"
         )));
 
-        // Slot 16: BossBar Toggle
+        // Slot 16: Fish Sell Shop
+        container.setItem(16, createGuiItem(Items.GOLD_NUGGET, "§a💰 奇幻售魚商店 (/fish sell)", List.of(
+                "§7底價 $20 + 長度 $0.3/cm + 重量 $0.4/kg",
+                "§7單條最高封頂可售出 $300 元金幣",
+                "",
+                "§e[左鍵點擊: 出售手持魚類]",
+                "§a[右鍵點擊: 一鍵全售背包內魚類]"
+        )));
+
+        // Slot 18: Fish Codex
+        int unlocked = FishCodexManager.getUnlockedCount(player.getUUID());
+        container.setItem(18, createGuiItem(Items.BOOK, "§b📖 奇幻魚類圖鑑冊 (/fish codex)", List.of(
+                "§7記錄 20 種奇幻魚類解鎖狀態與個人最大紀錄",
+                "§7當前進度: §e" + unlocked + " / 20",
+                "§7解鎖 100% 全圖鑑獲得稱號: §b[海王]",
+                "",
+                "§e[點擊開啟圖鑑冊]"
+        )));
+
+        // Slot 20: BossBar Toggle
         boolean bossBarVis = (bossBar != null && bossBar.getPlayers().contains(player));
-        container.setItem(16, createGuiItem(Items.COMPASS, "§e📊 BossBar 抬頭資訊 " + (bossBarVis ? "§a[已顯示]" : "§c[已隱藏]"), List.of(
+        container.setItem(20, createGuiItem(Items.COMPASS, "§e📊 BossBar 抬頭資訊 " + (bossBarVis ? "§a[已顯示]" : "§c[已隱藏]"), List.of(
                 "§7切換頂部大賽狀態與倒數 BossBar",
                 "",
                 "§e[點擊切換 BossBar 顯示]"
@@ -779,6 +806,16 @@ public class FishingContestManager {
                             if (slotId == 12) { openPartyGui(sp); return; }
                             if (slotId == 14) { openHallOfFameGui(sp); return; }
                             if (slotId == 16) {
+                                if (button == 1) { // Right click
+                                    FishSellManager.sellAllInventoryFish(sp);
+                                } else { // Left click
+                                    FishSellManager.sellHandheldFish(sp);
+                                }
+                                openFishGui(sp);
+                                return;
+                            }
+                            if (slotId == 18) { FishCodexManager.openCodexGui(sp); return; }
+                            if (slotId == 20) {
                                 if (bossBar != null) {
                                     if (bossBar.getPlayers().contains(sp)) bossBar.removePlayer(sp);
                                     else bossBar.addPlayer(sp);

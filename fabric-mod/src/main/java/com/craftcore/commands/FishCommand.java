@@ -29,6 +29,33 @@ public class FishCommand {
                             return 1;
                         })
                 )
+                .then(Commands.literal("sell")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player != null) {
+                                com.craftcore.fish.FishSellManager.sellHandheldFish(player);
+                            }
+                            return 1;
+                        })
+                        .then(Commands.literal("all")
+                                .executes(context -> {
+                                    ServerPlayer player = context.getSource().getPlayer();
+                                    if (player != null) {
+                                        com.craftcore.fish.FishSellManager.sellAllInventoryFish(player);
+                                    }
+                                    return 1;
+                                })
+                        )
+                )
+                .then(Commands.literal("codex")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player != null) {
+                                com.craftcore.fish.FishCodexManager.openCodexGui(player);
+                            }
+                            return 1;
+                        })
+                )
                 .then(Commands.literal("party")
                         .executes(context -> {
                             ServerPlayer player = context.getSource().getPlayer();
