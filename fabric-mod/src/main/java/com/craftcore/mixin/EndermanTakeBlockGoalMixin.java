@@ -16,19 +16,12 @@ public class EndermanTakeBlockGoalMixin {
 
     @Inject(method = "canUse", at = @At("HEAD"), cancellable = true)
     private void onCanUse(CallbackInfoReturnable<Boolean> cir) {
+        if (ClaimManager.isEmpty()) return;
         if (enderman != null && enderman.level() != null) {
             BlockPos pos = enderman.blockPosition();
-            for (int dx = -3; dx <= 3; dx++) {
-                for (int dy = -3; dy <= 3; dy++) {
-                    for (int dz = -3; dz <= 3; dz++) {
-                        BlockPos checkPos = pos.offset(dx, dy, dz);
-                        ClaimManager.Claim claim = ClaimManager.getClaimAt(checkPos, enderman.level());
-                        if (claim != null && claim.explosion_protection) {
-                            cir.setReturnValue(false);
-                            return;
-                        }
-                    }
-                }
+            ClaimManager.Claim claim = ClaimManager.getClaimAt(pos, enderman.level());
+            if (claim != null && claim.explosion_protection) {
+                cir.setReturnValue(false);
             }
         }
     }

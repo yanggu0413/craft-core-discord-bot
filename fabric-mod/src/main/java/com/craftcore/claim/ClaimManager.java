@@ -46,6 +46,30 @@ public class ClaimManager {
         public List<String> banned_players = new ArrayList<>();
         public Permissions permissions = new Permissions();
 
+        public transient int minX, maxX, minZ, maxZ;
+        public transient boolean boundsParsed = false;
+
+        public void parseBoundsIfNeeded() {
+            if (boundsParsed) return;
+            if (corners != null && corners.length >= 2) {
+                try {
+                    String[] c1 = corners[0].split(",");
+                    String[] c2 = corners[1].split(",");
+                    if (c1.length >= 3 && c2.length >= 3) {
+                        int x1 = Integer.parseInt(c1[0].trim());
+                        int z1 = Integer.parseInt(c1[2].trim());
+                        int x2 = Integer.parseInt(c2[0].trim());
+                        int z2 = Integer.parseInt(c2[2].trim());
+                        this.minX = Math.min(x1, x2);
+                        this.maxX = Math.max(x1, x2);
+                        this.minZ = Math.min(z1, z2);
+                        this.maxZ = Math.max(z1, z2);
+                        this.boundsParsed = true;
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
         public String getId() {
             return id;
         }
@@ -68,6 +92,7 @@ public class ClaimManager {
     private static Path configPath;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Map<String, Claim> claims = new ConcurrentHashMap<>();
+    private static final Map<String, List<Claim>> chunkToClaimsMap = new ConcurrentHashMap<>();
 
     // Temporary player selection cache
     public static final Map<String, BlockPos> playerCornerA = new ConcurrentHashMap<>();
@@ -183,6 +208,29 @@ public class ClaimManager {
         return next;
     }
 
+    public static boolean isEmpty() {
+        return claims.isEmpty();
+    }
+
+    public static synchronized void rebuildChunkIndex() {
+        chunkToClaimsMap.clear();
+        for (Claim claim : claims.values()) {
+            claim.parseBoundsIfNeeded();
+            if (!claim.boundsParsed) continue;
+            int minChunkX = claim.minX >> 4;
+            int maxChunkX = claim.maxX >> 4;
+            int minChunkZ = claim.minZ >> 4;
+            int maxChunkZ = claim.maxZ >> 4;
+
+            for (int cx = minChunkX; cx <= maxChunkX; cx++) {
+                for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
+                    String key = claim.dimension + ":" + cx + "," + cz;
+                    chunkToClaimsMap.computeIfAbsent(key, k -> new ArrayList<>()).add(claim);
+                }
+            }
+        }
+    }
+
     public static synchronized void load() {
         if (configPath != null && Files.exists(configPath)) {
             try (BufferedReader reader = Files.newBufferedReader(configPath)) {
@@ -194,6 +242,7 @@ public class ClaimManager {
                     }
                     claims.clear();
                     claims.putAll(loaded);
+                    rebuildChunkIndex();
                 }
             } catch (IOException e) {
                 System.err.println("[CraftCore] Failed to load claims: " + e.getMessage());
@@ -237,11 +286,13 @@ public class ClaimManager {
 
     public static synchronized void addClaim(Claim claim) {
         claims.put(claim.id, claim);
+        rebuildChunkIndex();
         save();
     }
 
     public static synchronized void removeClaim(String id) {
         claims.remove(id);
+        rebuildChunkIndex();
         save();
     }
 
@@ -267,30 +318,18 @@ public class ClaimManager {
 
     public static boolean doesIntersect(BlockPos a, BlockPos b, String dim, Claim existingClaim) {
         if (!existingClaim.dimension.equalsIgnoreCase(dim)) return false;
-        if (existingClaim.corners == null || existingClaim.corners.length < 2) return false;
+        existingClaim.parseBoundsIfNeeded();
+        if (!existingClaim.boundsParsed) return false;
 
-        String[] c1 = existingClaim.corners[0].split(",");
-        String[] c2 = existingClaim.corners[1].split(",");
-        if (c1.length < 3 || c2.length < 3) return false;
+        int newMinX = Math.min(a.getX(), b.getX());
+        int newMaxX = Math.max(a.getX(), b.getX());
+        int newMinZ = Math.min(a.getZ(), b.getZ());
+        int newMaxZ = Math.max(a.getZ(), b.getZ());
 
-        try {
-            int newMinX = Math.min(a.getX(), b.getX());
-            int newMaxX = Math.max(a.getX(), b.getX());
-            int newMinZ = Math.min(a.getZ(), b.getZ());
-            int newMaxZ = Math.max(a.getZ(), b.getZ());
+        boolean overlapX = newMinX <= existingClaim.maxX && newMaxX >= existingClaim.minX;
+        boolean overlapZ = newMinZ <= existingClaim.maxZ && newMaxZ >= existingClaim.minZ;
 
-            int exMinX = Math.min(Integer.parseInt(c1[0]), Integer.parseInt(c2[0]));
-            int exMaxX = Math.max(Integer.parseInt(c1[0]), Integer.parseInt(c2[0]));
-            int exMinZ = Math.min(Integer.parseInt(c1[2]), Integer.parseInt(c2[2]));
-            int exMaxZ = Math.max(Integer.parseInt(c1[2]), Integer.parseInt(c2[2]));
-
-            boolean overlapX = newMinX <= exMaxX && newMaxX >= exMinX;
-            boolean overlapZ = newMinZ <= exMaxZ && newMaxZ >= exMinZ;
-
-            return overlapX && overlapZ;
-        } catch (Exception e) {
-            return false;
-        }
+        return overlapX && overlapZ;
     }
 
     private static void checkSelection(ServerPlayer player, String username) {
@@ -430,31 +469,20 @@ public class ClaimManager {
     }
 
     public static Claim getClaimAt(BlockPos pos, Level world) {
+        if (claims.isEmpty() || pos == null || world == null) return null;
         String dim = world.dimension().identifier().toString();
         int px = pos.getX();
         int pz = pos.getZ();
+        int cx = px >> 4;
+        int cz = pz >> 4;
 
-        for (Claim claim : claims.values()) {
-            if (!claim.dimension.equals(dim)) continue;
-            String[] corners = claim.corners;
-            if (corners.length < 2) continue;
-
-            String[] c1 = corners[0].split(",");
-            String[] c2 = corners[1].split(",");
-            if (c1.length < 3 || c2.length < 3) continue;
-
-            int x1 = Integer.parseInt(c1[0]);
-            int z1 = Integer.parseInt(c1[2]);
-            int x2 = Integer.parseInt(c2[0]);
-            int z2 = Integer.parseInt(c2[2]);
-
-            int minX = Math.min(x1, x2);
-            int maxX = Math.max(x1, x2);
-            int minZ = Math.min(z1, z2);
-            int maxZ = Math.max(z1, z2);
-
-            if (px >= minX && px <= maxX && pz >= minZ && pz <= maxZ) {
-                return claim;
+        String key = dim + ":" + cx + "," + cz;
+        List<Claim> list = chunkToClaimsMap.get(key);
+        if (list != null && !list.isEmpty()) {
+            for (Claim claim : list) {
+                if (px >= claim.minX && px <= claim.maxX && pz >= claim.minZ && pz <= claim.maxZ) {
+                    return claim;
+                }
             }
         }
         return null;
