@@ -40,6 +40,7 @@ public class LockboxCommand {
                 )
                 .then(Commands.literal("grant")
                         .then(Commands.argument("target", StringArgumentType.word())
+                                .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
                                 .executes(context -> {
                                     ServerPlayer player = context.getSource().getPlayer();
                                     String target = StringArgumentType.getString(context, "target");

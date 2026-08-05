@@ -47,9 +47,8 @@ dispatcher.register(Commands.literal("shop")
                             .then(Commands.argument("coords", StringArgumentType.string())
 
                                     .then(Commands.argument("action", StringArgumentType.word())
-
+                                            .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(new String[]{"buy", "sell", "remove", "info"}, builder))
                                             .executes(ShopCommand::handleShopControl)
-
                                     )
 
                             )

@@ -136,6 +136,16 @@ public class ClaimCommand {
                     )
                     .then(Commands.literal("unban")
                             .then(Commands.argument("target", StringArgumentType.string())
+                                    .suggests((context, builder) -> {
+                                        ServerPlayer p = context.getSource().getPlayer();
+                                        if (p != null) {
+                                            ClaimManager.Claim c = ClaimManager.getClaimAt(p.blockPosition(), p.level());
+                                            if (c != null && c.banned_players != null && !c.banned_players.isEmpty()) {
+                                                return SharedSuggestionProvider.suggest(c.banned_players, builder);
+                                            }
+                                        }
+                                        return SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder);
+                                    })
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayer();
                                         if (player == null) return 0;

@@ -57,7 +57,9 @@ public class MachineCommand {
                         )
                         .then(Commands.literal("approve")
                                 .then(Commands.argument("id", StringArgumentType.string())
+                                        .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(MachineManager.getPendingMachines().stream().map(m -> m.id), builder))
                                         .then(Commands.argument("tier", StringArgumentType.string())
+                                                .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(new String[]{"T1", "T2", "T3"}, builder))
                                                 .executes(context -> {
                                                     String id = StringArgumentType.getString(context, "id");
                                                     String tier = StringArgumentType.getString(context, "tier");
@@ -75,6 +77,7 @@ public class MachineCommand {
                         )
                         .then(Commands.literal("reject")
                                 .then(Commands.argument("id", StringArgumentType.string())
+                                        .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(MachineManager.getPendingMachines().stream().map(m -> m.id), builder))
                                         .executes(context -> {
                                             String id = StringArgumentType.getString(context, "id");
                                             String adminName = context.getSource().getTextName();

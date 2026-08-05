@@ -43,6 +43,7 @@ public class ExpressCommand {
             )
             .then(Commands.literal("send")
                 .then(Commands.argument("recipient", StringArgumentType.word())
+                    .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder))
                     .executes(context -> {
                         ServerPlayer player = context.getSource().getPlayer();
                         if (player != null) {
