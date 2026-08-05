@@ -248,7 +248,7 @@ public class MenuGuiManager {
         )));
 
         // =========================================================
-        // 【橫排 4】 Row 5 (Slots 37, 39, 41, 43): 🤖 機器與工具控制
+        // 【橫排 4】 Row 5 (Slots 37, 39, 41, 43): 🤖 機器、外觀與工具控制
         // =========================================================
         container.setItem(37, createGuiItem(Items.ARMOR_STAND, "§f🤖 假人 (Bot) 控制台", List.of(
                 "§7一鍵召喚/解散假人、切換掛機動作",
@@ -264,8 +264,15 @@ public class MenuGuiManager {
                 "§e[點擊開啟機器認證子選單]"
         )));
 
+        container.setItem(41, createGuiItem(Items.NAME_TAG, "§d✨ 個人外觀裝扮中心", List.of(
+                "§7切換頭頂炫彩稱號與稱號炫彩粒子",
+                "§7展示個人專屬尊爵稱號與光環",
+                "",
+                "§e[點擊開啟外觀裝扮中心]"
+        )));
+
         if (isOp) {
-            container.setItem(41, createGuiItem(Items.BEACON, "§4🛠 管理員 (OP) 控制台", List.of(
+            container.setItem(43, createGuiItem(Items.BEACON, "§4🛠 管理員 (OP) 控制台", List.of(
                     "§c[OP 專屬權限]",
                     "§7全服玩家/假人背包與末影箱監看",
                     "§7機器認證審核、7z 地圖手動備份",
@@ -273,18 +280,12 @@ public class MenuGuiManager {
                     "§e[點擊開啟管理員主控台]"
             )));
         } else {
-            container.setItem(41, createGuiItem(Items.BOOK, "§e📖 伺服器指南說明", List.of(
+            container.setItem(43, createGuiItem(Items.BOOK, "§e📖 伺服器指南說明", List.of(
                     "§7獲取全服功能、指令與領地保護教學",
                     "",
                     "§e[點擊顯示線上文件網址]"
             )));
         }
-
-        container.setItem(43, createGuiItem(Items.BOOK, "§e📖 伺服器指南說明", List.of(
-                "§7點擊獲取線上玩家社群說明文件連結",
-                "",
-                "§e[點擊前往 https://docs.craft-core.xyz]"
-        )));
 
         // Row 6 (Slot 49): ❌ 關閉選單 (Col 5)
         container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此 GUI 介面")));
@@ -321,9 +322,11 @@ public class MenuGuiManager {
                             // 橫排 4 (Slots 37, 39, 41, 43)
                             else if (slotId == 37) openFakePlayerMenu(sp);
                             else if (slotId == 39) openMachineMenu(sp);
-                            else if (slotId == 43) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "mining"); return; }
-                            else if (slotId == 41) {
-                                if (server != null) {
+                            else if (slotId == 41) openCosmeticsMenu(sp);
+                            else if (slotId == 43) {
+                                if (isOp) {
+                                    openAdminMenu(sp);
+                                } else if (server != null) {
                                     sp.closeContainer();
                                     server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "help");
                                 }
@@ -335,74 +338,74 @@ public class MenuGuiManager {
     }
 
     // =========================================================
-    // 2. 福利中心 (Welfare Center 9x6 GUI)
+    // 2. 福利中心 (Welfare Center 9x3 GUI)
     // =========================================================
     public static void openWelfareCenterMenu(ServerPlayer player) {
         if (player == null) return;
         String username = player.getName().getString();
         int keys = EconomyManager.getLotteryKeys(username);
 
-        SimpleContainer container = new SimpleContainer(54);
+        SimpleContainer container = new SimpleContainer(27);
         fillBackground(container);
 
-        // Slot 13: 👤 個人福利帳號狀態
+        // Header Slot 4: 👤 個人福利帳號狀態
         ItemStack head = createPlayerHead(username);
         head.set(DataComponents.CUSTOM_NAME, Component.literal("§e👤 個人福利帳號狀態"));
         head.set(DataComponents.LORE, new ItemLore(List.of(
                 Component.literal("§7玩家名稱: §f" + username),
                 Component.literal("§7抽獎鑰匙: §e" + keys + " 把"),
                 Component.literal(""),
-                Component.literal("§a[可點擊下方按鈕進行簽到、時數兌換與大抽獎]")
+                Component.literal("§a[點擊進行簽到、時數兌換與大抽獎]")
         )));
-        container.setItem(13, head);
+        container.setItem(4, head);
 
-        // Slot 20: 📅 每日簽到
-        container.setItem(20, createGuiItem(Items.PAPER, "§a📅 每日簽到", List.of(
-                "§7簽到可獲得 $150 元金幣與 1 把鑰匙",
-                "§7連續簽到第 7 天可額外獲得 3 把鑰匙！",
+        // Slot 10: 📅 每日簽到月曆
+        container.setItem(10, createGuiItem(Items.PAPER, "§a📅 30 天每日簽到月曆", List.of(
+                "§7每日簽到獲得 $150 元金幣與 1 把鑰匙",
+                "§7第 7/14/21/30 天解鎖加碼里程碑禮包！",
                 "",
-                "§e[點擊進行每日簽到]"
+                "§e[點擊開啟 30 天簽到月曆 GUI]"
         )));
 
-        // Slot 22: ⌛ 遊戲時數兌換鑰匙
-        container.setItem(22, createGuiItem(Items.CLOCK, "§b⌛ 遊戲時數兌換鑰匙", List.of(
+        // Slot 12: ⌛ 遊戲時數兌換鑰匙
+        container.setItem(12, createGuiItem(Items.CLOCK, "§b⌛ 遊戲時數兌換鑰匙", List.of(
                 "§7累積在線時數每滿 5 小時",
                 "§7即可免費兌換 1 把幸運抽獎鑰匙",
                 "",
                 "§e[點擊兌換 1 把鑰匙 (消耗 5hr 時數)]"
         )));
 
-        // Slot 24: 🎰 幸運大抽獎
-        container.setItem(24, createGuiItem(Items.NETHER_STAR, "§d🎰 幸運大抽獎 (9x3 轉盤)", List.of(
+        // Slot 14: 🎰 幸運大抽獎
+        container.setItem(14, createGuiItem(Items.NETHER_STAR, "§d🎰 幸運大抽獎 (9x3 轉盤)", List.of(
                 "§7消耗 1 把抽獎鑰匙啟動 9x3 滾動轉盤",
                 "§7獎勵包含鑽石、獄髓錠、金蘋果與不死圖騰！",
                 "",
                 "§e[點擊進入幸運大抽獎 GUI]"
         )));
 
-        // Slot 26: 👑 頭頂炫彩稱號
-        container.setItem(26, createGuiItem(Items.NAME_TAG, "§c👑 頭頂炫彩稱號", List.of(
-                "§7查看與切換已解鎖的個人頭頂炫彩稱號",
+        // Slot 16: 🏆 全服排行榜
+        container.setItem(16, createGuiItem(Items.GOLD_BLOCK, "§6🏆 全服排行榜", List.of(
+                "§7查看財富排行榜、鑰匙排行榜",
+                "§7與連續簽到排行榜",
                 "",
-                "§e[點擊開啟頭頂稱號選單]"
+                "§e[點擊開啟排行榜 GUI]"
         )));
 
-        // Slot 45 返回主選單, Slot 49 關閉選單
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
-        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+        // Slot 22 返回主選單, Slot 26 關閉選單
+        container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(26, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x3, containerId, playerInventory, container, 3) {
                     @Override
                     public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
-                            if (slotId == 45) { openMainMenu(sp); return; }
-                            if (slotId == 49) { sp.closeContainer(); return; }
+                            if (slotId == 22) { openMainMenu(sp); return; }
+                            if (slotId == 26) { sp.closeContainer(); return; }
 
-                            if (slotId == 20) {
+                            if (slotId == 10) {
                                 openCheckInCalendarGui(sp);
-                                return;
-                            } else if (slotId == 22) {
+                            } else if (slotId == 12) {
                                 CraftCoreWSClient ws = CraftCoreMod.getWSClient();
                                 if (ws != null && ws.isAuthenticated()) {
                                     ws.send(new Packet("playtime_exchange", new PlaytimeExchangePayload(UUID.randomUUID().toString(), sp.getName().getString(), "single")));
@@ -410,14 +413,57 @@ public class MenuGuiManager {
                                 } else {
                                     sp.sendSystemMessage(Component.literal("§c[Craft-Core] WebSocket 服務暫未連線，請稍後再試。"));
                                 }
-                            } else if (slotId == 24) {
+                            } else if (slotId == 14) {
                                 openLuckyDrawGui(sp);
-                            } else if (slotId == 26) {
-                                openWelfareTitleMenu(sp);
+                            } else if (slotId == 16) {
+                                openLeaderboardMenu(sp, "wealth");
                             }
                         }
                     }
-                }, Component.literal("§1🎰 福利中心大廳")));
+                }, Component.literal("§8❖ 🎰 福利中心大廳 ❖")));
+    }
+
+    // =========================================================
+    // 2.1 個人外觀裝扮中心 (Cosmetics Center 9x3 GUI)
+    // =========================================================
+    public static void openCosmeticsMenu(ServerPlayer player) {
+        if (player == null) return;
+        SimpleContainer container = new SimpleContainer(27);
+        fillBackground(container);
+
+        container.setItem(4, createGuiItem(Items.NAME_TAG, "§d✨ 個人外觀裝扮中心", List.of(
+                "§7客製化頭頂稱號與炫彩粒子特效"
+        )));
+
+        // Slot 11: 👑 頭頂炫彩稱號
+        container.setItem(11, createGuiItem(Items.NAME_TAG, "§c👑 頭頂炫彩稱號", List.of(
+                "§7查看與切換已解鎖的個人頭頂炫彩稱號",
+                "",
+                "§e[點擊開啟頭頂稱號選單]"
+        )));
+
+        // Slot 15: ✨ 稱號炫彩粒子控制台
+        container.setItem(15, createGuiItem(Items.NETHER_STAR, "§e✨ 稱號炫彩粒子控制台 (/trail)", List.of(
+                "§7獨立自訂足跡、環繞光環、攻擊與放置粒子",
+                "",
+                "§e[點擊開啟粒子特效 GUI]"
+        )));
+
+        container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(26, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
+        player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x3, containerId, playerInventory, container, 3) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 22) { openMainMenu(sp); return; }
+                            if (slotId == 26) { sp.closeContainer(); return; }
+                            if (slotId == 11) openWelfareTitleMenu(sp);
+                            else if (slotId == 15) com.craftcore.trail.ParticleTrailManager.openTrailGui(sp);
+                        }
+                    }
+                }, Component.literal("§8❖ ✨ 個人外觀裝扮中心 ❖")));
     }
 
     public static void openCheckInCalendarGui(ServerPlayer player) {
@@ -1175,16 +1221,18 @@ public class MenuGuiManager {
     // =========================================================
     public static void openTaskBountyMenu(ServerPlayer player) {
         if (player == null) return;
-        SimpleContainer container = new SimpleContainer(54);
+        SimpleContainer container = new SimpleContainer(27);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
-        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+        container.setItem(4, createGuiItem(Items.DIAMOND_SWORD, "§6⚔ 任務與全服懸賞大目標中心", List.of(
+                "§7查看個人每日 AI 任務與全服冒險目標"
+        )));
 
-        container.setItem(20, createGuiItem(Items.BOOK, "§a⚔ 每日任務 (/tasks)", List.of(
-                "§7查看今日擊殺與挖掘任務",
+        container.setItem(11, createGuiItem(Items.BOOK, "§a⚔ 每日 AI 任務中心", List.of(
+                "§7查看與接取 Gemini AI 每日專屬任務",
+                "§7畫面上方 BossBar 即時追蹤任務進度",
                 "",
-                "§e[點擊執行 /tasks]"
+                "§e[點擊開啟每日 AI 任務 GUI]"
         )));
 
         GlobalGoalManager.GoalData goal = GlobalGoalManager.getCurrentGoal();
@@ -1204,28 +1252,23 @@ public class MenuGuiManager {
             goalLore.add("§a[點擊查看全服目標詳情]");
         }
 
-        container.setItem(22, createGuiItem(Items.GOLDEN_APPLE, "§e🌐 全服每週大目標 (/bounty)", goalLore));
+        container.setItem(15, createGuiItem(Items.GOLDEN_APPLE, "§e🌐 全服每週大目標 (/bounty)", goalLore));
 
-        String treasureHint = TreasureChestManager.getTreasureRadarHint(player);
-
-        container.setItem(24, createGuiItem(Items.FILLED_MAP, "§6🗺 野外藏寶圖線索", List.of(
-                treasureHint,
-                "",
-                "§e[點擊發送即時雷達線索]"
-        )));
+        container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(26, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
 
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x3, containerId, playerInventory, container, 3) {
                     @Override
                     public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             MinecraftServer server = sp.level().getServer();
                             if (server == null) return;
 
-                            if (slotId == 45) { openMainMenu(sp); return; }
-                            if (slotId == 49) { sp.closeContainer(); return; }
-                            if (slotId == 20) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "tasks"); return; }
-                            if (slotId == 22) {
+                            if (slotId == 22) { openMainMenu(sp); return; }
+                            if (slotId == 26) { sp.closeContainer(); return; }
+                            if (slotId == 11) { com.craftcore.task.AiDailyTaskManager.openTaskGui(sp); return; }
+                            if (slotId == 15) {
                                 if (goal.goalType == GlobalGoalManager.GoalType.SUBMIT_ITEMS) {
                                     GlobalGoalManager.submitHandItem(sp, 64);
                                 } else {
@@ -1234,10 +1277,9 @@ public class MenuGuiManager {
                                 }
                                 return;
                             }
-                            if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "treasure"); return; }
                         }
                     }
-                }, Component.literal("§1⚔ 任務與懸賞選單")));
+                }, Component.literal("§8❖ ⚔ 任務與懸賞中心 ❖")));
     }
 
     // =========================================================
@@ -1361,12 +1403,6 @@ public class MenuGuiManager {
                 "§a[點擊購買領地 (/claim)]"
         )));
 
-        container.setItem(16, createGuiItem(Items.DIAMOND_PICKAXE, "§6⛏️ 連鎖挖掘與砍樹控制台 (/vein)", List.of(
-                "§7設定、切換連鎖砍樹與連鎖採礦獨立開關",
-                "",
-                "§e[點擊開啟連鎖挖掘控制 GUI]"
-        )));
-
         container.setItem(26, createGuiItem(Items.TRIPWIRE_HOOK, "§6🔒 密碼箱控制台 (/padlock)", List.of(
                 "§7設定、修改或解鎖您正前方的箱子密碼鎖",
                 "",
@@ -1404,7 +1440,6 @@ public class MenuGuiManager {
                                 openClaimMenu(sp);
                                 return;
                             }
-                            if (slotId == 16) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "vein"); return; }
                             if (slotId == 24) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "claim"); return; }
                             if (slotId == 26) { sp.closeContainer(); server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "padlock"); return; }
 
@@ -1708,48 +1743,52 @@ public class MenuGuiManager {
 
     public static void openMachineMenu(ServerPlayer player) {
         if (player == null) return;
-        SimpleContainer container = new SimpleContainer(54);
+        SimpleContainer container = new SimpleContainer(27);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
-        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+        container.setItem(4, createGuiItem(Items.REDSTONE_BLOCK, "§6🏭 機器認證與免領地費", List.of(
+                "§7提交自動化機器認證申請與管理"
+        )));
 
-        // Slot 20: 📍 提交當前位置機器認證
-        container.setItem(20, createGuiItem(Items.REDSTONE_LAMP, "§a🏭 提交目前站立位置機器認證", List.of(
+        // Slot 11: 📍 提交當前位置機器認證
+        container.setItem(11, createGuiItem(Items.REDSTONE_LAMP, "§a🏭 提交目前站立位置機器認證", List.of(
                 "§7站在您的機器領地現場點擊即可快速提交！",
                 "§7管理者審核 T2/T3 後可享有 100% 免領地維護費",
                 "",
                 "§e[點擊一鍵提交申請]"
         )));
 
-        // Slot 24: 📜 查看我的機器認證狀態
-        container.setItem(24, createGuiItem(Items.BOOK, "§b📜 我的機器認證狀態列表", List.of(
+        // Slot 15: 📜 查看我的機器認證狀態
+        container.setItem(15, createGuiItem(Items.BOOK, "§b📜 我的機器認證狀態列表", List.of(
                 "§7查看您已提交的機器審核與獲批狀態",
                 "",
                 "§e[點擊查看已提交機器]"
         )));
 
+        container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(26, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x3, containerId, playerInventory, container, 3) {
                     @Override
                     public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
-                            if (slotId == 45) { openMainMenu(sp); return; }
-                            if (slotId == 49) { sp.closeContainer(); return; }
-                            if (slotId == 20) {
+                            if (slotId == 22) { openMainMenu(sp); return; }
+                            if (slotId == 26) { sp.closeContainer(); return; }
+                            if (slotId == 11) {
                                 String defaultName = "機器_" + sp.getBlockX() + "_" + sp.getBlockZ();
                                 String machineId = com.craftcore.machine.MachineManager.applyMachine(sp, defaultName);
                                 sp.sendSystemMessage(Component.literal("§a[Craft-Core] 🎉 已成功提交機器認證申請 (ID: " + machineId + ")！請等待管理員審核。"));
                                 sp.closeContainer();
                                 return;
                             }
-                            if (slotId == 24) {
+                            if (slotId == 15) {
                                 openMyMachinesMenu(sp);
                                 return;
                             }
                         }
                     }
-                }, Component.literal("§1🏭 機器認證選單")));
+                }, Component.literal("§8❖ 🏭 機器認證選單 ❖")));
     }
 
     public static void openMyMachinesMenu(ServerPlayer player) {
@@ -2064,46 +2103,50 @@ public class MenuGuiManager {
 
     public static void openDiscordMenu(ServerPlayer player) {
         if (player == null) return;
-        SimpleContainer container = new SimpleContainer(54);
+        SimpleContainer container = new SimpleContainer(27);
         fillBackground(container);
 
-        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
-        container.setItem(49, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+        container.setItem(4, createGuiItem(Items.DISPENSER, "§6💬 Discord 社群與帳號綁定", List.of(
+                "§7獲得邀請連結與 6 位數帳號綁定碼"
+        )));
 
-        container.setItem(20, createGuiItem(Items.DISPENSER, "§b🔗 官方 Discord 社群邀請連結", List.of(
+        container.setItem(11, createGuiItem(Items.DISPENSER, "§b🔗 官方 Discord 社群邀請連結", List.of(
                 "§7點擊在聊天欄開啟可直接點擊的邀請網址",
                 "",
                 "§e[點擊彈出邀請網址]"
         )));
 
-        container.setItem(24, createGuiItem(Items.NAME_TAG, "§6🔑 Discord 帳號綁定驗證碼 (/discord link)", List.of(
+        container.setItem(15, createGuiItem(Items.NAME_TAG, "§6🔑 Discord 帳號綁定驗證碼 (/discord link)", List.of(
                 "§7生成 6 位數驗證碼，至 Discord 私訊機器人綁定",
                 "§7完成綁定可獲得每日簽到與領取專屬禮包！",
                 "",
                 "§e[點擊生成 6 位數驗證碼]"
         )));
 
+        container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回主選單", List.of("§7點擊返回 /menu 大廳")));
+        container.setItem(26, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
         player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
-                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x3, containerId, playerInventory, container, 3) {
                     @Override
                     public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
                             MinecraftServer server = sp.level().getServer();
-                            if (slotId == 45) { openMainMenu(sp); return; }
-                            if (slotId == 49) { sp.closeContainer(); return; }
-                            if (slotId == 20 && server != null) {
+                            if (slotId == 22) { openMainMenu(sp); return; }
+                            if (slotId == 26) { sp.closeContainer(); return; }
+                            if (slotId == 11 && server != null) {
                                 sp.closeContainer();
                                 server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "discord");
                                 return;
                             }
-                            if (slotId == 24 && server != null) {
+                            if (slotId == 15 && server != null) {
                                 sp.closeContainer();
                                 server.getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "discord link");
                                 return;
                             }
                         }
                     }
-                }, Component.literal("§1💬 Discord 社群與帳號綁定")));
+                }, Component.literal("§8❖ 💬 Discord 社群與帳號綁定 ❖")));
     }
 
     public static void openPayPlayerSelectorMenu(ServerPlayer player) {
