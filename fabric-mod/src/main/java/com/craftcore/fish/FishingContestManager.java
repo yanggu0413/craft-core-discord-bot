@@ -215,27 +215,22 @@ public class FishingContestManager {
         double lengthCm;
         double weightKg;
 
-        if (rand < 0.05) { // 5% Secret Stale Mushroom
-            fishName = "服主羊咕掉落的發霉洋菇";
-            itemType = Items.RED_MUSHROOM;
-            lengthCm = 0.1;
-            weightKg = 0.01;
-        } else if (rand < 0.20) { // 15% Giant Squid
+        if (rand < 0.20) { // 20% Giant Squid
             fishName = "深海大王烏賊";
             itemType = Items.PUFFERFISH;
             lengthCm = 100.0 + Math.random() * 120.0;
             weightKg = 20.0 + Math.random() * 50.0;
-        } else if (rand < 0.45) { // 25% Gold Angel Fish
+        } else if (rand < 0.50) { // 30% Gold Angel Fish
             fishName = "黃金炫光神仙魚";
             itemType = Items.TROPICAL_FISH;
             lengthCm = 70.0 + Math.random() * 65.0;
             weightKg = 5.0 + Math.random() * 15.0;
-        } else if (rand < 0.70) { // 25% Salmon
+        } else if (rand < 0.75) { // 25% Salmon
             fishName = "巨型野生鮭魚";
             itemType = Items.SALMON;
             lengthCm = 45.0 + Math.random() * 40.0;
             weightKg = 3.0 + Math.random() * 8.0;
-        } else { // 30% Cod
+        } else { // 25% Cod
             fishName = "深海大馬哈魚";
             itemType = Items.COD;
             lengthCm = 20.0 + Math.random() * 45.0;
