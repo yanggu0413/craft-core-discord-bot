@@ -33,19 +33,48 @@ public class MiningDimensionManager {
         return MINING_DIMENSION_KEY;
     }
 
+    public static String getNextResetCountdownString() {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Taipei"));
+        ZonedDateTime nextReset = now.with(java.time.temporal.TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY))
+                .withHour(4).withMinute(0).withSecond(0).withNano(0);
+        if (now.isAfter(nextReset)) {
+            nextReset = nextReset.plusWeeks(1);
+        }
+        long durationMillis = java.time.Duration.between(now, nextReset).toMillis();
+        long days = TimeUnit.MILLISECONDS.toDays(durationMillis);
+        long hours = TimeUnit.MILLISECONDS.toHours(durationMillis) % 24;
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(durationMillis) % 60;
+        return String.format("%d 天 %d 小時 %d 分", days, hours, minutes);
+    }
+
     public static void startLoop(MinecraftServer server) {
         if (scheduler != null && !scheduler.isShutdown()) return;
         scheduler = Executors.newSingleThreadScheduledExecutor();
 
-        // Check for Monday 04:00 AM reset
+        // Check for Monday 04:00 AM reset and pre-warnings (10m, 5m, 1m)
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Taipei"));
+                if (now.getDayOfWeek() == DayOfWeek.MONDAY && now.getHour() == 3 && now.getMinute() == 50 && now.getSecond() < 10) {
+                    if (server != null) {
+                        server.execute(() -> server.getPlayerList().broadcastSystemMessage(Component.literal("§6[資源世界預告] 距離採礦世界 (craftcore:mining) 週自動重置倒數 10 分鐘！請在該世界玩家準備撤離！"), false));
+                    }
+                }
+                if (now.getDayOfWeek() == DayOfWeek.MONDAY && now.getHour() == 3 && now.getMinute() == 55 && now.getSecond() < 10) {
+                    if (server != null) {
+                        server.execute(() -> server.getPlayerList().broadcastSystemMessage(Component.literal("§6[資源世界預告] 距離採礦世界週自動重置倒數 5 分鐘！玩家將於重置時自動安全撤離！"), false));
+                    }
+                }
+                if (now.getDayOfWeek() == DayOfWeek.MONDAY && now.getHour() == 3 && now.getMinute() == 59 && now.getSecond() < 10) {
+                    if (server != null) {
+                        server.execute(() -> server.getPlayerList().broadcastSystemMessage(Component.literal("§c[資源世界預告] 距離採礦世界週自動重置剩餘 1 分鐘！即將執行撤離傳送！"), false));
+                    }
+                }
                 if (now.getDayOfWeek() == DayOfWeek.MONDAY && now.getHour() == 4 && now.getMinute() == 0 && now.getSecond() < 10) {
                     if (server != null) {
                         server.execute(() -> {
                             evacuatePlayers(server);
-                            server.getPlayerList().broadcastSystemMessage(Component.literal("§6[資源世界重置] 星期一凌晨 04:00！採礦世界已進行全服週自動重置與刷新！"), false);
+                            server.getPlayerList().broadcastSystemMessage(Component.literal("§6[資源世界重置] 星期一凌晨 04:00！採礦世界已完成全服週自動重置與安全撤離！"), false);
                         });
                     }
                 }

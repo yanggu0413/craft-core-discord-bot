@@ -128,7 +128,7 @@ public class WorldCommand {
         container.setItem(18, createGuiItem(Items.DIAMOND_PICKAXE, "§e⛏️ 資源採礦世界 (craftcore:mining)", List.of(
                 "§7維度: §fcraftcore:mining",
                 "§7自然 Overworld 地形、豐富礦脈與樹木",
-                "§7每次傳送自動隨機落點 (RTP)、每週重置",
+                "§7距離下次週重置倒數: §e" + MiningDimensionManager.getNextResetCountdownString(),
                 "",
                 "§e[點擊隨機傳送進入採礦世界]"
         )));

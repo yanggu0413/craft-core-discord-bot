@@ -28,7 +28,8 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.SimpleMenuProvider;
-
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MenuType;
@@ -183,7 +184,7 @@ public class MenuGuiManager {
                 "§7傳送至全服各個特製維度與世界",
                 "§7• 🌍 主世界 Spawn / 🔥 下界 / 🌌 終界",
                 "§7• 🎣 奇幻釣魚維度 (craftcore:fishing)",
-                "§7• ⛏️ 資源採礦世界 (craftcore:mining)",
+                "§7• ⛏️ 資源採礦世界 (倒數: " + com.craftcore.mining.MiningDimensionManager.getNextResetCountdownString() + ")",
                 "",
                 "§e[點擊開啟 /world 維度切換 GUI]"
         )));
@@ -399,13 +400,8 @@ public class MenuGuiManager {
                             if (slotId == 49) { sp.closeContainer(); return; }
 
                             if (slotId == 20) {
-                                CraftCoreWSClient ws = CraftCoreMod.getWSClient();
-                                if (ws != null && ws.isAuthenticated()) {
-                                    ws.send(new Packet("checkin_request", new CheckinRequestPayload(sp.getName().getString(), sp.getStringUUID())));
-                                    sp.sendSystemMessage(Component.literal("§b[Craft-Core] 已發送每日簽到請求..."));
-                                } else {
-                                    sp.sendSystemMessage(Component.literal("§c[Craft-Core] WebSocket 服務暫未連線，請稍後再試。"));
-                                }
+                                openCheckInCalendarGui(sp);
+                                return;
                             } else if (slotId == 22) {
                                 CraftCoreWSClient ws = CraftCoreMod.getWSClient();
                                 if (ws != null && ws.isAuthenticated()) {
@@ -422,6 +418,110 @@ public class MenuGuiManager {
                         }
                     }
                 }, Component.literal("§1🎰 福利中心大廳")));
+    }
+
+    public static void openCheckInCalendarGui(ServerPlayer player) {
+        if (player == null) return;
+        SimpleContainer container = new SimpleContainer(54);
+        fillBackground(container);
+
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Taipei"));
+        int currentDay = now.getDayOfMonth();
+        int daysInMonth = now.toLocalDate().lengthOfMonth();
+
+        String username = player.getName().getString();
+        int streak = 0;
+        int total = 0;
+
+        List<WelfareLeaderboardEntry> cachedStreaks = welfareLeaderboardCache.get("streaks");
+        if (cachedStreaks != null) {
+            for (WelfareLeaderboardEntry e : cachedStreaks) {
+                if (username.equalsIgnoreCase(e.mc_username) || username.equalsIgnoreCase(e.username)) {
+                    streak = e.checkin_streak;
+                    total = e.total_checkins;
+                    break;
+                }
+            }
+        }
+
+        // Header Slot 4
+        container.setItem(4, createGuiItem(Items.BOOK, "§6📅 30 天奇幻每日簽到月曆", List.of(
+                "§7當月份天數: §f" + daysInMonth + " 天",
+                "§7連續簽到天數: §a" + streak + " 天",
+                "§7累計簽到天數: §b" + total + " 天",
+                "§7每日簽到獎勵: §d$150 元 + 1 把抽獎鑰匙"
+        )));
+
+        // Slots 9 to 38 (30 days grid)
+        int slotStart = 9;
+        for (int day = 1; day <= 30; day++) {
+            int slot = slotStart + (day - 1);
+            if (slot >= 45) break;
+
+            if (day <= daysInMonth) {
+                if (day < currentDay) {
+                    container.setItem(slot, createGuiItem(getItem("minecraft:lime_stained_glass_pane"), "§a✔ 第 " + day + " 天 (已完成簽到)", List.of(
+                            "§7狀態: §a[已簽到]",
+                            "§7獎勵: $150 元 + 1 把鑰匙"
+                    )));
+                } else if (day == currentDay) {
+                    ItemStack todayItem = createGuiItem(Items.NETHER_STAR, "§e🌟 第 " + day + " 天 (今日可簽到！)", List.of(
+                            "§7狀態: §e[點擊完成今日簽到]",
+                            "§7立即領取: §d$150 元金幣 + 1 把抽獎鑰匙",
+                            "",
+                            "§a[點擊立即簽到]"
+                    ));
+                    todayItem.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+                    container.setItem(slot, todayItem);
+                } else {
+                    boolean isMilestone = (day == 7 || day == 14 || day == 21 || day == 30);
+                    if (isMilestone) {
+                        container.setItem(slot, createGuiItem(Items.CHEST, "§6🎁 第 " + day + " 天 (里程碑加碼禮包)", List.of(
+                                "§7狀態: §7[未來日期]",
+                                day == 7 ? "§e加碼獎勵: 抽獎鑰匙 +3 把" :
+                                day == 14 ? "§e加碼獎勵: 抽獎鑰匙 +3 把" :
+                                day == 21 ? "§e加碼獎勵: $1,000 元 + 鑰匙 +3 把" :
+                                "§6全滿勤解鎖: [我愛簽到] 稱號 + $1,500 元 + 鑰匙 +5 把"
+                        )));
+                    } else {
+                        container.setItem(slot, createGuiItem(getItem("minecraft:gray_stained_glass_pane"), "§7第 " + day + " 天 (未解鎖)", List.of(
+                                "§7狀態: §7[未來日期]"
+                        )));
+                    }
+                }
+            }
+        }
+
+        // Bottom Bar (45 to 53)
+        container.setItem(45, createGuiItem(Items.ARROW, "§a⬅ 返回福利中心", List.of("§7返回上一頁")));
+        container.setItem(49, createGuiItem(Items.EMERALD_BLOCK, "§a▶️ 一鍵完成今日簽到 (/checkin)", List.of(
+                "§7點擊直接發送簽到請求",
+                "",
+                "§a[點擊簽到]"
+        )));
+        container.setItem(53, createGuiItem(Items.BARRIER, "§c❌ 關閉選單", List.of("§7點擊關閉此介面")));
+
+        player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x6, containerId, playerInventory, container, 6) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 45) { openWelfareCenterMenu(sp); return; }
+                            if (slotId == 53) { sp.closeContainer(); return; }
+                            if (slotId == 49 || (slotId >= 9 && slotId <= 38 && (slotId - 9 + 1) == currentDay)) {
+                                CraftCoreWSClient ws = CraftCoreMod.getWSClient();
+                                if (ws != null && ws.isAuthenticated()) {
+                                    ws.send(new Packet("checkin_request", new CheckinRequestPayload(sp.getName().getString(), sp.getStringUUID())));
+                                    sp.sendSystemMessage(Component.literal("§b[Craft-Core] 已發送每日簽到請求..."));
+                                } else {
+                                    sp.sendSystemMessage(Component.literal("§c[Craft-Core] WebSocket 服務暫未連線，請稍後再試。"));
+                                }
+                                openCheckInCalendarGui(sp);
+                                return;
+                            }
+                        }
+                    }
+                }, Component.literal("§8❖ 📅 30 天奇幻每日簽到月曆 ❖")));
     }
 
     // =========================================================
@@ -1471,15 +1571,8 @@ public class MenuGuiManager {
                                 String targetName = null;
                                 if (name.startsWith("§a✔ 信任成員: ")) {
                                     targetName = name.replace("§a✔ 信任成員: ", "").trim();
-                                    if (claim.permissions != null) {
-                                        if (claim.permissions.build != null) claim.permissions.build.remove(targetName);
-                                        if (claim.permissions.breakBlocks != null) claim.permissions.breakBlocks.remove(targetName);
-                                        if (claim.permissions.containers != null) claim.permissions.containers.remove(targetName);
-                                        if (claim.permissions.interact != null) claim.permissions.interact.remove(targetName);
-                                    }
-                                    ClaimManager.save();
-                                    sp.sendSystemMessage(Component.literal("§a[領地] 已移除玩家 §e" + targetName + " §a的信任權限！"));
-                                    openClaimMembersGui(sp, claim);
+                                    openMemberPermissionsGui(sp, claim, targetName);
+                                    return;
                                 } else if (name.startsWith("§7👤 在線玩家: ")) {
                                     targetName = name.replace("§7👤 在線玩家: ", "").trim();
                                     if (claim.permissions == null) claim.permissions = new ClaimManager.Claim.Permissions();
@@ -1495,12 +1588,122 @@ public class MenuGuiManager {
 
                                     ClaimManager.save();
                                     sp.sendSystemMessage(Component.literal("§a[領地] 已將玩家 §e" + targetName + " §a加入信任成員名單！"));
-                                    openClaimMembersGui(sp, claim);
+                                    openMemberPermissionsGui(sp, claim, targetName);
+                                    return;
                                 }
                             }
                         }
                     }
                 }, Component.literal("§1👥 領地成員管理: " + (claim.name != null ? claim.name : claim.id))));
+    }
+
+    public static void openMemberPermissionsGui(ServerPlayer player, ClaimManager.Claim claim, String memberName) {
+        if (player == null || claim == null || memberName == null) return;
+        SimpleContainer container = new SimpleContainer(27);
+        fillBackground(container);
+
+        if (claim.permissions == null) claim.permissions = new ClaimManager.Claim.Permissions();
+        if (claim.permissions.build == null) claim.permissions.build = new ArrayList<>();
+        if (claim.permissions.breakBlocks == null) claim.permissions.breakBlocks = new ArrayList<>();
+        if (claim.permissions.containers == null) claim.permissions.containers = new ArrayList<>();
+        if (claim.permissions.interact == null) claim.permissions.interact = new ArrayList<>();
+
+        boolean canBuild = claim.permissions.build.contains(memberName);
+        boolean canBreak = claim.permissions.breakBlocks.contains(memberName);
+        boolean canContainers = claim.permissions.containers.contains(memberName);
+        boolean canInteract = claim.permissions.interact.contains(memberName);
+
+        // Header Slot 4
+        container.setItem(4, createGuiItem(Items.PLAYER_HEAD, "§6👤 成員細粒度權限設定: §e" + memberName, List.of(
+                "§7領地名稱: §f" + (claim.name != null ? claim.name : claim.id),
+                "§7獨立控制該成員在您領地內的細部行為權限"
+        )));
+
+        // Slot 10: Build
+        container.setItem(10, createGuiItem(Items.BRICKS, "§b🧱 放置方塊權限 " + (canBuild ? "§a[已授權]" : "§c[未授權]"), List.of(
+                "§7允許此成員在您的領地內放置方塊",
+                "",
+                "§e[點擊切換 放置方塊權限]"
+        )));
+
+        // Slot 12: Break
+        container.setItem(12, createGuiItem(Items.DIAMOND_PICKAXE, "§e⛏️ 破壞方塊權限 " + (canBreak ? "§a[已授權]" : "§c[未授權]"), List.of(
+                "§7允許此成員在您的領地內挖掘破壞方塊",
+                "",
+                "§e[點擊切換 破壞方塊權限]"
+        )));
+
+        // Slot 14: Containers
+        container.setItem(14, createGuiItem(Items.CHEST, "§a📦 開啟箱子與容器權限 " + (canContainers ? "§a[已授權]" : "§c[未授權]"), List.of(
+                "§7允許此成員開啟領地內的箱子、漏斗與熔爐",
+                "",
+                "§e[點擊切換 容器開啟權限]"
+        )));
+
+        // Slot 16: Interact
+        container.setItem(16, createGuiItem(Items.REDSTONE_TORCH, "§d🔴 紅石/門/按鈕互動權限 " + (canInteract ? "§a[已授權]" : "§c[未授權]"), List.of(
+                "§7允許此成員開關領地內的門、拉桿、按鈕",
+                "",
+                "§e[點擊切換 門與按鈕互動權限]"
+        )));
+
+        // Slot 22: Kick
+        container.setItem(22, createGuiItem(Items.BARRIER, "§c❌ 移除此成員所有權限", List.of(
+                "§7將玩家 §e" + memberName + " §7從領地信任名單完全踢除",
+                "",
+                "§c[點擊一鍵移除成員]"
+        )));
+
+        // Slot 26: Return
+        container.setItem(26, createGuiItem(Items.ARROW, "§a⬅ 返回成員列表", List.of("§7返回上一頁")));
+
+        player.openMenu(new SimpleMenuProvider((containerId, playerInventory, p) ->
+                new ReadOnlyMenuHandler(MenuType.GENERIC_9x3, containerId, playerInventory, container, 3) {
+                    @Override
+                    public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
+                        if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 26) { openClaimMembersGui(sp, claim); return; }
+                            if (slotId == 10) {
+                                if (canBuild) claim.permissions.build.remove(memberName);
+                                else claim.permissions.build.add(memberName);
+                                ClaimManager.save();
+                                openMemberPermissionsGui(sp, claim, memberName);
+                                return;
+                            }
+                            if (slotId == 12) {
+                                if (canBreak) claim.permissions.breakBlocks.remove(memberName);
+                                else claim.permissions.breakBlocks.add(memberName);
+                                ClaimManager.save();
+                                openMemberPermissionsGui(sp, claim, memberName);
+                                return;
+                            }
+                            if (slotId == 14) {
+                                if (canContainers) claim.permissions.containers.remove(memberName);
+                                else claim.permissions.containers.add(memberName);
+                                ClaimManager.save();
+                                openMemberPermissionsGui(sp, claim, memberName);
+                                return;
+                            }
+                            if (slotId == 16) {
+                                if (canInteract) claim.permissions.interact.remove(memberName);
+                                else claim.permissions.interact.add(memberName);
+                                ClaimManager.save();
+                                openMemberPermissionsGui(sp, claim, memberName);
+                                return;
+                            }
+                            if (slotId == 22) {
+                                claim.permissions.build.remove(memberName);
+                                claim.permissions.breakBlocks.remove(memberName);
+                                claim.permissions.containers.remove(memberName);
+                                claim.permissions.interact.remove(memberName);
+                                ClaimManager.save();
+                                sp.sendSystemMessage(Component.literal("§c[領地] 已成功移除玩家 §e" + memberName + " §c的所有信任權限！"));
+                                openClaimMembersGui(sp, claim);
+                                return;
+                            }
+                        }
+                    }
+                }, Component.literal("§8❖ ⚙️ 領地成員細粒度權限設定 ❖")));
     }
 
     public static void openMachineMenu(ServerPlayer player) {
