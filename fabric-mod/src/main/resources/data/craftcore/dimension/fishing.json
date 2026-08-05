@@ -4,7 +4,7 @@
     "type": "minecraft:flat",
     "settings": {
       "layers": [],
-      "biome": "minecraft:warm_ocean",
+      "biome": "minecraft:sunflower_plains",
       "structure_overrides": []
     }
   }
