@@ -1,6 +1,7 @@
 package com.craftcore;
 
 import com.craftcore.task.AiDailyTaskManager;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -9,6 +10,14 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class AiDailyTaskManagerTest {
+
+    @BeforeAll
+    public static void beforeAll() {
+        try {
+            net.minecraft.SharedConstants.tryDetectVersion();
+            net.minecraft.server.Bootstrap.bootStrap();
+        } catch (Throwable ignored) {}
+    }
 
     @Test
     public void testDailyTasksFallback() {

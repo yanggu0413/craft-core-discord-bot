@@ -25,6 +25,14 @@ public class LivingEntityMixin {
         }
     }
 
+    @Inject(method = "hurtServer", at = @At("HEAD"))
+    private void onEntityHurt(net.minecraft.server.level.ServerLevel level, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+        if (source.getEntity() instanceof net.minecraft.server.level.ServerPlayer attacker) {
+            LivingEntity target = (LivingEntity) (Object) this;
+            com.craftcore.trail.ParticleTrailManager.onPlayerAttack(attacker, target.getX(), target.getY(), target.getZ());
+        }
+    }
+
     @Inject(method = "isPushable", at = @At("HEAD"), cancellable = true)
     private void onIsPushable(CallbackInfoReturnable<Boolean> cir) {
         if ((Object) this instanceof Player player) {

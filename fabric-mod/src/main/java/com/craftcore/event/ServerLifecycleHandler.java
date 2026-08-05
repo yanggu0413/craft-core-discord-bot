@@ -44,6 +44,7 @@ public class ServerLifecycleHandler {
             com.craftcore.lottery.HourlyLotteryManager.startHourlyLoop(server);
             com.craftcore.treasure.TreasureChestManager.startLoop(server);
             com.craftcore.mushroom.MushroomManager.startLoop(server);
+            com.craftcore.trail.ParticleTrailManager.registerTickLoop();
         });
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {

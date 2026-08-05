@@ -511,6 +511,15 @@ public class ChestShopEventHandler {
 
         // 3. Right-click chest interaction
         UseBlockCallback.EVENT.register(ChestShopEventHandler::handleUseBlock);
+        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+            if (!world.isClientSide() && player instanceof ServerPlayer sp) {
+                if (sp.getItemInHand(hand).getItem() instanceof net.minecraft.world.item.BlockItem) {
+                    BlockPos p = hitResult.getBlockPos().relative(hitResult.getDirection());
+                    com.craftcore.trail.ParticleTrailManager.onBlockPlace(sp, p.getX(), p.getY(), p.getZ());
+                }
+            }
+            return InteractionResult.PASS;
+        });
 
         // 4. Chat message interception
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {

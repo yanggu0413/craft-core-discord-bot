@@ -23,6 +23,7 @@ public class ModCommands {
             HelpCommand.register(dispatcher);
             CheckCommand.register(dispatcher);
             TaskCommand.register(dispatcher);
+            TrailCommand.register(dispatcher);
         });
     }
 }
