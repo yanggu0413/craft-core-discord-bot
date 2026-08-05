@@ -62,19 +62,22 @@ const FALLBACK_TASKS = [
 ];
 
 const AI_TASK_PROMPT = `你是 Minecraft 26.2 伺服器「Craft-Core」的每日任務生成助手。
-請生成 5 個有趣的 Minecraft 每日任務。
+請生成 5 個有趣且對玩家實際可操作、合理的 Minecraft 每日任務。
 
 【規範要求】：
 1. 任務類型只能是以下 6 種之一：
-   - "MINE": 挖掘指定方塊 (例: minecraft:diamond_ore, minecraft:iron_ore, minecraft:stone, minecraft:deepslate_coal_ore)
+   - "MINE": 挖掘指定常規方塊 (例: minecraft:coal_ore, minecraft:iron_ore, minecraft:copper_ore, minecraft:stone, minecraft:oak_log)
    - "KILL": 擊殺指定怪物/生物 (例: minecraft:zombie, minecraft:skeleton, minecraft:spider, minecraft:creeper)
-   - "CRAFT": 合成指定物品 (例: minecraft:bread, minecraft:torch, minecraft:golden_apple, minecraft:iron_ingot)
+   - "CRAFT": 合成指定常規物品 (例: minecraft:bread, minecraft:torch, minecraft:iron_ingot, minecraft:oak_planks)
    - "FISH": 釣起指定魚類/物品 (例: minecraft:cod, minecraft:salmon, minecraft:tropical_fish)
    - "PLACE": 擺放指定方塊 (例: minecraft:glass, minecraft:oak_planks, minecraft:cobblestone)
    - "EARN": 累積獲得指定金幣 (例: target: craftcore:money, amount: 500~2000)
-2. 圖標 icon 必須是有效的 Minecraft 物品 Identifier（如 minecraft:diamond_ore）。
-3. 獎勵 reward_money 請給 200~1000 之間的合理數字，reward_keys 請給 1~3 把。
-4. 請務必且只能返回嚴格合法的 JSON 格式，不要包含任何 Markdown 格式化文字（不要包含 \`\`\`json 等標記）。
+2. 【目標合理性鐵則】：
+   - 嚴禁要求極端稀有或極難獲得的方塊（如: minecraft:deepslate_coal_ore, minecraft:emerald_ore, minecraft:ancient_debris, 生怪磚等）。
+   - 挖掘 MINE 請優先選擇一般常見礦石（煤礦、鐵礦、銅礦）或木材/石頭。數量請設定在合理區間（礦石 16~32 個，石頭/木材 32~64 個）。
+3. 圖標 icon 必須是有效的 Minecraft 物品 Identifier（如 minecraft:iron_ore）。
+4. 獎勵 reward_money 請給 200~1000 之間的合理數字，reward_keys 請給 1~3 把。
+5. 請務必且只能返回嚴格合法的 JSON 格式，不要包含任何 Markdown 格式化文字（不要包含 \`\`\`json 等標記）。
 
 【返回 JSON 結構】：
 {
@@ -84,11 +87,11 @@ const AI_TASK_PROMPT = `你是 Minecraft 26.2 伺服器「Craft-Core」的每日
       "title": "任務標題",
       "description": "簡短敘述",
       "type": "MINE",
-      "target": "minecraft:diamond_ore",
+      "target": "minecraft:iron_ore",
       "amount": 16,
       "reward_money": 500,
       "reward_keys": 2,
-      "icon": "minecraft:diamond_ore"
+      "icon": "minecraft:iron_ore"
     }
   ]
 }`;
