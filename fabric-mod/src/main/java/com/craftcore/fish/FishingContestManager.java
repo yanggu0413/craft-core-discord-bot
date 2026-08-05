@@ -167,6 +167,15 @@ public class FishingContestManager {
 
         ServerLevel fishingLevel = server.getLevel(FISHING_DIMENSION_KEY);
         if (fishingLevel == null) {
+            for (ServerLevel sl : server.getAllLevels()) {
+                if (sl.dimension().identifier().toString().equals("craftcore:fishing")) {
+                    fishingLevel = sl;
+                    break;
+                }
+            }
+        }
+
+        if (fishingLevel == null) {
             player.sendSystemMessage(Component.literal("§c[釣魚系統] 釣魚維度 craftcore:fishing 正在加載中，請稍後再試！"));
             return;
         }

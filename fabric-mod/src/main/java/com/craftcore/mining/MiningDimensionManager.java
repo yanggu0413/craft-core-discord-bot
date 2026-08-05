@@ -62,6 +62,15 @@ public class MiningDimensionManager {
 
         ServerLevel miningLevel = server.getLevel(MINING_DIMENSION_KEY);
         if (miningLevel == null) {
+            for (ServerLevel sl : server.getAllLevels()) {
+                if (sl.dimension().identifier().toString().equals("craftcore:mining")) {
+                    miningLevel = sl;
+                    break;
+                }
+            }
+        }
+
+        if (miningLevel == null) {
             player.sendSystemMessage(Component.literal("§c[資源世界] 採礦世界 craftcore:mining 正在加載中，請稍後再試！"));
             return;
         }
