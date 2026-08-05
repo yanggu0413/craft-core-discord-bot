@@ -91,8 +91,9 @@ public class WorldCommand {
             container.setItem(i, glass);
         }
 
-        // Slot 10: Overworld
-        container.setItem(10, createGuiItem(Items.GRASS_BLOCK, "§a🌍 主世界 Spawn (Overworld)", List.of(
+        // Middle Row (Row 1): 5 Dimensions centered at slots 11, 12, 13, 14, 15
+        // Slot 11: Overworld
+        container.setItem(11, createGuiItem(Items.GRASS_BLOCK, "§a🌍 主世界 Spawn (Overworld)", List.of(
                 "§7維度: §fminecraft:overworld",
                 "§7全服主要玩家城鎮與建築圈地",
                 "",
@@ -107,25 +108,16 @@ public class WorldCommand {
                 "§c[點擊傳送至下界]"
         )));
 
-        // Slot 14: End
-        container.setItem(14, createGuiItem(Items.END_STONE, "§d🌌 終界 (The End)", List.of(
+        // Slot 13: End
+        container.setItem(13, createGuiItem(Items.END_STONE, "§d🌌 終界 (The End)", List.of(
                 "§7維度: §fminecraft:the_end",
                 "§7終界島嶼、紫頌果與鞘翅冒險",
                 "",
                 "§d[點擊傳送至終界]"
         )));
 
-        // Slot 16: Fishing Dimension
-        container.setItem(16, createGuiItem(Items.FISHING_ROD, "§b🎣 奇幻釣魚維度 (craftcore:fishing)", List.of(
-                "§7維度: §fcraftcore:fishing",
-                "§7全虛空背景、100% 奇幻 NBT 魚類",
-                "§70 PvP 安全保護、無限 255 BUFF",
-                "",
-                "§b[點擊傳送進入釣魚維度]"
-        )));
-
-        // Slot 18: Mining Dimension
-        container.setItem(18, createGuiItem(Items.DIAMOND_PICKAXE, "§e⛏️ 資源採礦世界 (craftcore:mining)", List.of(
+        // Slot 14: Mining Dimension
+        container.setItem(14, createGuiItem(Items.DIAMOND_PICKAXE, "§e⛏️ 資源採礦世界 (craftcore:mining)", List.of(
                 "§7維度: §fcraftcore:mining",
                 "§7自然 Overworld 地形、豐富礦脈與樹木",
                 "§7距離下次週重置倒數: §e" + MiningDimensionManager.getNextResetCountdownString(),
@@ -133,15 +125,24 @@ public class WorldCommand {
                 "§e[點擊隨機傳送進入採礦世界]"
         )));
 
-        // Slot 26: Return to /menu
-        container.setItem(26, createGuiItem(Items.ARROW, "§a⬅ 返回 /menu 主選單", List.of("§7點擊返回大廳")));
+        // Slot 15: Fishing Dimension
+        container.setItem(15, createGuiItem(Items.FISHING_ROD, "§b🎣 奇幻釣魚維度 (craftcore:fishing)", List.of(
+                "§7維度: §fcraftcore:fishing",
+                "§7全虛空背景、100% 奇幻 NBT 魚類",
+                "§70 PvP 安全保護、無限 255 BUFF",
+                "",
+                "§b[點擊傳送進入釣魚維度]"
+        )));
+
+        // Slot 22: Return to /menu (Centered in Bottom Row)
+        container.setItem(22, createGuiItem(Items.ARROW, "§a⬅ 返回 /menu 主選單", List.of("§7點擊返回大廳選單")));
 
         player.openMenu(new SimpleMenuProvider((syncId, inv, p) ->
                 new ReadOnlyWorldMenuHandler(MenuType.GENERIC_9x3, syncId, inv, container, 3) {
                     @Override
                     public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
-                            if (slotId == 10) {
+                            if (slotId == 11) {
                                 ServerLevel overworld = server.getLevel(Level.OVERWORLD);
                                 if (overworld != null) {
                                     sp.closeContainer();
@@ -163,7 +164,7 @@ public class WorldCommand {
                                 }
                                 return;
                             }
-                            if (slotId == 14) {
+                            if (slotId == 13) {
                                 ServerLevel end = server.getLevel(Level.END);
                                 if (end != null) {
                                     sp.closeContainer();
@@ -174,17 +175,17 @@ public class WorldCommand {
                                 }
                                 return;
                             }
-                            if (slotId == 16) {
-                                sp.closeContainer();
-                                FishingContestManager.teleportToFishingDimension(sp);
-                                return;
-                            }
-                            if (slotId == 18) {
+                            if (slotId == 14) {
                                 sp.closeContainer();
                                 MiningDimensionManager.randomTeleportToMiningDimension(sp);
                                 return;
                             }
-                            if (slotId == 26) {
+                            if (slotId == 15) {
+                                sp.closeContainer();
+                                FishingContestManager.teleportToFishingDimension(sp);
+                                return;
+                            }
+                            if (slotId == 22 || slotId == 26) {
                                 com.craftcore.menu.MenuGuiManager.openMainMenu(sp);
                                 return;
                             }
