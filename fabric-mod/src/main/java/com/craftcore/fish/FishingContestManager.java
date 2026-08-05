@@ -396,6 +396,10 @@ public class FishingContestManager {
             host.sendSystemMessage(Component.literal("§c[釣魚組隊] 您不是房主，無法開啟比賽！"));
             return;
         }
+        if (match.members.size() < 2) {
+            host.sendSystemMessage(Component.literal("§c[釣魚組隊] 房間人數不足！組隊對抗比賽至少需要 2 人以上才能開啟！（單人請使用 /fish solo 悠閒模式）"));
+            return;
+        }
         match.active = true;
         match.endTime = System.currentTimeMillis() + (match.durationMinutes * 60 * 1000L);
         for (UUID memberUuid : match.members) {
