@@ -45,13 +45,4 @@ public class LevelMixin {
             }
         }
     }
-
-    @Inject(method = "getDayTime", at = @At("HEAD"), cancellable = true)
-    private void onGetDayTime(CallbackInfoReturnable<Long> cir) {
-        Level level = (Level) (Object) this;
-        String dim = level.dimension().identifier().toString();
-        if ("craftcore:fishing".equals(dim) || "craftcore:mining".equals(dim)) {
-            cir.setReturnValue(6000L); // Eternal noon (12:00 PM)
-        }
-    }
 }
