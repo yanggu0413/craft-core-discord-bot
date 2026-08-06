@@ -17,7 +17,8 @@ public class ServerLevelMixin {
     @Inject(method = "addFreshEntity", at = @At("HEAD"), cancellable = true)
     private void onAddFreshEntity(Entity entity, CallbackInfoReturnable<Boolean> cir) {
         ServerLevel level = (ServerLevel) (Object) this;
-        if (level.dimension().equals(FishingContestManager.FISHING_DIMENSION_KEY)) {
+        String dim = level.dimension().identifier().toString();
+        if ("craftcore:fishing".equals(dim) || "craftcore:lobby".equals(dim)) {
             if (entity instanceof Mob || entity instanceof WitherBoss) {
                 cir.setReturnValue(false);
             }

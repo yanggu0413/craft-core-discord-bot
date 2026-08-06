@@ -489,9 +489,12 @@ public class ClaimManager {
     }
 
     public static boolean checkPermission(ServerPlayer player, BlockPos pos, Level world, String type) {
-        if (world != null && world.dimension().identifier().toString().equals("craftcore:fishing")) {
-            boolean isOp = player.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);
-            if (!isOp) return false;
+        if (world != null) {
+            String dim = world.dimension().identifier().toString();
+            if ("craftcore:fishing".equals(dim) || "craftcore:lobby".equals(dim)) {
+                boolean isOp = player.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);
+                if (!isOp) return false;
+            }
         }
 
         Claim claim = getClaimAt(pos, world);

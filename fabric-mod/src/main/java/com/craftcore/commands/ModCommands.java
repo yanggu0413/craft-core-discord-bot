@@ -29,6 +29,7 @@ public class ModCommands {
             VeinCommand.register(dispatcher);
             MiningCommand.register(dispatcher);
             WorldCommand.register(dispatcher);
+            LobbyCommand.register(dispatcher);
         });
     }
 }

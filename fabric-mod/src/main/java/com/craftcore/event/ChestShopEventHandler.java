@@ -113,8 +113,11 @@ public class ChestShopEventHandler {
         }
 
         if (!ClaimManager.checkPermission((ServerPlayer) player, pos, world, "break")) {
-            if (world.dimension().identifier().toString().equals("craftcore:fishing")) {
+            String dim = world.dimension().identifier().toString();
+            if ("craftcore:fishing".equals(dim)) {
                 player.sendSystemMessage(Component.literal("§c[釣魚維度] 釣魚世界受保護，非 OP 服主無法破壞地形！"));
+            } else if ("craftcore:lobby".equals(dim)) {
+                player.sendSystemMessage(Component.literal("§c[大廳維度] 全服大廳受保護，非 OP 服主無法破壞地形！"));
             } else {
                 player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有破壞方塊的權限！"));
             }
@@ -274,8 +277,11 @@ public class ChestShopEventHandler {
         }
 
         if (!ClaimManager.checkPermission((ServerPlayer) player, pos, world, "break")) {
-            if (world.dimension().identifier().toString().equals("craftcore:fishing")) {
+            String dim = world.dimension().identifier().toString();
+            if ("craftcore:fishing".equals(dim)) {
                 player.sendSystemMessage(Component.literal("§c[釣魚維度] 釣魚世界受保護，非 OP 服主無法破壞地形！"));
+            } else if ("craftcore:lobby".equals(dim)) {
+                player.sendSystemMessage(Component.literal("§c[大廳維度] 全服大廳受保護，非 OP 服主無法破壞地形！"));
             } else {
                 player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有破壞方塊的權限！"));
             }
@@ -362,10 +368,11 @@ public class ChestShopEventHandler {
             return InteractionResult.PASS;
         }
 
-        if (world.dimension().identifier().toString().equals("craftcore:fishing")) {
+        String dimId = world.dimension().identifier().toString();
+        if ("craftcore:fishing".equals(dimId) || "craftcore:lobby".equals(dimId)) {
             if (player instanceof ServerPlayer sp && !isOp(sp)) {
                 if (!heldItem.isEmpty() && (heldItem.getItem() instanceof net.minecraft.world.item.BlockItem || heldItem.is(net.minecraft.world.item.Items.LAVA_BUCKET) || heldItem.is(net.minecraft.world.item.Items.WATER_BUCKET) || heldItem.is(net.minecraft.world.item.Items.FLINT_AND_STEEL))) {
-                    sp.sendSystemMessage(Component.literal("§c[釣魚維度] 釣魚世界受保護，非 OP 服主無法放置方塊或液體！"));
+                    sp.sendSystemMessage(Component.literal("§c[世界保護] 該維度受保護，非 OP 服主無法放置方塊或液體！"));
                     return InteractionResult.FAIL;
                 }
             }

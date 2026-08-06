@@ -47,6 +47,7 @@ public class ServerLifecycleHandler {
             com.craftcore.trail.ParticleTrailManager.registerTickLoop();
             com.craftcore.fish.FishingContestManager.startLoop(server);
             com.craftcore.mining.MiningDimensionManager.startLoop(server);
+            com.craftcore.lobby.LobbyDimensionManager.startLoop(server);
         });
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {

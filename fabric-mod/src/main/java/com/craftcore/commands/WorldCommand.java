@@ -91,7 +91,15 @@ public class WorldCommand {
             container.setItem(i, glass);
         }
 
-        // Middle Row (Row 1): 5 Dimensions centered at slots 11, 12, 13, 14, 15
+        // Middle Row (Row 1): 6 Dimensions at slots 10, 11, 12, 13, 14, 15
+        // Slot 10: Lobby Dimension
+        container.setItem(10, createGuiItem(Items.BEACON, "§e🏰 全服大廳 (craftcore:lobby)", List.of(
+                "§7維度: §fcraftcore:lobby",
+                "§7全服中央大廳與設施傳送樞紐",
+                "",
+                "§a[點擊傳送進入大廳世界]"
+        )));
+
         // Slot 11: Overworld
         container.setItem(11, createGuiItem(Items.GRASS_BLOCK, "§a🌍 主世界 Spawn (Overworld)", List.of(
                 "§7維度: §fminecraft:overworld",
@@ -142,6 +150,11 @@ public class WorldCommand {
                     @Override
                     public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
+                            if (slotId == 10) {
+                                sp.closeContainer();
+                                com.craftcore.lobby.LobbyDimensionManager.teleportToLobby(sp);
+                                return;
+                            }
                             if (slotId == 11) {
                                 ServerLevel overworld = server.getLevel(Level.OVERWORLD);
                                 if (overworld != null) {
