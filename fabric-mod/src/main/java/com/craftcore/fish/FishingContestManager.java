@@ -237,16 +237,6 @@ public class FishingContestManager {
             return;
         }
 
-        // Ensure safe spawn platform at (28, 99, 56)
-        net.minecraft.core.BlockPos center = new net.minecraft.core.BlockPos(28, 99, 56);
-        if (fishingLevel.getBlockState(center).isAir()) {
-            for (int x = 28 - 2; x <= 28 + 2; x++) {
-                for (int z = 56 - 2; z <= 56 + 2; z++) {
-                    fishingLevel.setBlock(new net.minecraft.core.BlockPos(x, 99, z), Blocks.SMOOTH_QUARTZ.defaultBlockState(), 3);
-                }
-            }
-        }
-
         player.teleportTo(fishingLevel, 28.5, 100.0, 56.5, Set.of(), player.getYRot(), player.getXRot(), false);
         player.playSound(SoundEvents.ENDERMAN_TELEPORT, 1.0f, 1.0f);
         player.sendSystemMessage(Component.literal("§a🌊 [釣魚大廳] 成功傳送至專屬釣魚虛空維度 (craftcore:fishing)！"));
@@ -270,6 +260,14 @@ public class FishingContestManager {
                     server.execute(() -> {
                         ServerLevel fishingLevel = server.getLevel(FISHING_DIMENSION_KEY);
                         if (fishingLevel != null) {
+                            for (ServerPlayer sp : fishingLevel.players()) {
+                                if (sp.getY() < -10) {
+                                    sp.fallDistance = 0.0f;
+                                    sp.teleportTo(fishingLevel, 28.5, 100.0, 56.5, Set.of(), sp.getYRot(), sp.getXRot(), false);
+                                    sp.sendSystemMessage(Component.literal("§a🌊 [虛空救援] 您已掉落虛空！已安全將您救回釣魚大廳出生點 (28, 100, 56)！"));
+                                    sp.playSound(SoundEvents.ENDERMAN_TELEPORT, 1.0f, 1.2f);
+                                }
+                            }
                             net.minecraft.world.level.saveddata.WeatherData wd = fishingLevel.getWeatherData();
                             if (wd != null && (wd.isRaining() || wd.isThundering())) {
                                 wd.setRaining(false);
