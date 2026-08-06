@@ -237,24 +237,17 @@ public class FishingContestManager {
             return;
         }
 
-        // Ensure safe spawn platform at (0, 64, 0)
-        net.minecraft.core.BlockPos center = new net.minecraft.core.BlockPos(0, 64, 0);
+        // Ensure safe spawn platform at (28, 99, 56)
+        net.minecraft.core.BlockPos center = new net.minecraft.core.BlockPos(28, 99, 56);
         if (fishingLevel.getBlockState(center).isAir()) {
-            for (int x = -2; x <= 2; x++) {
-                for (int z = -2; z <= 2; z++) {
-                    fishingLevel.setBlock(new net.minecraft.core.BlockPos(x, 64, z), Blocks.SMOOTH_QUARTZ.defaultBlockState(), 3);
-                }
-            }
-            // Add water pool for fishing testing around platform
-            for (int x = -5; x <= 5; x++) {
-                for (int z = 3; z <= 8; z++) {
-                    fishingLevel.setBlock(new net.minecraft.core.BlockPos(x, 64, z), Blocks.WATER.defaultBlockState(), 3);
-                    fishingLevel.setBlock(new net.minecraft.core.BlockPos(x, 63, z), Blocks.PRISMARINE.defaultBlockState(), 3);
+            for (int x = 28 - 2; x <= 28 + 2; x++) {
+                for (int z = 56 - 2; z <= 56 + 2; z++) {
+                    fishingLevel.setBlock(new net.minecraft.core.BlockPos(x, 99, z), Blocks.SMOOTH_QUARTZ.defaultBlockState(), 3);
                 }
             }
         }
 
-        player.teleportTo(fishingLevel, 0.5, 65.0, 0.5, Set.of(), player.getYRot(), player.getXRot(), false);
+        player.teleportTo(fishingLevel, 28.5, 100.0, 56.5, Set.of(), player.getYRot(), player.getXRot(), false);
         player.playSound(SoundEvents.ENDERMAN_TELEPORT, 1.0f, 1.0f);
         player.sendSystemMessage(Component.literal("§a🌊 [釣魚大廳] 成功傳送至專屬釣魚虛空維度 (craftcore:fishing)！"));
     }
