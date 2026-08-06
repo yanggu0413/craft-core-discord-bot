@@ -729,34 +729,64 @@ public class FishingContestManager {
             }
         }
 
-        // Generate Fantasy NBT Fish
-        int index = (int) (Math.random() * 20);
+        // Generate Weighted Rarity Fantasy NBT Fish
+        double roll = Math.random();
+        String rarityTag;
         String fishName;
         Item itemType;
         double lengthCm;
         double weightKg;
 
-        switch (index) {
-            case 0 -> { fishName = "遠古巨齒鯊幼崽"; itemType = Items.TROPICAL_FISH; lengthCm = 150.0 + Math.random() * 100.0; weightKg = 80.0 + Math.random() * 70.0; }
-            case 1 -> { fishName = "深淵紫焰海龍"; itemType = Items.PUFFERFISH; lengthCm = 120.0 + Math.random() * 90.0; weightKg = 50.0 + Math.random() * 60.0; }
-            case 2 -> { fishName = "炫彩幻光水母"; itemType = Items.SALMON; lengthCm = 80.0 + Math.random() * 70.0; weightKg = 20.0 + Math.random() * 30.0; }
-            case 3 -> { fishName = "黃金璀璨大旗魚"; itemType = Items.COD; lengthCm = 140.0 + Math.random() * 110.0; weightKg = 70.0 + Math.random() * 80.0; }
-            case 4 -> { fishName = "翡翠毒刺河豚"; itemType = Items.PUFFERFISH; lengthCm = 40.0 + Math.random() * 45.0; weightKg = 10.0 + Math.random() * 15.0; }
-            case 5 -> { fishName = "烈焰熔岩翻車魚"; itemType = Items.COOKED_SALMON; lengthCm = 130.0 + Math.random() * 90.0; weightKg = 90.0 + Math.random() * 110.0; }
-            case 6 -> { fishName = "雷霆電擊大鯰魚"; itemType = Items.COOKED_COD; lengthCm = 110.0 + Math.random() * 70.0; weightKg = 40.0 + Math.random() * 50.0; }
-            case 7 -> { fishName = "冰霜晶鑽珍珠魚"; itemType = Items.TROPICAL_FISH; lengthCm = 60.0 + Math.random() * 50.0; weightKg = 15.0 + Math.random() * 20.0; }
-            case 8 -> { fishName = "幽靈鬼魅赤魟"; itemType = Items.SALMON; lengthCm = 95.0 + Math.random() * 65.0; weightKg = 30.0 + Math.random() * 40.0; }
-            case 9 -> { fishName = "泰坦霸王海怪幼體"; itemType = Items.COD; lengthCm = 180.0 + Math.random() * 120.0; weightKg = 120.0 + Math.random() * 130.0; }
-            case 10 -> { fishName = "翡翠珍珠龍吐珠"; itemType = Items.TROPICAL_FISH; lengthCm = 70.0 + Math.random() * 40.0; weightKg = 18.0 + Math.random() * 15.0; }
-            case 11 -> { fishName = "暗黑吞噬大王烏賊"; itemType = Items.PUFFERFISH; lengthCm = 160.0 + Math.random() * 100.0; weightKg = 100.0 + Math.random() * 90.0; }
-            case 12 -> { fishName = "星空幻影蝶魚"; itemType = Items.TROPICAL_FISH; lengthCm = 50.0 + Math.random() * 35.0; weightKg = 8.0 + Math.random() * 12.0; }
-            case 13 -> { fishName = "王者金鱗大錦鯉"; itemType = Items.COD; lengthCm = 90.0 + Math.random() * 60.0; weightKg = 25.0 + Math.random() * 35.0; }
-            case 14 -> { fishName = "寒冰藍霜大馬哈魚"; itemType = Items.SALMON; lengthCm = 105.0 + Math.random() * 55.0; weightKg = 35.0 + Math.random() * 45.0; }
-            case 15 -> { fishName = "紫晶幻夢海馬"; itemType = Items.TROPICAL_FISH; lengthCm = 35.0 + Math.random() * 30.0; weightKg = 5.0 + Math.random() * 8.0; }
-            case 16 -> { fishName = "熔岩巨甲龜幼崽"; itemType = Items.PUFFERFISH; lengthCm = 115.0 + Math.random() * 75.0; weightKg = 85.0 + Math.random() * 95.0; }
-            case 17 -> { fishName = "鑽石光華飛魚"; itemType = Items.TROPICAL_FISH; lengthCm = 65.0 + Math.random() * 45.0; weightKg = 12.0 + Math.random() * 18.0; }
-            case 18 -> { fishName = "狂暴赤紅霸王鮭"; itemType = Items.SALMON; lengthCm = 135.0 + Math.random() * 85.0; weightKg = 65.0 + Math.random() * 75.0; }
-            default -> { fishName = "虛空黑洞旗魚"; itemType = Items.NETHER_STAR; lengthCm = 160.0 + Math.random() * 160.0; weightKg = 60.0 + Math.random() * 120.0; }
+        if (roll < 0.55) { // 55% Common (普通)
+            rarityTag = "§f普通 (Common)";
+            int sub = (int) (Math.random() * 6);
+            switch (sub) {
+                case 0 -> { fishName = "翡翠毒刺河豚"; itemType = Items.PUFFERFISH; lengthCm = 40.0 + Math.random() * 45.0; weightKg = 10.0 + Math.random() * 15.0; }
+                case 1 -> { fishName = "星空幻影蝶魚"; itemType = Items.TROPICAL_FISH; lengthCm = 50.0 + Math.random() * 35.0; weightKg = 8.0 + Math.random() * 12.0; }
+                case 2 -> { fishName = "王者金鱗大錦鯉"; itemType = Items.COD; lengthCm = 90.0 + Math.random() * 60.0; weightKg = 25.0 + Math.random() * 35.0; }
+                case 3 -> { fishName = "鑽石光華飛魚"; itemType = Items.TROPICAL_FISH; lengthCm = 65.0 + Math.random() * 45.0; weightKg = 12.0 + Math.random() * 18.0; }
+                case 4 -> { fishName = "冰霜晶鑽珍珠魚"; itemType = Items.TROPICAL_FISH; lengthCm = 60.0 + Math.random() * 50.0; weightKg = 15.0 + Math.random() * 20.0; }
+                default -> { fishName = "黃金璀璨大旗魚"; itemType = Items.COD; lengthCm = 140.0 + Math.random() * 110.0; weightKg = 70.0 + Math.random() * 80.0; }
+            }
+        } else if (roll < 0.85) { // 30% Uncommon (高級)
+            rarityTag = "§a高級 (Uncommon)";
+            int sub = (int) (Math.random() * 6);
+            switch (sub) {
+                case 0 -> { fishName = "炫彩幻光水母"; itemType = Items.SALMON; lengthCm = 80.0 + Math.random() * 70.0; weightKg = 20.0 + Math.random() * 30.0; }
+                case 1 -> { fishName = "雷霆電擊大鯰魚"; itemType = Items.COOKED_COD; lengthCm = 110.0 + Math.random() * 70.0; weightKg = 40.0 + Math.random() * 50.0; }
+                case 2 -> { fishName = "幽靈鬼魅赤魟"; itemType = Items.SALMON; lengthCm = 95.0 + Math.random() * 65.0; weightKg = 30.0 + Math.random() * 40.0; }
+                case 3 -> { fishName = "翡翠珍珠龍吐珠"; itemType = Items.TROPICAL_FISH; lengthCm = 70.0 + Math.random() * 40.0; weightKg = 18.0 + Math.random() * 15.0; }
+                case 4 -> { fishName = "寒冰藍霜大馬哈魚"; itemType = Items.SALMON; lengthCm = 105.0 + Math.random() * 55.0; weightKg = 35.0 + Math.random() * 45.0; }
+                default -> { fishName = "紫晶幻夢海馬"; itemType = Items.TROPICAL_FISH; lengthCm = 35.0 + Math.random() * 30.0; weightKg = 5.0 + Math.random() * 8.0; }
+            }
+        } else if (roll < 0.97) { // 12% Epic (史詩)
+            rarityTag = "§b史詩 (Epic)";
+            int sub = (int) (Math.random() * 5);
+            switch (sub) {
+                case 0 -> { fishName = "深淵紫焰海龍"; itemType = Items.PUFFERFISH; lengthCm = 120.0 + Math.random() * 90.0; weightKg = 50.0 + Math.random() * 60.0; }
+                case 1 -> { fishName = "烈焰熔岩翻車魚"; itemType = Items.COOKED_SALMON; lengthCm = 130.0 + Math.random() * 90.0; weightKg = 90.0 + Math.random() * 110.0; }
+                case 2 -> { fishName = "暗黑吞噬大王烏賊"; itemType = Items.PUFFERFISH; lengthCm = 160.0 + Math.random() * 100.0; weightKg = 100.0 + Math.random() * 90.0; }
+                case 3 -> { fishName = "熔岩巨甲龜幼崽"; itemType = Items.PUFFERFISH; lengthCm = 115.0 + Math.random() * 75.0; weightKg = 85.0 + Math.random() * 95.0; }
+                default -> { fishName = "狂暴赤紅霸王鮭"; itemType = Items.SALMON; lengthCm = 135.0 + Math.random() * 85.0; weightKg = 65.0 + Math.random() * 75.0; }
+            }
+        } else if (roll < 0.997) { // 2.7% Legendary (傳說)
+            rarityTag = "§6傳說 (Legendary)";
+            if (Math.random() < 0.5) {
+                fishName = "遠古巨齒鯊幼崽"; itemType = Items.TROPICAL_FISH; lengthCm = 150.0 + Math.random() * 100.0; weightKg = 80.0 + Math.random() * 70.0;
+            } else {
+                fishName = "泰坦霸王海怪幼體"; itemType = Items.COD; lengthCm = 180.0 + Math.random() * 120.0; weightKg = 120.0 + Math.random() * 130.0;
+            }
+            if (player.level().getServer() != null) {
+                String msg = String.format("§6🎉 [全服大賽通告] 恭喜玩家 §e%s §6在釣魚維度成功釣獲【§6傳說極品: %s§6】(尺寸: §e%.1f cm§6)！", username, fishName, lengthCm);
+                player.level().getServer().getPlayerList().broadcastSystemMessage(Component.literal(msg), false);
+            }
+        } else { // 0.3% Mythic (神話)
+            rarityTag = "§d★ 神話 (Mythic)";
+            fishName = "虛空黑洞旗魚"; itemType = Items.NETHER_STAR; lengthCm = 200.0 + Math.random() * 200.0; weightKg = 150.0 + Math.random() * 150.0;
+            if (player.level().getServer() != null) {
+                String msg = String.format("§d🌟 [全服神話通告] 驚天動地！玩家 §e%s §d神勇鉤中全球極度罕見【§d★ 虛空黑洞旗魚 ★§d】(巨無霸長度: §e%.1f cm§d, 重量: §b%.1f kg§d)！", username, lengthCm, weightKg);
+                player.level().getServer().getPlayerList().broadcastSystemMessage(Component.literal(msg), false);
+            }
         }
 
         // Apply Giant Fish Magnet Buff (+30% ~ +60% length)
@@ -812,6 +842,7 @@ public class FishingContestManager {
         customFish.set(DataComponents.CUSTOM_NAME, Component.literal("§6★ " + fishName));
         customFish.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
         customFish.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal(String.format("§7稀有等級: %s", rarityTag)),
                 Component.literal(String.format("§7釣魚勇士: §f%s", username)),
                 Component.literal(String.format("§7魚類尺寸: §e%.1f cm", lengthCm)),
                 Component.literal(String.format("§7魚類重量: §b%.1f kg", weightKg)),
@@ -820,7 +851,6 @@ public class FishingContestManager {
                 Component.literal("§e[來自 craftcore:fishing 專屬釣魚維度]")
         )));
 
-        player.sendSystemMessage(Component.literal(String.format("§a🎣 [釣魚成功] 釣獲戰利品：§6【%s】§a(尺寸: §e%.1f cm§a, 重量: §b%.1f kg§a)！", fishName, lengthCm, weightKg)));
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.FISHING_BOBBER_RETRIEVE, SoundSource.PLAYERS, 1.0f, 1.2f);
         return customFish;
     }
