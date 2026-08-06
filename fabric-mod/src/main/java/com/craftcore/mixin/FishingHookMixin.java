@@ -34,20 +34,23 @@ public abstract class FishingHookMixin {
     private void onRetrieve(ItemStack stack, CallbackInfoReturnable<Integer> cir) {
         Player owner = getPlayerOwner();
         if (owner instanceof ServerPlayer player) {
+            FishingHook hook = (FishingHook) (Object) this;
             boolean inFishingDim = player.level().dimension().identifier().toString().equals("craftcore:fishing");
 
             if (this.nibble > 0 || this.hookedIn != null || inFishingDim) {
                 if (inFishingDim) {
                     AiDailyTaskManager.updateProgress(player, "FISH", "craftcore:fish", 1);
                 }
-                if (this.nibble > 0) {
+                // Give fish if nibble > 0 or in fishing dimension when pulling rod in water
+                if (this.nibble > 0 || (inFishingDim && hook.isInWater())) {
                     ItemStack caught = FishingContestManager.onPlayerCatchFish(player, new ItemStack(net.minecraft.world.item.Items.COD));
                     if (caught != null && !caught.isEmpty()) {
-                        net.minecraft.world.entity.item.ItemEntity entity = new net.minecraft.world.entity.item.ItemEntity(
-                                player.level(), player.getX(), player.getY() + 0.5, player.getZ(), caught
-                        );
-                        entity.setDeltaMovement(0, 0.2, 0);
-                        player.level().addFreshEntity(entity);
+                        if (!player.getInventory().add(caught)) {
+                            player.drop(caught, false);
+                        }
+                        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                                net.minecraft.sounds.SoundEvents.ITEM_PICKUP,
+                                net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 1.2f);
                     }
                 }
             }
@@ -58,10 +61,15 @@ public abstract class FishingHookMixin {
     private void onTick(org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
         Player owner = getPlayerOwner();
         if (owner instanceof ServerPlayer player) {
+            FishingHook hook = (FishingHook) (Object) this;
             boolean inFishingDim = player.level().dimension().identifier().toString().equals("craftcore:fishing");
             if (inFishingDim || FishingContestManager.hasSpeedBuff(player.getUUID())) {
-                if (this.timeUntilHooked > 2) {
-                    this.timeUntilHooked = Math.max(1, this.timeUntilHooked - 4); // 5x speed: bite in 2 ~ 4 seconds!
+                if (hook.isInWater()) {
+                    if (this.timeUntilHooked > 5) {
+                        this.timeUntilHooked = 5; // Fast bite in 0.25 seconds!
+                    } else if (this.timeUntilHooked <= 0 && this.nibble <= 0) {
+                        this.nibble = 40; // 2 seconds splash & bite window!
+                    }
                 }
             }
         }
