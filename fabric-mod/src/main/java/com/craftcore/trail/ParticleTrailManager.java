@@ -19,6 +19,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemLore;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -31,11 +39,54 @@ public class ParticleTrailManager {
         public boolean placeEnabled = true;
     }
 
-    private static final Map<UUID, PlayerTrailConfig> playerConfigs = new ConcurrentHashMap<>();
+    private static Path configPath;
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Map<String, PlayerTrailConfig> playerConfigs = new ConcurrentHashMap<>();
     private static int tickCounter = 0;
 
+    static {
+        try {
+            configPath = com.craftcore.util.FabricPathUtil.getShopConfigDir().resolve("trails.json");
+        } catch (Throwable e) {
+            configPath = Path.of("config", "craft-core-shop", "trails.json");
+        }
+        load();
+    }
+
+    public static synchronized void load() {
+        if (configPath == null) return;
+        if (!Files.exists(configPath)) {
+            save();
+            return;
+        }
+        try (BufferedReader reader = Files.newBufferedReader(configPath)) {
+            Map<String, PlayerTrailConfig> loaded = GSON.fromJson(reader, new TypeToken<Map<String, PlayerTrailConfig>>() {}.getType());
+            if (loaded != null) {
+                playerConfigs.clear();
+                playerConfigs.putAll(loaded);
+            }
+        } catch (Exception e) {
+            System.err.println("[CraftCore] Failed to load trails.json: " + e.getMessage());
+        }
+    }
+
+    public static synchronized void save() {
+        if (configPath == null) return;
+        try {
+            if (configPath.getParent() != null) {
+                Files.createDirectories(configPath.getParent());
+            }
+            try (BufferedWriter writer = Files.newBufferedWriter(configPath)) {
+                GSON.toJson(playerConfigs, writer);
+            }
+        } catch (Exception e) {
+            System.err.println("[CraftCore] Failed to save trails.json: " + e.getMessage());
+        }
+    }
+
     public static PlayerTrailConfig getConfig(UUID uuid) {
-        return playerConfigs.computeIfAbsent(uuid, k -> new PlayerTrailConfig());
+        if (uuid == null) return new PlayerTrailConfig();
+        return playerConfigs.computeIfAbsent(uuid.toString(), k -> new PlayerTrailConfig());
     }
 
     public static void registerTickLoop() {
@@ -240,6 +291,7 @@ public class ParticleTrailManager {
                         }
 
                         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 1.2f);
+                        save();
                         openTrailGui(sp);
                     }
                 }
