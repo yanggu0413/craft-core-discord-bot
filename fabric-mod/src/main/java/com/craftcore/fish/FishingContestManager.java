@@ -277,6 +277,7 @@ public class FishingContestManager {
                     server.execute(() -> {
                         ServerLevel fishingLevel = server.getLevel(FISHING_DIMENSION_KEY);
                         if (fishingLevel != null) {
+                            server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "execute in craftcore:fishing run time set 6000");
                             net.minecraft.world.level.saveddata.WeatherData wd = fishingLevel.getWeatherData();
                             if (wd != null && (wd.isRaining() || wd.isThundering())) {
                                 wd.setRaining(false);
