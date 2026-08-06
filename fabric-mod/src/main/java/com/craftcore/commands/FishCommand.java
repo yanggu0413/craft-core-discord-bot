@@ -51,10 +51,19 @@ public class FishCommand {
                         .executes(context -> {
                             ServerPlayer player = context.getSource().getPlayer();
                             if (player != null) {
-                                com.craftcore.fish.FishSellManager.sellHandheldFish(player);
+                                com.craftcore.fish.FishSellManager.openFishSellBin(player);
                             }
                             return 1;
                         })
+                        .then(Commands.literal("hand")
+                                .executes(context -> {
+                                    ServerPlayer player = context.getSource().getPlayer();
+                                    if (player != null) {
+                                        com.craftcore.fish.FishSellManager.sellHandheldFish(player);
+                                    }
+                                    return 1;
+                                })
+                        )
                         .then(Commands.literal("all")
                                 .executes(context -> {
                                     ServerPlayer player = context.getSource().getPlayer();

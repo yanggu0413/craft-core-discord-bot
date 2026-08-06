@@ -1088,12 +1088,11 @@ public class FishingContestManager {
         )));
 
         // Slot 12: Fish Sell Shop
-        container.setItem(12, createGuiItem(Items.GOLD_NUGGET, "§a💰 奇幻售魚商店 (/fish sell)", List.of(
-                "§7底價 $20 + 長度 $0.3/cm + 重量 $0.4/kg",
-                "§7單條最高封頂可售出 $300 元金幣",
+        container.setItem(12, createGuiItem(Items.CHEST, "§a🐟 奇幻售魚回收箱 (/fish sell)", List.of(
+                "§7將欲出售的奇幻魚類放入回收箱中",
+                "§7系統將即時估算總價值，確認即可入帳！",
                 "",
-                "§e[左鍵點擊: 出售手持魚類]",
-                "§a[右鍵點擊: 一鍵全售背包內魚類]"
+                "§e[點擊開啟售魚回收箱]"
         )));
 
         // Slot 13: Fish Codex
@@ -1142,15 +1141,7 @@ public class FishingContestManager {
                         if (clicker instanceof ServerPlayer sp) {
                             if (slotId == 10) { giveFishingRod(sp); return; }
                             if (slotId == 11) { sp.closeContainer(); teleportToFishingDimension(sp); return; }
-                            if (slotId == 12) {
-                                if (button == 1) { // Right click
-                                    FishSellManager.sellAllInventoryFish(sp);
-                                } else { // Left click
-                                    FishSellManager.sellHandheldFish(sp);
-                                }
-                                openFishGui(sp);
-                                return;
-                            }
+                            if (slotId == 12) { FishSellManager.openFishSellBin(sp); return; }
                             if (slotId == 13) { FishCodexManager.openCodexGui(sp); return; }
                             if (slotId == 14) { openPartyGui(sp); return; }
                             if (slotId == 15) { openHallOfFameGui(sp); return; }
