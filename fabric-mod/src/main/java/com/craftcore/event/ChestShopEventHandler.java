@@ -113,7 +113,11 @@ public class ChestShopEventHandler {
         }
 
         if (!ClaimManager.checkPermission((ServerPlayer) player, pos, world, "break")) {
-            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有破壞方塊的權限！"));
+            if (world.dimension().identifier().toString().equals("craftcore:fishing")) {
+                player.sendSystemMessage(Component.literal("§c[釣魚維度] 釣魚世界受保護，非 OP 服主無法破壞地形！"));
+            } else {
+                player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有破壞方塊的權限！"));
+            }
             return InteractionResult.FAIL;
         }
 
@@ -270,7 +274,11 @@ public class ChestShopEventHandler {
         }
 
         if (!ClaimManager.checkPermission((ServerPlayer) player, pos, world, "break")) {
-            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有破壞方塊的權限！"));
+            if (world.dimension().identifier().toString().equals("craftcore:fishing")) {
+                player.sendSystemMessage(Component.literal("§c[釣魚維度] 釣魚世界受保護，非 OP 服主無法破壞地形！"));
+            } else {
+                player.sendSystemMessage(Component.literal("§c[Craft-Core] 您在此領地沒有破壞方塊的權限！"));
+            }
             return false;
         }
 
@@ -352,6 +360,15 @@ public class ChestShopEventHandler {
 
         if (hand != InteractionHand.MAIN_HAND) {
             return InteractionResult.PASS;
+        }
+
+        if (world.dimension().identifier().toString().equals("craftcore:fishing")) {
+            if (player instanceof ServerPlayer sp && !isOp(sp)) {
+                if (!heldItem.isEmpty() && (heldItem.getItem() instanceof net.minecraft.world.item.BlockItem || heldItem.is(net.minecraft.world.item.Items.LAVA_BUCKET) || heldItem.is(net.minecraft.world.item.Items.WATER_BUCKET) || heldItem.is(net.minecraft.world.item.Items.FLINT_AND_STEEL))) {
+                    sp.sendSystemMessage(Component.literal("§c[釣魚維度] 釣魚世界受保護，非 OP 服主無法放置方塊或液體！"));
+                    return InteractionResult.FAIL;
+                }
+            }
         }
 
         if (!heldItem.isEmpty() && heldItem.is(net.minecraft.world.item.Items.HOPPER)) {

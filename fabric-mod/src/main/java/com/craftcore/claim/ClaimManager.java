@@ -489,6 +489,11 @@ public class ClaimManager {
     }
 
     public static boolean checkPermission(ServerPlayer player, BlockPos pos, Level world, String type) {
+        if (world != null && world.dimension().identifier().toString().equals("craftcore:fishing")) {
+            boolean isOp = player.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);
+            if (!isOp) return false;
+        }
+
         Claim claim = getClaimAt(pos, world);
         if (claim == null) return true; // Unclaimed
 
