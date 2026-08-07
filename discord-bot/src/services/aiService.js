@@ -736,6 +736,15 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
 
     const hasImageAttachments = attachments && attachments.some(att => att.contentType && att.contentType.startsWith('image/'));
 
+    if (hasImageAttachments) {
+      const imageNames = attachments
+        .filter(att => att.contentType && att.contentType.startsWith('image/'))
+        .map(att => att.name || att.filename || '圖片.png')
+        .join(', ');
+
+      userPromptText += `\n\n🖼️ 【玩家上傳了圖片附件: ${imageNames}】`;
+    }
+
     // --- CASE A: Image Attachments present -> Use Gemini 2.5 Flash for Multimodal Vision ---
     if (hasImageAttachments) {
       logger.info('Image attachment detected, routing request to Gemini 2.5 Flash for multimodal vision processing.');
