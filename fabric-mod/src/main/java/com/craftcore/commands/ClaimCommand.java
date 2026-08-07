@@ -188,7 +188,7 @@ public class ClaimCommand {
             for (ClaimManager.Claim c : myClaims) {
                 String c1 = (c.corners != null && c.corners.length > 0) ? c.corners[0] : "未知";
                 String c2 = (c.corners != null && c.corners.length > 1) ? c.corners[1] : "未知";
-                player.sendSystemMessage(Component.literal("§e★ 領地名稱: §f" + (c.name != null ? c.name : c.id) + " §7(大小: §a" + c.chunks + " §7區塊)"));
+                player.sendSystemMessage(Component.literal("§e★ 領地 ID: §b" + c.id + " §7| 領地名稱: §f" + (c.name != null ? c.name : c.id) + " §7(大小: §a" + c.chunks + " §7區塊)"));
                 player.sendSystemMessage(Component.literal("§7  維度: §b" + c.dimension + " §7| 對角座標: §f" + c1 + " ~ " + c2));
                 player.sendSystemMessage(Component.literal("§7  標籤: 公開容器[" + (c.public_containers ? "§a開啟" : "§c關閉") + "§7], 設施[" + (c.public_interact ? "§a開啟" : "§c關閉") + "§7], 允許進入[" + (c.public_entry ? "§a開啟" : "§c關閉") + "§7]"));
             }

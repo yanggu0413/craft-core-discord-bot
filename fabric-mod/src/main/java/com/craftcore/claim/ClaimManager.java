@@ -30,6 +30,36 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ClaimManager {
 
+    private static final String CLAIM_ID_PREFIX = "CL-";
+    private static final String CLAIM_ID_CHARSET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+    private static final int CLAIM_ID_LENGTH = 6;
+    private static final java.security.SecureRandom CLAIM_ID_RANDOM = new java.security.SecureRandom();
+
+    public static synchronized String generateUniqueClaimId() {
+        for (int attempt = 0; attempt < 10000; attempt++) {
+            StringBuilder sb = new StringBuilder(CLAIM_ID_PREFIX.length() + CLAIM_ID_LENGTH);
+            sb.append(CLAIM_ID_PREFIX);
+            for (int i = 0; i < CLAIM_ID_LENGTH; i++) {
+                sb.append(CLAIM_ID_CHARSET.charAt(CLAIM_ID_RANDOM.nextInt(CLAIM_ID_CHARSET.length())));
+            }
+            String candidate = sb.toString();
+            if (!claims.containsKey(candidate)) {
+                return candidate;
+            }
+        }
+        return CLAIM_ID_PREFIX + Long.toHexString(System.nanoTime()).toUpperCase();
+    }
+
+    public static boolean isValidClaimId(String id) {
+        if (id == null) return false;
+        if (!id.startsWith(CLAIM_ID_PREFIX)) return false;
+        if (id.length() != CLAIM_ID_PREFIX.length() + CLAIM_ID_LENGTH) return false;
+        for (int i = CLAIM_ID_PREFIX.length(); i < id.length(); i++) {
+            if (CLAIM_ID_CHARSET.indexOf(id.charAt(i)) < 0) return false;
+        }
+        return true;
+    }
+
     public static class Claim {
         public String id;
         public String name;
@@ -236,13 +266,25 @@ public class ClaimManager {
             try (BufferedReader reader = Files.newBufferedReader(configPath)) {
                 Map<String, Claim> loaded = GSON.fromJson(reader, new TypeToken<Map<String, Claim>>(){}.getType());
                 if (loaded != null) {
+                    Map<String, Claim> migrated = new ConcurrentHashMap<>();
+                    boolean changed = false;
                     for (Claim c : loaded.values()) {
-                        if (c.permissions == null) c.permissions = new Claim.Permissions();
-                        if (c.banned_players == null) c.banned_players = new ArrayList<>();
+                        if (c != null) {
+                            if (c.permissions == null) c.permissions = new Claim.Permissions();
+                            if (c.banned_players == null) c.banned_players = new ArrayList<>();
+                            if (!isValidClaimId(c.id)) {
+                                c.id = generateUniqueClaimId();
+                                changed = true;
+                            }
+                            migrated.put(c.id, c);
+                        }
                     }
                     claims.clear();
-                    claims.putAll(loaded);
+                    claims.putAll(migrated);
                     rebuildChunkIndex();
+                    if (changed) {
+                        save();
+                    }
                 }
             } catch (IOException e) {
                 System.err.println("[CraftCore] Failed to load claims: " + e.getMessage());
@@ -437,7 +479,7 @@ public class ClaimManager {
 
         if (cost == 0.0 || EconomyManager.removeMoney(username, cost)) {
             Claim claim = new Claim();
-            claim.id = UUID.randomUUID().toString();
+            claim.id = generateUniqueClaimId();
             claim.name = username + " 的領地";
             claim.owner = username;
             claim.chunks = chunks;
@@ -629,7 +671,7 @@ public class ClaimManager {
                         String claimName = claim.name != null ? claim.name : claim.id;
                         String ownerStr = claim.owner != null ? claim.owner : "未知";
                         player.sendSystemMessage(
-                            Component.literal("§e❖ 當前領地: §f[" + claimName + "] §7| §e領主: §f" + ownerStr + " §7(§a保護中§7)"),
+                            Component.literal("§e❖ 領地 ID: §b" + claim.id + " §7| §f[" + claimName + "] §7| §e領主: §f" + ownerStr + " §7(§a保護中§7)"),
                             true
                         );
                     } else {

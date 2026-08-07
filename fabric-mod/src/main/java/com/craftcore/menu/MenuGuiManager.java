@@ -1363,6 +1363,7 @@ public class MenuGuiManager {
         ClaimManager.Claim standingClaim = ClaimManager.getClaimAt(player.blockPosition(), player.level());
         if (standingClaim != null && (standingClaim.owner.equalsIgnoreCase(username) || isOp)) {
             container.setItem(4, createGuiItem(Items.BEACON, "§a🛡 當前站立領地: " + (standingClaim.name != null ? standingClaim.name : standingClaim.id), List.of(
+                    "§7領地 ID: §b" + standingClaim.id,
                     "§7您正站在此領地範圍內",
                     "§7- 大小: " + standingClaim.chunks + " 區塊",
                     "§7- 擁有者: " + standingClaim.owner,
@@ -1415,6 +1416,7 @@ public class MenuGuiManager {
         for (ClaimManager.Claim c : myClaims) {
             if (claimIdx >= claimSlots.length) break;
             container.setItem(claimSlots[claimIdx++], createGuiItem(Items.GRASS_BLOCK, "§e🏠 領地: " + (c.name != null ? c.name : c.id), List.of(
+                    "§7領地 ID: §b" + c.id,
                     "§7維度: " + c.dimension,
                     "§7大小: " + c.chunks + " 區塊",
                     "§7防護: PvP[" + (c.pvp ? "§a開啟" : "§c關閉") + "], 防爆[" + (c.explosion_protection ? "§a開啟" : "§c關閉") + "]",
@@ -1550,7 +1552,7 @@ public class MenuGuiManager {
                             }
                         }
                     }
-                }, Component.literal("§1🛡 領地詳細管理: " + (claim.name != null ? claim.name : claim.id))));
+                }, Component.literal("§1🛡 領地詳細管理: " + claim.id + " " + (claim.name != null ? claim.name : ""))));
     }
 
     public static void openClaimMembersGui(ServerPlayer player, ClaimManager.Claim claim) {
@@ -1629,7 +1631,7 @@ public class MenuGuiManager {
                             }
                         }
                     }
-                }, Component.literal("§1👥 領地成員管理: " + (claim.name != null ? claim.name : claim.id))));
+                }, Component.literal("§1👥 領地成員管理: " + claim.id + " " + (claim.name != null ? claim.name : ""))));
     }
 
     public static void openMemberPermissionsGui(ServerPlayer player, ClaimManager.Claim claim, String memberName) {
@@ -1650,6 +1652,7 @@ public class MenuGuiManager {
 
         // Header Slot 4
         container.setItem(4, createGuiItem(Items.PLAYER_HEAD, "§6👤 成員細粒度權限設定: §e" + memberName, List.of(
+                "§7領地 ID: §b" + claim.id,
                 "§7領地名稱: §f" + (claim.name != null ? claim.name : claim.id),
                 "§7獨立控制該成員在您領地內的細部行為權限"
         )));
