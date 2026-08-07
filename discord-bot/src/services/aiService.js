@@ -666,6 +666,58 @@ const TOOL_STATUS_MAP = {
   'query_user_image_quota': '📊 雲喵正在查詢您今日的 AI 額度次數中...'
 };
 
+const TEXT_FILE_EXTENSIONS = new Set([
+  'txt', 'py', 'js', 'json', 'java', 'md', 'log', 'c', 'cpp', 'h', 'hpp',
+  'cs', 'html', 'css', 'scss', 'sh', 'bat', 'yml', 'yaml', 'xml', 'properties',
+  'gradle', 'toml', 'sql', 'env', 'rs', 'go', 'php', 'kt', 'lua', 'ts', 'jsx', 'tsx'
+]);
+
+function isTextAttachment(att) {
+  if (!att) return false;
+  const fileName = att.name || att.filename || '';
+  const ext = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '';
+  if (ext && TEXT_FILE_EXTENSIONS.has(ext)) return true;
+
+  const contentType = att.contentType || '';
+  if (contentType.startsWith('text/') ||
+      contentType.includes('json') ||
+      contentType.includes('javascript') ||
+      contentType.includes('python') ||
+      contentType.includes('xml')) {
+    return true;
+  }
+  return false;
+}
+
+async function processTextAttachments(attachments) {
+  if (!attachments || attachments.length === 0) return '';
+
+  let appendedText = '';
+  for (const att of attachments) {
+    if (isTextAttachment(att)) {
+      try {
+        const res = await fetch(att.url);
+        if (res.ok) {
+          const buffer = await res.arrayBuffer();
+          let textContent = new TextDecoder('utf-8').decode(buffer);
+          
+          if (textContent.length > 12000) {
+            textContent = textContent.slice(0, 12000) + '\n... [內容過長已自動截斷喵]';
+          }
+
+          const fileName = att.name || att.filename || 'attachment.txt';
+          const ext = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : 'txt';
+
+          appendedText += `\n\n📄 【玩家上傳的檔案附件: ${fileName}】:\n\`\`\`${ext}\n${textContent}\n\`\`\``;
+        }
+      } catch (err) {
+        logger.warn(`Failed to read text attachment ${att.name || att.url}:`, err);
+      }
+    }
+  }
+  return appendedText;
+}
+
 // Process AI Chat via OpenRouter API REST / Gemini 2.5 Flash (supporting Multimodal Images, History & Function Calling)
 async function generateAiResponse(userMessage, contextUser, attachments = [], channelId = AI_CHANNEL_ID, onStatusUpdate = null) {
   try {
@@ -674,7 +726,13 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
 
     // Format current user message with userId & displayName as specified in cloudcat-bot prompt, plus current Taipei time
     const nowTaipei = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'full', timeStyle: 'medium' });
-    const userPromptText = `[當前時間: ${nowTaipei}] <@${contextUser.id}> (${contextUser.displayName || contextUser.username}): ${userMessage}`;
+    let userPromptText = `[當前時間: ${nowTaipei}] <@${contextUser.id}> (${contextUser.displayName || contextUser.username}): ${userMessage}`;
+
+    // Read and append text/code attachments if uploaded by user (.txt, .py, .js, .java, etc.)
+    const textAttachmentsContent = await processTextAttachments(attachments);
+    if (textAttachmentsContent) {
+      userPromptText += textAttachmentsContent;
+    }
 
     const hasImageAttachments = attachments && attachments.some(att => att.contentType && att.contentType.startsWith('image/'));
 
