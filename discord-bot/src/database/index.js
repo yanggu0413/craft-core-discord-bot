@@ -101,6 +101,16 @@ async function init(dbPath) {
         )
       `);
     } catch (e) {}
+    // Migration: ensure ai_user_persona table exists
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS ai_user_persona (
+          user_id TEXT PRIMARY KEY,
+          persona_key TEXT NOT NULL DEFAULT 'default',
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    } catch (e) {}
   } else {
 
     throw new Error(`Database initialization failed: schema.sql not found at ${schemaPath}`);
@@ -520,6 +530,23 @@ async function getAllWarpSubmissions() {
   return stmts.getAllWarpSubmissions.all();
 }
 
+async function getUserPersona(userId) {
+  if (!db) throw new Error('Database not initialized');
+  const stmt = db.prepare('SELECT persona_key FROM ai_user_persona WHERE user_id = ?');
+  const row = stmt.get(userId);
+  return row ? row.persona_key : 'default';
+}
+
+async function setUserPersona(userId, personaKey) {
+  if (!db) throw new Error('Database not initialized');
+  const stmt = db.prepare(`
+    INSERT INTO ai_user_persona (user_id, persona_key, updated_at)
+    VALUES (?, ?, datetime('now'))
+    ON CONFLICT(user_id) DO UPDATE SET persona_key = excluded.persona_key, updated_at = datetime('now')
+  `);
+  stmt.run(userId, personaKey);
+}
+
 module.exports = {
   init,
   close,
@@ -574,7 +601,9 @@ module.exports = {
   getWarpSubmissionById,
   updateWarpSubmissionStatus,
   getPendingWarpSubmissions,
-  getAllWarpSubmissions
+  getAllWarpSubmissions,
+  getUserPersona,
+  setUserPersona
 };
 
 

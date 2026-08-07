@@ -1,14 +1,21 @@
 const aiService = require('../src/services/aiService');
+const db = require('../src/database');
 
 describe('aiService OpenRouter & Gemini Background Captioning Integration', () => {
   let originalFetch;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     originalFetch = global.fetch;
+    try {
+      await db.init(':memory:');
+    } catch (e) {}
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     global.fetch = originalFetch;
+    try {
+      await db.close();
+    } catch (e) {}
   });
 
   test('should call OpenRouter API for text-only messages', async () => {
@@ -77,6 +84,34 @@ describe('aiService OpenRouter & Gemini Background Captioning Integration', () =
     expect(response).toContain('這段 Python 程式碼');
   });
 
+  test('should switch user persona when requested via chat text e.g. 切換到滿口髒話模式', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: '幹你娘看三小啦！你現在切換到滿口髒話模式了啦！🔥'
+            }
+          }
+        ]
+      })
+    });
+
+    const contextUser = { id: 'user_persona_test_1', username: 'testuser', displayName: '暴怒玩家' };
+    const response = await aiService.generateAiResponse('幫我切換到滿口髒話開噴模式', contextUser, [], 'channel-persona-test');
+
+    const openrouterCall = global.fetch.mock.calls.find(c => c[0].includes('openrouter.ai'));
+    expect(openrouterCall).toBeDefined();
+
+    const body = JSON.parse(openrouterCall[1].body);
+    const sysMsg = body.messages.find(m => m.role === 'system');
+    expect(sysMsg.content).toContain('滿口髒話直接開噴模式');
+    expect(sysMsg.content).toContain('幹你娘');
+    expect(response).toContain('幹你娘');
+  });
+
   test('should correctly decode Big5/ANSI encoded text files (e.g. Windows Notepad 估價單.txt)', async () => {
     // Exact Big5 encoded bytes for "電腦組裝估價單"
     const big5Bytes = Uint8Array.from([
@@ -115,7 +150,6 @@ describe('aiService OpenRouter & Gemini Background Captioning Integration', () =
 
     const body = JSON.parse(openrouterCall[1].body);
     const userMsg = body.messages.find(m => m.role === 'user');
-    // Ensure Big5 decoded Chinese text is present without garbled text
     expect(userMsg.content).toContain('電腦組裝估價單');
   });
 

@@ -853,10 +853,40 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
       }
     }
 
+    // Check if user requested text-based persona switch in their message (e.g. "切換到幹話模式", "切換人設 6")
+    const { getPersona, parsePersonaFromText } = require('../config/personas');
+    const db = require('../database');
+
+    const matchedPersonaKey = parsePersonaFromText(userMessage);
+    if (matchedPersonaKey && contextUser?.id) {
+      try {
+        await db.setUserPersona(contextUser.id, matchedPersonaKey);
+        logger.info(`User ${contextUser.id} switched AI persona to ${matchedPersonaKey} via chat text.`);
+      } catch (e) {
+        logger.warn('Failed to update user persona via chat text:', e);
+      }
+    }
+
+    // Resolve current active persona for user
+    let userPersonaKey = 'default';
+    if (contextUser?.id) {
+      try {
+        userPersonaKey = await db.getUserPersona(contextUser.id);
+      } catch (e) {
+        logger.warn(`Failed to fetch user persona for ${contextUser.id}:`, e);
+      }
+    }
+
+    const activePersona = getPersona(userPersonaKey);
+    let systemPromptContent = CLOUDCAT_SYSTEM_PROMPT;
+    if (userPersonaKey !== 'default') {
+      systemPromptContent = `${CLOUDCAT_SYSTEM_PROMPT}\n\n====================\n🎭 【當前玩家專屬人設模式啟動】\n當前與你對話的玩家 <@${contextUser.id}> 已切換 AI 人設模式為：「${activePersona.name}」。\n請嚴格遵守以下人設指令進行此對話的回覆與互動：\n${activePersona.prompt}\n====================`;
+    }
+
     // 3. Always route to OpenRouter DeepSeek V4 Flash for 100% unified persona response generation
     const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
     const messages = [
-      { role: 'system', content: CLOUDCAT_SYSTEM_PROMPT }
+      { role: 'system', content: systemPromptContent }
     ];
 
     // Add conversation history (includes prior image summaries!)

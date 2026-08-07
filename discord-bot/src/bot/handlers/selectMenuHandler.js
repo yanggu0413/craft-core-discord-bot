@@ -10,6 +10,18 @@ async function selectMenuHandler(interaction) {
   try {
     if (customId.startsWith('express_select:')) {
       await expressService.handleSelectExpressItem(interaction);
+    } else if (customId === 'select_persona') {
+      const selectedKey = interaction.values[0];
+      const db = require('../../database');
+      const { PERSONA_CONFIGS } = require('../../config/personas');
+      await db.setUserPersona(interaction.user.id, selectedKey);
+      const persona = PERSONA_CONFIGS[selectedKey] || PERSONA_CONFIGS.default;
+
+      await interaction.update({
+        content: `✅ 人設切換成功！你目前的 AI 人設已切換為：**${persona.name}**\n> ${persona.description}`,
+        embeds: [],
+        components: []
+      });
     }
   } catch (error) {
     if (error instanceof AppError && error.isOperational) {
