@@ -77,6 +77,48 @@ describe('aiService OpenRouter & Gemini Background Captioning Integration', () =
     expect(response).toContain('這段 Python 程式碼');
   });
 
+  test('should correctly decode Big5/ANSI encoded text files (e.g. Windows Notepad 估價單.txt)', async () => {
+    // Exact Big5 encoded bytes for "電腦組裝估價單"
+    const big5Bytes = Uint8Array.from([
+      0xb9, 0x71, 0xb8, 0xa3, 0xb2, 0xd5, 0xb8, 0xcb, 0xa6, 0xf4, 0xbb, 0xf9, 0xb3, 0xe6
+    ]);
+
+    global.fetch = jest.fn().mockImplementation(async (url) => {
+      if (url.includes('quote.txt')) {
+        return Promise.resolve({
+          ok: true,
+          arrayBuffer: async () => big5Bytes.buffer
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                role: 'assistant',
+                content: '這是一份電腦組裝估價單喵！'
+              }
+            }
+          ]
+        })
+      });
+    });
+
+    const contextUser = { id: '123456789', username: 'testuser', displayName: '測試玩家' };
+    const attachments = [{ url: 'https://cdn.discordapp.com/attachments/123/456/quote.txt', name: 'quote.txt', contentType: 'text/plain' }];
+
+    const response = await aiService.generateAiResponse('幫我看這張估價單', contextUser, attachments, 'channel-big5-test');
+
+    const openrouterCall = global.fetch.mock.calls.find(c => c[0].includes('openrouter.ai'));
+    expect(openrouterCall).toBeDefined();
+
+    const body = JSON.parse(openrouterCall[1].body);
+    const userMsg = body.messages.find(m => m.role === 'user');
+    // Ensure Big5 decoded Chinese text is present without garbled text
+    expect(userMsg.content).toContain('電腦組裝估價單');
+  });
+
   test('should perform background Gemini captioning for images and pass summary to OpenRouter DeepSeek', async () => {
     global.fetch = jest.fn().mockImplementation(async (url) => {
       if (url.includes('image.png')) {

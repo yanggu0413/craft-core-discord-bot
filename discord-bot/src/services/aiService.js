@@ -689,6 +689,54 @@ function isTextAttachment(att) {
   return false;
 }
 
+function decodeBufferToText(buffer) {
+  const bytes = new Uint8Array(buffer);
+
+  // 1. Check UTF-16LE BOM
+  if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
+    try {
+      return new TextDecoder('utf-16le').decode(buffer);
+    } catch (e) {}
+  }
+
+  // 2. Check UTF-16BE BOM
+  if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
+    try {
+      return new TextDecoder('utf-16be').decode(buffer);
+    } catch (e) {}
+  }
+
+  // 3. Try UTF-8 first (fatal: true throws error on invalid UTF-8 byte sequences like Big5/ANSI)
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+  } catch (utf8Err) {
+    // Non-UTF-8 detected (likely Big5, GBK, or Windows ANSI)
+  }
+
+  // 4. Try Big5 (Traditional Chinese Windows ANSI default)
+  try {
+    const big5Text = new TextDecoder('big5').decode(buffer);
+    if (!big5Text.includes('\uFFFD')) {
+      return big5Text;
+    }
+  } catch (e) {}
+
+  // 5. Try GBK (Simplified Chinese)
+  try {
+    const gbkText = new TextDecoder('gbk').decode(buffer);
+    if (!gbkText.includes('\uFFFD')) {
+      return gbkText;
+    }
+  } catch (e) {}
+
+  // 6. Fallback: Loose Big5 or loose UTF-8
+  try {
+    return new TextDecoder('big5').decode(buffer);
+  } catch (e) {
+    return new TextDecoder('utf-8').decode(buffer);
+  }
+}
+
 async function processTextAttachments(attachments) {
   if (!attachments || attachments.length === 0) return '';
 
@@ -699,7 +747,7 @@ async function processTextAttachments(attachments) {
         const res = await fetch(att.url);
         if (res.ok) {
           const buffer = await res.arrayBuffer();
-          let textContent = new TextDecoder('utf-8').decode(buffer);
+          let textContent = decodeBufferToText(buffer);
           
           if (textContent.length > 12000) {
             textContent = textContent.slice(0, 12000) + '\n... [內容過長已自動截斷喵]';
