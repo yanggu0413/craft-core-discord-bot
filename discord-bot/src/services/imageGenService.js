@@ -1,7 +1,9 @@
 const logger = require('../utils/logger');
 const db = require('../database');
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const config = require('../config');
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || config.ai?.geminiApiKey || '';
 
 const MODELS_CONFIG = {
   'nano-banana-2': {

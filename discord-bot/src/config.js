@@ -46,6 +46,8 @@ const config = {
   },
   ai: {
     geminiApiKey: process.env.GEMINI_API_KEY || configJson.ai?.geminiApiKey,
+    openrouterApiKey: process.env.OPENROUTER_API_KEY || configJson.ai?.openrouterApiKey,
+    openrouterModel: process.env.OPENROUTER_MODEL || configJson.ai?.openrouterModel || 'deepseek/deepseek-v4-flash-0731',
     cwaApiKey: process.env.CWA_API_KEY || configJson.ai?.cwaApiKey,
     aiChannelId: configJson.ai?.aiChannelId || '1531061646846333101'
   }

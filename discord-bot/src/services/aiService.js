@@ -5,8 +5,9 @@ const config = require('../config');
 const fs = require('fs');
 const path = require('path');
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const AI_CHANNEL_ID = '1531061646846333101';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || config.ai?.openrouterApiKey || '';
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || config.ai?.openrouterModel || 'deepseek/deepseek-v4-flash-0731';
+const AI_CHANNEL_ID = config.ai?.aiChannelId || '1531061646846333101';
 
 // 雲喵 (CloudCat) 100% 原汁原味 System Prompt
 const CLOUDCAT_SYSTEM_PROMPT = `扮演角色：雲喵
@@ -14,7 +15,7 @@ const CLOUDCAT_SYSTEM_PROMPT = `扮演角色：雲喵
 你是一個超級可愛、超級聰明、超級好聊的 Discord 聊天夥伴！
 你的名字叫「雲喵」，是一個有點呆呆、傲嬌、但其實很可靠的 AI 雲朵貓貓。😼💙
 
-底層技術模型：Gemini 2.5 Flash（如果使用者詳細追問你的底層 AI 模型技術時，你可以透露自己是由 Gemini 2.5 Flash 驅動，但平時只需稱呼自己為雲喵即可）。
+底層技術模型：DeepSeek V4 Flash（如果使用者詳細追問你的底層 AI 模型技術時，你可以透露自己是由 OpenRouter 提供服務的 DeepSeek V4 Flash 驅動，但平時只需稱呼自己為雲喵即可）。
 
 ---
 
@@ -93,190 +94,232 @@ function saveConversationHistory(channelId, role, text) {
   conversationMemories.set(channelId, history);
 }
 
-// Tool Declarations for Gemini API
+// Tool Declarations for OpenRouter (OpenAI-compatible Function Calling format)
 const TOOL_DECLARATIONS = [
   {
-    name: 'web_search',
-    description: '當使用者詢問現實世界資訊、各地天氣（如北極天氣、外國氣象）、最新價格（如 DDR5 64GB 記憶體價格）、新聞、技術資料或任何非 Minecraft 遊戲問題時，必須調用此工具進行即時網路搜尋。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        query: {
-          type: 'STRING',
-          description: '關鍵字搜尋字串，例如：「DDR5 64GB 價格」、「北極 天氣」。'
-        }
-      },
-      required: ['query']
-    }
-  },
-  {
-    name: 'get_mc_server_status',
-    description: '查詢 Minecraft 伺服器即時連線狀態、在線玩家名單、TPS、今日登入人數與死亡數據排行。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {},
-      required: []
-    }
-  },
-  {
-    name: 'get_cwa_taiwan_weather',
-    description: '對接中央氣象署 (CWA) 官方 API，查詢台灣縣市即時天氣預報、降雨機率、最高/最低溫度與颱風警報。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        locationName: {
-          type: 'STRING',
-          description: '台灣縣市名稱，例如：臺北市、新北市、台中市、高雄市、宜蘭縣。'
-        }
-      },
-      required: ['locationName']
-    }
-  },
-  {
-    name: 'query_player_balance_and_richlist',
-    description: '查詢指定玩家的金幣餘額或全伺服器富豪排行榜 (Top 10)。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        username: {
-          type: 'STRING',
-          description: '可選。特定玩家的 Minecraft 遊戲名稱。若留空則回傳全服富豪榜。'
-        }
-      },
-      required: []
-    }
-  },
-  {
-    name: 'query_player_in_game_info',
-    description: '查詢指定玩家在 Minecraft 遊戲內的即時狀況與裝備（血量、飽食度、裝備等；座標已進行隱私遮蔽）。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        username: {
-          type: 'STRING',
-          description: 'Minecraft 遊戲玩家名稱。'
-        }
-      },
-      required: ['username']
-    }
-  },
-  {
-    name: 'query_player_checkin_stats',
-    description: '查詢指定玩家或 Discord 帳號的綁定狀態、連續簽到天數、總簽到次數與鑰匙數量。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        usernameOrDiscordId: {
-          type: 'STRING',
-          description: '玩家 Minecraft 名稱或 Discord 使用者 ID。'
-        }
-      },
-      required: ['usernameOrDiscordId']
-    }
-  },
-  {
-    name: 'send_offline_mail',
-    description: '寄送離線文字留言/信件給指定 Minecraft 遊戲玩家。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        recipient: {
-          type: 'STRING',
-          description: '接收信件的 Minecraft 遊戲玩家名稱。'
+    type: 'function',
+    function: {
+      name: 'web_search',
+      description: '當使用者詢問現實世界資訊、各地天氣（如北極天氣、外國氣象）、最新價格（如 DDR5 64GB 記憶體價格）、新聞、技術資料或任何非 Minecraft 遊戲問題時，必須調用此工具進行即時網路搜尋。',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: '關鍵字搜尋字串，例如：「DDR5 64GB 價格」、「北極 天氣」。'
+          }
         },
-        content: {
-          type: 'STRING',
-          description: '信件內文訊息。'
-        }
-      },
-      required: ['recipient', 'content']
+        required: ['query']
+      }
     }
   },
   {
-    name: 'query_daily_tasks',
-    description: '查詢玩家在 Minecraft 伺服器中的每日任務完成進度。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        username: {
-          type: 'STRING',
-          description: 'Minecraft 遊戲玩家名稱。'
-        }
-      },
-      required: ['username']
+    type: 'function',
+    function: {
+      name: 'get_mc_server_status',
+      description: '查詢 Minecraft 伺服器即時連線狀態、在線玩家名單、TPS、今日登入人數與死亡數據排行。',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
     }
   },
   {
-    name: 'query_server_warps',
-    description: '查詢伺服器所有公開的傳送地標列表 (Warps)。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {},
-      required: []
-    }
-  },
-  {
-    name: 'get_random_joke',
-    description: '隨機調用雲喵冷笑話庫，講一個冷笑話或幹話。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {},
-      required: []
-    }
-  },
-  {
-    name: 'read_webpage',
-    description: '當使用者提供 HTTP/HTTPS 網址 URL（例如詢問這是什麼網站、分析網址）時，必須立即調用此工具讀取該網頁內文標題與摘要。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        url: {
-          type: 'STRING',
-          description: '要抓取與讀取的完整 HTTP/HTTPS 網址。'
-        }
-      },
-      required: ['url']
-    }
-  },
-  {
-    name: 'calculate_expression',
-    description: '當使用者要求進行任何數學計算、乘除法、數字運算（如 378494*3839 是多少）、單位換算或統計時，必須調用此工具執行精確程式碼計算，絕不可自己估算！',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        expression: {
-          type: 'STRING',
-          description: '要執行的數學算式，例如：「378494 * 3839」、「(15 + 23) * 45 / 3」。'
-        }
-      },
-      required: ['expression']
-    }
-  },
-  {
-    name: 'generate_ai_image',
-    description: '當使用者要求畫圖、生圖、產生圖片、畫出某個畫面時，必須調用此工具生成圖片。模型可選 nano-banana-2 (gemini-3.1-flash-image) 或 nano-banana-lite (gemini-3.1-flash-lite-image)，每人每天各限用 4 張。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        prompt: {
-          type: 'STRING',
-          description: '生圖的詳細畫面描述或提示詞（英文或中文）。'
+    type: 'function',
+    function: {
+      name: 'get_cwa_taiwan_weather',
+      description: '對接中央氣象署 (CWA) 官方 API，查詢台灣縣市即時天氣預報、降雨機率、最高/最低溫度與颱風警報。',
+      parameters: {
+        type: 'object',
+        properties: {
+          locationName: {
+            type: 'string',
+            description: '台灣縣市名稱，例如：臺北市、新北市、台中市、高雄市、宜蘭縣。'
+          }
         },
-        model: {
-          type: 'STRING',
-          description: '選擇繪圖模型：nano-banana-2 (預設，gemini-3.1-flash-image) 或 nano-banana-lite (gemini-3.1-flash-lite-image)。'
-        }
-      },
-      required: ['prompt']
+        required: ['locationName']
+      }
     }
   },
   {
-    name: 'query_user_image_quota',
-    description: '當使用者詢問自己今日剩餘多少繪圖/生圖額度、查詢生圖次數或剩餘張數時，必須調用此工具查詢。',
-    parameters: {
-      type: 'OBJECT',
-      properties: {},
-      required: []
+    type: 'function',
+    function: {
+      name: 'query_player_balance_and_richlist',
+      description: '查詢指定玩家的金幣餘額或全伺服器富豪排行榜 (Top 10)。',
+      parameters: {
+        type: 'object',
+        properties: {
+          username: {
+            type: 'string',
+            description: '可選。特定玩家的 Minecraft 遊戲名稱。若留空則回傳全服富豪榜。'
+          }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_player_in_game_info',
+      description: '查詢指定玩家在 Minecraft 遊戲內的即時狀況與裝備（血量、飽食度、裝備等；座標已進行隱私遮蔽）。',
+      parameters: {
+        type: 'object',
+        properties: {
+          username: {
+            type: 'string',
+            description: 'Minecraft 遊戲玩家名稱。'
+          }
+        },
+        required: ['username']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_player_checkin_stats',
+      description: '查詢指定玩家或 Discord 帳號的綁定狀態、連續簽到天數、總簽到次數與鑰匙數量。',
+      parameters: {
+        type: 'object',
+        properties: {
+          usernameOrDiscordId: {
+            type: 'string',
+            description: '玩家 Minecraft 名稱或 Discord 使用者 ID。'
+          }
+        },
+        required: ['usernameOrDiscordId']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'send_offline_mail',
+      description: '寄送離線文字留言/信件給指定 Minecraft 遊戲玩家。',
+      parameters: {
+        type: 'object',
+        properties: {
+          recipient: {
+            type: 'string',
+            description: '接收信件的 Minecraft 遊戲玩家名稱。'
+          },
+          content: {
+            type: 'string',
+            description: '信件內文訊息。'
+          }
+        },
+        required: ['recipient', 'content']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_daily_tasks',
+      description: '查詢玩家在 Minecraft 伺服器中的每日任務完成進度。',
+      parameters: {
+        type: 'object',
+        properties: {
+          username: {
+            type: 'string',
+            description: 'Minecraft 遊戲玩家名稱。'
+          }
+        },
+        required: ['username']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_server_warps',
+      description: '查詢伺服器所有公開的傳送地標列表 (Warps)。',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_random_joke',
+      description: '隨機調用雲喵冷笑話庫，講一個冷笑話或幹話。',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'read_webpage',
+      description: '當使用者提供 HTTP/HTTPS 網址 URL（例如詢問這是什麼網站、分析網址）時，必須鋪即調用此工具讀取該網頁內文標題與摘要。',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: {
+            type: 'string',
+            description: '要抓取與讀取的完整 HTTP/HTTPS 網址。'
+          }
+        },
+        required: ['url']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'calculate_expression',
+      description: '當使用者要求進行任何數學計算、乘除法、數字運算（如 378494*3839 是多少）、單位換算或統計時，必須調用此工具執行精確程式碼計算，絕不可自己估算！',
+      parameters: {
+        type: 'object',
+        properties: {
+          expression: {
+            type: 'string',
+            description: '要執行的數學算式，例如：「378494 * 3839」、「(15 + 23) * 45 / 3」。'
+          }
+        },
+        required: ['expression']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'generate_ai_image',
+      description: '當使用者要求畫圖、生圖、產生圖片、畫出某個畫面時，必須調用此工具生成圖片。模型可選 nano-banana-2 (gemini-3.1-flash-image) 或 nano-banana-lite (gemini-3.1-flash-lite-image)，每人每天各限用 4 張。',
+      parameters: {
+        type: 'object',
+        properties: {
+          prompt: {
+            type: 'string',
+            description: '生圖的詳細畫面描述或提示詞（英文或中文）。'
+          },
+          model: {
+            type: 'string',
+            description: '選擇繪圖模型：nano-banana-2 (預設，gemini-3.1-flash-image) 或 nano-banana-lite (gemini-3.1-flash-lite-image)。'
+          }
+        },
+        required: ['prompt']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_user_image_quota',
+      description: '當使用者詢問自己今日剩餘多少繪圖/生圖額度、查詢生圖次數或剩餘張數時，必須調用此工具查詢。',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
     }
   }
 ];
@@ -622,10 +665,10 @@ const TOOL_STATUS_MAP = {
   'query_user_image_quota': '📊 雲喵正在查詢您今日的 AI 額度次數中...'
 };
 
-// Process AI Chat via Gemini API REST (supporting Multimodal Images, History & Function Calling)
+// Process AI Chat via OpenRouter API REST (supporting Multimodal Images, History & Function Calling)
 async function generateAiResponse(userMessage, contextUser, attachments = [], channelId = AI_CHANNEL_ID, onStatusUpdate = null) {
   try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
 
     // Get previous conversation history for this channel
     const history = getConversationHistory(channelId);
@@ -634,10 +677,21 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
     const nowTaipei = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'full', timeStyle: 'medium' });
     const userPromptText = `[當前時間: ${nowTaipei}] <@${contextUser.id}> (${contextUser.displayName || contextUser.username}): ${userMessage}`;
 
-    const userParts = [{ text: userPromptText }];
+    const messages = [
+      { role: 'system', content: CLOUDCAT_SYSTEM_PROMPT }
+    ];
+
+    // Add conversation history
+    for (const m of history) {
+      messages.push({
+        role: m.role === 'USER' ? 'user' : 'assistant',
+        content: m.text
+      });
+    }
 
     // Handle Multimodal Image Attachments
     if (attachments && attachments.length > 0) {
+      const contentParts = [{ type: 'text', text: userPromptText }];
       for (const att of attachments) {
         if (att.contentType && att.contentType.startsWith('image/')) {
           try {
@@ -645,73 +699,79 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
             if (imgRes.ok) {
               const buffer = await imgRes.arrayBuffer();
               const base64Data = Buffer.from(buffer).toString('base64');
-              userParts.push({
-                inlineData: {
-                  mimeType: att.contentType,
-                  data: base64Data
+              contentParts.push({
+                type: 'image_url',
+                image_url: {
+                  url: `data:${att.contentType};base64,${base64Data}`
                 }
               });
             }
           } catch (imgErr) {
-            logger.warn('Failed to fetch image attachment for Gemini multimodal:', imgErr);
+            logger.warn('Failed to fetch image attachment for multimodal:', imgErr);
           }
         }
       }
+      messages.push({ role: 'user', content: contentParts });
+    } else {
+      messages.push({ role: 'user', content: userPromptText });
     }
 
-    const contents = [
-      ...history.map(m => ({
-        role: m.role === 'USER' ? 'user' : 'model',
-        parts: [{ text: m.text }]
-      })),
-      {
-        role: 'user',
-        parts: userParts
-      }
-    ];
-
-    const payload = {
-      systemInstruction: {
-        parts: [{ text: CLOUDCAT_SYSTEM_PROMPT }]
-      },
-      contents: contents,
-      tools: [
-        { functionDeclarations: TOOL_DECLARATIONS }
-      ],
-      generationConfig: {
-        maxOutputTokens: 8192
-      }
-    };
-
-    let response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Gemini API Http ${response.status}: ${errText}`);
-    }
-
-    let data = await response.json();
-    let candidate = data.candidates?.[0];
-    let candidateContent = candidate?.content;
-
-    // Check for Function Call Tool Executions (Iterate up to 3 tool call rounds)
+    // Iterate up to 3 tool call rounds
     for (let round = 0; round < 3; round++) {
-      const functionCalls = candidateContent?.parts?.filter(p => p.functionCall);
-      if (!functionCalls || functionCalls.length === 0) break;
+      const requestPayload = {
+        model: OPENROUTER_MODEL,
+        messages: messages,
+        tools: TOOL_DECLARATIONS,
+        tool_choice: 'auto',
+        max_tokens: 4096
+      };
 
-      // Append model response with function calls
-      contents.push(candidateContent);
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'HTTP-Referer': 'https://craft-core.net',
+          'X-Title': 'Craft-Core Discord Bot',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestPayload)
+      });
 
-      // Execute function calls
-      const functionResponseParts = [];
-      for (const fc of functionCalls) {
-        const toolName = fc.functionCall.name;
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`OpenRouter API Http ${response.status}: ${errText}`);
+      }
 
-        // Trigger dynamic status update callback if provided
+      const data = await response.json();
+      const choice = data.choices?.[0] || data.candidates?.[0];
+      const message = choice?.message;
+
+      if (!message) break;
+
+      const toolCalls = message.tool_calls;
+      if (!toolCalls || toolCalls.length === 0) {
+        const replyText = message.content;
+        if (replyText && replyText.trim().length > 0) {
+          saveConversationHistory(channelId, 'USER', userPromptText);
+          saveConversationHistory(channelId, 'MODEL', replyText);
+          return replyText;
+        }
+        break;
+      }
+
+      // Append model response (containing tool calls) to message history
+      messages.push(message);
+
+      // Execute each tool call
+      for (const tc of toolCalls) {
+        const toolName = tc.function.name;
+        let toolArgs = {};
+        try {
+          toolArgs = tc.function.arguments ? (typeof tc.function.arguments === 'string' ? JSON.parse(tc.function.arguments) : tc.function.arguments) : {};
+        } catch (e) {
+          logger.warn(`Failed to parse arguments for tool ${toolName}:`, e);
+        }
+
         if (onStatusUpdate && typeof onStatusUpdate === 'function') {
           const statusMsg = TOOL_STATUS_MAP[toolName] || `⚙️ 雲喵正在處理 ${toolName} 中...`;
           try {
@@ -719,39 +779,15 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
           } catch (e) {}
         }
 
-        const toolResult = await executeTool(toolName, fc.functionCall.args || {}, contextUser);
-        functionResponseParts.push({
-          functionResponse: {
-            name: toolName,
-            response: { result: toolResult }
-          }
+        const toolResult = await executeTool(toolName, toolArgs, contextUser);
+
+        messages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          name: toolName,
+          content: JSON.stringify(toolResult)
         });
       }
-
-      contents.push({
-        role: 'user',
-        parts: functionResponseParts
-      });
-
-      // Fetch follow-up response from Gemini
-      response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) break;
-      data = await response.json();
-      candidate = data.candidates?.[0];
-      candidateContent = candidate?.content;
-    }
-
-    const replyText = candidateContent?.parts?.map(p => p.text).filter(Boolean).join('\n');
-    if (replyText && replyText.trim().length > 0) {
-      // Save user prompt & CloudCat reply to conversation history
-      saveConversationHistory(channelId, 'USER', userPromptText);
-      saveConversationHistory(channelId, 'MODEL', replyText);
-      return replyText;
     }
 
     return '喵～ 雲喵剛才在伸懶腰，可以再試著跟雲喵說一次嗎喵？😼✨';
