@@ -111,6 +111,20 @@ async function init(dbPath) {
         )
       `);
     } catch (e) {}
+
+    // Migration: ensure user_custom_personas table exists (up to 3 slots per user)
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS user_custom_personas (
+          user_id TEXT NOT NULL,
+          slot_index INTEGER NOT NULL CHECK(slot_index BETWEEN 1 AND 3),
+          persona_name TEXT NOT NULL,
+          persona_prompt TEXT NOT NULL,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (user_id, slot_index)
+        )
+      `);
+    } catch (e) {}
   } else {
 
     throw new Error(`Database initialization failed: schema.sql not found at ${schemaPath}`);
@@ -547,6 +561,29 @@ async function setUserPersona(userId, personaKey) {
   stmt.run(userId, personaKey);
 }
 
+async function getUserCustomPersonas(userId) {
+  if (!db) throw new Error('Database not initialized');
+  const stmt = db.prepare('SELECT slot_index, persona_name, persona_prompt, updated_at FROM user_custom_personas WHERE user_id = ? ORDER BY slot_index ASC');
+  return stmt.all(userId);
+}
+
+async function getCustomPersonaBySlot(userId, slotIndex) {
+  if (!db) throw new Error('Database not initialized');
+  const stmt = db.prepare('SELECT slot_index, persona_name, persona_prompt FROM user_custom_personas WHERE user_id = ? AND slot_index = ?');
+  return stmt.get(userId, slotIndex);
+}
+
+async function saveUserCustomPersona(userId, slotIndex, personaName, personaPrompt) {
+  if (!db) throw new Error('Database not initialized');
+  const safeSlot = Math.min(Math.max(parseInt(slotIndex, 10) || 1, 1), 3);
+  const stmt = db.prepare(`
+    INSERT INTO user_custom_personas (user_id, slot_index, persona_name, persona_prompt, updated_at)
+    VALUES (?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(user_id, slot_index) DO UPDATE SET persona_name = excluded.persona_name, persona_prompt = excluded.persona_prompt, updated_at = datetime('now')
+  `);
+  stmt.run(userId, safeSlot, personaName, personaPrompt);
+}
+
 module.exports = {
   init,
   close,
@@ -603,7 +640,10 @@ module.exports = {
   getPendingWarpSubmissions,
   getAllWarpSubmissions,
   getUserPersona,
-  setUserPersona
+  setUserPersona,
+  getUserCustomPersonas,
+  getCustomPersonaBySlot,
+  saveUserCustomPersona
 };
 
 

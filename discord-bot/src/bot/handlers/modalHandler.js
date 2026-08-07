@@ -34,8 +34,21 @@ async function modalHandler(interaction) {
         await command.handleModalSubmit(interaction);
       } else {
         throw new Error('找不到公告指令的處理程式');
+      } else if (customId.startsWith('custom_persona_modal:')) {
+        const slotIndex = parseInt(customId.split(':')[1], 10) || 1;
+        const personaName = interaction.fields.getTextInputValue('persona_name');
+        const personaPrompt = interaction.fields.getTextInputValue('persona_prompt');
+        const db = require('../../database');
+
+        await db.saveUserCustomPersona(interaction.user.id, slotIndex, personaName, personaPrompt);
+        const personaKey = `custom_${slotIndex}`;
+        await db.setUserPersona(interaction.user.id, personaKey);
+
+        await interaction.reply({
+          content: `🎉 成功製作並儲存個人專屬人設！\n\n- **槽位**: 🎨 自訂人設 ${slotIndex}\n- **名稱**: **${personaName}**\n- **目前狀態**: 已自動切換為當前使用中人設！\n\n> **提示詞預覽**: \`${personaPrompt.slice(0, 100)}...\``,
+          ephemeral: true
+        });
       }
-    }
   } catch (error) {
     if (error instanceof AppError && error.isOperational) {
       if (interaction.deferred || interaction.replied) {

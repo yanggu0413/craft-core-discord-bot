@@ -322,6 +322,31 @@ const TOOL_DECLARATIONS = [
         required: []
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_custom_persona',
+      description: '為當前與你對話的玩家製作並儲存專屬的 AI 客製化人設 (可儲存至自訂槽位 1~3)，並自動切換啟用該人設。',
+      parameters: {
+        type: 'object',
+        properties: {
+          slot_index: {
+            type: 'number',
+            description: '可選。自訂槽位編號 (1、2 或 3)，預設為 1。'
+          },
+          persona_name: {
+            type: 'string',
+            description: '玩家自訂的人設名稱 (例如: 傲嬌女僕、中二病魔王、哥吉拉等)。'
+          },
+          persona_prompt: {
+            type: 'string',
+            description: '該人設的詳細風格描述、角色設定、口癖與對話指令規則。'
+          }
+        },
+        required: ['persona_name', 'persona_prompt']
+      }
+    }
   }
 ];
 
@@ -647,6 +672,20 @@ async function executeTool(name, args, contextUser) {
       };
     }
 
+    case 'create_custom_persona': {
+      const slot = Math.min(Math.max(parseInt(args.slot_index, 10) || 1, 1), 3);
+      const name = args.persona_name;
+      const prompt = args.persona_prompt;
+      const db = require('../database');
+      await db.saveUserCustomPersona(contextUser.id, slot, name, prompt);
+      const personaKey = `custom_${slot}`;
+      await db.setUserPersona(contextUser.id, personaKey);
+      return {
+        success: true,
+        message: `已成功為玩家 <@${contextUser.id}> 建立並自動切換專屬自訂人設「${name}」(槽位 ${slot})！此後請完全以該新建立的人設語氣回覆玩家！`
+      };
+    }
+
     default:
       return { error: `未知工具名稱: ${name}` };
   }
@@ -663,7 +702,8 @@ const TOOL_STATUS_MAP = {
   'query_death_leaderboard': '💀 雲喵正在調閱全服死亡排行榜中...',
   'calculate_expression': '🧮 雲喵正在執行精密算式計算中...',
   'generate_ai_image': '🎨 雲喵正在揮毫繪製圖片中 (Nano Banana)...',
-  'query_user_image_quota': '📊 雲喵正在查詢您今日的 AI 額度次數中...'
+  'query_user_image_quota': '📊 雲喵正在查詢您今日的 AI 額度次數中...',
+  'create_custom_persona': '🎨 雲喵正在寫入並啟動您的專屬自訂人設中...'
 };
 
 const TEXT_FILE_EXTENSIONS = new Set([
@@ -854,7 +894,7 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
     }
 
     // Check if user requested text-based persona switch in their message (e.g. "切換到幹話模式", "切換人設 6")
-    const { getPersona, parsePersonaFromText } = require('../config/personas');
+    const { getPersonaForUser, parsePersonaFromText } = require('../config/personas');
     const db = require('../database');
 
     const matchedPersonaKey = parsePersonaFromText(userMessage);
@@ -877,7 +917,7 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
       }
     }
 
-    const activePersona = getPersona(userPersonaKey);
+    const activePersona = await getPersonaForUser(contextUser?.id, userPersonaKey);
     let systemPromptContent = CLOUDCAT_SYSTEM_PROMPT;
     if (userPersonaKey !== 'default') {
       systemPromptContent = `====================

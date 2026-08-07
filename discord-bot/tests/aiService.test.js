@@ -112,6 +112,68 @@ describe('aiService OpenRouter & Gemini Background Captioning Integration', () =
     expect(response).toContain('幹你娘');
   });
 
+  test('should execute create_custom_persona tool call when player asks AI to build custom persona', async () => {
+    let callRound = 0;
+    global.fetch = jest.fn().mockImplementation(async (url) => {
+      callRound++;
+      if (callRound === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            choices: [
+              {
+                message: {
+                  role: 'assistant',
+                  tool_calls: [
+                    {
+                      id: 'call_custom_persona_1',
+                      type: 'function',
+                      function: {
+                        name: 'create_custom_persona',
+                        arguments: JSON.stringify({
+                          slot_index: 1,
+                          persona_name: '傲嬌女僕',
+                          persona_prompt: '你是一個傲嬌女僕，說話總是講「才...才沒有呢，主人！」'
+                        })
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          })
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                role: 'assistant',
+                content: '哼！本女僕已經為您設定好了啦，才...才沒有特別想服侍主人呢！'
+              }
+            }
+          ]
+        })
+      });
+    });
+
+    const contextUser = { id: 'user_custom_test_999', username: 'maiduser', displayName: '女僕控玩家' };
+    const response = await aiService.generateAiResponse('幫我製作一個傲嬌女僕人設', contextUser, [], 'channel-create-persona-test');
+
+    expect(callRound).toBe(2);
+    expect(response).toContain('本女僕已經為您設定好了啦');
+
+    // Verify DB saved custom persona and active user persona is updated
+    const savedCustoms = await db.getUserCustomPersonas('user_custom_test_999');
+    expect(savedCustoms.length).toBe(1);
+    expect(savedCustoms[0].persona_name).toBe('傲嬌女僕');
+
+    const activeKey = await db.getUserPersona('user_custom_test_999');
+    expect(activeKey).toBe('custom_1');
+  });
+
   test('should correctly decode Big5/ANSI encoded text files (e.g. Windows Notepad 估價單.txt)', async () => {
     // Exact Big5 encoded bytes for "電腦組裝估價單"
     const big5Bytes = Uint8Array.from([

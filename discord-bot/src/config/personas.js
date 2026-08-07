@@ -97,10 +97,37 @@ function getPersona(key) {
   return PERSONA_CONFIGS[key] || PERSONA_CONFIGS.default;
 }
 
+async function getPersonaForUser(userId, key) {
+  if (PERSONA_CONFIGS[key]) {
+    return PERSONA_CONFIGS[key];
+  }
+  if (key && key.startsWith('custom_')) {
+    const slotIndex = parseInt(key.replace('custom_', ''), 10) || 1;
+    const db = require('../database');
+    try {
+      const custom = await db.getCustomPersonaBySlot(userId, slotIndex);
+      if (custom) {
+        return {
+          key,
+          name: `🎨 自訂人設 ${slotIndex}: ${custom.persona_name}`,
+          description: `玩家專屬自訂人設 (槽位 ${slotIndex})`,
+          prompt: `扮演角色：${custom.persona_name}
+
+${custom.persona_prompt}`
+        };
+      }
+    } catch (e) {}
+  }
+  return PERSONA_CONFIGS.default;
+}
+
 function parsePersonaFromText(text) {
   if (!text) return null;
   const t = text.trim();
   if (t.includes('切換人設') || t.includes('切換模式') || t.includes('變更人設') || t.includes('換成') || t.includes('切換到') || t.includes('切換')) {
+    if (t.includes('自訂1') || t.includes('自訂 1') || t.includes('自定1')) return 'custom_1';
+    if (t.includes('自訂2') || t.includes('自訂 2') || t.includes('自定2')) return 'custom_2';
+    if (t.includes('自訂3') || t.includes('自訂 3') || t.includes('自定3')) return 'custom_3';
     if (t.includes('可愛') || t.includes('雲喵') || t.includes('預設') || t.includes('1')) return 'default';
     if (t.includes('普通') || t.includes('助理') || t.includes('正常') || t.includes('2')) return 'normal';
     if (t.includes('梗') || t.includes('諧音') || t.includes('笑話') || t.includes('3')) return 'joke';
@@ -114,5 +141,6 @@ function parsePersonaFromText(text) {
 module.exports = {
   PERSONA_CONFIGS,
   getPersona,
+  getPersonaForUser,
   parsePersonaFromText
 };
