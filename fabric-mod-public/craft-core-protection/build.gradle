@@ -1,0 +1,5 @@
+dependencies {
+    implementation project(':craft-core-libs')
+    testImplementation project(':craft-core-libs')
+}
+

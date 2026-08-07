@@ -1,0 +1,58 @@
+pluginManagement {
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'craft-core-mod'
+
+[
+    'craft-core-libs',
+    'craft-core-economy',
+    'craft-core-check',
+    'craft-core-chestshop',
+    'craft-core-market',
+    'craft-core-claims',
+    'craft-core-lockbox',
+    'craft-core-pvp',
+    'craft-core-home',
+    'craft-core-warp',
+    'craft-core-spawn',
+    'craft-core-rtp',
+    'craft-core-tpa',
+    'craft-core-back',
+    'craft-core-world',
+    'craft-core-checkin',
+    'craft-core-luckydraw',
+    'craft-core-task',
+    'craft-core-bounty',
+    'craft-core-achievement',
+    'craft-core-express',
+    'craft-core-fakeplayer',
+    'craft-core-menu',
+    'craft-core-portable',
+    'craft-core-vein',
+    'craft-core-fish',
+    'craft-core-backup',
+    'craft-core-invsee',
+    'craft-core-afk',
+    'craft-core-machine',
+    'craft-core-treasure',
+    'craft-core-mining',
+    'craft-core-lobby',
+    'craft-core-shop',
+    'craft-core-protection',
+    'craft-core-rewards',
+    'craft-core-teleport',
+    'craft-core-utility'
+].each { name ->
+    if (file(name).exists()) {
+        include name
+    }
+}
+

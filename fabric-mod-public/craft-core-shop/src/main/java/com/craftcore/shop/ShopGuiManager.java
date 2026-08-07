@@ -1,0 +1,1131 @@
+package com.craftcore.shop;
+
+import com.craftcore.api.EconomyAPI;
+import com.craftcore.gui.MenuRegistry;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.Blocks;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+public class ShopGuiManager {
+
+    private static int getUpgradedShopSlots(String username) {
+        try {
+            Class<?> clazz = Class.forName("com.craftcore.economy.EconomyManager");
+            return (int) clazz.getMethod("getUpgradedShopSlots", String.class).invoke(null, username);
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
+    private static double getUpgradeCost(int currentLimit) {
+        int nextSlot = currentLimit + 1;
+        if (nextSlot <= 20) {
+            return 10000.0;
+        } else if (nextSlot <= 25) {
+            return 25000.0;
+        } else {
+            return 50000.0;
+        }
+    }
+
+    private static boolean upgradeShopLimit(String username) {
+        try {
+            Class<?> clazz = Class.forName("com.craftcore.economy.EconomyManager");
+            return (boolean) clazz.getMethod("upgradeShopLimit", String.class).invoke(null, username);
+        } catch (Throwable t) {
+            int currentSlots = 15 + getUpgradedShopSlots(username);
+            double cost = getUpgradeCost(currentSlots);
+            double balance = EconomyAPI.getProvider().getBalance(username);
+            if (balance >= cost && EconomyAPI.getProvider().removeMoney(username, cost)) {
+                try {
+                    Class<?> clazz = Class.forName("com.craftcore.economy.EconomyManager");
+                    clazz.getMethod("incrementUpgradedShopSlots", String.class).invoke(null, username);
+                } catch (Throwable ignored) {}
+                return true;
+            }
+            return false;
+        }
+    }
+
+    public static void closeIfShopContainer(ServerPlayer player, String coords) {
+        if (player != null && player.containerMenu != null && player.containerMenu != player.inventoryMenu) {
+            try {
+                player.closeContainer();
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private static boolean isOp(Player player) {
+        if (player instanceof ServerPlayer serverPlayer) {
+            return serverPlayer.createCommandSourceStack().permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER);
+        }
+        return false;
+    }
+
+    private static String getPlayerNameSafely(Player player) {
+        if (player == null || player.getName() == null) {
+            return "Unknown";
+        }
+        return player.getName().getString();
+    }
+
+    public static void openShopList(ServerPlayer player) {
+        player.openMenu(new SimpleMenuProvider(
+            (syncId, playerInv, playerEntity) -> new ShopListScreenHandler(syncId, playerInv, ShopManager.getShops(), player, 0, null),
+            Component.literal("🛒 全服箱子商店市場")
+        ));
+    }
+
+    public static void openOwnerShopList(ServerPlayer player) {
+        List<ShopManager.Shop> allShops = ShopManager.getShops();
+        List<ShopManager.Shop> personalShops = new ArrayList<>();
+        String username = getPlayerNameSafely(player);
+        for (ShopManager.Shop s : allShops) {
+            if (s.player != null && s.player.equalsIgnoreCase(username)) {
+                personalShops.add(s);
+            }
+        }
+        player.openMenu(new SimpleMenuProvider(
+            (syncId, playerInv, playerEntity) -> new ShopListScreenHandler(syncId, playerInv, personalShops, player, 1, null),
+            Component.literal("🏪 店主遙控台")
+        ));
+    }
+
+    public static void openFilteredShopList(ServerPlayer player, String query) {
+        List<ShopManager.Shop> allShops = ShopManager.getShops();
+        List<ShopManager.Shop> filtered = new ArrayList<>();
+        for (ShopManager.Shop shop : allShops) {
+            Item itemObj = BuiltInRegistries.ITEM.getValue(Identifier.parse(shop.item));
+            if (TranslationManager.matches(itemObj, shop.item, query)) {
+                filtered.add(shop);
+            }
+        }
+
+        filtered.sort((s1, s2) -> {
+            double p1 = s1.sellPrice > 0 ? s1.sellPrice : s1.price;
+            double p2 = s2.sellPrice > 0 ? s2.sellPrice : s2.price;
+            boolean has1 = p1 > 0;
+            boolean has2 = p2 > 0;
+            if (has1 && has2) {
+                if (p1 != p2) {
+                    return Double.compare(p1, p2);
+                }
+            } else if (has1) {
+                return -1;
+            } else if (has2) {
+                return 1;
+            }
+            return Double.compare(s2.buyPrice, s1.buyPrice);
+        });
+
+        player.openMenu(new SimpleMenuProvider(
+            (syncId, playerInv, playerEntity) -> new ShopListScreenHandler(syncId, playerInv, filtered, player, 2, query),
+            Component.literal("🔍 商店搜尋: " + query)
+        ));
+    }
+
+    public static void openSubMenu(ServerPlayer player, ShopManager.Shop shop) {
+        player.openMenu(new SimpleMenuProvider(
+            (syncId, playerInv, playerEntity) -> new ShopSubMenuScreenHandler(syncId, playerInv, shop, player),
+            Component.literal(shop.customName != null ? shop.customName : "管理商店")
+        ));
+    }
+
+    public static ItemStack createPlayerHead(String username) {
+        ItemStack headStack = new ItemStack(Items.PLAYER_HEAD);
+        if (username != null && !username.isEmpty()) {
+            try {
+                headStack.set(DataComponents.PROFILE, net.minecraft.world.item.component.ResolvableProfile.createUnresolved(username));
+            } catch (Throwable ignored) {}
+        }
+        return headStack;
+    }
+
+    public static class ShopListScreenHandler extends ChestMenu {
+        private final List<ShopManager.Shop> shops;
+        private final ServerPlayer player;
+        private final int mode; // 0 = Market, 1 = Owner Remote, 2 = Search
+        private final String searchQuery;
+
+        public ShopListScreenHandler(int syncId, Inventory playerInventory, List<ShopManager.Shop> shops, ServerPlayer player, int mode, String searchQuery) {
+            super(MenuType.GENERIC_9x6, syncId, playerInventory, new SimpleContainer(54), 6);
+            this.shops = shops;
+            this.player = player;
+            this.mode = mode;
+            this.searchQuery = searchQuery;
+
+            int shopIdx = 0;
+            for (int slot = 0; slot < 45 && shopIdx < shops.size(); slot++) {
+                ShopManager.Shop shop = shops.get(shopIdx);
+                String ownerName = shop.player != null ? shop.player : "Steve";
+                Item itemObj = BuiltInRegistries.ITEM.getValue(Identifier.parse(shop.item));
+                ItemStack stack = (itemObj != null && itemObj != Items.AIR) ? new ItemStack(itemObj) : createPlayerHead(ownerName);
+                stack.set(DataComponents.CUSTOM_NAME, Component.literal(shop.customName != null ? "§6" + shop.customName : "§6" + ownerName + " 的商店"));
+
+                List<Component> lore = new ArrayList<>();
+                String itemName = TranslationManager.getTranslatedName(shop.item);
+                lore.add(Component.literal("§7店主: §b" + ownerName));
+                lore.add(Component.literal("§7商品: §e" + itemName));
+                lore.add(Component.literal("§7位置: §f" + shop.coords));
+                if (shop.sellPrice > 0 && shop.buyPrice > 0) {
+                    lore.add(Component.literal("§7價格: §a售$" + shop.sellPrice + " | 收$" + shop.buyPrice));
+                } else if (shop.sellPrice > 0) {
+                    lore.add(Component.literal("§7價格: §a售$" + shop.sellPrice));
+                } else if (shop.buyPrice > 0) {
+                    lore.add(Component.literal("§7價格: §b收$" + shop.buyPrice));
+                } else {
+                    lore.add(Component.literal("§7價格: §a$" + shop.price));
+                }
+                int currentStock = calculateStockFromChest(shop, player.level());
+                lore.add(Component.literal("§7庫存: §e" + (shop.infinite ? "無限" : currentStock)));
+                lore.add(Component.literal("§7評分: §e" + ShopManager.getAverageRatingString(shop.id)));
+                if (shop.player.equals(getPlayerNameSafely(player)) || isOp(player)) {
+                    lore.add(Component.literal("§7營業額: §d$" + shop.revenue));
+                }
+                lore.add(Component.literal(""));
+                lore.add(Component.literal("§a[點擊開啟傳送 / 遠端管理選單]"));
+                stack.set(DataComponents.LORE, new ItemLore(lore));
+
+                this.getContainer().setItem(slot, stack);
+                shopIdx++;
+            }
+
+            ItemStack glass = new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse("minecraft:gray_stained_glass_pane")));
+            glass.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
+            for (int s = shopIdx; s < 45; s++) {
+                this.getContainer().setItem(s, glass);
+            }
+
+            ItemStack backBtn = new ItemStack(Items.ARROW);
+            backBtn.set(DataComponents.CUSTOM_NAME, Component.literal("§a⬅ 返回主選單"));
+            backBtn.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("§7點擊返回 /menu 大廳"))));
+            this.getContainer().setItem(45, backBtn);
+
+            ItemStack instBook = new ItemStack(Items.BOOK);
+            instBook.set(DataComponents.CUSTOM_NAME, Component.literal("§e[ 商店系統說明 ]"));
+            List<Component> instLore = List.of(
+                Component.literal("§7- 左鍵點選列表中的商店：可選擇「傳送」或「管理」。"),
+                Component.literal("§7- 建立商店：點擊下方的「新增商店」按鈕後，"),
+                Component.literal("  手持商品對您的箱子按【左鍵】即可建立。"),
+                Component.literal("§7- 遠端管理：商店擁有者可遠端補貨、提領營業額或註銷。"),
+                Component.literal("§7- 限制：每個玩家最多建立 15 個商店 (可付費升級)。")
+            );
+            instBook.set(DataComponents.LORE, new ItemLore(instLore));
+            this.getContainer().setItem(46, instBook);
+
+            ItemStack marketTab = new ItemStack(Items.CHEST);
+            marketTab.set(DataComponents.CUSTOM_NAME, Component.literal("§a🛒 全服箱子商店市場"));
+            marketTab.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§7瀏覽全服所有玩家的箱子商店與即時庫存"),
+                mode == 0 ? Component.literal("§a[當前頁面: 全服市場]") : Component.literal("§e[點擊切換至全服市場]")
+            )));
+            this.getContainer().setItem(47, marketTab);
+
+            double totalRevenue = 0;
+            String username = getPlayerNameSafely(player);
+            for (ShopManager.Shop s : ShopManager.getShops()) {
+                if (s.player != null && s.player.equalsIgnoreCase(username)) {
+                    totalRevenue += s.revenue;
+                }
+            }
+            ItemStack ownerTab = new ItemStack(Items.ENDER_CHEST);
+            ownerTab.set(DataComponents.CUSTOM_NAME, Component.literal("§b🏪 店主遙控台"));
+            ownerTab.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§7瀏覽個人商店、累積未提領收益與遠端遙控"),
+                Component.literal("§7未提領總收益: §d$" + totalRevenue),
+                mode == 1 ? Component.literal("§a[當前頁面: 店主遙控台]") : Component.literal("§e[點擊切換至店主遙控台]")
+            )));
+            this.getContainer().setItem(48, ownerTab);
+
+            ItemStack closeBtn = new ItemStack(Items.BARRIER);
+            closeBtn.set(DataComponents.CUSTOM_NAME, Component.literal("§c❌ 關閉選單"));
+            closeBtn.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("§7點擊關閉此選單"))));
+            this.getContainer().setItem(49, closeBtn);
+
+            ItemStack searchTab = new ItemStack(Items.COMPASS);
+            searchTab.set(DataComponents.CUSTOM_NAME, Component.literal("§e🔍 搜尋物資"));
+            searchTab.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal("§7依名稱或物品類型搜尋商店"),
+                mode == 2 ? Component.literal("§a[搜尋關鍵字: " + searchQuery + "]") : Component.literal("§e[點擊進行物品搜尋]")
+            )));
+            this.getContainer().setItem(50, searchTab);
+
+            this.getContainer().setItem(51, glass);
+
+            ItemStack addShopBtn = new ItemStack(Items.EMERALD);
+            addShopBtn.set(DataComponents.CUSTOM_NAME, Component.literal("§a➕ 新增商店"));
+            addShopBtn.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("§7點擊以進入商店建立模式"))));
+            this.getContainer().setItem(52, addShopBtn);
+
+            ItemStack upgradeBtn = new ItemStack(Items.DIAMOND);
+            int currentUpgrades = getUpgradedShopSlots(username);
+            int maxAllowed = 15 + currentUpgrades;
+            double cost = getUpgradeCost(maxAllowed);
+            upgradeBtn.set(DataComponents.CUSTOM_NAME, Component.literal("§d升級商店上限"));
+            List<Component> upgradeLore = List.of(
+                Component.literal("§7目前上限: §e" + maxAllowed + " §7(基礎15 + 升級" + currentUpgrades + ")"),
+                Component.literal("§7升級費用: §a$" + cost),
+                Component.literal("§7點擊以支付金額並解鎖額外 1 個商店槽位。")
+            );
+            upgradeBtn.set(DataComponents.LORE, new ItemLore(upgradeLore));
+            this.getContainer().setItem(53, upgradeBtn);
+        }
+
+        public ShopListScreenHandler(int syncId, Inventory playerInventory, List<ShopManager.Shop> shops, ServerPlayer player) {
+            this(syncId, playerInventory, shops, player, 0, null);
+        }
+
+        @Override
+        public ItemStack quickMoveStack(Player player, int slot) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
+            if (slotId == 45) {
+                if (player instanceof ServerPlayer spe) {
+                    MenuRegistry.openMenu("main", spe);
+                }
+                return;
+            }
+            if (slotId == 47) {
+                if (player instanceof ServerPlayer spe) {
+                    openShopList(spe);
+                }
+                return;
+            }
+            if (slotId == 48) {
+                if (player instanceof ServerPlayer spe) {
+                    openOwnerShopList(spe);
+                }
+                return;
+            }
+            if (slotId == 49) {
+                if (player instanceof ServerPlayer spe) {
+                    spe.closeContainer();
+                }
+                return;
+            }
+            if (slotId == 50) {
+                if (player instanceof ServerPlayer spe) {
+                    spe.closeContainer();
+                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §f請使用指令 §e/shop search <物品名稱> §f進行物資搜尋！"));
+                }
+                return;
+            }
+            if (slotId == 52) {
+                if (player instanceof ServerPlayer spe) {
+                    spe.closeContainer();
+                    ShopManager.addActivationState(getPlayerNameSafely(spe));
+                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §a★ 商店建立模式 ★"));
+                    spe.sendSystemMessage(Component.literal("§f- 請在 30 秒內，手持欲上架的物品，對著您的箱子按【左鍵】。"));
+                }
+                return;
+            }
+            if (slotId == 53) {
+                if (player instanceof ServerPlayer spe) {
+                    spe.closeContainer();
+                    String username = getPlayerNameSafely(spe);
+                    int currentUpgrades = getUpgradedShopSlots(username);
+                    int maxAllowed = 15 + currentUpgrades;
+                    double cost = getUpgradeCost(maxAllowed);
+                    double balance = EconomyAPI.getProvider().getBalance(username);
+                    if (balance < cost) {
+                        spe.sendSystemMessage(Component.literal("§c[Craft-Core] 金額不足，無法升級上限！"));
+                        spe.playSound(SoundEvents.VILLAGER_NO, 1.0f, 1.0f);
+                        return;
+                    }
+                    if (upgradeShopLimit(username)) {
+                        spe.sendSystemMessage(Component.literal("§b[Craft-Core] §a升級成功！您的商店上限已提升至 " + (maxAllowed + 1) + "。"));
+                        spe.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+                    } else {
+                        spe.sendSystemMessage(Component.literal("§c[Craft-Core] 升級失敗，發生未知錯誤。"));
+                        spe.playSound(SoundEvents.VILLAGER_NO, 1.0f, 1.0f);
+                    }
+                }
+                return;
+            }
+            if (slotId >= 0 && slotId < 45) {
+                if (slotId < shops.size()) {
+                    ShopManager.Shop shop = shops.get(slotId);
+                    if (player instanceof ServerPlayer spe) {
+                        spe.closeContainer();
+                        openSubMenu(spe, shop);
+                    }
+                }
+                return;
+            }
+            super.clicked(slotId, button, clickType, player);
+        }
+
+        @Override
+        public boolean stillValid(Player player) {
+            return true;
+        }
+    }
+
+    public static class ShopSubMenuScreenHandler extends ChestMenu {
+        private final ShopManager.Shop shop;
+        private final ServerPlayer player;
+
+        public ShopSubMenuScreenHandler(int syncId, Inventory playerInventory, ShopManager.Shop shop, ServerPlayer player) {
+            super(MenuType.GENERIC_9x3, syncId, playerInventory, new SimpleContainer(27), 3);
+            this.shop = shop;
+            this.player = player;
+
+            ItemStack tpStack = new ItemStack(Items.ENDER_PEARL);
+            tpStack.set(DataComponents.CUSTOM_NAME, Component.literal("§a傳送到商店"));
+            List<Component> tpLore = List.of(Component.literal("§7傳送至座標: §f" + shop.coords));
+            tpStack.set(DataComponents.LORE, new ItemLore(tpLore));
+            this.getContainer().setItem(10, tpStack);
+
+            ItemStack backStack = new ItemStack(Items.BARRIER);
+            backStack.set(DataComponents.CUSTOM_NAME, Component.literal("§c返回列表"));
+            this.getContainer().setItem(12, backStack);
+
+            boolean isOwner = shop.player.equals(getPlayerNameSafely(player)) || isOp(player);
+            if (isOwner) {
+                ItemStack bulkStack = new ItemStack(Items.REPEATER);
+                bulkStack.set(DataComponents.CUSTOM_NAME, Component.literal("§e設定大宗交易數量"));
+                List<Component> bulkLore = List.of(
+                    Component.literal("§7目前設定: §e" + (shop.bulkQuantity > 1 ? shop.bulkQuantity + " 個/組" : "一般 (無限制)")),
+                    Component.literal("§7點擊循環設定: 1 -> 8 -> 16 -> 32 -> 64 -> 1")
+                );
+                bulkStack.set(DataComponents.LORE, new ItemLore(bulkLore));
+                this.getContainer().setItem(13, bulkStack);
+
+                ItemStack withdrawStack = new ItemStack(Items.GOLD_INGOT);
+                withdrawStack.set(DataComponents.CUSTOM_NAME, Component.literal("§e遠端提領營業額"));
+                List<Component> withdrawLore = List.of(Component.literal("§7累積營業額: §d$" + shop.revenue));
+                withdrawStack.set(DataComponents.LORE, new ItemLore(withdrawLore));
+                this.getContainer().setItem(15, withdrawStack);
+
+                ItemStack deleteStack = new ItemStack(Items.TNT);
+                deleteStack.set(DataComponents.CUSTOM_NAME, Component.literal("§c註銷商店"));
+                this.getContainer().setItem(16, deleteStack);
+            }
+        }
+
+        @Override
+        public ItemStack quickMoveStack(Player player, int slot) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
+            if (slotId >= 0 && slotId < 27) {
+                if (player instanceof ServerPlayer spe) {
+                    if (slotId == 10) {
+                        spe.closeContainer();
+                        String[] parts = shop.coords.split(",");
+                        int x = Integer.parseInt(parts[0]);
+                        int y = Integer.parseInt(parts[1]);
+                        int z = Integer.parseInt(parts[2]);
+                        String dim = (shop.dimension == null || shop.dimension.isBlank()) ? "minecraft:overworld" : shop.dimension;
+                        ServerLevel targetLevel = null;
+                        net.minecraft.server.MinecraftServer server = CraftCoreShopMod.serverInstance;
+                        if (server == null) {
+                            try {
+                                Class<?> clazz = Class.forName("com.craftcore.event.ServerLifecycleHandler");
+                                server = (net.minecraft.server.MinecraftServer) clazz.getField("serverInstance").get(null);
+                            } catch (Throwable ignored) {}
+                        }
+                        if (server != null) {
+                            for (ServerLevel sl : server.getAllLevels()) {
+                                if (sl.dimension().identifier().toString().equalsIgnoreCase(dim)) {
+                                    targetLevel = sl;
+                                    break;
+                                }
+                            }
+                        }
+                        if (targetLevel == null) {
+                            targetLevel = (ServerLevel) spe.level();
+                        }
+                        spe.teleport(new net.minecraft.world.level.portal.TeleportTransition(
+                            targetLevel,
+                            new net.minecraft.world.phys.Vec3(x + 0.5, y + 1.0, z + 0.5),
+                            net.minecraft.world.phys.Vec3.ZERO,
+                            spe.getYRot(), spe.getXRot(),
+                            net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING
+                        ));
+                        spe.sendSystemMessage(Component.literal("§b[Craft-Core] §f成功傳送到座標 " + shop.coords));
+                    } else if (slotId == 12) {
+                        spe.closeContainer();
+                        openShopList(spe);
+                    } else {
+                        boolean isOwner = shop.player.equals(getPlayerNameSafely(spe)) || isOp(spe);
+                        if (isOwner) {
+                            if (slotId == 13) {
+                                int currentBulk = shop.bulkQuantity;
+                                int nextBulk = 1;
+                                if (currentBulk == 1) nextBulk = 8;
+                                else if (currentBulk == 8) nextBulk = 16;
+                                else if (currentBulk == 16) nextBulk = 32;
+                                else if (currentBulk == 32) nextBulk = 64;
+                                else nextBulk = 1;
+                                
+                                ShopManager.setBulkQuantity(shop.id, nextBulk);
+                                spe.closeContainer();
+                                openSubMenu(spe, shop);
+                                spe.sendSystemMessage(Component.literal("§b[Craft-Core] §f已將大宗交易數量設定為: " + (nextBulk > 1 ? nextBulk + " 個/組" : "一般")));
+                                spe.playSound(SoundEvents.NOTE_BLOCK_PLING.value(), 1.0f, 1.0f);
+                            } else if (slotId == 15) {
+                                spe.closeContainer();
+                                String res = ShopManager.clickShopGUI(getPlayerNameSafely(spe), shop.coords, "withdraw", isOp(spe));
+                                if (res.startsWith("Withdrew")) {
+                                    String amt = res.replace("Withdrew ", "");
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §a成功提領營業額 $" + amt + " 元！"));
+                                    spe.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                                } else if (res.equals("Permission denied")) {
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §c權限不足，無法提領！"));
+                                } else if (res.equals("No revenue to withdraw")) {
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §c目前沒有待提領的營業額。"));
+                                } else {
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §f" + res));
+                                }
+                            } else if (slotId == 16) {
+                                spe.closeContainer();
+                                String[] parts = shop.coords.split(",");
+                                int x = Integer.parseInt(parts[0]);
+                                int y = Integer.parseInt(parts[1]);
+                                int z = Integer.parseInt(parts[2]);
+                                BlockPos shopPos = new BlockPos(x, y, z);
+                                cleanupShopVisuals((ServerLevel) spe.level(), shopPos);
+                                String res = ShopManager.clickShopGUI(getPlayerNameSafely(spe), shop.coords, "delete", isOp(spe));
+                                if (res.equals("Shop deleted")) {
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §a商店已成功註銷！"));
+                                } else if (res.equals("Permission denied")) {
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §c權限不足，無法註銷！"));
+                                } else {
+                                    spe.sendSystemMessage(Component.literal("§b[Craft-Core] §f" + res));
+                                }
+                            }
+                        }
+                    }
+                }
+                if (player instanceof ServerPlayer sp) {
+                    sp.containerMenu.sendAllDataToRemote();
+                    sp.inventoryMenu.sendAllDataToRemote();
+                }
+                return;
+            }
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
+        }
+
+        @Override
+        public boolean stillValid(Player player) {
+            return true;
+        }
+    }
+
+    public static class EconomyScreenHandler extends ChestMenu {
+        private final ServerPlayer player;
+
+        public EconomyScreenHandler(int syncId, Inventory playerInventory, ServerPlayer player) {
+            super(MenuType.GENERIC_9x3, syncId, playerInventory, new SimpleContainer(27), 3);
+            this.player = player;
+
+            ItemStack instBook = new ItemStack(Items.BOOK);
+            instBook.set(DataComponents.CUSTOM_NAME, Component.literal("§e[ 回收系統說明 ]"));
+            List<Component> instLore = List.of(
+                Component.literal("§7- 請將欲兌換的物品放入左側的 0-25 號槽位。"),
+                Component.literal("§7- 放入後，點選右下角的綠色羊毛確認兌換。"),
+                Component.literal("§7- 剩餘或不符的物品將在關閉選單時退回背包。"),
+                Component.literal("§e★ 兌換價格："),
+                Component.literal("  - 煤炭: $10 | 銅錠: $20 | 鐵錠: $50"),
+                Component.literal("  - 鑽石: $500 | 獄髓碎片: $2000"),
+                Component.literal("  - 石頭/鵝卵石/深板岩等: 每個 $2 (每日限 80 個)"),
+                Component.literal("  - 泥土/沙子等其他垃圾: 每個 $0.5 (每日限 80 個)")
+            );
+            instBook.set(DataComponents.LORE, new ItemLore(instLore));
+            this.getContainer().setItem(25, instBook);
+
+            ItemStack greenWool = new ItemStack(Items.WOOL.green());
+            greenWool.set(DataComponents.CUSTOM_NAME, Component.literal("§a點擊出售物品"));
+            List<Component> lore = List.of(Component.literal("§7將欲出售的物品放至 0-24 號格子"), Component.literal("§7並點擊此處完成出售。"));
+            greenWool.set(DataComponents.LORE, new ItemLore(lore));
+            this.getContainer().setItem(26, greenWool);
+        }
+
+        @Override
+        public ItemStack quickMoveStack(Player player, int slot) {
+            if (slot == 25 || slot == 26) {
+                return ItemStack.EMPTY;
+            }
+            return super.quickMoveStack(player, slot);
+        }
+
+        @Override
+        public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
+            if (slotId == 25 || slotId == 26) {
+                if (slotId == 26) {
+                    int totalSold = 0;
+                    int totalRejected = 0;
+                    double totalEarned = 0;
+
+                    for (int i = 0; i < 25; i++) {
+                        ItemStack stack = this.getContainer().getItem(i);
+                        if (!stack.isEmpty()) {
+                            String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                            try {
+                                Class<?> clazz = Class.forName("com.craftcore.economy.EconomyManager");
+                                Object resObj = clazz.getMethod("sellItem", String.class, String.class, int.class)
+                                    .invoke(null, getPlayerNameSafely(player), itemId, stack.getCount());
+                                if (resObj != null) {
+                                    int soldCount = (int) resObj.getClass().getField("soldCount").get(resObj);
+                                    double moneyEarned = (double) resObj.getClass().getField("moneyEarned").get(resObj);
+                                    int rejectedCount = (int) resObj.getClass().getField("rejectedCount").get(resObj);
+                                    if (soldCount > 0) {
+                                        totalSold += soldCount;
+                                        totalEarned += moneyEarned;
+                                        if (rejectedCount > 0) {
+                                            stack.setCount(rejectedCount);
+                                            this.getContainer().setItem(i, stack);
+                                        } else {
+                                            this.getContainer().setItem(i, ItemStack.EMPTY);
+                                        }
+                                    } else {
+                                        totalRejected += rejectedCount;
+                                    }
+                                }
+                            } catch (Throwable t) {
+                                // Economy sub-module not loaded or failed
+                            }
+                        }
+                    }
+
+                    if (totalSold > 0) {
+                        player.sendSystemMessage(Component.literal("§b[Craft-Core] §f成功出售 §a" + totalSold + " §f個物品，共賺取 §a$" + totalEarned + "§f 元！"));
+                        player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                    }
+                    if (totalRejected > 0) {
+                        player.sendSystemMessage(Component.literal("§c[Craft-Core] §f" + totalRejected + " 個物品被拒收（已達每日回收上限或為無效回收物品）。"));
+                    }
+                    if (totalSold == 0 && totalRejected == 0) {
+                        player.sendSystemMessage(Component.literal("§c[Craft-Core] 沒有可出售的物品！請將物品放入 0-24 號格子中。"));
+                    }
+                    this.broadcastChanges();
+                }
+                if (player instanceof ServerPlayer sp) {
+                    sp.containerMenu.sendAllDataToRemote();
+                    sp.inventoryMenu.sendAllDataToRemote();
+                }
+                return;
+            }
+            super.clicked(slotId, button, clickType, player);
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
+        }
+
+        @Override
+        public void removed(Player player) {
+            super.removed(player);
+            if (player instanceof ServerPlayer serverPlayer) {
+                for (int i = 0; i < 25; i++) {
+                    ItemStack stack = this.getContainer().getItem(i);
+                    if (!stack.isEmpty()) {
+                        serverPlayer.getInventory().placeItemBackInInventory(stack);
+                    }
+                }
+            }
+        }
+
+        @Override
+        public boolean stillValid(Player player) {
+            return true;
+        }
+    }
+
+    public static void spawnShopVisuals(ServerLevel world, BlockPos pos, String player, String item, double sellPrice, double buyPrice) {
+        try {
+            var chestState = world.getBlockState(pos);
+            Direction facing = Direction.NORTH;
+            if (chestState.getBlock() instanceof net.minecraft.world.level.block.ChestBlock && chestState.hasProperty(net.minecraft.world.level.block.ChestBlock.FACING)) {
+                facing = chestState.getValue(net.minecraft.world.level.block.ChestBlock.FACING);
+            }
+            BlockPos signPos = pos.relative(facing);
+            world.setBlock(signPos, Blocks.OAK_WALL_SIGN.defaultBlockState().setValue(net.minecraft.world.level.block.WallSignBlock.FACING, facing), 3);
+
+            String coords = pos.getX() + "," + pos.getY() + "," + pos.getZ();
+            String dimension = world.dimension().identifier().toString();
+            String key = dimension + ":" + coords;
+            ShopManager.Shop shop = ShopManager.getShop(key);
+            if (shop != null) {
+                ShopManager.updateShopSign(world, pos, shop);
+            } else {
+                net.minecraft.world.level.block.entity.BlockEntity be = world.getBlockEntity(signPos);
+                if (be instanceof net.minecraft.world.level.block.entity.SignBlockEntity sign) {
+                    Item itemObj = BuiltInRegistries.ITEM.getValue(Identifier.parse(item));
+                    Component line3Text;
+                    if (itemObj != Items.AIR) {
+                        line3Text = Component.translatable(itemObj.getDescriptionId());
+                    } else {
+                        line3Text = Component.literal(item.replace("minecraft:", ""));
+                    }
+                    
+                    String line4Str = "";
+                    if (sellPrice > 0 && buyPrice > 0) {
+                        line4Str = "§a售" + sellPrice + " | 收" + buyPrice;
+                    } else if (sellPrice > 0) {
+                        line4Str = "§a售: " + sellPrice;
+                    } else if (buyPrice > 0) {
+                        line4Str = "§a收: " + buyPrice;
+                    }
+                    final String finalLine4 = line4Str;
+
+                    sign.updateText(text -> text.setHasGlowingText(true).setMessage(0, Component.literal("§1[商店]")).setMessage(1, Component.literal(player)).setMessage(2, line3Text).setMessage(3, Component.literal(finalLine4)), true);
+                    sign.setChanged();
+                    world.sendBlockUpdated(signPos, sign.getBlockState(), sign.getBlockState(), 3);
+                }
+            }
+
+            Item itemObj = BuiltInRegistries.ITEM.getValue(Identifier.parse(item));
+            if (itemObj != Items.AIR) {
+                Display.ItemDisplay itemDisplay = new Display.ItemDisplay(net.minecraft.world.entity.EntityTypes.ITEM_DISPLAY, world);
+                itemDisplay.setItemStack(new ItemStack(itemObj));
+                itemDisplay.setPos(pos.getX() + 0.5, pos.getY() + 1.1, pos.getZ() + 0.5);
+                itemDisplay.setBillboardConstraints(Display.BillboardConstraints.CENTER);
+                itemDisplay.setTransformation(new com.mojang.math.Transformation(new org.joml.Vector3f(0f, 0f, 0f), new org.joml.Quaternionf(0f, 0f, 0f, 1f), new org.joml.Vector3f(0.5f, 0.5f, 0.5f), new org.joml.Quaternionf(0f, 0f, 0f, 1f)));
+                world.addFreshEntity(itemDisplay);
+            }
+        } catch (Throwable t) {
+            System.err.println("[CraftCore] Failed to spawn shop visuals: " + t.getMessage());
+            t.printStackTrace();
+        }
+    }
+
+    public static void spawnShopVisuals(ServerLevel world, BlockPos pos, String player, String item, double price) {
+        spawnShopVisuals(world, pos, player, item, price, 0.0);
+    }
+
+    public static void cleanupShopVisuals(ServerLevel world, BlockPos pos) {
+        try {
+            AABB box = new AABB(pos).inflate(0.4, 0.5, 0.4);
+            List<Display.ItemDisplay> entities = world.getEntitiesOfClass(
+                Display.ItemDisplay.class, box, entity -> true
+            );
+            for (var entity : entities) {
+                entity.discard();
+            }
+
+            for (Direction dir : Direction.values()) {
+                BlockPos sidePos = pos.relative(dir);
+                var state = world.getBlockState(sidePos);
+                if (ChestShopEventHandler.isSign(state)) {
+                    world.setBlock(sidePos, Blocks.AIR.defaultBlockState(), 3);
+                }
+            }
+        } catch (Throwable t) {
+            System.err.println("[CraftCore] Failed to cleanup shop visuals: " + t.getMessage());
+        }
+    }
+
+    public static class EcoTopScreenHandler extends ChestMenu {
+        public EcoTopScreenHandler(int syncId, Inventory playerInventory) {
+            super(MenuType.GENERIC_9x2, syncId, playerInventory, new SimpleContainer(18), 2);
+            try {
+                Class<?> clazz = Class.forName("com.craftcore.economy.EconomyManager");
+                @SuppressWarnings("unchecked")
+                List<Map.Entry<String, ?>> top = (List<Map.Entry<String, ?>>) clazz.getMethod("getTopWealthPlayers", int.class).invoke(null, 10);
+                if (top != null) {
+                    for (int i = 0; i < top.size(); i++) {
+                        Map.Entry<String, ?> entry = top.get(i);
+                        Item itemObj;
+                        String rankColor;
+                        if (i == 0) {
+                            itemObj = Items.DIAMOND;
+                            rankColor = "§b[第一名] §f";
+                        } else if (i == 1) {
+                            itemObj = Items.EMERALD;
+                            rankColor = "§a[第二名] §f";
+                        } else if (i == 2) {
+                            itemObj = Items.GOLD_INGOT;
+                            rankColor = "§e[第三名] §f";
+                        } else {
+                            itemObj = Items.IRON_INGOT;
+                            rankColor = "§7[第" + (i + 1) + "名] §f";
+                        }
+                        
+                        Object pData = entry.getValue();
+                        double bal = (double) pData.getClass().getField("balance").get(pData);
+                        
+                        ItemStack stack = new ItemStack(itemObj);
+                        stack.set(DataComponents.CUSTOM_NAME, Component.literal(rankColor + entry.getKey()));
+                        List<Component> lore = List.of(
+                            Component.literal("§7資產餘額: §a$" + bal)
+                        );
+                        stack.set(DataComponents.LORE, new ItemLore(lore));
+                        this.getContainer().setItem(i, stack);
+                    }
+                }
+            } catch (Throwable t) {
+                // Economy sub-module not loaded
+            }
+        }
+
+        @Override
+        public ItemStack quickMoveStack(Player player, int slot) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
+            if (slotId >= 0 && slotId < 18) {
+                return;
+            }
+            if (player instanceof ServerPlayer sp) {
+                sp.containerMenu.sendAllDataToRemote();
+                sp.inventoryMenu.sendAllDataToRemote();
+            }
+        }
+
+        @Override
+        public boolean stillValid(Player player) {
+            return true;
+        }
+    }
+
+    public static net.minecraft.network.chat.MutableComponent createClickableText(String text, String command, String hoverText) {
+        return net.minecraft.network.chat.Component.literal(text)
+            .withStyle(style -> style
+                .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand(command))
+                .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(net.minecraft.network.chat.Component.literal(hoverText))));
+    }
+
+    public static int calculateStockFromChest(ShopManager.Shop shop, net.minecraft.world.level.Level level) {
+        if (shop == null) return 0;
+        if (shop.infinite) return 999999;
+        if (level == null) return shop.stock;
+
+        String cleanCoords = ShopManager.getCleanCoords(shop.id);
+        String[] parts = cleanCoords.split(",");
+        if (parts.length != 3) return shop.stock;
+
+        try {
+            int x = Integer.parseInt(parts[0]);
+            int y = Integer.parseInt(parts[1]);
+            int z = Integer.parseInt(parts[2]);
+            String dim = (shop.dimension == null || shop.dimension.isBlank()) ? "minecraft:overworld" : shop.dimension;
+            net.minecraft.server.level.ServerLevel targetLevel = null;
+            net.minecraft.server.MinecraftServer server = CraftCoreShopMod.serverInstance;
+            if (server == null) {
+                try {
+                    Class<?> clazz = Class.forName("com.craftcore.event.ServerLifecycleHandler");
+                    server = (net.minecraft.server.MinecraftServer) clazz.getField("serverInstance").get(null);
+                } catch (Throwable ignored) {}
+            }
+            if (server != null) {
+                for (net.minecraft.server.level.ServerLevel sl : server.getAllLevels()) {
+                    if (sl.dimension().identifier().toString().equalsIgnoreCase(dim)) {
+                        targetLevel = sl;
+                        break;
+                    }
+                }
+            }
+            if (targetLevel == null && level instanceof net.minecraft.server.level.ServerLevel sl) {
+                targetLevel = sl;
+            }
+            if (targetLevel != null) {
+                BlockPos pos = new BlockPos(x, y, z);
+                net.minecraft.world.Container inv = ShopManager.getChestContainer(targetLevel, pos);
+                if (inv != null) {
+                    int count = 0;
+                    for (int i = 0; i < inv.getContainerSize(); i++) {
+                        ItemStack s = inv.getItem(i);
+                        if (!s.isEmpty()) {
+                            String itemKey = BuiltInRegistries.ITEM.getKey(s.getItem()).toString();
+                            if (itemKey.equalsIgnoreCase(shop.item)) {
+                                count += s.getCount();
+                            }
+                        }
+                    }
+                    shop.stock = count;
+                    ShopManager.save();
+                    return count;
+                }
+            }
+        } catch (Exception ignored) {}
+        return shop.stock;
+    }
+
+    public static void openOwnerControlPanel(ServerPlayer player, ShopManager.Shop shop) {
+        calculateStockFromChest(shop, player.level());
+        player.sendSystemMessage(Component.literal("§6=================== 商店管理面板 ==================="));
+        player.sendSystemMessage(Component.literal("§f商店座標: §e" + shop.coords));
+        
+        net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(shop.item));
+        Component itemName = (itemObj != net.minecraft.world.item.Items.AIR) 
+            ? Component.translatable(itemObj.getDescriptionId()) 
+            : Component.literal(shop.item.replace("minecraft:", ""));
+        player.sendSystemMessage(Component.literal("§f上架商品: ").append(itemName));
+        
+        String modeStr = "無";
+        if (shop.sellPrice > 0 && shop.buyPrice > 0) {
+            modeStr = "雙向 (售: " + shop.sellPrice + " | 收: " + shop.buyPrice + ")";
+        } else if (shop.sellPrice > 0) {
+            modeStr = "出售 (售: " + shop.sellPrice + ")";
+        } else if (shop.buyPrice > 0) {
+            modeStr = "收購 (收: " + shop.buyPrice + ")";
+        }
+        player.sendSystemMessage(Component.literal("§f目前模式: §7" + modeStr));
+        player.sendSystemMessage(Component.literal("§f目前庫存: §e" + (shop.infinite ? "無限" : shop.stock)));
+        if (isOp(player)) {
+            player.sendSystemMessage(Component.literal("§f無限模式: " + (shop.infinite ? "§a啟用" : "§c停用")));
+        }
+        player.sendSystemMessage(Component.literal("§6--------------------------------------------------"));
+        player.sendSystemMessage(Component.literal("§e★ 點選以下選項進行管理："));
+        
+        String escapedId = shop.id;
+        
+        net.minecraft.network.chat.MutableComponent row1 = Component.literal("  ");
+        if (isOp(player)) {
+            row1.append(createClickableText("§d[切換無限] ", "/shop control \"" + escapedId + "\" toggle_infinite", "點擊切換商店的無限模式 (目前: " + (shop.infinite ? "無限" : "有限") + ")"));
+        }
+        row1.append(createClickableText("§e[切換模式] ", "/shop control \"" + escapedId + "\" toggle_mode", "點擊循環切換模式 (Buy -> Sell -> Buy & Sell)"))
+            .append(createClickableText("§b[設定價格] ", "/shop control \"" + escapedId + "\" price_config", "點擊開始設定商品的出售與收購價格"));
+        player.sendSystemMessage(row1);
+            
+        player.sendSystemMessage(Component.literal("  ")
+            .append(createClickableText("§a[遠端補貨] ", "/shop control \"" + escapedId + "\" restock", "點擊開啟遠端補貨介面"))
+            .append(createClickableText("§c[清空箱子] ", "/shop control \"" + escapedId + "\" clear", "點擊清空箱子中該商店類型的物品"))
+            .append(createClickableText("§6[切換顯示] ", "/shop control \"" + escapedId + "\" toggle_display", "點擊切換商店上方的懸浮物品顯示"))
+            .append(createClickableText("§2[測試交易] ", "/shop control \"" + escapedId + "\" test_trade", "點擊以買家身份開啟交易介面")));
+            
+        player.sendSystemMessage(Component.literal("  ")
+            .append(createClickableText("§9[交易歷史] ", "/shop control \"" + escapedId + "\" history", "點擊查看此商店最近的交易歷史"))
+            .append(createClickableText("§4[刪除商店]", "/shop control \"" + escapedId + "\" delete", "警告：點擊將立即刪除並清空此商店！")));
+            
+        player.sendSystemMessage(Component.literal("§6=================================================="));
+    }
+
+    public static void openBuyerTransactionPanel(ServerPlayer player, ShopManager.Shop shop) {
+        int stock = 0;
+        int space = 0;
+        ServerLevel world = (ServerLevel) player.level();
+        net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(shop.item));
+        int maxStack = (itemObj != null && itemObj != net.minecraft.world.item.Items.AIR) ? itemObj.getDefaultMaxStackSize() : 64;
+        
+        String cleanCoords = ShopManager.getCleanCoords(shop.id);
+        String[] parts = cleanCoords.split(",");
+        if (parts.length == 3) {
+            try {
+                int x = Integer.parseInt(parts[0]);
+                int y = Integer.parseInt(parts[1]);
+                int z = Integer.parseInt(parts[2]);
+                net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
+                net.minecraft.world.level.block.entity.BlockEntity be = world.getBlockEntity(pos);
+                if (be instanceof net.minecraft.world.Container inv) {
+                    for (int i = 0; i < inv.getContainerSize(); i++) {
+                        ItemStack s = inv.getItem(i);
+                        if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                            stock += s.getCount();
+                        }
+                    }
+                    for (int i = 0; i < inv.getContainerSize(); i++) {
+                        ItemStack s = inv.getItem(i);
+                        if (s.isEmpty()) {
+                            space += maxStack;
+                        } else if (net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                            space += (maxStack - s.getCount());
+                        }
+                    }
+                }
+            } catch (Throwable t) {}
+        }
+        
+        player.sendSystemMessage(Component.literal("§6=================== 商店交易面板 ==================="));
+        player.sendSystemMessage(Component.literal("§f商店主人: §e" + shop.player));
+        
+        Component itemName = (itemObj != net.minecraft.world.item.Items.AIR) 
+            ? Component.translatable(itemObj.getDescriptionId()) 
+            : Component.literal(shop.item.replace("minecraft:", ""));
+        player.sendSystemMessage(Component.literal("§f商品名稱: ").append(itemName));
+        
+        boolean sellActive = shop.sellPrice > 0;
+        boolean buyActive = shop.buyPrice > 0;
+        
+        if (sellActive) {
+            String stockStr = shop.infinite ? "無限" : String.valueOf(stock);
+            player.sendSystemMessage(Component.literal("§a[出售商品] §f-> 價格: §e$" + shop.sellPrice + "§f (庫存: " + stockStr + ")"));
+        }
+        if (buyActive) {
+            String spaceStr = shop.infinite ? "無限" : String.valueOf(space);
+            player.sendSystemMessage(Component.literal("§b[收購商品] §f-> 收購價: §e$" + shop.buyPrice + "§f (可收購空間: " + spaceStr + ")"));
+        }
+        
+        player.sendSystemMessage(Component.literal("§f目前評分: §e" + ShopManager.getAverageRatingString(shop.id)));
+        player.sendSystemMessage(Component.literal("§6--------------------------------------------------"));
+        player.sendSystemMessage(Component.literal("§e★ 點選以下選項進行交易："));
+        
+        String escapedId = shop.id;
+        net.minecraft.network.chat.MutableComponent options = Component.literal("  ");
+        if (sellActive) {
+            options.append(createClickableText("§a[購買商品] ", "/shop control \"" + escapedId + "\" buy_session", "點擊向此商店購買商品"));
+        }
+        if (buyActive) {
+            options.append(createClickableText("§b[出售商品]", "/shop control \"" + escapedId + "\" sell_session", "點擊向此商店出售物品"));
+        }
+        player.sendSystemMessage(options);
+        player.sendSystemMessage(Component.literal("§6=================================================="));
+    }
+
+    public static class RemoteRestockScreenHandler extends ChestMenu {
+        private final ShopManager.Shop shop;
+        private final ServerPlayer player;
+        private final Container remoteInv;
+        private final BlockPos physicalPos;
+
+        public RemoteRestockScreenHandler(int syncId, Inventory playerInventory, ShopManager.Shop shop, ServerPlayer player, BlockPos physicalPos) {
+            super(MenuType.GENERIC_9x3, syncId, playerInventory, new SimpleContainer(27), 3);
+            this.shop = shop;
+            this.player = player;
+            this.remoteInv = this.getContainer();
+            this.physicalPos = physicalPos;
+        }
+
+        @Override
+        public void removed(Player playerEntity) {
+            super.removed(playerEntity);
+            if (playerEntity instanceof ServerPlayer spe) {
+                ServerLevel world = (ServerLevel) spe.level();
+                net.minecraft.world.level.block.entity.BlockEntity be = world.getBlockEntity(physicalPos);
+                if (be instanceof Container chestInv) {
+                    Item shopItem = null;
+                    try {
+                        shopItem = BuiltInRegistries.ITEM.getValue(Identifier.parse(shop.item));
+                    } catch (Throwable t) {}
+
+                    if (shopItem == null) return;
+
+                    int insertedCount = 0;
+                    for (int i = 0; i < remoteInv.getContainerSize(); i++) {
+                        ItemStack stack = remoteInv.getItem(i);
+                        if (!stack.isEmpty()) {
+                            if (BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(shop.item)) {
+                                int countBefore = stack.getCount();
+                                ItemStack remaining = insertItem(chestInv, stack);
+                                int countAfter = remaining.isEmpty() ? 0 : remaining.getCount();
+                                insertedCount += (countBefore - countAfter);
+                                if (!remaining.isEmpty()) {
+                                    spe.getInventory().placeItemBackInInventory(remaining);
+                                }
+                            } else {
+                                spe.getInventory().placeItemBackInInventory(stack);
+                            }
+                        }
+                    }
+
+                    if (insertedCount > 0) {
+                        int newStock = 0;
+                        for (int i = 0; i < chestInv.getContainerSize(); i++) {
+                            ItemStack s = chestInv.getItem(i);
+                            if (!s.isEmpty() && BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                newStock += s.getCount();
+                            }
+                        }
+                        shop.stock = newStock;
+                        ShopManager.save();
+                        ShopManager.updateShopSign(world, physicalPos, shop);
+                        spe.sendSystemMessage(Component.literal("§b[Craft-Core] §a成功補貨 " + insertedCount + " 個商品至實體箱子！"));
+                        spe.playSound(SoundEvents.CHEST_CLOSE, 1.0f, 1.0f);
+                    }
+                } else {
+                    for (int i = 0; i < remoteInv.getContainerSize(); i++) {
+                        ItemStack stack = remoteInv.getItem(i);
+                        if (!stack.isEmpty()) {
+                            spe.getInventory().placeItemBackInInventory(stack);
+                        }
+                    }
+                    spe.sendSystemMessage(Component.literal("§c[Craft-Core] 補貨失敗：找不到實體箱子或未載入！"));
+                }
+            }
+        }
+
+        @Override
+        public boolean stillValid(Player player) {
+            return true;
+        }
+
+        private ItemStack insertItem(Container container, ItemStack stack) {
+            ItemStack result = stack.copy();
+            for (int i = 0; i < container.getContainerSize(); i++) {
+                ItemStack s = container.getItem(i);
+                if (!s.isEmpty() && s.getItem() == result.getItem() && ItemStack.isSameItemSameComponents(s, result)) {
+                    int max = Math.min(container.getMaxStackSize(), s.getMaxStackSize());
+                    int space = max - s.getCount();
+                    if (space > 0) {
+                        int transfer = Math.min(space, result.getCount());
+                        s.grow(transfer);
+                        result.shrink(transfer);
+                        if (result.isEmpty()) {
+                            container.setChanged();
+                            return ItemStack.EMPTY;
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < container.getContainerSize(); i++) {
+                ItemStack s = container.getItem(i);
+                if (s.isEmpty()) {
+                    int max = Math.min(container.getMaxStackSize(), result.getMaxStackSize());
+                    if (result.getCount() <= max) {
+                        container.setItem(i, result.copy());
+                        container.setChanged();
+                        return ItemStack.EMPTY;
+                    } else {
+                        ItemStack part = result.split(max);
+                        container.setItem(i, part);
+                    }
+                }
+            }
+            container.setChanged();
+            return result;
+        }
+    }
+}

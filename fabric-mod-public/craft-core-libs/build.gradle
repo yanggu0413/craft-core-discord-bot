@@ -1,0 +1,9 @@
+base {
+    archivesName = "craft-core-libs"
+}
+
+loom {
+    if (file("src/main/resources/craftcore.accesswidener").exists()) {
+        accessWidenerPath = file("src/main/resources/craftcore.accesswidener")
+    }
+}

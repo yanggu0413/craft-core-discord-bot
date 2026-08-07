@@ -1,0 +1,16 @@
+# Gradle
+.gradle/
+build/
+.gradle_home/
+**/build/
+**/.gradle/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Logs & Temp
+*.log
+logs/
+.agents/

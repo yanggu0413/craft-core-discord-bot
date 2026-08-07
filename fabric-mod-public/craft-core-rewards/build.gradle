@@ -1,0 +1,9 @@
+dependencies {
+    implementation project(':craft-core-libs')
+    implementation project(':craft-core-economy')
+    implementation project(':craft-core-checkin')
+    implementation project(':craft-core-luckydraw')
+    implementation project(':craft-core-task')
+    implementation project(':craft-core-bounty')
+    implementation project(':craft-core-achievement')
+}
