@@ -22,6 +22,8 @@ let latestStatusData = {
   current_players: 0,
   max_players: 0,
   players: [],
+  tps: null,
+  ping: null,
   lastUpdated: 0
 };
 
@@ -31,14 +33,18 @@ function getStatusForApi() {
       online: false,
       current_players: 0,
       max_players: 0,
-      players: []
+      players: [],
+      tps: null,
+      ping: null
     };
   }
   return {
     online: latestStatusData.online,
     current_players: latestStatusData.current_players,
     max_players: latestStatusData.max_players,
-    players: latestStatusData.players
+    players: latestStatusData.players,
+    tps: latestStatusData.tps,
+    ping: latestStatusData.ping
   };
 }
 
@@ -52,6 +58,8 @@ async function updateStatus(payload, discordClient) {
         name: p,
         avatar: `https://mc-heads.net/avatar/${encodeURIComponent(p)}/32`
       })),
+      tps: typeof payload.tps === 'number' ? payload.tps : null,
+      ping: typeof payload.ping === 'number' ? payload.ping : null,
       lastUpdated: Date.now()
     };
   }

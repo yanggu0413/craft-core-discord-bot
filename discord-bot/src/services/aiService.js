@@ -1,5 +1,6 @@
 const logger = require('../utils/logger');
 const { getTaiwanWeather } = require('./cwaWeatherService');
+const { getTaipeiDateString } = require('../utils/dailyTasksHelper');
 const db = require('../database');
 const config = require('../config');
 const fs = require('fs');
@@ -494,11 +495,13 @@ async function executeTool(name, args, contextUser) {
     }
 
     case 'get_mc_server_status': {
+      const statusService = require('./statusService');
+      const status = statusService.getStatusForApi();
       let todayLogins = 0;
       let todayDeaths = 0;
 
       try {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getTaipeiDateString();
         const statsRow = await db.getStats(todayStr);
         if (statsRow) {
           todayLogins = statsRow.total_logins || 0;
@@ -506,13 +509,29 @@ async function executeTool(name, args, contextUser) {
         }
       } catch (e) {}
 
+      if (!status.online || status.tps === null) {
+        return {
+          serverName: 'Craft-Core Minecraft Server (Fabric 26.2)',
+          online: false,
+          status: '🔴 伺服器目前離線或暫無即時狀態資料',
+          todayLogins: todayLogins,
+          todayDeaths: todayDeaths,
+          notice: '目前沒有即時伺服器狀態資料喵，請稍後再試唷！'
+        };
+      }
+
       return {
         serverName: 'Craft-Core Minecraft Server (Fabric 26.2)',
-        tps: 20.0,
-        status: '🟢 正常運作中',
+        online: true,
+        tps: status.tps,
+        ping: status.ping,
+        status: '🟢 伺服器連線正常',
+        current_players: status.current_players,
+        max_players: status.max_players,
+        players: status.players.map(p => p.name),
         todayLogins: todayLogins,
         todayDeaths: todayDeaths,
-        notice: '伺服器連線順暢，線上玩家資料實時同步中喵！'
+        notice: `目前在線玩家 ${status.current_players} / ${status.max_players} 人喵！`
       };
     }
 
@@ -555,18 +574,11 @@ async function executeTool(name, args, contextUser) {
     }
 
     case 'query_player_in_game_info': {
-      const targetUser = args.username ? args.username.trim() : 'Player';
+      const targetUser = args.username ? args.username.trim() : '';
       return {
         username: targetUser,
-        health: '20.0 / 20.0 ❤️',
-        foodLevel: '20 🍖',
-        helmet: '鑽石盔甲 [保護 IV]',
-        chestplate: '獄髓胸甲 [保護 IV]',
-        leggings: '獄髓護腿 [保護 IV]',
-        boots: '獄髓靴子 [保護 IV]',
-        mainHand: '下界合金劍 [鋒利 V]',
-        location: '🔒 [隱私保護：座標已安全遮蔽]',
-        status: '🟢 在線冒險中'
+        available: false,
+        message: '目前的整合系統不提供實時血量/裝備/座標等遊戲內數據喵（詳細角色狀態請在遊戲內開啟選單查詢）！'
       };
     }
 
@@ -616,15 +628,37 @@ async function executeTool(name, args, contextUser) {
     }
 
     case 'query_daily_tasks': {
-      const targetName = args.username || '冒險者';
+      const targetName = args.username ? args.username.trim() : '冒險者';
+      const todayStr = getTaipeiDateString();
+      let tasks = null;
+      try {
+        const row = db.prepare('SELECT tasks_json FROM daily_ai_tasks WHERE date = ?').get(todayStr);
+        if (row && row.tasks_json) {
+          tasks = JSON.parse(row.tasks_json);
+        }
+      } catch (e) {}
+
+      if (!tasks || tasks.length === 0) {
+        return {
+          username: targetName,
+          available: false,
+          message: `今天 (${todayStr}) 的每日任務尚未生成喵，請稍後再查詢唷！`
+        };
+      }
+
       return {
         username: targetName,
-        tasks: [
-          { name: '每日登入簽到', status: '✅ 已完成 (+1 🔑 鑰匙)' },
-          { name: '挖掘 50 個礦石', status: '✅ 已完成 (+100 金幣)' },
-          { name: '完成 1 次箱子商店交易', status: '⏳ 進行中 (進度 0/1)' }
-        ],
-        summary: '今天已經完成 2/3 的每日任務了喵！繼續加油！'
+        date: todayStr,
+        available: true,
+        tasks: tasks.map(t => ({
+          title: t.title,
+          description: t.description,
+          type: t.type,
+          target: t.target,
+          amount: t.amount,
+          rewards: `${t.reward_money} 金幣 + ${t.reward_keys} 把鑰匙`
+        })),
+        note: '任務完成進度由遊戲內伺服器即時計算，請在遊戲中開啟每日任務選單查看唷喵！'
       };
     }
 
@@ -633,7 +667,8 @@ async function executeTool(name, args, contextUser) {
       const warpList = Object.keys(warpsData).map(name => `📍 ${name}`);
       return {
         count: warpList.length,
-        warps: warpList.length > 0 ? warpList : ['📍 主城 (spawn)', '📍 商店區 (market)', '📍 資源界 (rtp)']
+        warps: warpList,
+        notice: warpList.length === 0 ? '目前伺服器沒有已登記的公開地標喵！' : undefined
       };
     }
 

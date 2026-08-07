@@ -262,8 +262,8 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // AI Chatbot Channel (1531061646846333101) - CloudCat AI
-  if (message.channelId === '1531061646846333101') {
+  // AI Chatbot Channel - CloudCat AI
+  if (message.channelId === config.ai.aiChannelId) {
     // Check Rate Limit (50 messages per 5 hours per user)
     try {
       const rateLimit = await db.checkAndRecordChatRateLimit(message.author.id, 50, 5 * 60 * 60 * 1000);

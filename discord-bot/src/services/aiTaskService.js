@@ -98,7 +98,7 @@ const AI_TASK_PROMPT = `你是 Minecraft 26.2 伺服器「Craft-Core」的每日
 }`;
 
 function getApiKey() {
-  return process.env.GEMINI_API_KEY || config.gemini_api_key || null;
+  return process.env.GEMINI_API_KEY || config.ai?.geminiApiKey || null;
 }
 
 function parseAndValidateJson(text) {
