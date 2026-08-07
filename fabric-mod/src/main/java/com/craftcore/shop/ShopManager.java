@@ -35,6 +35,7 @@ public class ShopManager {
         public java.util.List<Integer> ratings = new java.util.ArrayList<>();
         public String customName = null;
         public boolean infinite = false;
+        public String itemStackJson = null; // 完整 ItemStack (含 display name / NBT / components) 的序列化 JSON
 
         public Shop(String player, String key, String item, double sellPrice, double buyPrice, int stock) {
             String coords;
@@ -65,6 +66,39 @@ public class ShopManager {
             this(player, coords, item, price, 0.0, stock);
             this.bulkQuantity = 1;
         }
+
+        public net.minecraft.world.item.ItemStack getItemStack(net.minecraft.core.HolderLookup.Provider registryAccess) {
+            if (itemStackJson != null && !itemStackJson.isBlank()) {
+                try {
+                    net.minecraft.world.item.ItemStack stack = com.craftcore.express.ExpressManager.deserializeItemStack(itemStackJson, registryAccess);
+                    if (!stack.isEmpty()) return stack;
+                } catch (Throwable ignored) {}
+            }
+            try {
+                net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(item));
+                if (itemObj != null && itemObj != net.minecraft.world.item.Items.AIR) {
+                    return new net.minecraft.world.item.ItemStack(itemObj, 1);
+                }
+            } catch (Throwable ignored) {}
+            return net.minecraft.world.item.ItemStack.EMPTY;
+        }
+
+        public net.minecraft.network.chat.Component getDisplayName(net.minecraft.core.HolderLookup.Provider registryAccess) {
+            net.minecraft.world.item.ItemStack stack = getItemStack(registryAccess);
+            if (!stack.isEmpty()) {
+                try {
+                    net.minecraft.network.chat.Component name = stack.getHoverName();
+                    if (name != null && !name.getString().isBlank()) {
+                        return name;
+                    }
+                } catch (Throwable ignored) {}
+            }
+            net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(item));
+            if (itemObj != null && itemObj != net.minecraft.world.item.Items.AIR) {
+                return net.minecraft.network.chat.Component.translatable(itemObj.getDescriptionId());
+            }
+            return net.minecraft.network.chat.Component.literal(item.replace("minecraft:", ""));
+        }
     }
 
     public static class CreationSession {
@@ -74,6 +108,7 @@ public class ShopManager {
         public int step; // 1 = sell price, 2 = buy price
         public double sellPrice;
         public boolean stepByStep = false;
+        public String itemStackJson = null;
 
         public CreationSession(String coords, String item) {
             this.coords = coords;
@@ -400,6 +435,10 @@ public class ShopManager {
     }
 
     public static synchronized boolean registerShop(String player, String coords, String item, double sellPrice, double buyPrice, int stock) {
+        return registerShop(player, coords, item, sellPrice, buyPrice, stock, null);
+    }
+
+    public static synchronized boolean registerShop(String player, String coords, String item, double sellPrice, double buyPrice, int stock, String itemStackJson) {
         if (Double.isNaN(sellPrice) || Double.isInfinite(sellPrice)) return false;
         if (Double.isNaN(buyPrice) || Double.isInfinite(buyPrice)) return false;
         
@@ -413,6 +452,9 @@ public class ShopManager {
         }
 
         Shop shop = new Shop(player, key, item, sellPrice, buyPrice, stock);
+        if (itemStackJson != null && !itemStackJson.isBlank()) {
+            shop.itemStackJson = itemStackJson;
+        }
         shop.signPlaced = true;
         shop.displaySpawned = true;
         shopMap.put(key, shop);
@@ -516,8 +558,13 @@ public class ShopManager {
     }
 
     public static synchronized void addCreationSession(String username, String coords, String item, boolean stepByStep) {
+        addCreationSession(username, coords, item, stepByStep, null);
+    }
+
+    public static synchronized void addCreationSession(String username, String coords, String item, boolean stepByStep, String itemStackJson) {
         CreationSession session = new CreationSession(coords, item);
         session.stepByStep = stepByStep;
+        session.itemStackJson = itemStackJson;
         creationSessions.put(username, session);
     }
 
@@ -782,7 +829,7 @@ public class ShopManager {
                     if (Double.isNaN(price) || Double.isInfinite(price) || price <= 0) {
                         return new ChatInterceptionResult(true, "Price must be a positive number.", false);
                     }
-                    boolean registered = registerShop(username, cSession.coords, cSession.item, price, 0);
+                    boolean registered = registerShop(username, cSession.coords, cSession.item, price, 0.0, 0, cSession.itemStackJson);
                     if (registered) {
                         return new ChatInterceptionResult(true, "Shop created successfully!", true);
                     } else {
@@ -834,7 +881,7 @@ public class ShopManager {
                     return new ChatInterceptionResult(true, "Shop creation cancelled.", false);
                 }
                 
-                boolean registered = registerShop(username, cSession.coords, cSession.item, cSession.sellPrice, buyPrice, 0);
+                boolean registered = registerShop(username, cSession.coords, cSession.item, cSession.sellPrice, buyPrice, 0, cSession.itemStackJson);
                 if (registered) {
                     return new ChatInterceptionResult(true, "Shop created successfully!", true);
                 } else {
@@ -1149,30 +1196,22 @@ public class ShopManager {
                         }
 
                         com.craftcore.economy.EconomyManager.removeMoney(username, totalCost);
-                        if (player != null && shopItem != null) {
-                            int maxStack = shopItem.getDefaultMaxStackSize();
-                            int remainingToAdd = quantity;
-                            for (int i = 0; i < 36 && remainingToAdd > 0; i++) {
-                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
-                                if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
-                                    int count = s.getCount();
-                                    int canAdd = maxStack - count;
-                                    if (canAdd > 0) {
-                                        int toAdd = Math.min(canAdd, remainingToAdd);
-                                        s.setCount(count + toAdd);
-                                        remainingToAdd -= toAdd;
-                                    }
-                                }
+                        if (player != null) {
+                            net.minecraft.world.item.ItemStack shopTemplate = shop.getItemStack(player.level().registryAccess());
+                            if (shopTemplate.isEmpty() && shopItem != null) {
+                                shopTemplate = new net.minecraft.world.item.ItemStack(shopItem, 1);
                             }
-                            for (int i = 0; i < 36 && remainingToAdd > 0; i++) {
-                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
-                                if (s.isEmpty()) {
+                            if (!shopTemplate.isEmpty()) {
+                                int maxStack = shopTemplate.getMaxStackSize();
+                                int remainingToAdd = quantity;
+                                while (remainingToAdd > 0) {
                                     int toAdd = Math.min(maxStack, remainingToAdd);
-                                    player.getInventory().setItem(i, new net.minecraft.world.item.ItemStack(shopItem, toAdd));
+                                    net.minecraft.world.item.ItemStack give = shopTemplate.copy();
+                                    give.setCount(toAdd);
+                                    placeGiftInInventory(player.getInventory(), give);
                                     remainingToAdd -= toAdd;
                                 }
                             }
-                            player.getInventory().setChanged();
                         }
                     } else {
                         if (chestInv != null && shopItem != null) {
@@ -1204,43 +1243,25 @@ public class ShopManager {
                             com.craftcore.economy.EconomyManager.removeMoney(username, totalCost);
                             shop.revenue += netRevenue;
 
-                            int remainingToRemove = quantity;
-                            for (int i = 0; i < chestInv.getContainerSize() && remainingToRemove > 0; i++) {
+                            int remainingToTake = quantity;
+                            for (int i = 0; i < chestInv.getContainerSize() && remainingToTake > 0; i++) {
                                 net.minecraft.world.item.ItemStack s = chestInv.getItem(i);
-                                if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
-                                    int count = s.getCount();
-                                    if (count <= remainingToRemove) {
-                                        remainingToRemove -= count;
-                                        chestInv.setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
-                                    } else {
-                                        s.setCount(count - remainingToRemove);
-                                        remainingToRemove = 0;
-                                    }
+                                if (s.isEmpty() || !net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                    continue;
+                                }
+                                int count = s.getCount();
+                                int take = Math.min(count, remainingToTake);
+                                net.minecraft.world.item.ItemStack give = s.copy();
+                                give.setCount(take);
+                                placeGiftInInventory(player.getInventory(), give);
+                                remainingToTake -= take;
+                                if (count <= take) {
+                                    chestInv.setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
+                                } else {
+                                    s.setCount(count - take);
                                 }
                             }
                             chestInv.setChanged();
-
-                            int remainingToAdd = quantity;
-                            for (int i = 0; i < 36 && remainingToAdd > 0; i++) {
-                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
-                                if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
-                                    int count = s.getCount();
-                                    int canAdd = maxStack - count;
-                                    if (canAdd > 0) {
-                                        int toAdd = Math.min(canAdd, remainingToAdd);
-                                        s.setCount(count + toAdd);
-                                        remainingToAdd -= toAdd;
-                                    }
-                                }
-                            }
-                            for (int i = 0; i < 36 && remainingToAdd > 0; i++) {
-                                net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
-                                if (s.isEmpty()) {
-                                    int toAdd = Math.min(maxStack, remainingToAdd);
-                                    player.getInventory().setItem(i, new net.minecraft.world.item.ItemStack(shopItem, toAdd));
-                                    remainingToAdd -= toAdd;
-                                }
-                            }
                             player.getInventory().setChanged();
 
                             int newStock = 0;
@@ -1363,43 +1384,25 @@ public class ShopManager {
                             com.craftcore.economy.EconomyManager.removeMoney(shop.player, totalCost);
                             com.craftcore.economy.EconomyManager.addMoney(username, netRevenue);
 
-                            int remainingToRemove = quantity;
-                            for (int i = 0; i < 36 && remainingToRemove > 0; i++) {
+                            int remainingToMove = quantity;
+                            for (int i = 0; i < 36 && remainingToMove > 0; i++) {
                                 net.minecraft.world.item.ItemStack s = player.getInventory().getItem(i);
-                                if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
-                                    int count = s.getCount();
-                                    if (count <= remainingToRemove) {
-                                        remainingToRemove -= count;
-                                        player.getInventory().setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
-                                    } else {
-                                        s.setCount(count - remainingToRemove);
-                                        remainingToRemove = 0;
-                                    }
+                                if (s.isEmpty() || !net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
+                                    continue;
+                                }
+                                int count = s.getCount();
+                                int take = Math.min(count, remainingToMove);
+                                net.minecraft.world.item.ItemStack give = s.copy();
+                                give.setCount(take);
+                                placeGiftInContainer(chestInv, give);
+                                remainingToMove -= take;
+                                if (count <= take) {
+                                    player.getInventory().setItem(i, net.minecraft.world.item.ItemStack.EMPTY);
+                                } else {
+                                    s.setCount(count - take);
                                 }
                             }
                             player.getInventory().setChanged();
-
-                            int remainingToAdd = quantity;
-                            for (int i = 0; i < chestInv.getContainerSize() && remainingToAdd > 0; i++) {
-                                net.minecraft.world.item.ItemStack s = chestInv.getItem(i);
-                                if (!s.isEmpty() && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).toString().equals(shop.item)) {
-                                    int count = s.getCount();
-                                    int canAdd = maxStack - count;
-                                    if (canAdd > 0) {
-                                        int toAdd = Math.min(canAdd, remainingToAdd);
-                                        s.setCount(count + toAdd);
-                                        remainingToAdd -= toAdd;
-                                    }
-                                }
-                            }
-                            for (int i = 0; i < chestInv.getContainerSize() && remainingToAdd > 0; i++) {
-                                net.minecraft.world.item.ItemStack s = chestInv.getItem(i);
-                                if (s.isEmpty()) {
-                                    int toAdd = Math.min(maxStack, remainingToAdd);
-                                    chestInv.setItem(i, new net.minecraft.world.item.ItemStack(shopItem, toAdd));
-                                    remainingToAdd -= toAdd;
-                                }
-                            }
                             chestInv.setChanged();
 
                             int newStock = 0;
@@ -1475,6 +1478,64 @@ public class ShopManager {
         return true;
     }
 
+    private static void placeGiftInInventory(net.minecraft.world.entity.player.Inventory inv, net.minecraft.world.item.ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return;
+        for (int i = 0; i < 36 && !stack.isEmpty(); i++) {
+            net.minecraft.world.item.ItemStack s = inv.getItem(i);
+            if (!s.isEmpty() && net.minecraft.world.item.ItemStack.isSameItemSameComponents(s, stack)) {
+                int canAdd = Math.min(stack.getMaxStackSize(), s.getMaxStackSize()) - s.getCount();
+                if (canAdd > 0) {
+                    int toAdd = Math.min(canAdd, stack.getCount());
+                    s.grow(toAdd);
+                    stack.shrink(toAdd);
+                }
+            }
+        }
+        for (int i = 0; i < 36 && !stack.isEmpty(); i++) {
+            net.minecraft.world.item.ItemStack s = inv.getItem(i);
+            if (s.isEmpty()) {
+                int toAdd = Math.min(stack.getMaxStackSize(), stack.getCount());
+                inv.setItem(i, stack.split(toAdd));
+            }
+        }
+        inv.setChanged();
+    }
+
+    private static void placeGiftInContainer(net.minecraft.world.Container container, net.minecraft.world.item.ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return;
+        for (int i = 0; i < container.getContainerSize() && !stack.isEmpty(); i++) {
+            net.minecraft.world.item.ItemStack s = container.getItem(i);
+            if (!s.isEmpty() && net.minecraft.world.item.ItemStack.isSameItemSameComponents(s, stack)) {
+                int canAdd = Math.min(stack.getMaxStackSize(), container.getMaxStackSize()) - s.getCount();
+                if (canAdd > 0) {
+                    int toAdd = Math.min(canAdd, stack.getCount());
+                    s.grow(toAdd);
+                    stack.shrink(toAdd);
+                }
+            }
+        }
+        for (int i = 0; i < container.getContainerSize() && !stack.isEmpty(); i++) {
+            net.minecraft.world.item.ItemStack s = container.getItem(i);
+            if (s.isEmpty()) {
+                int toAdd = Math.min(stack.getMaxStackSize(), stack.getCount());
+                container.setItem(i, stack.split(toAdd));
+            }
+        }
+        container.setChanged();
+    }
+
+    private static net.minecraft.network.chat.Component getShopLine3Text(Shop shop, net.minecraft.server.level.ServerLevel world) {
+        try {
+            return shop.getDisplayName(world.registryAccess());
+        } catch (Throwable fallback) {
+            net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(shop.item));
+            if (itemObj != net.minecraft.world.item.Items.AIR) {
+                return net.minecraft.network.chat.Component.translatable(itemObj.getDescriptionId());
+            }
+            return net.minecraft.network.chat.Component.literal(shop.item.replace("minecraft:", ""));
+        }
+    }
+
     public static void updateShopSign(net.minecraft.server.level.ServerLevel world, net.minecraft.core.BlockPos pos, Shop shop) {
         try {
             var chestState = world.getBlockState(pos);
@@ -1485,13 +1546,7 @@ public class ShopManager {
             net.minecraft.core.BlockPos signPos = pos.relative(facing);
             var be = world.getBlockEntity(signPos);
             if (be instanceof net.minecraft.world.level.block.entity.SignBlockEntity sign) {
-                net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(shop.item));
-                net.minecraft.network.chat.Component line3Text;
-                if (itemObj != net.minecraft.world.item.Items.AIR) {
-                    line3Text = net.minecraft.network.chat.Component.translatable(itemObj.getDescriptionId());
-                } else {
-                    line3Text = net.minecraft.network.chat.Component.literal(shop.item.replace("minecraft:", ""));
-                }
+                final net.minecraft.network.chat.Component line3Text = getShopLine3Text(shop, world);
                 
                 String line4Str = "";
                 int bulk = shop.bulkQuantity;

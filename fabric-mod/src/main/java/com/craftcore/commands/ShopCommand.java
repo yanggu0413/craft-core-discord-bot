@@ -714,13 +714,25 @@ dispatcher.register(Commands.literal("shop")
 
                         try {
 
-                            net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(shop.item));
+                            net.minecraft.world.item.ItemStack displayStack = shop.getItemStack(player.level().registryAccess());
 
-                            if (itemObj != net.minecraft.world.item.Items.AIR) {
+                            if (displayStack.isEmpty()) {
+
+                                net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(shop.item));
+
+                                if (itemObj != net.minecraft.world.item.Items.AIR) {
+
+                                    displayStack = new net.minecraft.world.item.ItemStack(itemObj);
+
+                                }
+
+                            }
+
+                            if (!displayStack.isEmpty()) {
 
                                 net.minecraft.world.entity.Display.ItemDisplay itemDisplay = new net.minecraft.world.entity.Display.ItemDisplay(net.minecraft.world.entity.EntityTypes.ITEM_DISPLAY, world);
 
-                                itemDisplay.setItemStack(new net.minecraft.world.item.ItemStack(itemObj));
+                                itemDisplay.setItemStack(displayStack);
 
                                 itemDisplay.setPos(pos.getX() + 0.5, pos.getY() + 1.1, pos.getZ() + 0.5);
 

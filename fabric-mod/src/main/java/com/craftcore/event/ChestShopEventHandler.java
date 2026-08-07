@@ -208,7 +208,7 @@ public class ChestShopEventHandler {
 
                     // Print Status Dashboard
                     player.sendSystemMessage(Component.literal("§6=================== 商店交易 ==================="));
-                    Component itemLocName = Component.translatable(itemObj.getDescriptionId());
+                    Component itemLocName = shop.getDisplayName(world.registryAccess());
                     player.sendSystemMessage(Component.literal("§f商品名稱: ").append(itemLocName));
                     player.sendSystemMessage(Component.literal("§f商店主人: " + shop.player));
                     if (sellActive) {
@@ -253,7 +253,13 @@ public class ChestShopEventHandler {
                     if (!mainHand.isEmpty()) {
                         ShopManager.removeActivationState(username);
                         String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(mainHand.getItem()).toString();
-                        ShopManager.addCreationSession(username, key, itemId, true);
+                        String itemStackJson = null;
+                        if (player instanceof ServerPlayer sp) {
+                            try {
+                                itemStackJson = com.craftcore.express.ExpressManager.serializeItemStack(mainHand, sp.level().registryAccess());
+                            } catch (Throwable ignored) {}
+                        }
+                        ShopManager.addCreationSession(username, key, itemId, true, itemStackJson);
 
                         player.sendSystemMessage(Component.literal("§b[Craft-Core] §e【步驟 1/2】設定出售價格"));
                         player.sendSystemMessage(Component.literal("§f- 請在聊天欄輸入「§a出售價格§f」（玩家買你商品的單價，如: 100）。"));

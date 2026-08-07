@@ -150,8 +150,11 @@ public class ShopGuiManager {
             for (int slot = 0; slot < 45 && shopIdx < shops.size(); slot++) {
                 ShopManager.Shop shop = shops.get(shopIdx);
                 String ownerName = shop.player != null ? shop.player : "Steve";
-                Item itemObj = BuiltInRegistries.ITEM.getValue(Identifier.parse(shop.item));
-                ItemStack stack = (itemObj != null && itemObj != Items.AIR) ? new ItemStack(itemObj) : createPlayerHead(ownerName);
+                ItemStack stack = shop.getItemStack(player.level().registryAccess());
+                if (stack.isEmpty()) {
+                    Item itemObj = BuiltInRegistries.ITEM.getValue(Identifier.parse(shop.item));
+                    stack = (itemObj != null && itemObj != Items.AIR) ? new ItemStack(itemObj) : createPlayerHead(ownerName);
+                }
                 stack.set(DataComponents.CUSTOM_NAME, Component.literal(shop.customName != null ? "§6" + shop.customName : "§6" + ownerName + " 的商店"));
 
                 List<Component> lore = new ArrayList<>();
@@ -677,7 +680,14 @@ public class ShopGuiManager {
             Item itemObj = BuiltInRegistries.ITEM.getValue(Identifier.parse(item));
             if (itemObj != Items.AIR) {
                 Display.ItemDisplay itemDisplay = new Display.ItemDisplay(net.minecraft.world.entity.EntityTypes.ITEM_DISPLAY, world);
-                itemDisplay.setItemStack(new ItemStack(itemObj));
+                ItemStack displayStack = new ItemStack(itemObj);
+                if (shop != null) {
+                    ItemStack fromShop = shop.getItemStack(world.registryAccess());
+                    if (!fromShop.isEmpty()) {
+                        displayStack = fromShop.copy();
+                    }
+                }
+                itemDisplay.setItemStack(displayStack);
                 itemDisplay.setPos(pos.getX() + 0.5, pos.getY() + 1.1, pos.getZ() + 0.5);
                 itemDisplay.setBillboardConstraints(Display.BillboardConstraints.CENTER);
                 itemDisplay.setTransformation(new com.mojang.math.Transformation(new org.joml.Vector3f(0f, 0f, 0f), new org.joml.Quaternionf(0f, 0f, 0f, 1f), new org.joml.Vector3f(0.5f, 0.5f, 0.5f), new org.joml.Quaternionf(0f, 0f, 0f, 1f)));
@@ -835,10 +845,7 @@ public class ShopGuiManager {
         player.sendSystemMessage(Component.literal("§6=================== 商店管理面板 ==================="));
         player.sendSystemMessage(Component.literal("§f商店座標: §e" + shop.coords));
         
-        net.minecraft.world.item.Item itemObj = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(shop.item));
-        Component itemName = (itemObj != net.minecraft.world.item.Items.AIR) 
-            ? Component.translatable(itemObj.getDescriptionId()) 
-            : Component.literal(shop.item.replace("minecraft:", ""));
+        Component itemName = shop.getDisplayName(player.level().registryAccess());
         player.sendSystemMessage(Component.literal("§f上架商品: ").append(itemName));
         
         String modeStr = "無";
@@ -918,9 +925,7 @@ public class ShopGuiManager {
         player.sendSystemMessage(Component.literal("§6=================== 商店交易面板 ==================="));
         player.sendSystemMessage(Component.literal("§f商店主人: §e" + shop.player));
         
-        Component itemName = (itemObj != net.minecraft.world.item.Items.AIR) 
-            ? Component.translatable(itemObj.getDescriptionId()) 
-            : Component.literal(shop.item.replace("minecraft:", ""));
+        Component itemName = shop.getDisplayName(player.level().registryAccess());
         player.sendSystemMessage(Component.literal("§f商品名稱: ").append(itemName));
         
         boolean sellActive = shop.sellPrice > 0;
