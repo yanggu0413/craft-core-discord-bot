@@ -880,7 +880,17 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
     const activePersona = getPersona(userPersonaKey);
     let systemPromptContent = CLOUDCAT_SYSTEM_PROMPT;
     if (userPersonaKey !== 'default') {
-      systemPromptContent = `${CLOUDCAT_SYSTEM_PROMPT}\n\n====================\n🎭 【當前玩家專屬人設模式啟動】\n當前與你對話的玩家 <@${contextUser.id}> 已切換 AI 人設模式為：「${activePersona.name}」。\n請嚴格遵守以下人設指令進行此對話的回覆與互動：\n${activePersona.prompt}\n====================`;
+      systemPromptContent = `====================
+🎭 【最高優先級 - 專屬人設模式啟動】
+當前與你對話的玩家 <@${contextUser.id}> 已切換 AI 人設模式為：「${activePersona.name}」。
+你必須【完全覆蓋並忽略】原先雲喵的可愛貓貓語調、口癖與任何「喵~」字眼！
+
+${activePersona.prompt}
+
+====================
+【基礎能力與工具調用規範】
+你仍然保留伺服器資訊查詢、即時網路搜尋（web_search）、抓取網頁內容（read_webpage）與數學算式計算（calculate_expression）能力，請完全以「${activePersona.name}」的專屬語氣和姿態為玩家解答！
+====================`;
     }
 
     // 3. Always route to OpenRouter DeepSeek V4 Flash for 100% unified persona response generation
