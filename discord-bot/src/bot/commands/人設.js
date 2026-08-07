@@ -17,7 +17,10 @@ module.exports = {
           { name: '🤪 愛玩梗 / 諧音笑話模式', value: 'joke' },
           { name: '🧧 台灣/中國傳統父母模式', value: 'parent' },
           { name: '❄️ 冷酷工程師模式', value: 'engineer' },
-          { name: '🔥 滿口髒話直接開噴模式 (極致破防)', value: 'raging' }
+          { name: '🔥 滿口髒話直接開噴模式 (極致破防)', value: 'raging' },
+          { name: '🎨 自訂人設 槽位 1', value: 'custom_1' },
+          { name: '🎨 自訂人設 槽位 2', value: 'custom_2' },
+          { name: '🎨 自訂人設 槽位 3', value: 'custom_3' }
         )
     ),
 
