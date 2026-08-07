@@ -1,6 +1,6 @@
 const aiService = require('../src/services/aiService');
 
-describe('aiService OpenRouter Integration', () => {
+describe('aiService OpenRouter & Gemini Hybrid Routing Integration', () => {
   let originalFetch;
 
   beforeAll(() => {
@@ -11,7 +11,7 @@ describe('aiService OpenRouter Integration', () => {
     global.fetch = originalFetch;
   });
 
-  test('should call OpenRouter API and return AI response', async () => {
+  test('should call OpenRouter API for text-only messages', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -36,6 +36,39 @@ describe('aiService OpenRouter Integration', () => {
     const body = JSON.parse(fetchArgs[1].body);
     expect(body.model).toBe('deepseek/deepseek-v4-flash-0731');
     expect(response).toContain('我是雲喵');
+  });
+
+  test('should route to Gemini 2.5 Flash when image attachments are present', async () => {
+    global.fetch = jest.fn().mockImplementation(async (url) => {
+      if (url.includes('image.png')) {
+        return Promise.resolve({
+          ok: true,
+          arrayBuffer: async () => Buffer.from('fake-image-bytes')
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [{ text: '哇！這是一隻超級可愛的貓貓圖片喵！' }]
+              }
+            }
+          ]
+        })
+      });
+    });
+
+    const contextUser = { id: '123456789', username: 'testuser', displayName: '測試玩家' };
+    const attachments = [{ url: 'https://cdn.discordapp.com/attachments/123/456/image.png', contentType: 'image/png' }];
+    
+    const response = await aiService.generateAiResponse('你看這張圖片！', contextUser, attachments);
+
+    expect(global.fetch).toHaveBeenCalled();
+    const geminiCall = global.fetch.mock.calls.find(c => c[0].includes('generativelanguage.googleapis.com'));
+    expect(geminiCall).toBeDefined();
+    expect(response).toContain('可愛的貓貓圖片');
   });
 
   test('should handle tool calls correctly with OpenRouter', async () => {

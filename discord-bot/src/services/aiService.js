@@ -5,6 +5,7 @@ const config = require('../config');
 const fs = require('fs');
 const path = require('path');
 
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || config.ai?.geminiApiKey || '';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || config.ai?.openrouterApiKey || '';
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || config.ai?.openrouterModel || 'deepseek/deepseek-v4-flash-0731';
 const AI_CHANNEL_ID = config.ai?.aiChannelId || '1531061646846333101';
@@ -665,11 +666,9 @@ const TOOL_STATUS_MAP = {
   'query_user_image_quota': '📊 雲喵正在查詢您今日的 AI 額度次數中...'
 };
 
-// Process AI Chat via OpenRouter API REST (supporting Multimodal Images, History & Function Calling)
+// Process AI Chat via OpenRouter API REST / Gemini 2.5 Flash (supporting Multimodal Images, History & Function Calling)
 async function generateAiResponse(userMessage, contextUser, attachments = [], channelId = AI_CHANNEL_ID, onStatusUpdate = null) {
   try {
-    const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
-
     // Get previous conversation history for this channel
     const history = getConversationHistory(channelId);
 
@@ -677,21 +676,14 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
     const nowTaipei = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'full', timeStyle: 'medium' });
     const userPromptText = `[當前時間: ${nowTaipei}] <@${contextUser.id}> (${contextUser.displayName || contextUser.username}): ${userMessage}`;
 
-    const messages = [
-      { role: 'system', content: CLOUDCAT_SYSTEM_PROMPT }
-    ];
+    const hasImageAttachments = attachments && attachments.some(att => att.contentType && att.contentType.startsWith('image/'));
 
-    // Add conversation history
-    for (const m of history) {
-      messages.push({
-        role: m.role === 'USER' ? 'user' : 'assistant',
-        content: m.text
-      });
-    }
+    // --- CASE A: Image Attachments present -> Use Gemini 2.5 Flash for Multimodal Vision ---
+    if (hasImageAttachments) {
+      logger.info('Image attachment detected, routing request to Gemini 2.5 Flash for multimodal vision processing.');
+      const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+      const userParts = [{ text: userPromptText }];
 
-    // Handle Multimodal Image Attachments
-    if (attachments && attachments.length > 0) {
-      const contentParts = [{ type: 'text', text: userPromptText }];
       for (const att of attachments) {
         if (att.contentType && att.contentType.startsWith('image/')) {
           try {
@@ -699,22 +691,145 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
             if (imgRes.ok) {
               const buffer = await imgRes.arrayBuffer();
               const base64Data = Buffer.from(buffer).toString('base64');
-              contentParts.push({
-                type: 'image_url',
-                image_url: {
-                  url: `data:${att.contentType};base64,${base64Data}`
+              userParts.push({
+                inlineData: {
+                  mimeType: att.contentType,
+                  data: base64Data
                 }
               });
             }
           } catch (imgErr) {
-            logger.warn('Failed to fetch image attachment for multimodal:', imgErr);
+            logger.warn('Failed to fetch image attachment for Gemini multimodal:', imgErr);
           }
         }
       }
-      messages.push({ role: 'user', content: contentParts });
-    } else {
-      messages.push({ role: 'user', content: userPromptText });
+
+      const geminiContents = [
+        ...history.map(m => ({
+          role: m.role === 'USER' ? 'user' : 'model',
+          parts: [{ text: m.text }]
+        })),
+        {
+          role: 'user',
+          parts: userParts
+        }
+      ];
+
+      const geminiTools = TOOL_DECLARATIONS.map(t => ({
+        name: t.function.name,
+        description: t.function.description,
+        parameters: {
+          type: 'OBJECT',
+          properties: Object.fromEntries(
+            Object.entries(t.function.parameters?.properties || {}).map(([k, v]) => [
+              k,
+              {
+                type: (v.type || 'string').toUpperCase(),
+                description: v.description || ''
+              }
+            ])
+          ),
+          required: t.function.parameters?.required || []
+        }
+      }));
+
+      const payload = {
+        systemInstruction: {
+          parts: [{ text: CLOUDCAT_SYSTEM_PROMPT }]
+        },
+        contents: geminiContents,
+        tools: [
+          { functionDeclarations: geminiTools }
+        ],
+        generationConfig: {
+          maxOutputTokens: 8192
+        }
+      };
+
+      let response = await fetch(geminiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Gemini API Http ${response.status}: ${errText}`);
+      }
+
+      let data = await response.json();
+      let candidate = data.candidates?.[0];
+      let candidateContent = candidate?.content;
+
+      // Function Call loop (up to 3 rounds)
+      for (let round = 0; round < 3; round++) {
+        const functionCalls = candidateContent?.parts?.filter(p => p.functionCall);
+        if (!functionCalls || functionCalls.length === 0) break;
+
+        geminiContents.push(candidateContent);
+
+        const functionResponseParts = [];
+        for (const fc of functionCalls) {
+          const toolName = fc.functionCall.name;
+
+          if (onStatusUpdate && typeof onStatusUpdate === 'function') {
+            const statusMsg = TOOL_STATUS_MAP[toolName] || `⚙️ 雲喵正在處理 ${toolName} 中...`;
+            try {
+              await onStatusUpdate(statusMsg);
+            } catch (e) {}
+          }
+
+          const toolResult = await executeTool(toolName, fc.functionCall.args || {}, contextUser);
+          functionResponseParts.push({
+            functionResponse: {
+              name: toolName,
+              response: { result: toolResult }
+            }
+          });
+        }
+
+        geminiContents.push({
+          role: 'user',
+          parts: functionResponseParts
+        });
+
+        response = await fetch(geminiEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) break;
+        data = await response.json();
+        candidate = data.candidates?.[0];
+        candidateContent = candidate?.content;
+      }
+
+      const replyText = candidateContent?.parts?.map(p => p.text).filter(Boolean).join('\n');
+      if (replyText && replyText.trim().length > 0) {
+        saveConversationHistory(channelId, 'USER', userPromptText);
+        saveConversationHistory(channelId, 'MODEL', replyText);
+        return replyText;
+      }
+
+      return '喵～ 雲喵剛才在伸懶腰，可以再試著跟雲喵說一次嗎喵？😼✨';
     }
+
+    // --- CASE B: Text Only -> Use OpenRouter DeepSeek V4 Flash ---
+    const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+    const messages = [
+      { role: 'system', content: CLOUDCAT_SYSTEM_PROMPT }
+    ];
+
+    // Add conversation history (includes prior image context from Gemini!)
+    for (const m of history) {
+      messages.push({
+        role: m.role === 'USER' ? 'user' : 'assistant',
+        content: m.text
+      });
+    }
+
+    messages.push({ role: 'user', content: userPromptText });
 
     // Iterate up to 3 tool call rounds
     for (let round = 0; round < 3; round++) {
