@@ -347,6 +347,23 @@ const TOOL_DECLARATIONS = [
         required: ['persona_name', 'persona_prompt']
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'switch_persona',
+      description: '為當前玩家切換 AI 人設模式 (可傳入 default, normal, joke, parent, engineer, raging, 或 custom_1, custom_2, custom_3)。',
+      parameters: {
+        type: 'object',
+        properties: {
+          persona_key: {
+            type: 'string',
+            description: '想切換的人設鍵名 (default, normal, joke, parent, engineer, raging, custom_1, custom_2, custom_3)。'
+          }
+        },
+        required: ['persona_key']
+      }
+    }
   }
 ];
 
@@ -686,6 +703,18 @@ async function executeTool(name, args, contextUser) {
       };
     }
 
+    case 'switch_persona': {
+      const targetKey = args.persona_key || 'default';
+      const db = require('../database');
+      const { getPersonaForUser } = require('../config/personas');
+      await db.setUserPersona(contextUser.id, targetKey);
+      const persona = await getPersonaForUser(contextUser.id, targetKey);
+      return {
+        success: true,
+        message: `已成功為玩家 <@${contextUser.id}> 切換 AI 人設模式為「${persona.name}」！請立刻完全以「${persona.name}」的語氣姿態回覆玩家！`
+      };
+    }
+
     default:
       return { error: `未知工具名稱: ${name}` };
   }
@@ -703,7 +732,8 @@ const TOOL_STATUS_MAP = {
   'calculate_expression': '🧮 雲喵正在執行精密算式計算中...',
   'generate_ai_image': '🎨 雲喵正在揮毫繪製圖片中 (Nano Banana)...',
   'query_user_image_quota': '📊 雲喵正在查詢您今日的 AI 額度次數中...',
-  'create_custom_persona': '🎨 雲喵正在寫入並啟動您的專屬自訂人設中...'
+  'create_custom_persona': '🎨 雲喵正在寫入並啟動您的專屬自訂人設中...',
+  'switch_persona': '🎭 雲喵正在切換您的 AI 人設模式中...'
 };
 
 const TEXT_FILE_EXTENSIONS = new Set([
@@ -917,8 +947,18 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
       }
     }
 
+    // Fetch user's custom personas to inject exact personas catalog into System Prompt
+    const customPersonas = contextUser?.id ? await db.getUserCustomPersonas(contextUser.id) : [];
+    let personaCatalogText = `1. default (☁️ 雲喵可愛模式 - 預設): 超級可愛傲嬌雲朵貓貓，每句帶喵~\n2. normal (🤖 普通 AI 模式): 專業客觀、條理清晰的 AI 助理\n3. joke (🤪 愛玩梗 / 諧音笑話模式): 滿腦子諧音梗與迷因冷笑話\n4. parent (🧧 台灣/中國傳統父母模式): 愛碎碎唸關心吃飯睡覺的家長\n5. engineer (❄️ 冷酷工程師模式): 極度理性無情講求 Code/Log 的硬核工程師\n6. raging (🔥 滿口髒話直接開噴模式): 國罵三字經滿天飛無情嘴砲破防`;
+
+    for (const cp of customPersonas) {
+      personaCatalogText += `\n- custom_${cp.slot_index} (🎨 自訂人設 ${cp.slot_index}: ${cp.persona_name}): ${cp.persona_prompt.slice(0, 50)}...`;
+    }
+
+    const personaInstructionBlock = `\n\n====================\n🎭 【系統真實人設清單 (Official Persona Catalog)】\n你所在系統支援的真實人設列表如下（當玩家詢問有哪些人設、讓你展示清單、或讓你自由選擇/切換人設時，請完全依據此列表，切勿自行編造虛構的人設！當你需要切換人設時，請務必調用 switch_persona 工具帶入對應 key！）：\n${personaCatalogText}\n====================`;
+
     const activePersona = await getPersonaForUser(contextUser?.id, userPersonaKey);
-    let systemPromptContent = CLOUDCAT_SYSTEM_PROMPT;
+    let systemPromptContent = CLOUDCAT_SYSTEM_PROMPT + personaInstructionBlock;
     if (userPersonaKey !== 'default') {
       systemPromptContent = `====================
 🎭 【最高優先級 - 專屬人設模式啟動】
@@ -930,7 +970,7 @@ ${activePersona.prompt}
 ====================
 【基礎能力與工具調用規範】
 你仍然保留伺服器資訊查詢、即時網路搜尋（web_search）、抓取網頁內容（read_webpage）與數學算式計算（calculate_expression）能力，請完全以「${activePersona.name}」的專屬語氣和姿態為玩家解答！
-====================`;
+${personaInstructionBlock}`;
     }
 
     // 3. Always route to OpenRouter DeepSeek V4 Flash for 100% unified persona response generation
