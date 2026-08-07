@@ -320,4 +320,28 @@ describe('aiService OpenRouter & Gemini Background Captioning Integration', () =
     expect(callCount).toBe(2);
     expect(response).toBe('這裡有一個冷笑話喵！');
   });
+
+  test('should manage user AI settings (memory, ping_user) and delete custom persona', async () => {
+    const userId = 'user_settings_test_777';
+    
+    // Default settings
+    let settings = await db.getUserAiSettings(userId);
+    expect(settings.memory_enabled).toBe(1);
+    expect(settings.ping_user).toBe(1);
+
+    // Update settings
+    await db.setUserAiSettings(userId, { memory_enabled: 0, ping_user: 0 });
+    settings = await db.getUserAiSettings(userId);
+    expect(settings.memory_enabled).toBe(0);
+    expect(settings.ping_user).toBe(0);
+
+    // Save and then Delete custom persona slot 2
+    await db.saveUserCustomPersona(userId, 2, '測試人設', '測試提示詞描述');
+    let customs = await db.getUserCustomPersonas(userId);
+    expect(customs.length).toBe(1);
+
+    await db.deleteUserCustomPersona(userId, 2);
+    customs = await db.getUserCustomPersonas(userId);
+    expect(customs.length).toBe(0);
+  });
 });

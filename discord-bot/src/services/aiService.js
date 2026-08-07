@@ -95,6 +95,10 @@ function saveConversationHistory(channelId, role, text) {
   conversationMemories.set(channelId, history);
 }
 
+function clearConversationHistory(channelId) {
+  conversationMemories.delete(channelId);
+}
+
 // Tool Declarations for OpenRouter (OpenAI-compatible Function Calling format)
 const TOOL_DECLARATIONS = [
   {
@@ -362,6 +366,57 @@ const TOOL_DECLARATIONS = [
           }
         },
         required: ['persona_key']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'manage_memory',
+      description: '當玩家在對話中要求「清空記憶」、「忘記剛剛講的話」、「開啟記憶功能」或「關閉記憶功能」時調用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          action: {
+            type: 'string',
+            description: '可傳入 clear (清空當前對話歷史), enable (開啟對話記憶), disable (關閉對話記憶)。'
+          }
+        },
+        required: ['action']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'toggle_ping_user',
+      description: '當玩家在對話中要求「不要 Tag 我」、「回覆要/不要 Ping 我」時調用設定。',
+      parameters: {
+        type: 'object',
+        properties: {
+          enable: {
+            type: 'boolean',
+            description: 'true 表示開啟 Tag 標記，false 表示關閉 Tag 標記。'
+          }
+        },
+        required: ['enable']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_custom_persona',
+      description: '刪除玩家的指定自訂人設槽位 (槽位 1、2 或 3)。',
+      parameters: {
+        type: 'object',
+        properties: {
+          slot_index: {
+            type: 'number',
+            description: '欲刪除的槽位編號 (1, 2, 3)。'
+          }
+        },
+        required: ['slot_index']
       }
     }
   }
@@ -715,6 +770,42 @@ async function executeTool(name, args, contextUser) {
       };
     }
 
+    case 'manage_memory': {
+      const action = args.action || 'clear';
+      const db = require('../database');
+      if (action === 'clear') {
+        clearConversationHistory(contextUser.channelId);
+        return { success: true, message: `已成功清空當前頻道的對話歷史紀錄！` };
+      } else if (action === 'enable') {
+        await db.setUserAiSettings(contextUser.id, { memory_enabled: 1 });
+        return { success: true, message: `已成功開啟玩家 <@${contextUser.id}> 的 AI 聊天記憶功能！` };
+      } else if (action === 'disable') {
+        await db.setUserAiSettings(contextUser.id, { memory_enabled: 0 });
+        return { success: true, message: `已成功關閉玩家 <@${contextUser.id}> 的 AI 聊天記憶功能！` };
+      }
+      return { success: false, message: `無效的記憶操作指令: ${action}` };
+    }
+
+    case 'toggle_ping_user': {
+      const enable = args.enable !== false;
+      const db = require('../database');
+      await db.setUserAiSettings(contextUser.id, { ping_user: enable ? 1 : 0 });
+      return {
+        success: true,
+        message: `已成功將玩家 <@${contextUser.id}> 的 AI 回覆 Tag 標記狀態設定為: ${enable ? '開啟' : '關閉 (靜音回覆，不 Ping 提醒)'}！`
+      };
+    }
+
+    case 'delete_custom_persona': {
+      const slot = Math.min(Math.max(parseInt(args.slot_index, 10) || 1, 1), 3);
+      const db = require('../database');
+      await db.deleteUserCustomPersona(contextUser.id, slot);
+      return {
+        success: true,
+        message: `已成功為玩家 <@${contextUser.id}> 刪除自訂人設槽位 ${slot}！`
+      };
+    }
+
     default:
       return { error: `未知工具名稱: ${name}` };
   }
@@ -733,7 +824,10 @@ const TOOL_STATUS_MAP = {
   'generate_ai_image': '🎨 雲喵正在揮毫繪製圖片中 (Nano Banana)...',
   'query_user_image_quota': '📊 雲喵正在查詢您今日的 AI 額度次數中...',
   'create_custom_persona': '🎨 雲喵正在寫入並啟動您的專屬自訂人設中...',
-  'switch_persona': '🎭 雲喵正在切換您的 AI 人設模式中...'
+  'switch_persona': '🎭 雲喵正在切換您的 AI 人設模式中...',
+  'manage_memory': '🧠 雲喵正在更新您的對話記憶設定中...',
+  'toggle_ping_user': '🔔 雲喵正在更新您的 Tag 標記提醒設定中...',
+  'delete_custom_persona': '🗑️ 雲喵正在清理您的自訂人設槽位中...'
 };
 
 const TEXT_FILE_EXTENSIONS = new Set([
@@ -892,8 +986,16 @@ async function generateImageCaptionWithGemini(imageAttachments) {
 // Process AI Chat via OpenRouter API REST (with Gemini background vision captioning & Function Calling)
 async function generateAiResponse(userMessage, contextUser, attachments = [], channelId = AI_CHANNEL_ID, onStatusUpdate = null) {
   try {
-    // Get previous conversation history for this channel
-    const history = getConversationHistory(channelId);
+    let userSettings = { memory_enabled: 1, ping_user: 1 };
+    if (contextUser?.id) {
+      try {
+        const db = require('../database');
+        userSettings = await db.getUserAiSettings(contextUser.id);
+      } catch (e) {}
+    }
+
+    // Get previous conversation history for this channel (only if memory is enabled for user)
+    const history = (userSettings.memory_enabled !== 0) ? getConversationHistory(channelId) : [];
 
     // Format current user message with userId & displayName as specified in cloudcat-bot prompt, plus current Taipei time
     const nowTaipei = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'full', timeStyle: 'medium' });
@@ -925,7 +1027,6 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
 
     // Check if user requested text-based persona switch in their message (e.g. "切換到幹話模式", "切換人設 6")
     const { getPersonaForUser, parsePersonaFromText } = require('../config/personas');
-    const db = require('../database');
 
     const matchedPersonaKey = parsePersonaFromText(userMessage);
     if (matchedPersonaKey && contextUser?.id) {
@@ -1025,8 +1126,10 @@ ${personaInstructionBlock}`;
       if (!toolCalls || toolCalls.length === 0) {
         const replyText = message.content;
         if (replyText && replyText.trim().length > 0) {
-          saveConversationHistory(channelId, 'USER', userPromptText);
-          saveConversationHistory(channelId, 'MODEL', replyText);
+          if (userSettings.memory_enabled !== 0) {
+            saveConversationHistory(channelId, 'USER', userPromptText);
+            saveConversationHistory(channelId, 'MODEL', replyText);
+          }
           return replyText;
         }
         break;
@@ -1052,7 +1155,7 @@ ${personaInstructionBlock}`;
           } catch (e) {}
         }
 
-        const toolResult = await executeTool(toolName, toolArgs, contextUser);
+        const toolResult = await executeTool(toolName, toolArgs, { ...contextUser, channelId });
 
         messages.push({
           role: 'tool',
@@ -1073,5 +1176,8 @@ ${personaInstructionBlock}`;
 
 module.exports = {
   AI_CHANNEL_ID,
-  generateAiResponse
+  generateAiResponse,
+  clearConversationHistory,
+  getConversationHistory,
+  saveConversationHistory
 };

@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const db = require('../../database');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -6,7 +7,7 @@ module.exports = {
     .setDescription('自訂與製作你的專屬 AI 人設 (最多可保存 3 個自訂槽位)')
     .addIntegerOption(option =>
       option.setName('slot')
-        .setDescription('選擇要儲存的自訂人設槽位 (1 ~ 3，預設為 1)')
+        .setDescription('選擇要編輯或儲存的自訂人設槽位 (1 ~ 3，預設為 1)')
         .setRequired(false)
         .addChoices(
           { name: '🎨 自訂人設 槽位 1', value: 1 },
@@ -17,10 +18,17 @@ module.exports = {
 
   async execute(interaction) {
     const slot = interaction.options.getInteger('slot') || 1;
+    const userId = interaction.user.id;
+
+    // Check if slot already has an existing custom persona to pre-fill
+    let existingPersona = null;
+    try {
+      existingPersona = await db.getCustomPersonaBySlot(userId, slot);
+    } catch (e) {}
 
     const modal = new ModalBuilder()
       .setCustomId(`custom_persona_modal:${slot}`)
-      .setTitle(`🎨 製作個人專屬人設 (槽位 ${slot})`);
+      .setTitle(`🎨 編輯與製作人設 (槽位 ${slot})`);
 
     const nameInput = new TextInputBuilder()
       .setCustomId('persona_name')
@@ -30,6 +38,10 @@ module.exports = {
       .setRequired(true)
       .setMaxLength(30);
 
+    if (existingPersona && existingPersona.persona_name) {
+      nameInput.setValue(existingPersona.persona_name);
+    }
+
     const promptInput = new TextInputBuilder()
       .setCustomId('persona_prompt')
       .setLabel('人設詳細描述與對話風格指令')
@@ -37,6 +49,10 @@ module.exports = {
       .setPlaceholder('詳細描述說話風格、角色設定、習慣用語與特定規則...')
       .setRequired(true)
       .setMaxLength(1500);
+
+    if (existingPersona && existingPersona.persona_prompt) {
+      promptInput.setValue(existingPersona.persona_prompt);
+    }
 
     const firstRow = new ActionRowBuilder().addComponents(nameInput);
     const secondRow = new ActionRowBuilder().addComponents(promptInput);

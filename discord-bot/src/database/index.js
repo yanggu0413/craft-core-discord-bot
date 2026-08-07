@@ -125,6 +125,18 @@ async function init(dbPath) {
         )
       `);
     } catch (e) {}
+
+    // Migration: ensure ai_user_settings table exists (memory_enabled & ping_user)
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS ai_user_settings (
+          user_id TEXT PRIMARY KEY,
+          memory_enabled INTEGER DEFAULT 1,
+          ping_user INTEGER DEFAULT 1,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    } catch (e) {}
   } else {
 
     throw new Error(`Database initialization failed: schema.sql not found at ${schemaPath}`);
@@ -584,6 +596,47 @@ async function saveUserCustomPersona(userId, slotIndex, personaName, personaProm
   stmt.run(userId, safeSlot, personaName, personaPrompt);
 }
 
+async function deleteUserCustomPersona(userId, slotIndex) {
+  if (!db) throw new Error('Database not initialized');
+  const stmt = db.prepare('DELETE FROM user_custom_personas WHERE user_id = ? AND slot_index = ?');
+  stmt.run(userId, slotIndex);
+
+  // If user's active persona was this custom slot, reset active persona to default
+  const activeKey = await getUserPersona(userId);
+  if (activeKey === `custom_${slotIndex}`) {
+    await setUserPersona(userId, 'default');
+  }
+}
+
+async function getUserAiSettings(userId) {
+  if (!db) return { memory_enabled: 1, ping_user: 1 };
+  try {
+    const stmt = db.prepare('SELECT memory_enabled, ping_user FROM ai_user_settings WHERE user_id = ?');
+    const row = stmt.get(userId);
+    return {
+      memory_enabled: row ? (row.memory_enabled !== 0 ? 1 : 0) : 1,
+      ping_user: row ? (row.ping_user !== 0 ? 1 : 0) : 1
+    };
+  } catch (e) {
+    return { memory_enabled: 1, ping_user: 1 };
+  }
+}
+
+async function setUserAiSettings(userId, { memory_enabled, ping_user }) {
+  if (!db) throw new Error('Database not initialized');
+  const current = await getUserAiSettings(userId);
+  const mem = memory_enabled !== undefined ? (memory_enabled ? 1 : 0) : current.memory_enabled;
+  const ping = ping_user !== undefined ? (ping_user ? 1 : 0) : current.ping_user;
+
+  const stmt = db.prepare(`
+    INSERT INTO ai_user_settings (user_id, memory_enabled, ping_user, updated_at)
+    VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(user_id) DO UPDATE SET memory_enabled = excluded.memory_enabled, ping_user = excluded.ping_user, updated_at = datetime('now')
+  `);
+  stmt.run(userId, mem, ping);
+  return { memory_enabled: mem, ping_user: ping };
+}
+
 module.exports = {
   init,
   close,
@@ -643,7 +696,10 @@ module.exports = {
   setUserPersona,
   getUserCustomPersonas,
   getCustomPersonaBySlot,
-  saveUserCustomPersona
+  saveUserCustomPersona,
+  deleteUserCustomPersona,
+  getUserAiSettings,
+  setUserAiSettings
 };
 
 

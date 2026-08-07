@@ -90,11 +90,25 @@ module.exports = {
           }))
         );
 
-      const row = new ActionRowBuilder().addComponents(selectMenu);
+      const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+      const components = [selectRow];
+
+      if (customPersonas && customPersonas.length > 0) {
+        const { ButtonBuilder, ButtonStyle } = require('discord.js');
+        const deleteRow = new ActionRowBuilder().addComponents(
+          customPersonas.map(cp =>
+            new ButtonBuilder()
+              .setCustomId(`delete_custom_persona:${cp.slot_index}`)
+              .setLabel(`🗑️ 刪除自訂人設 ${cp.slot_index} (${cp.persona_name})`)
+              .setStyle(ButtonStyle.Danger)
+          )
+        );
+        components.push(deleteRow);
+      }
 
       await interaction.reply({
         embeds: [embed],
-        components: [row],
+        components,
         ephemeral: true
       });
 

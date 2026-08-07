@@ -95,6 +95,42 @@ async function buttonHandler(interaction) {
       const submissionId = customId.split(':')[1];
       await warpAuditService.handleWarpRejectButton(interaction, submissionId);
     }
+
+    // 9. AI Memory, Ping Settings & Persona Deletion Buttons
+    else if (customId === 'clear_user_memory') {
+      const aiService = require('../../services/aiService');
+      aiService.clearConversationHistory(interaction.channelId);
+      await interaction.reply({
+        content: '🧹 已成功一鍵清空當前頻道的對話記憶歷史！',
+        ephemeral: true
+      });
+    } else if (customId === 'toggle_user_memory') {
+      const db = require('../../database');
+      const settings = await db.getUserAiSettings(interaction.user.id);
+      const newMem = settings.memory_enabled !== 0 ? 0 : 1;
+      await db.setUserAiSettings(interaction.user.id, { memory_enabled: newMem });
+      await interaction.reply({
+        content: `🧠 對話記憶狀態已切換為：**${newMem === 1 ? '🟢 已開啟 (保留連續對話)' : '🔴 已關閉 (單次獨立答覆)'}**`,
+        ephemeral: true
+      });
+    } else if (customId === 'toggle_user_ping') {
+      const db = require('../../database');
+      const settings = await db.getUserAiSettings(interaction.user.id);
+      const newPing = settings.ping_user !== 0 ? 0 : 1;
+      await db.setUserAiSettings(interaction.user.id, { ping_user: newPing });
+      await interaction.reply({
+        content: `🔔 回覆 Tag 標記狀態已切換為：**${newPing === 1 ? '🟢 已開啟 (回覆時 Ping 提醒你)' : '🔴 已關閉 (靜音回覆，不 Ping 提醒)'}**`,
+        ephemeral: true
+      });
+    } else if (customId.startsWith('delete_custom_persona:')) {
+      const slotIndex = parseInt(customId.split(':')[1], 10) || 1;
+      const db = require('../../database');
+      await db.deleteUserCustomPersona(interaction.user.id, slotIndex);
+      await interaction.reply({
+        content: `🗑️ 已成功刪除自訂人設槽位 **${slotIndex}**！如果原本正在使用該自訂人設，系統已將人設重置為預設雲喵模式。`,
+        ephemeral: true
+      });
+    }
   } catch (error) {
     if (error instanceof AppError && error.isOperational) {
       if (interaction.deferred || interaction.replied) {
