@@ -792,7 +792,7 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
     if (imageAttachments && imageAttachments.length > 0) {
       if (onStatusUpdate && typeof onStatusUpdate === 'function') {
         try {
-          await onStatusUpdate('👁️ 雲喵正在辨識與分析圖片視覺內容中...');
+          await onStatusUpdate('👁️ 雲喵正在辨識圖片中...');
         } catch (e) {}
       }
 
