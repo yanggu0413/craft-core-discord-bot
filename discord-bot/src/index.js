@@ -280,10 +280,14 @@ client.on('messageCreate', async (message) => {
     const db = require('./database');
     const userSettings = await db.getUserAiSettings(message.author.id);
     const shouldPing = userSettings.ping_user !== 0;
-    const allowedMentions = shouldPing ? undefined : { repliedUser: false, users: [] };
+    const allowedMentions = shouldPing
+      ? { repliedUser: true, users: [message.author.id] }
+      : { repliedUser: false, users: [], roles: [] };
+
+    const userTagPrefix = shouldPing ? `<@${message.author.id}> ` : '';
 
     try {
-      thinkingMsg = await message.reply({ content: '💭 雲喵思考中...', allowedMentions }).catch(() => null);
+      thinkingMsg = await message.reply({ content: `${userTagPrefix}💭 雲喵思考中...`, allowedMentions }).catch(() => null);
       const aiService = require('./services/aiService');
       const contextUser = {
         id: message.author.id,
@@ -300,39 +304,40 @@ client.on('messageCreate', async (message) => {
         async (statusText) => {
           if (thinkingMsg && Date.now() - lastStatusEditTime > 1500) {
             lastStatusEditTime = Date.now();
-            await thinkingMsg.edit({ content: statusText, allowedMentions }).catch(() => {});
+            await thinkingMsg.edit({ content: `${userTagPrefix}${statusText}`, allowedMentions }).catch(() => {});
           }
         }
       );
 
       if (thinkingMsg) {
-        const chunks = splitMessageText(reply, 1900);
+        const rawChunks = splitMessageText(reply, 1900);
+        const firstChunkText = `${userTagPrefix}${rawChunks[0] || '喵～'}`;
         let editSuccess = false;
 
         // Try editing the thinking message with first chunk
         try {
-          await thinkingMsg.edit({ content: chunks[0] || '喵～', allowedMentions });
+          await thinkingMsg.edit({ content: firstChunkText, allowedMentions });
           editSuccess = true;
         } catch (editErr) {
           logger.warn('Initial edit of thinkingMsg failed, retrying after 1s:', editErr);
           await new Promise(r => setTimeout(r, 1000));
           try {
-            await thinkingMsg.edit({ content: chunks[0] || '喵～', allowedMentions });
+            await thinkingMsg.edit({ content: firstChunkText, allowedMentions });
             editSuccess = true;
           } catch (retryErr) {
             logger.error('Retry edit of thinkingMsg failed, falling back to new message:', retryErr);
           }
         }
 
-        // If edit failed completely, send chunk[0] as a new message
+        // If edit failed completely, send firstChunkText as a new message
         if (!editSuccess) {
-          await message.channel.send({ content: chunks[0] || '喵～', allowedMentions }).catch(() => {});
+          await message.channel.send({ content: firstChunkText, allowedMentions }).catch(() => {});
         }
 
         // Send remaining chunks if reply is longer than 1900 characters
-        for (let i = 1; i < chunks.length; i++) {
-          if (chunks[i].trim()) {
-            await message.channel.send({ content: chunks[i], allowedMentions }).catch(() => {});
+        for (let i = 1; i < rawChunks.length; i++) {
+          if (rawChunks[i].trim()) {
+            await message.channel.send({ content: rawChunks[i], allowedMentions }).catch(() => {});
             await new Promise(r => setTimeout(r, 500));
           }
         }
