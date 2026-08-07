@@ -125,7 +125,6 @@ public class ServerLifecycleHandler {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             ServerPlayer player = handler.getPlayer();
             if (player != null) {
-                com.craftcore.antixray.HoneypotTrapManager.clearTraps(player.getUUID());
                 String username = player.getName().getString();
                 com.craftcore.commands.EconomyCommands.removePlayerCooldown(username);
                 String uuid = player.getStringUUID();

@@ -27,21 +27,6 @@ public class LevelMixin {
                 com.craftcore.task.AiDailyTaskManager.updateProgress(serverPlayer, "MINE", blockId, 1);
                 com.craftcore.achievement.CustomAchievementManager.onBlockBroken(serverPlayer);
                 com.craftcore.vein.VeinMinerManager.onBlockBreak(serverPlayer, pos, state);
-                boolean triggered = com.craftcore.antixray.HoneypotTrapManager.checkAndTriggerTrap(serverPlayer, pos);
-                if (triggered) {
-                    com.craftcore.antixray.HoneypotTrapManager.generateTrapForPlayer(serverPlayer);
-                } else if (state.is(net.minecraft.world.level.block.Blocks.STONE) || state.is(net.minecraft.world.level.block.Blocks.DEEPSLATE) || state.is(net.minecraft.world.level.block.Blocks.NETHERRACK)) {
-                    if (level.getRandom().nextInt(35) == 0) {
-                        com.craftcore.antixray.HoneypotTrapManager.generateTrapForPlayer(serverPlayer);
-                    }
-                }
-            }
-        }
-        for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.values()) {
-            BlockPos adjPos = pos.relative(dir);
-            BlockState adjState = level.getBlockState(adjPos);
-            if (com.craftcore.antixray.AntiXrayManager.isOre(adjState)) {
-                level.sendBlockUpdated(adjPos, adjState, adjState, 3);
             }
         }
     }
