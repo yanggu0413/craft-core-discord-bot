@@ -82,3 +82,7 @@ craft-core-shop/
 
 ### 4. 零 Mock 數據原則 (Zero-Mock Policy)
 - 網頁與 API 所有數據必須真實查詢 SQLite `database.db` 或 MCSManager 實體 JSON 資料檔，**絕對禁止使用亂數或假公式生成虛假數據**。
+
+### 5. 建置與編譯需人工指示 (Build On-Demand)
+- **禁止自行觸發耗時建置**：`gradlew build` / `gradlew compileJava` / `gradlew test` 等 Gradle 建置與測試指令**耗時較長**，AI Agent **不得擅自執行**，僅能在服主明確下達建置指示後才執行。
+- **輕量替代驗證**：JS 端程式碼可使用 `node --check <檔案>`、Java 端以人工檢視與 `git diff` 複查為準；若需驗證 Java 語法，先詢問服主是否允許執行 `compileJava`（仍以服主指示為準）。
