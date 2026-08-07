@@ -718,7 +718,60 @@ async function processTextAttachments(attachments) {
   return appendedText;
 }
 
-// Process AI Chat via OpenRouter API REST / Gemini 2.5 Flash (supporting Multimodal Images, History & Function Calling)
+// Silent background image captioning via Gemini 2.5 Flash
+async function generateImageCaptionWithGemini(imageAttachments) {
+  if (!imageAttachments || imageAttachments.length === 0) return null;
+  const apiKey = process.env.GEMINI_API_KEY || config.ai?.geminiApiKey || 'dummy_key';
+
+  try {
+    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const userParts = [
+      { text: '請用繁體中文詳細、客觀地描述這張（或這些）圖片的畫面內容、出現的文字、人物、物件與關鍵視覺資訊。' }
+    ];
+
+    for (const att of imageAttachments) {
+      try {
+        const imgRes = await fetch(att.url);
+        if (imgRes.ok) {
+          const buffer = await imgRes.arrayBuffer();
+          const base64Data = Buffer.from(buffer).toString('base64');
+          userParts.push({
+            inlineData: {
+              mimeType: att.contentType || 'image/png',
+              data: base64Data
+            }
+          });
+        }
+      } catch (e) {
+        logger.warn('Failed to fetch image for Gemini captioning:', e);
+      }
+    }
+
+    const payload = {
+      contents: [{ role: 'user', parts: userParts }],
+      generationConfig: { maxOutputTokens: 1024, temperature: 0.2 }
+    };
+
+    const response = await fetch(geminiEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text && text.trim().length > 0) {
+        return text.trim();
+      }
+    }
+  } catch (err) {
+    logger.warn('Gemini image captioning failed:', err);
+  }
+  return null;
+}
+
+// Process AI Chat via OpenRouter API REST (with Gemini background vision captioning & Function Calling)
 async function generateAiResponse(userMessage, contextUser, attachments = [], channelId = AI_CHANNEL_ID, onStatusUpdate = null) {
   try {
     // Get previous conversation history for this channel
@@ -728,167 +781,37 @@ async function generateAiResponse(userMessage, contextUser, attachments = [], ch
     const nowTaipei = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', dateStyle: 'full', timeStyle: 'medium' });
     let userPromptText = `[當前時間: ${nowTaipei}] <@${contextUser.id}> (${contextUser.displayName || contextUser.username}): ${userMessage}`;
 
-    // Read and append text/code attachments if uploaded by user (.txt, .py, .js, .java, etc.)
+    // 1. Read and append text/code attachments if uploaded by user (.txt, .py, .js, .java, etc.)
     const textAttachmentsContent = await processTextAttachments(attachments);
     if (textAttachmentsContent) {
       userPromptText += textAttachmentsContent;
     }
 
-    const hasImageAttachments = attachments && attachments.some(att => att.contentType && att.contentType.startsWith('image/'));
+    // 2. Process image attachments with Gemini in background for silent vision captioning
+    const imageAttachments = attachments && attachments.filter(att => att.contentType && att.contentType.startsWith('image/'));
+    if (imageAttachments && imageAttachments.length > 0) {
+      if (onStatusUpdate && typeof onStatusUpdate === 'function') {
+        try {
+          await onStatusUpdate('👁️ 雲喵正在辨識與分析圖片視覺內容中...');
+        } catch (e) {}
+      }
 
-    if (hasImageAttachments) {
-      const imageNames = attachments
-        .filter(att => att.contentType && att.contentType.startsWith('image/'))
-        .map(att => att.name || att.filename || '圖片.png')
-        .join(', ');
-
-      userPromptText += `\n\n🖼️ 【玩家上傳了圖片附件: ${imageNames}】`;
+      const caption = await generateImageCaptionWithGemini(imageAttachments);
+      if (caption) {
+        userPromptText += `\n\n[📷 系統圖片辨識詳細摘要]:\n${caption}`;
+      } else {
+        const imageNames = imageAttachments.map(att => att.name || att.filename || '圖片.png').join(', ');
+        userPromptText += `\n\n[📷 玩家上傳了圖片附件: ${imageNames}]`;
+      }
     }
 
-    // --- CASE A: Image Attachments present -> Use Gemini 2.5 Flash for Multimodal Vision ---
-    if (hasImageAttachments) {
-      logger.info('Image attachment detected, routing request to Gemini 2.5 Flash for multimodal vision processing.');
-      const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-      const userParts = [{ text: userPromptText }];
-
-      for (const att of attachments) {
-        if (att.contentType && att.contentType.startsWith('image/')) {
-          try {
-            const imgRes = await fetch(att.url);
-            if (imgRes.ok) {
-              const buffer = await imgRes.arrayBuffer();
-              const base64Data = Buffer.from(buffer).toString('base64');
-              userParts.push({
-                inlineData: {
-                  mimeType: att.contentType,
-                  data: base64Data
-                }
-              });
-            }
-          } catch (imgErr) {
-            logger.warn('Failed to fetch image attachment for Gemini multimodal:', imgErr);
-          }
-        }
-      }
-
-      const geminiContents = [
-        ...history.map(m => ({
-          role: m.role === 'USER' ? 'user' : 'model',
-          parts: [{ text: m.text }]
-        })),
-        {
-          role: 'user',
-          parts: userParts
-        }
-      ];
-
-      const geminiTools = TOOL_DECLARATIONS.map(t => ({
-        name: t.function.name,
-        description: t.function.description,
-        parameters: {
-          type: 'OBJECT',
-          properties: Object.fromEntries(
-            Object.entries(t.function.parameters?.properties || {}).map(([k, v]) => [
-              k,
-              {
-                type: (v.type || 'string').toUpperCase(),
-                description: v.description || ''
-              }
-            ])
-          ),
-          required: t.function.parameters?.required || []
-        }
-      }));
-
-      const payload = {
-        systemInstruction: {
-          parts: [{ text: CLOUDCAT_SYSTEM_PROMPT }]
-        },
-        contents: geminiContents,
-        tools: [
-          { functionDeclarations: geminiTools }
-        ],
-        generationConfig: {
-          maxOutputTokens: 8192
-        }
-      };
-
-      let response = await fetch(geminiEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Gemini API Http ${response.status}: ${errText}`);
-      }
-
-      let data = await response.json();
-      let candidate = data.candidates?.[0];
-      let candidateContent = candidate?.content;
-
-      // Function Call loop (up to 3 rounds)
-      for (let round = 0; round < 3; round++) {
-        const functionCalls = candidateContent?.parts?.filter(p => p.functionCall);
-        if (!functionCalls || functionCalls.length === 0) break;
-
-        geminiContents.push(candidateContent);
-
-        const functionResponseParts = [];
-        for (const fc of functionCalls) {
-          const toolName = fc.functionCall.name;
-
-          if (onStatusUpdate && typeof onStatusUpdate === 'function') {
-            const statusMsg = TOOL_STATUS_MAP[toolName] || `⚙️ 雲喵正在處理 ${toolName} 中...`;
-            try {
-              await onStatusUpdate(statusMsg);
-            } catch (e) {}
-          }
-
-          const toolResult = await executeTool(toolName, fc.functionCall.args || {}, contextUser);
-          functionResponseParts.push({
-            functionResponse: {
-              name: toolName,
-              response: { result: toolResult }
-            }
-          });
-        }
-
-        geminiContents.push({
-          role: 'user',
-          parts: functionResponseParts
-        });
-
-        response = await fetch(geminiEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) break;
-        data = await response.json();
-        candidate = data.candidates?.[0];
-        candidateContent = candidate?.content;
-      }
-
-      const replyText = candidateContent?.parts?.map(p => p.text).filter(Boolean).join('\n');
-      if (replyText && replyText.trim().length > 0) {
-        saveConversationHistory(channelId, 'USER', userPromptText);
-        saveConversationHistory(channelId, 'MODEL', replyText);
-        return replyText;
-      }
-
-      return '喵～ 雲喵剛才在伸懶腰，可以再試著跟雲喵說一次嗎喵？😼✨';
-    }
-
-    // --- CASE B: Text Only -> Use OpenRouter DeepSeek V4 Flash ---
+    // 3. Always route to OpenRouter DeepSeek V4 Flash for 100% unified persona response generation
     const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
     const messages = [
       { role: 'system', content: CLOUDCAT_SYSTEM_PROMPT }
     ];
 
-    // Add conversation history (includes prior image context from Gemini!)
+    // Add conversation history (includes prior image summaries!)
     for (const m of history) {
       messages.push({
         role: m.role === 'USER' ? 'user' : 'assistant',

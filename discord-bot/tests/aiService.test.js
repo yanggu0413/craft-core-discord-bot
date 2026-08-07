@@ -1,6 +1,6 @@
 const aiService = require('../src/services/aiService');
 
-describe('aiService OpenRouter & Gemini Hybrid Routing Integration', () => {
+describe('aiService OpenRouter & Gemini Background Captioning Integration', () => {
   let originalFetch;
 
   beforeAll(() => {
@@ -77,7 +77,7 @@ describe('aiService OpenRouter & Gemini Hybrid Routing Integration', () => {
     expect(response).toContain('這段 Python 程式碼');
   });
 
-  test('should route to Gemini 2.5 Flash when image attachments are present', async () => {
+  test('should perform background Gemini captioning for images and pass summary to OpenRouter DeepSeek', async () => {
     global.fetch = jest.fn().mockImplementation(async (url) => {
       if (url.includes('image.png')) {
         return Promise.resolve({
@@ -85,13 +85,28 @@ describe('aiService OpenRouter & Gemini Hybrid Routing Integration', () => {
           arrayBuffer: async () => Buffer.from('fake-image-bytes')
         });
       }
+      if (url.includes('generativelanguage.googleapis.com')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            candidates: [
+              {
+                content: {
+                  parts: [{ text: '圖中包含一張標題為「280分學渣逆襲考清華」的迷因圖像。' }]
+                }
+              }
+            ]
+          })
+        });
+      }
       return Promise.resolve({
         ok: true,
         json: async () => ({
-          candidates: [
+          choices: [
             {
-              content: {
-                parts: [{ text: '哇！這是一隻超級可愛的貓貓圖片喵！' }]
+              message: {
+                role: 'assistant',
+                content: '喵嗚～ 哇靠，這張迷因圖也太熱血了吧！280分逆襲清華！😼✨'
               }
             }
           ]
@@ -107,7 +122,14 @@ describe('aiService OpenRouter & Gemini Hybrid Routing Integration', () => {
     expect(global.fetch).toHaveBeenCalled();
     const geminiCall = global.fetch.mock.calls.find(c => c[0].includes('generativelanguage.googleapis.com'));
     expect(geminiCall).toBeDefined();
-    expect(response).toContain('可愛的貓貓圖片');
+
+    const openrouterCall = global.fetch.mock.calls.find(c => c[0].includes('openrouter.ai'));
+    expect(openrouterCall).toBeDefined();
+
+    const body = JSON.parse(openrouterCall[1].body);
+    const userMsg = body.messages.find(m => m.role === 'user');
+    expect(userMsg.content).toContain('迷因圖像');
+    expect(response).toContain('迷因圖也太熱血了吧');
   });
 
   test('should handle tool calls correctly with OpenRouter', async () => {
