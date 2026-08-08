@@ -16,8 +16,8 @@
     ]
   },
   "depends": {
+    "fabric-api": "*",
     "craft-core-libs": ">=2.5.0",
-    "craft-core-economy": "*",
     "fabricloader": ">=0.19.3",
     "minecraft": "~26.2",
     "java": ">=25"

@@ -1,4 +1,3 @@
 dependencies {
     implementation project(':craft-core-libs')
-    implementation project(':craft-core-teleport')
 }
