@@ -288,6 +288,25 @@ function upsertWarp(warp, serverId = 'default') {
   });
 }
 
+// Execute an audit decision on the server (e.g. machine approve/reject from Discord)
+function auditExecute(payload, serverId = 'default') {
+  return new Promise((resolve, reject) => {
+    const ws = getConnection(serverId);
+    if (!ws || !isWsActive(ws)) {
+      return reject(new Error('Minecraft server is not connected'));
+    }
+
+    const queryId = crypto.randomUUID();
+    const timeout = setTimeout(() => {
+      pendingRequests.delete(queryId);
+      reject(new Error('Audit execution timed out'));
+    }, process.env.NODE_ENV === 'test' ? 500 : 30000);
+
+    pendingRequests.set(queryId, { resolve, reject, timeout });
+    ws.send(JSON.stringify({ type: 'audit_execute', payload: { query_id: queryId, ...payload } }));
+  });
+}
+
 let webDashboardWs = null;
 
 function setWebDashboardWs(ws) {
@@ -324,6 +343,7 @@ module.exports = {
   queryDailyTasks,
   queryWarps,
   upsertWarp,
+  auditExecute,
   resolveRequest,
   setWebDashboardWs,
   getWebDashboardWs

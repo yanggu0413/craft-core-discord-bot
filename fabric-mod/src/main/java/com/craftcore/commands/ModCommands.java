@@ -15,6 +15,7 @@ public class ModCommands {
             BackupCommand.register(dispatcher);
             InvSeeCommand.register(dispatcher);
             MachineCommand.register(dispatcher);
+            AuditCommand.register(dispatcher);
             TitleCommand.register(dispatcher);
             RetentionCommands.register(dispatcher);
             MenuCommand.register(dispatcher);

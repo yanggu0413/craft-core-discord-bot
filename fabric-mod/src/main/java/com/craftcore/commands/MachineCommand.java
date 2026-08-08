@@ -32,6 +32,11 @@ public class MachineCommand {
                                     }
                                     String name = StringArgumentType.getString(context, "name");
                                     String id = MachineManager.applyMachine(player, name);
+                                    com.craftcore.audit.AuditBridge.submitMachineAudit(
+                                            player.getName().getString(), player.getStringUUID(), id, name.trim(),
+                                            player.getBlockX(), player.getBlockY(), player.getBlockZ(),
+                                            player.level().dimension().identifier().toString()
+                                    );
                                     player.sendSystemMessage(Component.literal("§a[Craft-Core] 機器審核申請已提交！申請編號: §e" + id + "§a。通過管理員認證後可免除領地維護費並獲得專屬稱號！"));
                                     return 1;
                                 })

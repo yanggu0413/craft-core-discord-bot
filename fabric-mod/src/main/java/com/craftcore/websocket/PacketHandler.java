@@ -1008,8 +1008,36 @@ public class PacketHandler {
                             );
                             client.send(new Packet("warps_changed", null));
                         }
-                        client.send(new Packet("warp_upsert_response",
-                                new GenericActionResponsePayload(payload.query_id, success, message, 0.0)));
+                    client.send(new Packet("warp_upsert_response",
+                            new GenericActionResponsePayload(payload.query_id, success, message, 0.0)));
+                    });
+                    break;
+                }
+                case "audit_query_warps_response": {
+                    Packet.AuditWarpsResponsePayload payload = GSON.fromJson(payloadObj, Packet.AuditWarpsResponsePayload.class);
+                    com.craftcore.audit.AuditBridge.resolveWarpQuery(payload.query_id, payload.audits);
+                    break;
+                }
+                case "audit_warp_decision_response": {
+                    Packet.AuditWarpDecisionResponsePayload payload = GSON.fromJson(payloadObj, Packet.AuditWarpDecisionResponsePayload.class);
+                    com.craftcore.audit.AuditBridge.resolveDecision(payload.query_id, payload);
+                    break;
+                }
+                case "player_notify": {
+                    Packet.PlayerNotifyPayload payload = GSON.fromJson(payloadObj, Packet.PlayerNotifyPayload.class);
+                    server.execute(() -> {
+                        if (payload == null || payload.username == null) return;
+                        net.minecraft.server.level.ServerPlayer target = server.getPlayerList().getPlayerByName(payload.username);
+                        if (target == null) return;
+                        if (payload.title != null && !payload.title.isBlank()) {
+                            target.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(net.minecraft.network.chat.Component.literal(payload.title)));
+                        }
+                        if (payload.subtitle != null && !payload.subtitle.isBlank()) {
+                            target.connection.send(new net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket(net.minecraft.network.chat.Component.literal(payload.subtitle)));
+                        }
+                        if (payload.message != null && !payload.message.isBlank()) {
+                            target.sendSystemMessage(net.minecraft.network.chat.Component.literal(payload.message));
+                        }
                     });
                     break;
                 }

@@ -637,6 +637,76 @@ public class Packet {
         public String desc;
     }
 
+    public static class AuditSubmitPayload {
+        public String username;
+        public String uuid;
+        public String machine_id;
+        public String name;
+        public double x, y, z;
+        public String dimension;
+        public String discord_id;
+    }
+
+    public static class AuditWarpsQueryPayload {
+        public String query_id;
+    }
+
+    public static class AuditWarpEntry {
+        public String id;
+        public String name;
+        public String applicant;
+        public String coords;
+        public String dimension;
+        public String desc;
+
+        public AuditWarpEntry(String id, String name, String applicant, String coords, String dimension, String desc) {
+            this.id = id;
+            this.name = name;
+            this.applicant = applicant;
+            this.coords = coords;
+            this.dimension = dimension;
+            this.desc = desc;
+        }
+    }
+
+    public static class AuditWarpsResponsePayload {
+        public String query_id;
+        public java.util.List<AuditWarpEntry> audits;
+
+        public AuditWarpsResponsePayload(String queryId, java.util.List<AuditWarpEntry> audits) {
+            this.query_id = queryId;
+            this.audits = audits;
+        }
+    }
+
+    public static class AuditWarpDecisionPayload {
+        public String query_id;
+        public String id;
+        public String action;
+        public String reviewer;
+    }
+
+    public static class AuditWarpDecisionResponsePayload {
+        public String query_id;
+        public String id;
+        public boolean success;
+        public String message;
+
+        public AuditWarpDecisionResponsePayload(String queryId, String id, boolean success, String message) {
+            this.query_id = queryId;
+            this.id = id;
+            this.success = success;
+            this.message = message;
+        }
+    }
+
+    public static class PlayerNotifyPayload {
+        public String username;
+        public String title;
+        public String subtitle;
+        public String message;
+    }
+
     public static class HomesQueryPayload {
         public String query_id;
         public String username;

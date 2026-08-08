@@ -84,7 +84,7 @@ async function init(dbPath) {
       db.exec('ALTER TABLE tickets ADD COLUMN transcript_text TEXT');
     } catch (e) {}
 
-    // Migration: ensure warp_submissions table exists
+    // Migration: ensure warp_submissions table exists (generalized audit submissions)
     try {
       db.exec(`
         CREATE TABLE IF NOT EXISTS warp_submissions (
@@ -97,9 +97,22 @@ async function init(dbPath) {
           dimension TEXT,
           status TEXT,
           admin_reviewer TEXT,
+          type TEXT NOT NULL DEFAULT 'warp',
+          tier TEXT,
+          target_id TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
+    } catch (e) {}
+    // Migration: add type / tier columns to existing warp_submissions tables
+    try {
+      db.exec("ALTER TABLE warp_submissions ADD COLUMN type TEXT NOT NULL DEFAULT 'warp'");
+    } catch (e) {}
+    try {
+      db.exec("ALTER TABLE warp_submissions ADD COLUMN tier TEXT");
+    } catch (e) {}
+    try {
+      db.exec("ALTER TABLE warp_submissions ADD COLUMN target_id TEXT");
     } catch (e) {}
     // Migration: ensure ai_user_persona table exists
     try {
@@ -232,15 +245,21 @@ async function init(dbPath) {
   stmts.getStats = db.prepare('SELECT * FROM daily_stats WHERE date = ?');
   stmts.getLoginCount = db.prepare('SELECT COUNT(*) as count FROM daily_logins WHERE date = ?');
 
-  // 9. Warp Submissions Operations
-  stmts.createWarpSubmission = db.prepare(`
-    INSERT INTO warp_submissions (applicant_username, applicant_discord_id, facility_name, function_desc, coords, dimension, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending')
+  // 9. Audit (Warp / Machine) Submissions Operations
+  stmts.createAudit = db.prepare(`
+    INSERT INTO warp_submissions (applicant_username, applicant_discord_id, facility_name, function_desc, coords, dimension, status, type, target_id)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
   `);
-  stmts.getWarpSubmissionById = db.prepare('SELECT * FROM warp_submissions WHERE id = ?');
+  stmts.getAuditById = db.prepare('SELECT * FROM warp_submissions WHERE id = ?');
+  stmts.getPendingAudits = db.prepare("SELECT * FROM warp_submissions WHERE status = 'pending' AND type = ? ORDER BY created_at ASC");
+  stmts.getAllAudits = db.prepare('SELECT * FROM warp_submissions ORDER BY created_at DESC');
+  stmts.setAuditStatus = db.prepare("UPDATE warp_submissions SET status = ?, admin_reviewer = ?, tier = ? WHERE id = ?");
+  // Backward compatible aliases
+  stmts.createWarpSubmission = stmts.createAudit;
+  stmts.getWarpSubmissionById = stmts.getAuditById;
   stmts.updateWarpSubmissionStatus = db.prepare("UPDATE warp_submissions SET status = ?, admin_reviewer = ? WHERE id = ?");
-  stmts.getPendingWarpSubmissions = db.prepare("SELECT * FROM warp_submissions WHERE status = 'pending'");
-  stmts.getAllWarpSubmissions = db.prepare('SELECT * FROM warp_submissions ORDER BY created_at DESC');
+  stmts.getPendingWarpSubmissions = stmts.getPendingAudits;
+  stmts.getAllWarpSubmissions = stmts.getAllAudits;
 
 
   bindUserTx = (discordId, mcUuid, mcUsername, code) => {
@@ -537,7 +556,7 @@ function prepare(sql) {
 }
 
 async function createWarpSubmission(applicantUsername, applicantDiscordId, facilityName, functionDesc, coords, dimension) {
-  return stmts.createWarpSubmission.run(applicantUsername, applicantDiscordId, facilityName, functionDesc, coords, dimension);
+  return stmts.createWarpSubmission.run(applicantUsername, applicantDiscordId, facilityName, functionDesc, coords, dimension, 'warp');
 }
 
 async function getWarpSubmissionById(id) {
@@ -549,11 +568,32 @@ async function updateWarpSubmissionStatus(id, status, adminReviewer) {
 }
 
 async function getPendingWarpSubmissions() {
-  return stmts.getPendingWarpSubmissions.all();
+  return stmts.getPendingWarpSubmissions.all('warp');
 }
 
 async function getAllWarpSubmissions() {
   return stmts.getAllWarpSubmissions.all();
+}
+
+// Generic audit helpers (warp + machine)
+async function createAudit(applicantUsername, applicantDiscordId, facilityName, functionDesc, coords, dimension, type = 'warp', targetId = null) {
+  return stmts.createAudit.run(applicantUsername, applicantDiscordId, facilityName, functionDesc, coords, dimension, type, targetId);
+}
+
+async function getAuditById(id) {
+  return stmts.getAuditById.get(id);
+}
+
+async function getPendingAudits(type) {
+  return stmts.getPendingAudits.all(type || 'warp');
+}
+
+async function getAllAudits() {
+  return stmts.getAllAudits.all();
+}
+
+async function setAuditStatus(id, status, adminReviewer = null, tier = null) {
+  return stmts.setAuditStatus.run(status, adminReviewer, tier, id);
 }
 
 async function getUserPersona(userId) {
@@ -692,6 +732,11 @@ module.exports = {
   updateWarpSubmissionStatus,
   getPendingWarpSubmissions,
   getAllWarpSubmissions,
+  createAudit,
+  getAuditById,
+  getPendingAudits,
+  getAllAudits,
+  setAuditStatus,
   getUserPersona,
   setUserPersona,
   getUserCustomPersonas,

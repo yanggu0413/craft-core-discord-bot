@@ -380,6 +380,36 @@ async function handle(packet, discordClient) {
       break;
     }
 
+    case 'audit_submit': {
+      try {
+        const warpAuditService = require('../services/warpAuditService');
+        await warpAuditService.handleMachineAuditSubmit(payload, discordClient);
+      } catch (error) {
+        logger.error('Failed to handle audit_submit', { error });
+      }
+      break;
+    }
+
+    case 'audit_query_warps': {
+      try {
+        const warpAuditService = require('../services/warpAuditService');
+        await warpAuditService.handleAuditQueryWarps(payload, discordClient);
+      } catch (error) {
+        logger.error('Failed to handle audit_query_warps', { error });
+      }
+      break;
+    }
+
+    case 'audit_warp_decision': {
+      try {
+        const warpAuditService = require('../services/warpAuditService');
+        await warpAuditService.handleInGameWarpDecision(payload, discordClient);
+      } catch (error) {
+        logger.error('Failed to handle audit_warp_decision', { error });
+      }
+      break;
+    }
+
     case 'join_query': {
       const { username, uuid } = payload;
       try {
