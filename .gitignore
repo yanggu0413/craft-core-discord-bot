@@ -107,4 +107,5 @@ config/craft-core-shop/
 !fabric-mod/src/main/resources/*.json
 !**/fabric.mod.json
 !fabric-mod-public/**/*.json
+!mod-website/**/*.json
 
