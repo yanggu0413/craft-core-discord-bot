@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-world",
+  "version": "${version}",
+  "name": "Craft-Core World",
+  "description": "Multi-dimension management and position persistence for Craft-Core",
+  "authors": [
+    "Craft-Core Team"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.world.CraftCoreWorldMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "craft-core-libs": "*"
+  }
+}

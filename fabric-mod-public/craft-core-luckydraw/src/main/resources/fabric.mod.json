@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-luckydraw",
+  "version": "${version}",
+  "name": "Craft-Core LuckyDraw",
+  "description": "Pure Java 9x3 key lottery roulette animation & batch draw for Craft-Core",
+  "authors": ["Craft-Core Team"],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.luckydraw.CraftCoreLuckydrawMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "craft-core-libs": "*",
+    "craft-core-economy": "*"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "parent": "craftcore:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:wheat"
+    },
+    "title": {
+      "text": "繁殖高手"
+    },
+    "description": {
+      "text": "累計繁殖 30 次動物 (獎勵: $3,000, 稱號 [繁殖高手])"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

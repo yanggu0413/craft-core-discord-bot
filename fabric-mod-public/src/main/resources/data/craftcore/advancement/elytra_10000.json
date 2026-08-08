@@ -1,0 +1,22 @@
+{
+  "parent": "craftcore:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:elytra"
+    },
+    "title": {
+      "text": "這輩子就當鳥吧"
+    },
+    "description": {
+      "text": "使用鞘翅飛行累計滿 10,000 格 (獎勵: $6,767, 稱號 [一隻鳥])"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

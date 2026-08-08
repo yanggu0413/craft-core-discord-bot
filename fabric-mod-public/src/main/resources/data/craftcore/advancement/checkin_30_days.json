@@ -1,0 +1,22 @@
+{
+  "parent": "craftcore:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:writable_book"
+    },
+    "title": {
+      "text": "我愛簽到"
+    },
+    "description": {
+      "text": "連續簽到一個月 (30 天) (獎勵: $3,031, 稱號 [我愛簽到])"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

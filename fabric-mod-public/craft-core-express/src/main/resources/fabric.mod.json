@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-express",
+  "version": "${version}",
+  "name": "Craft-Core Express",
+  "description": "Offline parcel express delivery system (/express) for Craft-Core",
+  "authors": [
+    "Craft-Core Team"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.express.CraftCoreExpressMod"
+    ]
+  },
+  "depends": {
+    "craft-core-libs": ">=2.5.0",
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "java": ">=25"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-lobby",
+  "version": "${version}",
+  "name": "Craft-Core Lobby",
+  "description": "Lobby and Hub dimension management for Craft-Core",
+  "authors": [
+    "Craft-Core Team"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.lobby.CraftCoreLobbyMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "craft-core-libs": "*"
+  }
+}

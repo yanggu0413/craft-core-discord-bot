@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-claims",
+  "version": "${version}",
+  "name": "Craft-Core Land Claims",
+  "description": "Land protection, claim purchasing (/claim), trust lists, subclaims, and claim protection mixins.",
+  "authors": [
+    "Craft-Core Team"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.claim.CraftCoreClaimsMod"
+    ]
+  },
+  "mixins": [
+    "craft-core-claims.mixins.json"
+  ],
+  "depends": {
+    "craft-core-libs": ">=2.5.0",
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "java": ">=25"
+  }
+}

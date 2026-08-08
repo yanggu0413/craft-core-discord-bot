@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-machine",
+  "version": "${version}",
+  "name": "Craft-Core Machine Registry",
+  "description": "Auto mining machines certification and land tax exemption (/machine)",
+  "authors": [
+    "Craft-Core Team"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.machine.CraftCoreMachineMod"
+    ]
+  },
+  "depends": {
+    "craft-core-libs": ">=2.5.0",
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "java": ">=25"
+  }
+}

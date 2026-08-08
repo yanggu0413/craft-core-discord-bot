@@ -1,0 +1,10 @@
+{
+  "server_name": "Craft-Core",
+  "default_language": "zh_tw",
+  "prefix": "[&6%server_name%&r] ",
+  "debug_mode": false,
+  "economy": {
+    "currency_symbol": "$",
+    "starting_balance": 1000.0
+  }
+}

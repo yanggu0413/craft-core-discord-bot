@@ -1,0 +1,22 @@
+{
+  "parent": "craftcore:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:rabbit_foot"
+    },
+    "title": {
+      "text": "跳..跳..跳！"
+    },
+    "description": {
+      "text": "跳躍次數累計滿 10,000 次 (獎勵: $8,888)"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

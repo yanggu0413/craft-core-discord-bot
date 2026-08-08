@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-bounty",
+  "version": "${version}",
+  "name": "Craft-Core Bounty",
+  "description": "Global server-wide weekly collective goals & bounties manager for Craft-Core",
+  "authors": ["Craft-Core Team"],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.bounty.CraftCoreBountyMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "craft-core-libs": "*",
+    "craft-core-economy": "*"
+  }
+}

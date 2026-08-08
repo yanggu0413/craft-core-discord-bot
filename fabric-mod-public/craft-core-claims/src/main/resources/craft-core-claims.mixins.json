@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "com.craftcore.claim.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "BasePressurePlateBlockMixin",
+    "ClaimExplosionMixin",
+    "EndermanLeaveBlockGoalMixin",
+    "EndermanTakeBlockGoalMixin",
+    "FlowingFluidMixin",
+    "PistonStructureResolverMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

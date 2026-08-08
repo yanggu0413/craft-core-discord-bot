@@ -1,0 +1,18 @@
+{
+  "Alice": {
+    "balance": 0.0,
+    "stonesSoldToday": 0,
+    "trashSoldToday": 0,
+    "lastResetDate": "2026-08-05",
+    "upgradedShopSlots": 0,
+    "dailyTaskSlayProgress": 0,
+    "dailyTaskGatherProgress": 0,
+    "dailyTaskSlayClaimed": false,
+    "dailyTaskGatherClaimed": false,
+    "lotteryKeys": 0,
+    "dailyTaskDate": "2026-08-05",
+    "uuid": "",
+    "dailyPaidAmount": 0.0,
+    "offlineNotifications": []
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-back",
+  "version": "${version}",
+  "name": "Craft-Core Back",
+  "description": "Death point and previous location back teleport for Craft-Core",
+  "authors": [
+    "Craft-Core Team"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.back.CraftCoreBackMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "craft-core-libs": "*"
+  }
+}

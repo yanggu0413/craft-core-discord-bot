@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-menu",
+  "version": "${version}",
+  "name": "Craft-Core Menu",
+  "description": "Central Hub GUI framework (/menu) for Craft-Core",
+  "authors": [
+    "Craft-Core Team"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.menu.CraftCoreMenuMod"
+    ]
+  },
+  "depends": {
+    "craft-core-libs": ">=2.5.0",
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "java": ">=25"
+  },
+  "recommends": {
+    "craft-core-shop": "*",
+    "craft-core-checkin": "*",
+    "craft-core-luckydraw": "*",
+    "craft-core-express": "*",
+    "craft-core-fakeplayer": "*"
+  }
+}

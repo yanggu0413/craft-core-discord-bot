@@ -1,0 +1,25 @@
+{
+  "steve_achiever": {
+    "activeTitle": "",
+    "unlockedTitles": [
+      "§d[蜘蛛人]",
+      "§8[低頭族]",
+      "§e[挖掘機]",
+      "§b[一隻鳥]",
+      "§c[重鎚大師]",
+      "§a[繁殖高手]",
+      "§6[老玩家]",
+      "§e[黑貓宅急便]",
+      "§e[我愛簽到]",
+      "§6[百萬富翁]"
+    ],
+    "titleExpiries": {}
+  },
+  "testplayer": {
+    "activeTitle": "§6[首席工程師]",
+    "unlockedTitles": [
+      "§6[首席工程師]"
+    ],
+    "titleExpiries": {}
+  }
+}

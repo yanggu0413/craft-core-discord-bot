@@ -1,0 +1,57 @@
+[
+  {
+    "id": "q1",
+    "title": "採集深層鐵礦",
+    "description": "深入洞穴採集 32 個鐵礦石！",
+    "type": "MINE",
+    "target": "minecraft:iron_ore",
+    "amount": 32,
+    "reward_money": 300.0,
+    "reward_keys": 1,
+    "icon": "minecraft:iron_ore"
+  },
+  {
+    "id": "q2",
+    "title": "清理殭屍大軍",
+    "description": "擊殺 15 隻殭屍，維持夜間安寧！",
+    "type": "KILL",
+    "target": "minecraft:zombie",
+    "amount": 15,
+    "reward_money": 400.0,
+    "reward_keys": 1,
+    "icon": "minecraft:rotten_flesh"
+  },
+  {
+    "id": "q3",
+    "title": "烘焙新鮮麵包",
+    "description": "合成 16 個香噴噴的麵包！",
+    "type": "CRAFT",
+    "target": "minecraft:bread",
+    "amount": 16,
+    "reward_money": 250.0,
+    "reward_keys": 1,
+    "icon": "minecraft:bread"
+  },
+  {
+    "id": "q4",
+    "title": "垂釣水邊好日",
+    "description": "成功釣起 10 條生魚！",
+    "type": "FISH",
+    "target": "minecraft:cod",
+    "amount": 10,
+    "reward_money": 350.0,
+    "reward_keys": 1,
+    "icon": "minecraft:fishing_rod"
+  },
+  {
+    "id": "q5",
+    "title": "累積獲得金幣",
+    "description": "累積賺取 $500 金幣！",
+    "type": "EARN",
+    "target": "craftcore:money",
+    "amount": 500,
+    "reward_money": 500.0,
+    "reward_keys": 2,
+    "icon": "minecraft:gold_ingot"
+  }
+]

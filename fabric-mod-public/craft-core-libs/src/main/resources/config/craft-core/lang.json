@@ -1,0 +1,8 @@
+{
+  "menu.main.title": "§b[ %server_name% 全服選單 ]",
+  "shop.market.title": "§e[ %server_name% 玩家市場 - 頁碼 %page%/%total% ]",
+  "economy.pay_success": "%prefix% §a成功轉帳 $%amount% 給 %player%",
+  "economy.balance_display": "%prefix% 您的當前餘額為: §e$%balance%",
+  "claim.created": "%prefix% §a已成功建立領地 §e%claim_name%",
+  "general.no_permission": "%prefix% §c您沒有權限執行此指令！"
+}

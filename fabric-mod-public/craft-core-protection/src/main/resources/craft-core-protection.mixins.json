@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "com.craftcore.protection.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "refMap": "craft-core-protection.refmap.json",
+  "mixins": [
+    "PvpProtectionMixin",
+    "HoneypotBlockBreakMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

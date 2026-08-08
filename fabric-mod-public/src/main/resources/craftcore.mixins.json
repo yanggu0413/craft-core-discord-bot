@@ -1,0 +1,31 @@
+{
+  "required": true,
+  "package": "com.craftcore.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "refMap": "craftcore.refmap.json",
+  "mixins": [
+    "ServerPlayerEntityMixin",
+    "PlayerAdvancementTrackerMixin",
+    "BlockBehaviourMixin",
+    "LivingEntityMixin",
+    "PlayerMixin",
+    "LevelMixin",
+    "BlockMixin",
+    "HopperBlockEntityMixin",
+    "EndermanTakeBlockGoalMixin",
+    "EndermanLeaveBlockGoalMixin",
+    "PistonStructureResolverMixin",
+    "FlowingFluidMixin",
+    "BasePressurePlateBlockMixin",
+    "ItemStackMixin",
+    "ItemMixin",
+    "BlockItemMixin",
+    "FishingHookMixin",
+    "MobSpawnMixin",
+    "NaturalSpawnerMixin",
+    "ServerLevelMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

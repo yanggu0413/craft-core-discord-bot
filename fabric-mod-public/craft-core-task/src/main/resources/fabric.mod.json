@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-task",
+  "version": "${version}",
+  "name": "Craft-Core Task",
+  "description": "Daily quests & AI tasks manager with BossBar and Sidebar for Craft-Core",
+  "authors": ["Craft-Core Team"],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.task.CraftCoreTaskMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "craft-core-libs": "*",
+    "craft-core-economy": "*"
+  }
+}

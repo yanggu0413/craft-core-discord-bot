@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-vein",
+  "version": "${version}",
+  "name": "Craft-Core Vein Mining",
+  "description": "Ore vein mining and tree feller toggle system (/vein)",
+  "authors": [
+    "Craft-Core Team"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.vein.CraftCoreVeinMod"
+    ]
+  },
+  "depends": {
+    "craft-core-libs": ">=2.5.0",
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "java": ">=25"
+  }
+}

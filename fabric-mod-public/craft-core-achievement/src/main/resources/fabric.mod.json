@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-achievement",
+  "version": "${version}",
+  "name": "Craft-Core Achievement",
+  "description": "Custom server achievements & advancement tracker for Craft-Core",
+  "authors": ["Craft-Core Team"],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.achievement.CraftCoreAchievementMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "craft-core-libs": "*"
+  }
+}

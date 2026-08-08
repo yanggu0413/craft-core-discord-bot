@@ -1,0 +1,26 @@
+{
+  "85181cbc-04ee-47bb-b717-64abe5ecf54e": {
+    "id": "85181cbc-04ee-47bb-b717-64abe5ecf54e",
+    "name": "Negative Claim",
+    "owner": "Player1",
+    "chunks": 0,
+    "corners": [
+      "-50,64,-50",
+      "-10,64,-10"
+    ],
+    "dimension": "minecraft:overworld",
+    "public_containers": false,
+    "public_interact": false,
+    "public_entry": true,
+    "explosion_protection": true,
+    "pvp": false,
+    "mob_spawn": false,
+    "banned_players": [],
+    "permissions": {
+      "build": [],
+      "break": [],
+      "containers": [],
+      "interact": []
+    }
+  }
+}

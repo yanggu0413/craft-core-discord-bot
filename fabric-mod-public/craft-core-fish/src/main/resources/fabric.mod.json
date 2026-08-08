@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "craft-core-fish",
+  "version": "${version}",
+  "name": "Craft-Core Fish Codex & Market",
+  "description": "Fantasy fishing codex, market, and daily contest (/fish)",
+  "authors": [
+    "Craft-Core Team"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftcore.fish.CraftCoreFishMod"
+    ]
+  },
+  "depends": {
+    "craft-core-libs": ">=2.5.0",
+    "craft-core-economy": "*",
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "java": ">=25"
+  }
+}

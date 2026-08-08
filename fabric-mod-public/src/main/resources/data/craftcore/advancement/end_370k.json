@@ -1,0 +1,22 @@
+{
+  "parent": "craftcore:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:ender_pearl"
+    },
+    "title": {
+      "text": "終末?"
+    },
+    "description": {
+      "text": "在終界遠征來到 370,000 格之外 (獎勵: $100,000)"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}
