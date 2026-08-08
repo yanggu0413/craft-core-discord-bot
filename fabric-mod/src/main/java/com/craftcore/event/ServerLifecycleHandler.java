@@ -77,6 +77,7 @@ public class ServerLifecycleHandler {
                 com.craftcore.task.DailyTaskManager.checkAndAutoClaimTasks(player);
                 FirstJoinManager.checkAndHandleFirstJoin(player);
                 com.craftcore.mushroom.MushroomManager.checkAndGiveMushroom(player);
+                com.craftcore.achievement.CustomAchievementManager.grantAdvancement(player, "root");
 
                 // 2. 發送隨機迎賓小提示 (Welcome Tip) 與限時活動通知
                 getGreetingScheduler().schedule(() -> {

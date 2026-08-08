@@ -22,6 +22,9 @@ public class PlayerAdvancementTrackerMixin {
     @Inject(method = "award", at = @At("RETURN"))
     private void onAward(AdvancementHolder advancement, String criterionName, CallbackInfoReturnable<Boolean> cir) {
         if (cir.getReturnValue()) {
+            if (player != null && com.craftcore.fakeplayer.FakePlayerManager.isFakePlayer(player)) {
+                return; // Block fake players from getting achievements or rewards
+            }
             PlayerAdvancements tracker = (PlayerAdvancements) (Object) this;
             AdvancementProgress progress = tracker.getOrStartProgress(advancement);
             if (progress.isDone()) {

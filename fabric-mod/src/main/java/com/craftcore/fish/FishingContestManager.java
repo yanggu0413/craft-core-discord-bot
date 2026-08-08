@@ -1033,8 +1033,35 @@ public class FishingContestManager {
         public abstract void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker);
     }
 
+    private static final Map<UUID, Long> rodCooldownMap = new ConcurrentHashMap<>();
+
     public static void giveFishingRod(ServerPlayer player) {
         if (player == null) return;
+        long now = System.currentTimeMillis();
+        long lastClaim = rodCooldownMap.getOrDefault(player.getUUID(), 0L);
+        if (now - lastClaim < 5000) {
+            player.sendSystemMessage(Component.literal("§c[釣魚系統] 領取釣魚竿冷卻中，請等待 " + String.format("%.1f", (5000 - (now - lastClaim)) / 1000.0) + " 秒！"));
+            return;
+        }
+
+        boolean hasRod = false;
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            if (player.getInventory().getItem(i).is(Items.FISHING_ROD)) {
+                hasRod = true;
+                break;
+            }
+        }
+        if (hasRod) {
+            player.sendSystemMessage(Component.literal("§c[釣魚系統] 您身上已經有一把釣魚竿了，無法重複領取！"));
+            return;
+        }
+
+        if (player.getInventory().getFreeSlot() == -1) {
+            player.sendSystemMessage(Component.literal("§c[釣魚系統] 背包已滿，請空出至少一個格子再領取釣魚竿！"));
+            return;
+        }
+
+        rodCooldownMap.put(player.getUUID(), now);
         ItemStack rod = new ItemStack(Items.FISHING_ROD);
         rod.set(DataComponents.CUSTOM_NAME, Component.literal("§b🎣 奇幻冒險釣魚竿"));
         rod.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
@@ -1044,9 +1071,7 @@ public class FishingContestManager {
                 Component.literal(""),
                 Component.literal("§a[免費新手贊助發放]")
         )));
-        if (!player.getInventory().add(rod)) {
-            player.drop(rod, false);
-        }
+        player.getInventory().add(rod);
         player.sendSystemMessage(Component.literal("§a[釣魚系統] 成功領取【§b🎣 奇幻冒險釣魚竿§a】！祝您滿載而歸！"));
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 1.0f, 1.2f);
     }
@@ -1129,7 +1154,7 @@ public class FishingContestManager {
                     @Override
                     public void handleMenuClick(int slotId, int button, ContainerInput clickType, net.minecraft.world.entity.player.Player clicker) {
                         if (clicker instanceof ServerPlayer sp) {
-                            if (slotId == 10) { giveFishingRod(sp); return; }
+                            if (slotId == 10) { sp.closeContainer(); giveFishingRod(sp); return; }
                             if (slotId == 11) { sp.closeContainer(); teleportToFishingDimension(sp); return; }
                             if (slotId == 12) { FishSellManager.openFishSellBin(sp); return; }
                             if (slotId == 13) { FishCodexManager.openCodexGui(sp); return; }

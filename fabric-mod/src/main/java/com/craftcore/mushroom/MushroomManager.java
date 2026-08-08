@@ -111,8 +111,89 @@ public class MushroomManager {
         }
     }
 
+    private static final Set<UUID> disabledReceivingPlayers = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private static java.nio.file.Path configFile;
+
+    static {
+        try {
+            configFile = com.craftcore.util.FabricPathUtil.getShopConfigDir().resolve("mushroom_disabled.json");
+        } catch (Throwable e) {
+            configFile = java.nio.file.Path.of("config", "craft-core-shop", "mushroom_disabled.json");
+        }
+        loadConfig();
+    }
+
+    private static void loadConfig() {
+        if (configFile != null && java.nio.file.Files.exists(configFile)) {
+            try (java.io.BufferedReader reader = java.nio.file.Files.newBufferedReader(configFile)) {
+                java.lang.reflect.Type type = new com.google.gson.reflect.TypeToken<Set<String>>(){}.getType();
+                Set<String> set = new com.google.gson.Gson().fromJson(reader, type);
+                if (set != null) {
+                    for (String str : set) {
+                        disabledReceivingPlayers.add(UUID.fromString(str));
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    private static void saveConfig() {
+        if (configFile == null) return;
+        try {
+            if (configFile.getParent() != null) java.nio.file.Files.createDirectories(configFile.getParent());
+            try (java.io.BufferedWriter writer = java.nio.file.Files.newBufferedWriter(configFile)) {
+                Set<String> strings = new java.util.HashSet<>();
+                for (UUID u : disabledReceivingPlayers) strings.add(u.toString());
+                new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(strings, writer);
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    public static boolean isReceivingDisabled(UUID uuid) {
+        return disabledReceivingPlayers.contains(uuid);
+    }
+
+    public static void setReceivingDisabled(ServerPlayer player, boolean disabled) {
+        if (player == null) return;
+        if (disabled) {
+            disabledReceivingPlayers.add(player.getUUID());
+            player.sendSystemMessage(Component.literal("§d[洋菇] §c已關閉【洋菇】自動發放功能！輸入 /mushroom get 或 /mushroom toggle 可重新啟用。"));
+        } else {
+            disabledReceivingPlayers.remove(player.getUUID());
+            player.sendSystemMessage(Component.literal("§d[洋菇] §a已開啟【洋菇】自動發放功能！"));
+            checkAndGiveMushroom(player);
+        }
+        saveConfig();
+    }
+
+    public static boolean toggleReceiving(ServerPlayer player) {
+        if (player == null) return false;
+        boolean nowDisabled = !isReceivingDisabled(player.getUUID());
+        setReceivingDisabled(player, nowDisabled);
+        return !nowDisabled;
+    }
+
+    public static void giveMushroomDirectly(ServerPlayer player) {
+        if (player == null) return;
+        enforceSingleMushroom(player);
+        if (hasMushroomInInventory(player)) {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您的背包內已有【洋菇】，無須重複領取！"));
+            return;
+        }
+        int freeSlot = player.getInventory().getFreeSlot();
+        if (freeSlot != -1) {
+            ItemStack mushroom = createMushroomStack();
+            player.getInventory().add(mushroom);
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.8f, 1.2f);
+            player.sendSystemMessage(Component.literal("§b[Craft-Core] §a手動領取了神秘物品 §d【洋菇】§a！"));
+        } else {
+            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您的背包空間不足，請空出一個格子後再試！"));
+        }
+    }
+
     public static void checkAndGiveMushroom(ServerPlayer player) {
         if (player == null) return;
+        if (isReceivingDisabled(player.getUUID())) return;
 
         // First enforce strictly only 1 mushroom exists in inventory
         enforceSingleMushroom(player);
@@ -125,8 +206,6 @@ public class MushroomManager {
             player.getInventory().add(mushroom);
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.8f, 1.2f);
             player.sendSystemMessage(Component.literal("§b[Craft-Core] §a獲得了神秘物品 §d【洋菇】§a！"));
-        } else {
-            player.sendSystemMessage(Component.literal("§c[Craft-Core] 您的背包空間不足，無法獲得【洋菇】，將於 30 秒後重新嘗試！"));
         }
     }
 

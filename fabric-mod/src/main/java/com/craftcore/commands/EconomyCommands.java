@@ -194,6 +194,38 @@ public class EconomyCommands {
                     }
                     return 1;
                 })
+                .then(Commands.literal("get")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player != null) {
+                                com.craftcore.mushroom.MushroomManager.giveMushroomDirectly(player);
+                            }
+                            return 1;
+                        }))
+                .then(Commands.literal("toggle")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player != null) {
+                                com.craftcore.mushroom.MushroomManager.toggleReceiving(player);
+                            }
+                            return 1;
+                        }))
+                .then(Commands.literal("off")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player != null) {
+                                com.craftcore.mushroom.MushroomManager.setReceivingDisabled(player, true);
+                            }
+                            return 1;
+                        }))
+                .then(Commands.literal("on")
+                        .executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayer();
+                            if (player != null) {
+                                com.craftcore.mushroom.MushroomManager.setReceivingDisabled(player, false);
+                            }
+                            return 1;
+                        }))
                 .then(Commands.literal("exit")
                         .executes(context -> {
                             ServerPlayer player = context.getSource().getPlayer();

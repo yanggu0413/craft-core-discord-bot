@@ -35,6 +35,7 @@ public class CustomAchievementManager {
             boolean isTick20 = (tickCounter % 20 == 0);
 
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if (com.craftcore.fakeplayer.FakePlayerManager.isFakePlayer(player)) continue;
                 if (isTick20) {
                     checkStatsAdvancements(player);
                     checkLookDownAdvancement(player);
@@ -149,6 +150,7 @@ public class CustomAchievementManager {
 
     public static void grantAdvancement(ServerPlayer player, String advName) {
         if (player == null || player.level() == null || player.level().getServer() == null) return;
+        if (com.craftcore.fakeplayer.FakePlayerManager.isFakePlayer(player)) return;
         try {
             net.minecraft.resources.Identifier id = net.minecraft.resources.Identifier.parse("craftcore:" + advName);
             AdvancementHolder holder = player.level().getServer().getAdvancements().get(id);
